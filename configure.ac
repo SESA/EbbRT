@@ -9,11 +9,11 @@ AC_CONFIG_FILES([Makefile])
 
 AC_CANONICAL_HOST
 AS_CASE([$host_cpu], [x86_64],
-[AC_DEFINE([ARCH_X86], [1], [x86_64 architecture])],
+[AC_DEFINE([ARCH_X86_64], [1], [x86_64 architecture])],
 [powerpc],
 [AC_DEFINE([ARCH_PPC], [1], [powerpc architecture])],
 [AC_MSG_ERROR([not on a supported architecture])])
-AM_CONDITIONAL([ARCH_X86], [test x$host_cpu == xx86_64])
+AM_CONDITIONAL([ARCH_X86_64], [test x$host_cpu == xx86_64])
 AM_CONDITIONAL([ARCH_POWERPC], [test x$host_cpu == xpowerpc])
 
 # Checks for programs.

@@ -6,8 +6,10 @@ bin_PROGRAMS = ebbrt
 ebbrt_SOURCES = \
 	$(lrt_sources)
 ebbrt_LDFLAGS = -u _start
+ebbrt_DEPENDENCIES =
+EXTRA_DIST =
 
-if ARCH_X86
+if ARCH_X86_64
 ebbrt_LDFLAGS += -static -n -z max-page-size=0x1000 \
 	-T $(top_srcdir)/src/lrt/arch/x86_64/link.ld
 

@@ -1,7 +1,7 @@
 #include "lrt/boot.hpp"
 
 void
-ebbrt::lrt::boot::init() __attribute__((noreturn))
+ebbrt::lrt::boot::init()
 {
   while(1)
     ;

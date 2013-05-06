@@ -2,7 +2,7 @@
 #error "Don't include this file directly"
 #endif
 
-#include <arch/x86_64/multiboot.hpp>
+#include "arch/x86_64/multiboot.hpp"
 
 namespace ebbrt {
   namespace lrt {

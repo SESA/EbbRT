@@ -7,6 +7,6 @@ extern "C"
 void __attribute__((noreturn))
 init_arch(ebbrt::MultibootInformation* mbi)
 {
-  multiboot_information = mbi;
+  ebbrt::lrt::boot::multiboot_information = mbi;
   ebbrt::lrt::boot::init();
 }
