@@ -21,7 +21,8 @@ SECTIONS
                 LONG(mb_checksum)
 
                 *(.init.text);
-                *(.init.data)
+                *(.init.smp);
+                *(.init.data);
         }
 
         .text ALIGN (16) :
@@ -89,6 +90,13 @@ SECTIONS
                 *(COMMON)
                 *(.gnu.linkonce.b*)
                 ebss = .;
+        }
+
+        static_ebb_ids :
+        {
+                static_ebb_ids_start = .;
+                *(static_ebb_ids)
+                static_ebb_ids_end = .;
         }
 
         /DISCARD/ :

@@ -1,0 +1,7 @@
+#ifndef EBBRT_LRT_ARCH_X86_64_SMP_HPP
+#define EBBRT_LRT_ARCH_X86_64_SMP_HPP
+
+#define SMP_START_ADDRESS (0x4000)
+#define SMP_STACK_SIZE (1 << 10)
+
+#endif

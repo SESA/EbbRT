@@ -32,7 +32,7 @@ _start.setup_stack:
               //setup stack
               lea _boot_stack, %esp
               mov 0, %ebp
-              
+
 _start.check_if_long_mode:
               //detect if we can cpuid
               //this is done by seeing if we can flip the ID bit in flags
@@ -129,20 +129,20 @@ _start.jump_to_64:
               mov %cr4, %eax
               or $0x600, %eax //set CR4.OSXMMEXCPT and CR4.OSFXSR
               mov %eax, %cr4
-              
+
               //load gdt and jump
               lgdt _gdt_pointer
               ljmp $0x8, $_start.complete
 .code64
 _start.complete:
               mov %esi, %edi //pass multiboot struct pointer
-              call init_arch
+              call _init_arch
 _start.hang:
               jmp _start.hang
 
 _start.no_multiboot:
               jmp _start.no_multiboot
-              
+
 _start.no_cpuid:
 
               jmp _start.no_cpuid
@@ -154,6 +154,7 @@ _start.no_long_mode:
               jmp _start.no_long_mode
 
 .section .init.data, "aw"
+.globl _gdt
 _gdt:
 //NULL descriptor
 .word 0 //limit (low)
@@ -176,9 +177,13 @@ _gdt:
 .byte 0x90 //access, present, not system
 .byte 0 //granularity
 .byte 0 //base (high)
+
+.globl _gdt_pointer
 _gdt_pointer:
 .word . - _gdt - 1 //limit
 .quad _gdt //base
+.globl _gdt_pointer_end
+_gdt_pointer_end:
 
 //set boot stack, the symbol points to the beginning of the stack
 .align 16
@@ -186,6 +191,7 @@ _gdt_pointer:
 _boot_stack:
 
 .align 4096
+.globl _pml4
 _pml4:
 .space 0x1000
 
