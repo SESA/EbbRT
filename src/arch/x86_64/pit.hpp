@@ -10,6 +10,9 @@ namespace {
 
 namespace ebbrt {
   namespace pit {
+    /**
+     * @brief Disable programmable interval timer 
+     */
     inline void
     disable() {
       //set the counter to 0
