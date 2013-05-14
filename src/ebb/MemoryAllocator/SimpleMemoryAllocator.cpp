@@ -1,5 +1,7 @@
+#include <cstring>
 #include <new>
 
+#include "ebb/DistributedRoot.hpp"
 #include "ebb/EbbAllocator/EbbAllocator.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
 #include "lrt/mem_impl.hpp"
@@ -41,44 +43,29 @@ ebbrt::SimpleMemoryAllocator::free(void* p)
 }
 
 void*
+ebbrt::SimpleMemoryAllocator::realloc(void* ptr, size_t size)
+{
+  free(ptr);
+  return malloc(size);
+}
+
+void*
+ebbrt::SimpleMemoryAllocator::calloc(size_t num, size_t size)
+{
+  size_t total = num * size;
+  void* ptr = malloc(total);
+  return std::memset(ptr, 0, total);
+}
+
+void*
 ebbrt::SimpleMemoryAllocator::operator new(size_t size)
 {
-  return lrt::mem::malloc(size, 0);
+  return lrt::mem::malloc(size, get_location());
 }
 
 extern "C"
 ebbrt::EbbRoot* ebbrt::SimpleMemoryAllocatorConstructRoot()
 {
-  auto root = new (lrt::mem::malloc(sizeof(SimpleMemoryAllocatorRoot), 0))
-    SimpleMemoryAllocatorRoot;
-  return root;
-}
-
-bool
-ebbrt::SimpleMemoryAllocatorRoot::PreCall(Args* args, ptrdiff_t fnum,
-                                          lrt::trans::FuncRet* fret)
-{
-  auto it = reps_.find(get_location());
-  SimpleMemoryAllocator* ref;
-  if (it == reps_.end()) {
-    // No rep for this location
-    ref = new SimpleMemoryAllocator();
-    ebb_allocator->CacheRep(memory_allocator, ref);
-    reps_[get_location()] = ref;
-  } else {
-    ebb_allocator->CacheRep(memory_allocator, it->second);
-    ref = it->second;
-  }
-  *reinterpret_cast<EbbRep**>(args) = ref;
-  // rep is a pointer to pointer to array 256 of pointer to
-  // function returning void
-  void (*(**rep)[256])() = reinterpret_cast<void (*(**)[256])()>(ref);
-  fret->func = (**rep)[fnum];
-  return true;
-}
-
-void*
-ebbrt::SimpleMemoryAllocatorRoot::PostCall(void* ret)
-{
-  return ret;
+  static DistributedRoot<SimpleMemoryAllocator> root;
+  return &root;
 }

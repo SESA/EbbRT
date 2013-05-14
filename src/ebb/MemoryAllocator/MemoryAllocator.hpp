@@ -9,6 +9,8 @@ namespace ebbrt {
     virtual void* malloc(size_t size) = 0;
     virtual void* memalign(size_t boundary, size_t size) = 0;
     virtual void free(void* ptr) = 0;
+    virtual void* realloc(void* ptr, size_t size) = 0;
+    virtual void* calloc(size_t num, size_t size) = 0;
   };
   extern Ebb<MemoryAllocator> memory_allocator;
 }

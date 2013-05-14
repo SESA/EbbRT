@@ -67,7 +67,7 @@ ebbrt_gthread_once(__gthread_once_t *once, void (*func) (void))
     __sync_synchronize();
     *once = reinterpret_cast<__gthread_once_t>(2);
   } else {
-    while (access_once(*once) != reinterpret_cast<__gthread_once_t>(2))
+    while (ebbrt::access_once(*once) != reinterpret_cast<__gthread_once_t>(2))
       ;
   }
   return 0;
@@ -161,7 +161,7 @@ ebbrt_gthread_recursive_mutex_trylock(__gthread_recursive_mutex_t *mutex)
     mut->loc = ebbrt::lrt::event::get_location();
     mut->count = 1;
     __sync_synchronize();
-    access_once(mut->lock) = 0;
+    ebbrt::access_once(mut->lock) = 0;
     return 0;
   }
 
@@ -172,13 +172,13 @@ ebbrt_gthread_recursive_mutex_trylock(__gthread_recursive_mutex_t *mutex)
     }
     mut->count++;
     __sync_synchronize();
-    access_once(mut->lock) = 0;
+    ebbrt::access_once(mut->lock) = 0;
     return 0;
   }
 
   //someone holds the lock that is not us, fail!
   __sync_synchronize();
-  access_once(mut->lock) = 0;
+  ebbrt::access_once(mut->lock) = 0;
   return 1;
 }
 
@@ -201,6 +201,6 @@ ebbrt_gthread_recursive_mutex_unlock(__gthread_recursive_mutex_t *mutex)
   mut->count--;
 
   __sync_synchronize();
-  access_once(mut->lock) = 0;
+  ebbrt::access_once(mut->lock) = 0;
   return 0;
 }

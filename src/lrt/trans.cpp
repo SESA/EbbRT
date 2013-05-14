@@ -23,19 +23,30 @@ ebbrt::lrt::trans::LocalEntry* const local_table =
 
 ebbrt::lrt::trans::InitRoot ebbrt::lrt::trans::init_root;
 
-bool
-ebbrt::lrt::trans::init(unsigned num_cores)
+void
+ebbrt::lrt::trans::init_ebbs()
 {
   miss_handler = &init_root;
   const boot::Config* config = boot::get_config();
   initial_root_table = new (mem::malloc(sizeof(RootBinding) * config->count, 0))
     RootBinding[config->count];
+  auto ptr = config->table;
   for (unsigned i = 0; i < config->count; ++i) {
-    void* addr = boot::find_symbol(config->table[i].symbol);
+    void* addr = boot::find_symbol(ptr->symbol);
     auto create_root = reinterpret_cast<EbbRoot* (*)()>(addr);
-    initial_root_table[i].id = config->table[i].id;
+    initial_root_table[i].id = ptr->id;
     initial_root_table[i].root = create_root();
+    uintptr_t next = reinterpret_cast<uintptr_t>(ptr->symbol +
+                                                 std::strlen(ptr->symbol));
+    next = next + alignof(boot::Config::CreateRoot) -
+      (next % alignof(boot::Config::CreateRoot));
+    ptr = reinterpret_cast<boot::Config::CreateRoot*>(next);
   }
+}
+
+bool
+ebbrt::lrt::trans::init(unsigned num_cores)
+{
   return true;
 }
 
@@ -55,7 +66,15 @@ ebbrt::lrt::trans::_trans_precall(ebbrt::Args* args,
                                   ptrdiff_t fnum,
                                   FuncRet* fret)
 {
-  return miss_handler->PreCall(args, fnum, fret);
+  void* rep = *reinterpret_cast<void**>(args);
+  LocalEntry* le =
+    reinterpret_cast<LocalEntry*>
+    (static_cast<uintptr_t*>(rep) - 1);
+  uintptr_t loc = reinterpret_cast<uintptr_t>(le);
+  EbbId id =
+    (loc - reinterpret_cast<uintptr_t>(LOCAL_MEM_VIRT)) /
+    sizeof(LocalEntry);
+  return miss_handler->PreCall(args, fnum, fret, id);
 }
 
 void*
@@ -67,17 +86,9 @@ ebbrt::lrt::trans::_trans_postcall(void* ret)
 bool
 ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
                                      ptrdiff_t fnum,
-                                     FuncRet* fret)
+                                     FuncRet* fret,
+                                     EbbId id)
 {
-  void* rep = *reinterpret_cast<void**>(args);
-  LocalEntry* le =
-    reinterpret_cast<LocalEntry*>
-    (static_cast<uintptr_t*>(rep) - 1);
-  uintptr_t loc = reinterpret_cast<uintptr_t>(le);
-  EbbId id =
-    (loc - reinterpret_cast<uintptr_t>(LOCAL_MEM_VIRT)) /
-    sizeof(LocalEntry);
-
   const boot::Config* config = boot::get_config();
   EbbRoot* root = nullptr;
   for (unsigned i = 0; i < config->count; ++i) {
@@ -90,7 +101,7 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
     while (1)
       ;
   }
-  bool ret = root->PreCall(args, fnum, fret);
+  bool ret = root->PreCall(args, fnum, fret, id);
   if (ret) {
     event::_event_altstack_push
       (reinterpret_cast<uintptr_t>(root));

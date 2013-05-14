@@ -53,6 +53,8 @@ _smp_start:
         ljmp $0x8, $_smp_64 - _smp_start + SMP_START_ADDRESS
 .code64
 _smp_64:
+        fninit //Initialize FPU
+        fldcw _fpu_control_word - _smp_start + SMP_START_ADDRESS
         mov $_smp_stack + SMP_STACK_SIZE, %rsp
         mov $0x0, %rdi
         mov $_init_cpu_arch, %rax

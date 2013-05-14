@@ -26,7 +26,8 @@ namespace ebbrt {
       void install_miss_handler(EbbRoot* root);
 
       class InitRoot : public EbbRoot {
-        bool PreCall(Args* args, ptrdiff_t fnum, FuncRet* fret) override;
+        bool PreCall(Args* args, ptrdiff_t fnum,
+                     FuncRet* fret, EbbId id) override;
         void* PostCall(void* ret) override;
       };
       extern InitRoot init_root;

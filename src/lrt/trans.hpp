@@ -11,6 +11,7 @@ namespace ebbrt {
   namespace lrt {
     namespace trans {
       bool init(unsigned num_cores);
+      void init_ebbs();
       void init_cpu();
 
       class FuncRet {
@@ -21,9 +22,12 @@ namespace ebbrt {
         };
       };
 
+      typedef uint32_t EbbId;
+
       class EbbRoot {
       public:
-        virtual bool PreCall(Args* args, ptrdiff_t fnum, FuncRet* fret) = 0;
+        virtual bool PreCall(Args* args, ptrdiff_t fnum,
+                             FuncRet* fret, EbbId id) = 0;
         virtual void* PostCall(void* ret) = 0;
         virtual ~EbbRoot() {}
       };
@@ -38,8 +42,6 @@ namespace ebbrt {
                                //pointers to functions taking no
                                //arguments and having no return
       };
-
-      typedef uint32_t EbbId;
 
       template <class T>
       class Ebb {

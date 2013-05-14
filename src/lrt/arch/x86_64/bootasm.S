@@ -129,6 +129,8 @@ _start.jump_to_64:
               mov %cr4, %eax
               or $0x600, %eax //set CR4.OSXMMEXCPT and CR4.OSFXSR
               mov %eax, %cr4
+              fninit // initialize the FPU state
+              fldcw _fpu_control_word
 
               //load gdt and jump
               lgdt _gdt_pointer
@@ -184,6 +186,10 @@ _gdt_pointer:
 .quad _gdt //base
 .globl _gdt_pointer_end
 _gdt_pointer_end:
+
+.globl _fpu_control_word
+_fpu_control_word:
+.word 0x37a //enable both division by zero and invalid operand exceptions
 
 //set boot stack, the symbol points to the beginning of the stack
 .align 16

@@ -71,7 +71,7 @@ ebbrt_newlib_lock_try_acquire_recursive(_LOCK_RECURSIVE_T *lock)
     mut->loc = ebbrt::lrt::event::get_location();
     mut->count = 1;
     __sync_synchronize();
-    access_once(mut->lock) = 0;
+    ebbrt::access_once(mut->lock) = 0;
     return 0;
   }
 
@@ -82,13 +82,13 @@ ebbrt_newlib_lock_try_acquire_recursive(_LOCK_RECURSIVE_T *lock)
     }
     mut->count++;
     __sync_synchronize();
-    access_once(mut->lock) = 0;
+    ebbrt::access_once(mut->lock) = 0;
     return 0;
   }
 
   //someone holds the lock that is not us, fail!
   __sync_synchronize();
-  access_once(mut->lock) = 0;
+  ebbrt::access_once(mut->lock) = 0;
   return 1;
 }
 
@@ -116,5 +116,5 @@ ebbrt_newlib_lock_release_recursive(_LOCK_RECURSIVE_T *lock)
   mut->count--;
 
   __sync_synchronize();
-  access_once(mut->lock) = 0;
+  ebbrt::access_once(mut->lock) = 0;
 }

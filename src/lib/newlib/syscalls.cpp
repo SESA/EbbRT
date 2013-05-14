@@ -30,6 +30,8 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include "ebb/MemoryAllocator/MemoryAllocator.hpp"
+
 #define NYI \
   while (1) ;
 
@@ -158,4 +160,24 @@ ebbrt_newlib_gettimeofday(struct timeval *p, void *z)
 {
   NYI;
   return 0;
+}
+
+extern "C" void* ebbrt_newlib_malloc(size_t size)
+{
+  return ebbrt::memory_allocator->malloc(size);
+}
+
+extern "C" void ebbrt_newlib_free(void* ptr)
+{
+  ebbrt::memory_allocator->free(ptr);
+}
+
+extern "C" void* ebbrt_newlib_realloc(void* ptr, size_t size)
+{
+  return ebbrt::memory_allocator->realloc(ptr, size);
+}
+
+extern "C" void* ebbrt_newlib_calloc(size_t num, size_t size)
+{
+  return ebbrt::memory_allocator->calloc(num, size);
 }

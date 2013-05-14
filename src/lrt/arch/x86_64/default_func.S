@@ -85,8 +85,8 @@ default_func_common:
 .Lfail:
               popq  %rax
               .cfi_adjust_cfa_offset -8
-              addq $(520 + 8*8 + 16), %rsp
-              .cfi_adjust_cfa_offset -(520 + 8*8 + 16)
+              addq $(520 + 8*8 + 8), %rsp
+              .cfi_adjust_cfa_offset -(520 + 8*8 + 8)
               ret
 .Llp0:
               mov   %rax, %rdi

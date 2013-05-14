@@ -11,8 +11,9 @@
 #include "lrt/mem.hpp"
 #include "lrt/arch/x86_64/smp.hpp"
 #include "misc/elf.hpp"
+#include "sync/compiler.hpp"
 
-std::atomic<uint32_t> ebbrt::lrt::boot::smp_lock;
+uint32_t ebbrt::lrt::boot::smp_lock;
 const ebbrt::MultibootInformation* ebbrt::lrt::boot::multiboot_information;
 namespace {
   const ebbrt::lrt::boot::Config* config;
@@ -131,9 +132,9 @@ ebbrt::lrt::boot::init_smp(unsigned num_cores)
 
     apic::lapic->SendIpi(icr_low, icr_high);
 
-    while (smp_lock != i)
+    while (access_once(smp_lock) != i)
       ;
   }
-  smp_lock = -1;
+  access_once(smp_lock) = -1;
   _init_cpu_arch();
 }

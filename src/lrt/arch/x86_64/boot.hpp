@@ -10,7 +10,7 @@
 namespace ebbrt {
   namespace lrt {
     namespace boot {
-      extern std::atomic<uint32_t> smp_lock;
+      extern uint32_t smp_lock;
       extern const MultibootInformation* multiboot_information;
     }
   }
