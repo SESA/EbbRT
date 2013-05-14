@@ -31,4 +31,5 @@ ebbrt::app::start()
   }
 
   memory_allocator->malloc(8);
+  memory_allocator->malloc(8);
 }
