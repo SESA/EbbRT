@@ -5,13 +5,6 @@
 
 uintptr_t** ebbrt::lrt::event::altstack;
 
-/**
- * @brief Initialize data structures for event handling 
- *
- * @param num_cores amount of cores spun-up on boot
- *
- * @return success/fail
- */
 bool
 ebbrt::lrt::event::init(unsigned num_cores)
 {
@@ -20,9 +13,6 @@ ebbrt::lrt::event::init(unsigned num_cores)
   return init_arch();
 }
 
-/**
- * @brief Each core configured in preparation to receive events
- */
 void
 ebbrt::lrt::event::init_cpu()
 {

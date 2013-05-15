@@ -5,7 +5,7 @@
 namespace ebbrt {
   namespace lrt {
     namespace event {
-      bool init_arch(int num_cores);
+      bool init_arch();
       void init_cpu_arch() __attribute__((noreturn));
       inline unsigned get_num_cores() __attribute__((const));
       inline Location get_location() __attribute__((const));

@@ -8,37 +8,31 @@
 #include "lrt/mem.hpp"
 #include "lrt/trans.hpp"
 
-/** @brief Initialization of core lrt functionality.  Only the first core will
- * execute
- */
+
 void
 ebbrt::lrt::boot::init()
 {
+  /*
   console::init();
   console::write("Console Initialized\n");
-
+  */
   auto num_cores = event::get_num_cores();
 
   /* Set up initial system state */
-  /* We spin indefinably if any lrt function fails to initialize. */
-  if (mem::init(num_cores) &&
-      event::init(num_cores) &&
-      trans::init(num_cores)) {
-    /* spin up remaining cores */
-    init_smp(num_cores); 
-   /* we should not return from init_smp() */
-  }
+  mem::init(num_cores);
+  event::init(num_cores);
+  trans::init(num_cores);
 
-  while (1)
-    ;
+  /* wake up secondary cores */
+  init_smp(num_cores); 
 }
 
-/** @brief Finish cores initialization and enter application. Parallel
- * execution!
- */
 void
 ebbrt::lrt::boot::init_cpu()
 {
+  /* core specific lrt initialization */
   trans::init_cpu();
+
+  /* Enter the wild world of ebbs */
   app::start();
 }

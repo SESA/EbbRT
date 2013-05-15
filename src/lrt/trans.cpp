@@ -5,6 +5,7 @@
 #include "lrt/boot.hpp"
 #include "lrt/event.hpp"
 #include "lrt/mem.hpp"
+#include "lrt/ebb.hpp"
 #include "lrt/trans_impl.hpp"
 
 namespace {
@@ -24,8 +25,9 @@ ebbrt::lrt::trans::LocalEntry* const local_table =
 
 ebbrt::lrt::trans::InitRoot ebbrt::lrt::trans::init_root;
 
+
 void
-ebbrt::lrt::trans::init_ebbs()
+ebbrt::lrt::trans::init_ebb_roots()
 {
   initial_root_table = new (mem::malloc(sizeof(RootBinding) *
                                         app::config.num_init, 0))
@@ -35,14 +37,27 @@ ebbrt::lrt::trans::init_ebbs()
     initial_root_table[i].id = app::config.init_ebbs[i].id;
     initial_root_table[i].root = app::config.init_ebbs[i].create_root();
   }
+  return true;
 }
+
+
 
 bool
 ebbrt::lrt::trans::init(unsigned num_cores)
 {
+  /* the miss handler pointer is used throughout and can be redirected to be a
+   * call within an management ebb */
+  miss_handler = &init_root;
+
+  /* fixed global array to act as initial global translation table */
+  const boot::Config* config = boot::get_config();
+  initial_root_table = new (mem::malloc(sizeof(RootBinding) * config->count, 0))
+    RootBinding[config->count];
+  auto ptr = config->table;
   return true;
 }
 
+ 
 void
 ebbrt::lrt::trans::init_cpu()
 {
