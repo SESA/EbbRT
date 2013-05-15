@@ -10,8 +10,8 @@ namespace ebbrt {
   template <typename T>
   class DistributedRoot : public EbbRoot {
   public:
-    virtual bool PreCall(Args* args, ptrdiff_t fnum,
-                         lrt::trans::FuncRet* fret, EbbId id)
+    bool PreCall(Args* args, ptrdiff_t fnum,
+                 lrt::trans::FuncRet* fret, EbbId id) override
     {
       auto it = reps_.find(get_location());
       T* ref;
@@ -31,7 +31,7 @@ namespace ebbrt {
       fret->func = (**rep)[fnum];
       return true;
     }
-    virtual void* PostCall(void* ret)
+    void* PostCall(void* ret) override
     {
       return ret;
     }

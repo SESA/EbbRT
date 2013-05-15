@@ -1,6 +1,7 @@
 #include <unordered_map>
 
 #include "arch/args.hpp"
+#include "app/app.hpp"
 #include "lrt/boot.hpp"
 #include "lrt/event.hpp"
 #include "lrt/mem.hpp"
@@ -26,21 +27,13 @@ ebbrt::lrt::trans::InitRoot ebbrt::lrt::trans::init_root;
 void
 ebbrt::lrt::trans::init_ebbs()
 {
+  initial_root_table = new (mem::malloc(sizeof(RootBinding) *
+                                        app::config.num_init, 0))
+    RootBinding[app::config.num_init];
   miss_handler = &init_root;
-  const boot::Config* config = boot::get_config();
-  initial_root_table = new (mem::malloc(sizeof(RootBinding) * config->count, 0))
-    RootBinding[config->count];
-  auto ptr = config->table;
-  for (unsigned i = 0; i < config->count; ++i) {
-    void* addr = boot::find_symbol(ptr->symbol);
-    auto create_root = reinterpret_cast<EbbRoot* (*)()>(addr);
-    initial_root_table[i].id = ptr->id;
-    initial_root_table[i].root = create_root();
-    uintptr_t next = reinterpret_cast<uintptr_t>(ptr->symbol +
-                                                 std::strlen(ptr->symbol));
-    next = next + alignof(boot::Config::CreateRoot) -
-      (next % alignof(boot::Config::CreateRoot));
-    ptr = reinterpret_cast<boot::Config::CreateRoot*>(next);
+  for (unsigned i = 0; i < app::config.num_init; ++i) {
+    initial_root_table[i].id = app::config.init_ebbs[i].id;
+    initial_root_table[i].root = app::config.init_ebbs[i].create_root();
   }
 }
 
@@ -89,9 +82,8 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
                                      FuncRet* fret,
                                      EbbId id)
 {
-  const boot::Config* config = boot::get_config();
   EbbRoot* root = nullptr;
-  for (unsigned i = 0; i < config->count; ++i) {
+  for (unsigned i = 0; i < app::config.num_init; ++i) {
     if (initial_root_table[i].id == id) {
       root = initial_root_table[i].root;
       break;

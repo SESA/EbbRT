@@ -1,6 +1,7 @@
 #ifndef EBBRT_EBB_EBB_HPP
 #define EBBRT_EBB_EBB_HPP
 
+#include "lrt/boot.hpp"
 #include "lrt/event.hpp"
 #include "lrt/trans.hpp"
 
