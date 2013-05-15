@@ -24,7 +24,7 @@ namespace ebbrt {
     char* end_;
   };
 
-  extern "C" EbbRoot* SimpleMemoryAllocatorConstructRoot();
+  EbbRoot* SimpleMemoryAllocatorConstructRoot();
 }
 
 #endif

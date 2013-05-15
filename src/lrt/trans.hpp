@@ -51,7 +51,7 @@ namespace ebbrt {
           return reinterpret_cast<T*>
             (reinterpret_cast<LocalEntry*>(LOCAL_MEM_VIRT)[id_].ref);
         }
-        operator EbbId() {
+        operator EbbId() const {
           return id_;
         }
       private:

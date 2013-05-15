@@ -11,7 +11,7 @@ namespace ebbrt {
     void CacheRep(EbbId id, EbbRep* rep) override;
   };
 
-  extern "C" EbbRoot* PrimitiveEbbAllocatorConstructRoot();
+  EbbRoot* PrimitiveEbbAllocatorConstructRoot();
   class PrimitiveEbbAllocatorRoot : public EbbRoot {
   public:
     bool PreCall(Args* args, ptrdiff_t fnum,
