@@ -19,15 +19,16 @@ namespace {
 }
 
 ebbrt::lrt::trans::LocalEntry** ebbrt::lrt::trans::phys_local_entries;
+ebbrt::lrt::trans::InitRoot ebbrt::lrt::trans::init_root;
+/** set the local_table location to a shared virtual address */
 ebbrt::lrt::trans::LocalEntry* const local_table =
   reinterpret_cast<ebbrt::lrt::trans::LocalEntry*>
   (ebbrt::lrt::trans::LOCAL_MEM_VIRT);
 
-ebbrt::lrt::trans::InitRoot ebbrt::lrt::trans::init_root;
 
 
 void
-ebbrt::lrt::trans::init_ebb_roots()
+ebbrt::lrt::trans::init_ebbs()
 {
   initial_root_table = new (mem::malloc(sizeof(RootBinding) *
                                         app::config.num_init, 0))
@@ -49,7 +50,7 @@ ebbrt::lrt::trans::init(unsigned num_cores)
    * call within an management ebb */
   miss_handler = &init_root;
 
-  /* fixed global array to act as initial global translation table */
+  /* Alloc fixed array act as initial global translation table */
   const boot::Config* config = boot::get_config();
   initial_root_table = new (mem::malloc(sizeof(RootBinding) * config->count, 0))
     RootBinding[config->count];
@@ -61,8 +62,14 @@ ebbrt::lrt::trans::init(unsigned num_cores)
 void
 ebbrt::lrt::trans::init_cpu()
 {
+  /* setup per-core paging structure */
   init_cpu_arch();
+
+  /* initialize local translation table */
   for (auto i = 0; i < NUM_LOCAL_ENTRIES; ++i) {
+    /* populate each entry with a pointer to default virtual function table.
+     * On dereference, each default fuction will resolve into the local miss
+     * functionality */
     local_table[i].ref = reinterpret_cast<EbbRep*>
       (&local_table[i].rep);
     local_table[i].rep = &default_vtable;
@@ -79,15 +86,18 @@ ebbrt::lrt::trans::_trans_precall(ebbrt::Args* args,
     reinterpret_cast<LocalEntry*>
     (static_cast<uintptr_t*>(rep) - 1);
   uintptr_t loc = reinterpret_cast<uintptr_t>(le);
+  /* resolve EbbId and call global miss handler */
   EbbId id =
     (loc - reinterpret_cast<uintptr_t>(LOCAL_MEM_VIRT)) /
     sizeof(LocalEntry);
+  /* by default, the miss handler is configured to trans::InitRoot */
   return miss_handler->PreCall(args, fnum, fret, id);
 }
 
 void*
 ebbrt::lrt::trans::_trans_postcall(void* ret)
 {
+  /* by default, the miss handler is configured to trans::InitRoot */
   return miss_handler->PostCall(ret);
 }
 
@@ -98,16 +108,19 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
                                      EbbId id)
 {
   EbbRoot* root = nullptr;
+  /* look up root in initial global translation table */
   for (unsigned i = 0; i < app::config.num_init; ++i) {
     if (initial_root_table[i].id == id) {
       root = initial_root_table[i].root;
       break;
     }
   }
+  /* if properly configured this roots should be contructed at boot*/
   if (root == nullptr) {
     while (1)
       ;
   }
+  /* ebb precall processes and ressult pushed onto our alt-stack */
   bool ret = root->PreCall(args, fnum, fret, id);
   if (ret) {
     event::_event_altstack_push
@@ -119,6 +132,7 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
 void*
 ebbrt::lrt::trans::InitRoot::PostCall(void* ret)
 {
+  /* ebb post-call processed and returned */
   EbbRoot* root =
     reinterpret_cast<EbbRoot*>
     (event::_event_altstack_pop());
@@ -128,6 +142,7 @@ ebbrt::lrt::trans::InitRoot::PostCall(void* ret)
 void
 ebbrt::lrt::trans::cache_rep(EbbId id, EbbRep* rep)
 {
+  /* add rep location to local trans table */
   reinterpret_cast<LocalEntry*>(LOCAL_MEM_VIRT)[id].ref = rep;
 }
 

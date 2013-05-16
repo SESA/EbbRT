@@ -56,8 +56,8 @@ namespace ebbrt {
         virtual bool PreCall(Args* args, ptrdiff_t fnum,
                              FuncRet* fret, EbbId id) = 0;
         /**
-         * @brief Final stage of ebb call (optional) 
-         *
+         * @brief Final stage of ebb call 
+         s
          * @param ret
          *
          * @return 
@@ -74,7 +74,7 @@ namespace ebbrt {
       };
 
       /**
-       * @brief 
+       * @brief Local translation table entry
        */
       class LocalEntry {
       public:
@@ -84,6 +84,9 @@ namespace ebbrt {
                                //arguments and having no return
       };
 
+      /**
+       * @brief Elasic Building Block template 
+       */
       template <class T>
       class Ebb {
       public:

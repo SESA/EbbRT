@@ -12,10 +12,9 @@
 void
 ebbrt::lrt::boot::init()
 {
-  /*
   console::init();
   console::write("Console Initialized\n");
-  */
+  
   auto num_cores = event::get_num_cores();
 
   /* Set up initial system state */
@@ -30,7 +29,7 @@ ebbrt::lrt::boot::init()
 void
 ebbrt::lrt::boot::init_cpu()
 {
-  /* core specific lrt initialization */
+  /* per-core translation setup */
   trans::init_cpu();
 
   /* Enter the wild world of ebbs */
