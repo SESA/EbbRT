@@ -2,6 +2,7 @@
 #include <cstdio>
 
 #include "app/app.hpp"
+#include "app/AppEbb.hpp"
 #include "ebb/MemoryAllocator/MemoryAllocator.hpp"
 #include "lrt/boot.hpp"
 #include "lrt/console.hpp"
@@ -12,6 +13,9 @@
 namespace {
   bool flag;
 }
+
+//For c++ static construction/destruction
+void* __dso_handle = nullptr;
 
 extern void (*start_ctors[])();
 extern void (*end_ctors[])();
@@ -30,6 +34,6 @@ ebbrt::app::start()
       ;
   }
 
-  memory_allocator->malloc(8);
-  memory_allocator->malloc(8);
+  // Invoke the app ebb
+  app_ebb->Start();
 }

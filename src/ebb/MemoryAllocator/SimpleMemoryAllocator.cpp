@@ -63,7 +63,6 @@ ebbrt::SimpleMemoryAllocator::operator new(size_t size)
   return lrt::mem::malloc(size, get_location());
 }
 
-extern "C"
 ebbrt::EbbRoot* ebbrt::SimpleMemoryAllocatorConstructRoot()
 {
   static DistributedRoot<SimpleMemoryAllocator> root;

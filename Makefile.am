@@ -2,19 +2,24 @@ AM_CXXFLAGS = -std=c++0x -Wall -Werror
 AM_CPPFLAGS = -iquote $(top_srcdir)/src \
 	--include $(top_builddir)/config.h
 
-bin_PROGRAMS = ebbrt
-ebbrt_SOURCES = \
+lib_LIBRARIES = libebbrt.a
+
+libebbrt_a_SOURCES = \
 	$(arch_sources) \
 	$(app_sources) \
 	$(ebb_sources) \
 	$(lrt_sources)
-ebbrt_LDFLAGS = -u _start
-ebbrt_DEPENDENCIES =
+libebbrt_a_LIBADD =
+libebbrt_a_DEPENDENCIES =
 EXTRA_DIST =
-noinst_LIBRARIES =
+EXTRA_LIBRARIES =
+ebbrt_libs =
+
+app_linkflags =
+app_deps =
 
 if ARCH_X86_64
-ebbrt_LDFLAGS += -static -n -z max-page-size=0x1000 \
+app_linkflags += -n -z max-page-size=0x1000 \
 	-T $(top_srcdir)/src/lrt/arch/x86_64/link.ld
 
 # ebbrt.iso: ebbrt util/grub.cfg
@@ -22,9 +27,10 @@ ebbrt_LDFLAGS += -static -n -z max-page-size=0x1000 \
 #	grub-mkrescue -o $@ -graft-points boot/ebbrt=$<.stripped \
 #	boot/grub/grub.cfg=$(top_srcdir)/util/grub.cfg
 
-ebbrt.iso: ebbrt config util/grub.cfg
-	ebbrt-grub-mkrescue -o $@ -graft-points boot/ebbrt=ebbrt \
-	boot/config=config boot/grub/grub.cfg=$(top_srcdir)/util/grub.cfg
+%.iso: % util/grub.cfg
+	strip -s $< -o $<.stripped
+	grub-mkrescue -o $@ -graft-points boot/ebbrt=$<.stripped \
+	boot/grub/grub.cfg=$(top_srcdir)/util/grub.cfg
 endif
 
 include src/arch/Makefile.am

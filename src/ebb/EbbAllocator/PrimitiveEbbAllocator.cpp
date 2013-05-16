@@ -38,7 +38,7 @@ ebbrt::PrimitiveEbbAllocatorRoot::PreCall(Args* args,
       ret = false;
     }
     ref = new PrimitiveEbbAllocator();
-    local_cache_rep(id, it->second);
+    local_cache_rep(id, ref);
     reps_[get_location()] = ref;
   } else {
     local_cache_rep(id, it->second);
@@ -58,7 +58,6 @@ ebbrt::PrimitiveEbbAllocatorRoot::PostCall(void* ret)
   return ret;
 }
 
-extern "C"
 ebbrt::EbbRoot* ebbrt::PrimitiveEbbAllocatorConstructRoot()
 {
   static PrimitiveEbbAllocatorRoot root;

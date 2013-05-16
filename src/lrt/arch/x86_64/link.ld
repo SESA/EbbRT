@@ -99,6 +99,20 @@ SECTIONS
                 static_ebb_ids_end = .;
         }
 
+        ebbstrtab :
+        {
+                ebbstrtab_start = .;
+                *(ebbstrtab)
+                ebbstrtab_end = .;
+        }
+
+        ebbsymtab :
+        {
+                ebbsymtab_start = .;
+                *(ebbsymtab)
+                ebbsymtab_end = .;
+        }
+
         /DISCARD/ :
         {
                 *(.comment);

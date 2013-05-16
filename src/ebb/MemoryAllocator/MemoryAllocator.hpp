@@ -12,7 +12,7 @@ namespace ebbrt {
     virtual void* realloc(void* ptr, size_t size) = 0;
     virtual void* calloc(size_t num, size_t size) = 0;
   };
-  extern Ebb<MemoryAllocator> memory_allocator;
+  extern const Ebb<MemoryAllocator> memory_allocator;
 }
 
 #endif
