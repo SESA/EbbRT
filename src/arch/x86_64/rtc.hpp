@@ -28,6 +28,9 @@ namespace {
 
 namespace ebbrt {
   namespace rtc {
+    /**
+     * @brief Disable real-time clock
+     */
     inline void
     disable() {
       outb(CMOS_SELECT, CMOS_STATUS_B);

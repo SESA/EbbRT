@@ -8,6 +8,9 @@
 
 namespace ebbrt {
   template <typename T>
+    /**
+     * @brief Distributed Ebb Type
+     */
   class DistributedRoot : public EbbRoot {
   public:
     bool PreCall(Args* args, ptrdiff_t fnum,

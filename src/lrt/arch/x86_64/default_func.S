@@ -1,3 +1,4 @@
+// define default functions
 .macro default_func num:req
         .align 8
         .globl default_func\num
@@ -6,7 +7,9 @@
         jmp default_func_common
 .endm
 
+// local miss functionality
 default_func_common:
+              // save
               .cfi_startproc
               .cfi_lsda 0x03, .Llsda
               .cfi_personality 0x03, __gxx_personality_v0

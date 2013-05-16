@@ -6,6 +6,9 @@
 namespace ebbrt {
   namespace lrt {
     namespace mem {
+      /**
+       * @brief Memory region for per-core allocation 
+       */
       class Region {
       public:
         char* start;

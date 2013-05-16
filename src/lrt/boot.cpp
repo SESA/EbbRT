@@ -8,27 +8,30 @@
 #include "lrt/mem.hpp"
 #include "lrt/trans.hpp"
 
+
 void
 ebbrt::lrt::boot::init()
 {
   console::init();
   console::write("Console Initialized\n");
-
+  
   auto num_cores = event::get_num_cores();
 
-  if (mem::init(num_cores) &&
-      event::init(num_cores) &&
-      trans::init(num_cores)) {
-    init_smp(num_cores);
-  }
+  /* Set up initial system state */
+  mem::init(num_cores);
+  event::init(num_cores);
+  trans::init(num_cores);
 
-  while (1)
-    ;
+  /* wake up secondary cores */
+  init_smp(num_cores); 
 }
 
 void
 ebbrt::lrt::boot::init_cpu()
 {
+  /* per-core translation setup */
   trans::init_cpu();
+
+  /* Enter the wild world of ebbs */
   app::start();
 }
