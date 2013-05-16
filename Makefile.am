@@ -8,7 +8,8 @@ libebbrt_a_SOURCES = \
 	$(arch_sources) \
 	$(app_sources) \
 	$(ebb_sources) \
-	$(lrt_sources)
+	$(lrt_sources) \
+	$(misc_sources)
 libebbrt_a_LIBADD =
 libebbrt_a_DEPENDENCIES =
 EXTRA_DIST =
@@ -42,3 +43,4 @@ include src/app/Makefile.am
 include src/ebb/Makefile.am
 include src/lib/Makefile.am
 include src/lrt/Makefile.am
+include src/misc/Makefile.am

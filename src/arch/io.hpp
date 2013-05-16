@@ -4,8 +4,10 @@
 #include <cstdint>
 
 namespace ebbrt {
-    inline void outb(int8_t val, int16_t port);
-    inline int8_t inb(int16_t port);
+  inline void out8(uint8_t val, uint16_t port);
+  inline uint8_t in8(uint16_t port);
+  inline void out32(uint32_t val, uint16_t port);
+  inline uint32_t in32(uint16_t port);
 }
 
 #ifdef ARCH_X86_64

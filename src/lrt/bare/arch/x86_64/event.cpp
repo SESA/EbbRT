@@ -17,7 +17,7 @@ namespace {
 }
 
 /**
- * @brief Architecture specific event initialization 
+ * @brief Architecture specific event initialization
  *
  * @return success/fail
  */
@@ -78,12 +78,12 @@ ebbrt::lrt::event::init_cpu_arch()
                 : [stack] "r" (&stack[STACK_SIZE]),
                   [smp_lock] "m" (boot::smp_lock)
                 : "memory");
-  /* when the smp_lock is incremented the next core gets woken up.  */ 
+  /* when the smp_lock is incremented the next core gets woken up.  */
 
   /* End of our sequential execution -- here be dragons. */
   boot::init_cpu();
 
-  /* should not return from init_cpu*/
+  /* Event loop goes here */
   while(1)
     ;
 }

@@ -33,17 +33,17 @@ namespace ebbrt {
      */
     inline void
     disable() {
-      outb(CMOS_SELECT, CMOS_STATUS_B);
-      uint8_t status_b = inb(CMOS_REGISTER);
+      out8(CMOS_SELECT, CMOS_STATUS_B);
+      uint8_t status_b = in8(CMOS_REGISTER);
       //Mask off the three interrupts
       status_b &= ~(CMOS_STATUS_B_INT_UPDATE_ENDED |
                     CMOS_STATUS_B_INT_ALARM |
                     CMOS_STATUS_B_INT_PERIODIC);
-      outb(CMOS_SELECT, CMOS_STATUS_B);
-      outb(CMOS_REGISTER, status_b);
+      out8(CMOS_SELECT, CMOS_STATUS_B);
+      out8(CMOS_REGISTER, status_b);
 
       //We read register C to clear out pending interrupts
-      outb(CMOS_SELECT, CMOS_STATUS_C);
+      out8(CMOS_SELECT, CMOS_STATUS_C);
     }
   }
 }

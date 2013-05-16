@@ -1,9 +1,11 @@
+#include <sstream>
+
 #include "app/HelloWorld/HelloWorld.hpp"
 #include "ebb/SharedRoot.hpp"
 #include "ebb/EbbAllocator/PrimitiveEbbAllocator.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
-
 #include "lrt/console.hpp"
+#include "misc/pci.hpp"
 
 namespace {
   ebbrt::EbbRoot* construct_root()
@@ -35,8 +37,10 @@ ebbrt::HelloWorldApp::HelloWorldApp() : lock_(ATOMIC_FLAG_INIT)
 void
 ebbrt::HelloWorldApp::Start()
 {
-  while (lock_.test_and_set(std::memory_order_acquire))
-    ;
-  lrt::console::write("Hello World\n");
-  lock_.clear(std::memory_order_release);
+  if (get_location() == 0) {
+    std::ostringstream sstream;
+    pci::enumerate_all_buses(sstream);
+    const char* s = sstream.str().c_str();
+    lrt::console::write(s);
+  }
 }
