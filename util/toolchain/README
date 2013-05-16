@@ -1,0 +1,21 @@
+This is a toolchain for building software targeting baremetal ebbrt
+
+Make sure to get all the submodules when cloning the repo:
+with Git 1.6.5 or later:
+git clone --recursive <remote name>
+or older versions:
+git clone <remote name>
+cd util/toolchain
+git submodule update --init
+
+The only non standard dependency in on autoconf2.64
+This can be installed on a debian or ubuntu machine with:
+apt-get install autoconf2.64
+
+To actually build run the build.sh script. Be sure to specify the prefix
+and any other variables you may want:
+
+PREFIX=~/usr/local/cross ./build.sh
+or
+CFLAGS=-O3 CXXFLAGS=-O3 ./build.sh
+etc.
