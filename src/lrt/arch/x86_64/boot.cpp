@@ -15,77 +15,13 @@
 
 uint32_t ebbrt::lrt::boot::smp_lock;
 const ebbrt::MultibootInformation* ebbrt::lrt::boot::multiboot_information;
-namespace {
-  const ebbrt::lrt::boot::Config* config;
-  uint32_t symtab_index;
-}
-
 extern "C"
 void __attribute__((noreturn))
 _init_arch(ebbrt::MultibootInformation* mbi)
 {
-  if (mbi->has_elf_section_table) {
-    for (unsigned i = 0; i < mbi->symbols[0]; ++i) {
-      ebbrt::Elf64SectionHeader* esh =
-        reinterpret_cast<ebbrt::Elf64SectionHeader*>(mbi->symbols[2] +
-                                                   mbi->symbols[1] * i);
-      ebbrt::lrt::mem::mem_start = reinterpret_cast<char*>
-        (std::max(reinterpret_cast<uintptr_t>(ebbrt::lrt::mem::mem_start),
-                  esh->sh_addr + esh->sh_size));
-      if (esh->sh_type == ebbrt::Elf64SectionHeader::SHT_SYMTAB) {
-        symtab_index = i;
-      }
-    }
-  }
-  if (mbi->has_boot_modules) {
-    auto mod = reinterpret_cast<ebbrt::MultibootModule*>
-      (mbi->modules_address);
-    for (unsigned i = 0; i < mbi->modules_count; ++i) {
-      ebbrt::lrt::mem::mem_start = reinterpret_cast<char*>
-        (std::max(reinterpret_cast<uintptr_t>(ebbrt::lrt::mem::mem_start),
-                  static_cast<uintptr_t>(mod->end_address)));
-      char* str = mod->string;
-      while (*str != '\0') {
-        str++;
-      }
-      if (i == 0) {
-        config = reinterpret_cast<ebbrt::lrt::boot::Config*>
-          (mod->start_address);
-      }
-      mod = reinterpret_cast<ebbrt::MultibootModule*>(str);
-    }
-  }
   ebbrt::lrt::boot::multiboot_information = mbi;
   ebbrt::lrt::boot::init();
 }
-
-void*
-ebbrt::lrt::boot::find_symbol(const char* name)
-{
-  auto esh = reinterpret_cast<ebbrt::Elf64SectionHeader*>
-    (multiboot_information->symbols[2] +
-     multiboot_information->symbols[1] * symtab_index);
-  auto symtab = reinterpret_cast<ebbrt::Elf64SymbolTableEntry*>
-    (esh->sh_addr);
-  auto strtab_sh = reinterpret_cast<ebbrt::Elf64SectionHeader*>
-    (multiboot_information->symbols[2] +
-     multiboot_information->symbols[1] * esh->sh_link);
-  auto strtab = reinterpret_cast<char*>(strtab_sh->sh_addr);
-  while (reinterpret_cast<uintptr_t>(symtab) < (esh->sh_addr + esh->sh_size)) {
-    if (std::strcmp(&strtab[symtab->st_name], name) == 0) {
-      return reinterpret_cast<void*>(symtab->st_value);
-    }
-    symtab++;
-  }
-  return nullptr;
-}
-
-const ebbrt::lrt::boot::Config*
-ebbrt::lrt::boot::get_config()
-{
-  return config;
-}
-
 
 char* _smp_stack;
 

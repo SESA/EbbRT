@@ -1,6 +1,7 @@
 #include "lrt/mem_impl.hpp"
 
-char* ebbrt::lrt::mem::mem_start;
+extern char kend[];
+char* ebbrt::lrt::mem::mem_start = kend;
 
 ebbrt::lrt::mem::Region* ebbrt::lrt::mem::regions;
 
