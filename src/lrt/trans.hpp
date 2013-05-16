@@ -10,10 +10,25 @@
 namespace ebbrt {
   namespace lrt {
     namespace trans {
+      /**
+       * @brief Initial translation setup
+       *
+       * @param num_cores
+       *
+       * @return 
+       */
       bool init(unsigned num_cores);
+      /**
+       * @brief Construct roots for statically linked Ebbs
+       */
       void init_ebbs();
+      /**
+       * @brief Per-core initilization 
+       */
       void init_cpu();
-
+      /**
+       * @brief Translation lookup return type
+       */
       class FuncRet {
       public:
         union {
@@ -21,20 +36,46 @@ namespace ebbrt {
           void* ret;
         };
       };
-
       typedef uint32_t EbbId;
 
+      /**
+       * @brief Ebb Factory
+       */
       class EbbRoot {
       public:
+        /**
+         * @brief Initial stage of ebb call
+         *
+         * @param args Ebbcall arguments
+         * @param fnum 
+         * @param fret 
+         * @param id
+         *
+         * @return 
+         */
         virtual bool PreCall(Args* args, ptrdiff_t fnum,
                              FuncRet* fret, EbbId id) = 0;
+        /**
+         * @brief Final stage of ebb call 
+         s
+         * @param ret
+         *
+         * @return 
+         */
         virtual void* PostCall(void* ret) = 0;
+
         virtual ~EbbRoot() {}
       };
 
+      /**
+       * @brief 
+       */
       class EbbRep {
       };
 
+      /**
+       * @brief Local translation table entry
+       */
       class LocalEntry {
       public:
         EbbRep* ref;
@@ -43,6 +84,9 @@ namespace ebbrt {
                                //arguments and having no return
       };
 
+      /**
+       * @brief Elasic Building Block template 
+       */
       template <class T>
       class Ebb {
       public:

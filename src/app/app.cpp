@@ -20,6 +20,10 @@ void* __dso_handle = nullptr;
 extern void (*start_ctors[])();
 extern void (*end_ctors[])();
 
+/**
+ * @brief Entry way into the application
+ * is app going to be an ebb ? move this to lrt
+ */
 void
 ebbrt::app::start()
 {

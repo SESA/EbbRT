@@ -10,7 +10,7 @@ ebbrt::lrt::event::init(unsigned num_cores)
 {
   altstack = new (mem::malloc(sizeof(uintptr_t*) * num_cores, 0))
     uintptr_t*[num_cores];
-  return init_arch(num_cores);
+  return init_arch();
 }
 
 void

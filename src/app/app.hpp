@@ -18,6 +18,9 @@ namespace ebbrt {
     };
 
     extern const Config config;
+    /**
+     * @brief Entrance into ebb-world
+     */
     void start();
   }
 }
