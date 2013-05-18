@@ -12,7 +12,12 @@ namespace ebbrt {
     virtual void* realloc(void* ptr, size_t size) = 0;
     virtual void* calloc(size_t num, size_t size) = 0;
   };
-  extern const Ebb<MemoryAllocator> memory_allocator;
+  extern char mem_allocator_id_resv
+  __attribute__ ((section ("static_ebb_ids")));
+  extern "C" char static_ebb_ids_start[];
+  const Ebb<MemoryAllocator> memory_allocator =
+    Ebb<MemoryAllocator>(static_cast<EbbId>(&mem_allocator_id_resv -
+                                            static_ebb_ids_start));
 }
 
 #endif
