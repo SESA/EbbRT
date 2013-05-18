@@ -15,7 +15,7 @@ namespace ebbrt {
        *
        * @param num_cores
        *
-       * @return 
+       * @return
        */
       bool init(unsigned num_cores);
       /**
@@ -23,7 +23,7 @@ namespace ebbrt {
        */
       void init_ebbs();
       /**
-       * @brief Per-core initilization 
+       * @brief Per-core initilization
        */
       void init_cpu();
       /**
@@ -47,20 +47,20 @@ namespace ebbrt {
          * @brief Initial stage of ebb call
          *
          * @param args Ebbcall arguments
-         * @param fnum 
-         * @param fret 
+         * @param fnum
+         * @param fret
          * @param id
          *
-         * @return 
+         * @return
          */
         virtual bool PreCall(Args* args, ptrdiff_t fnum,
                              FuncRet* fret, EbbId id) = 0;
         /**
-         * @brief Final stage of ebb call 
+         * @brief Final stage of ebb call
          s
          * @param ret
          *
-         * @return 
+         * @return
          */
         virtual void* PostCall(void* ret) = 0;
 
@@ -68,7 +68,7 @@ namespace ebbrt {
       };
 
       /**
-       * @brief 
+       * @brief
        */
       class EbbRep {
       };
@@ -85,7 +85,7 @@ namespace ebbrt {
       };
 
       /**
-       * @brief Elasic Building Block template 
+       * @brief Elasic Building Block template
        */
       template <class T>
       class Ebb {
