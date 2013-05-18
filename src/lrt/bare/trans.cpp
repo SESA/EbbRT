@@ -25,7 +25,6 @@ ebbrt::lrt::trans::LocalEntry* const local_table =
   (ebbrt::lrt::trans::LOCAL_MEM_VIRT);
 
 
-
 void
 ebbrt::lrt::trans::init_ebbs()
 {

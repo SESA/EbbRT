@@ -24,7 +24,7 @@ namespace ebbrt {
          * @param fret Return value address
          * @param id   Ebb Id
          *
-         * @return 
+         * @return
          */
         bool PreCall(Args* args, ptrdiff_t fnum,
             lrt::trans::FuncRet* fret, EbbId id) override
@@ -58,7 +58,7 @@ namespace ebbrt {
         /**
          * @brief Ebb construction post-call.
          *
-         * @param ret ebb calls return 
+         * @param ret ebb calls return
          *
          * @return Return ebb call return value
          */

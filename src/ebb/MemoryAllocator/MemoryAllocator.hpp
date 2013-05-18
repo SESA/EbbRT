@@ -11,6 +11,7 @@ namespace ebbrt {
     virtual void free(void* ptr) = 0;
     virtual void* realloc(void* ptr, size_t size) = 0;
     virtual void* calloc(size_t num, size_t size) = 0;
+    virtual ~MemoryAllocator() {}
   };
   extern char mem_allocator_id_resv
   __attribute__ ((section ("static_ebb_ids")));

@@ -7,6 +7,7 @@ namespace ebbrt {
   class EbbAllocator : public EbbRep {
   public:
     virtual void CacheRep(EbbId id, EbbRep* rep) = 0;
+    virtual ~EbbAllocator() {}
   };
   extern char ebb_allocator_id_resv
   __attribute__ ((section ("static_ebb_ids")));
