@@ -9,7 +9,7 @@
 #include "lrt/boot.hpp"
 #include "lrt/event_impl.hpp"
 #include "lrt/mem.hpp"
-#include "lrt/arch/x86_64/exception_table.hpp"
+#include "lrt/bare/arch/x86_64/exception_table.hpp"
 
 namespace {
   ebbrt::IdtDesc idt[256];

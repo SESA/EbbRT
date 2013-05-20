@@ -5,7 +5,7 @@
 #include "lrt/boot.hpp"
 #include "lrt/event.hpp"
 #include "lrt/mem.hpp"
-#include "lrt/trans_impl.hpp"
+#include "lrt/bare/trans_impl.hpp"
 
 namespace {
   class RootBinding {

@@ -1,4 +1,4 @@
-#include "lrt/arch/x86_64/smp.hpp"
+#include "lrt/bare/arch/x86_64/smp.hpp"
 
 .section .init.smp, "ax"
 .code16
