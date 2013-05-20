@@ -1,6 +1,6 @@
 #include <new>
 
-#include "lrt/event_impl.hpp"
+#include "lrt/bare/event_impl.hpp"
 #include "lrt/mem.hpp"
 
 uintptr_t** ebbrt::lrt::event::altstack;

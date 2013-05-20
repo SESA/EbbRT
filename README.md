@@ -1,4 +1,4 @@
 EbbRT
 =====
 
-Elastic building block baremetal runtime
+Elastic building block runtime
