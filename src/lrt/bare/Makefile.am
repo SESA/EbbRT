@@ -2,7 +2,6 @@ include src/lrt/bare/arch/Makefile.am
 
 lrt_bare_sources = \
 	$(lrt_arch_sources) \
-	src/lrt/bare/boot.cpp \
 	src/lrt/bare/boot.hpp \
 	src/lrt/bare/console.hpp \
 	src/lrt/bare/event.cpp \

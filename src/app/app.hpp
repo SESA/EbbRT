@@ -5,6 +5,9 @@
 
 namespace ebbrt {
   namespace app {
+    /**
+     * @brief 
+     */
     class Config {
     public:
       uint16_t node_id;

@@ -1,10 +1,7 @@
 #ifndef EBBRT_LRT_BARE_TRANS_HPP
 #define EBBRT_LRT_BARE_TRANS_HPP
 
-#include <cstddef>
-
 #include "arch/args.hpp"
-//#include "lrt/event.hpp"
 #include "lrt/bare/arch/trans.hpp"
 
 namespace ebbrt {
