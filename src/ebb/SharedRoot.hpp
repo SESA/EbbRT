@@ -6,6 +6,9 @@
 
 namespace ebbrt {
   template <typename T>
+    /**
+     * @brief Shared (single-rep) Ebb Root 
+     */
   class SharedRoot : public EbbRoot {
   public:
     bool PreCall(Args* args, ptrdiff_t fnum,

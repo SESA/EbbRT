@@ -2,6 +2,7 @@
 #error "Don't include this file directly"
 #endif
 
+#include "arch/args.hpp"
 #include <cstdint>
 
 namespace ebbrt {
