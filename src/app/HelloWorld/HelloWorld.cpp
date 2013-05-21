@@ -6,7 +6,7 @@
 #include "arch/io.hpp"
 #include "device/virtio_net.hpp"
 #include "ebb/SharedRoot.hpp"
-#include "ebb/EbbAllocator/PrimitiveEbbAllocator.hpp"
+#include "ebb/EbbManager/PrimitiveEbbManager.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
 #include "lrt/console.hpp"
 #include "misc/pci.hpp"
@@ -23,8 +23,8 @@ ebbrt::app::Config::InitEbb init_ebbs[] =
 {
   {.id = ebbrt::memory_allocator,
    .create_root = ebbrt::SimpleMemoryAllocatorConstructRoot},
-  {.id = ebbrt::ebb_allocator,
-   .create_root = ebbrt::PrimitiveEbbAllocatorConstructRoot},
+  {.id = ebbrt::ebb_manager,
+   .create_root = ebbrt::PrimitiveEbbManagerConstructRoot},
   {.id = ebbrt::app_ebb,
    .create_root = construct_root}
 };

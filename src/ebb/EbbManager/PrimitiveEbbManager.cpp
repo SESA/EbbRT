@@ -1,5 +1,4 @@
-#include "ebb/EbbAllocator/PrimitiveEbbAllocator.hpp"
-#include "ebb/MemoryAllocator/MemoryAllocator.hpp"
+#include "ebb/EbbManager/PrimitiveEbbManager.hpp"
 #include "lrt/trans_impl.hpp"
 #include "misc/vtable.hpp"
 
@@ -11,33 +10,33 @@ namespace {
 }
 
 void
-ebbrt::PrimitiveEbbAllocator::CacheRep(EbbId id, EbbRep* rep)
+ebbrt::PrimitiveEbbManager::CacheRep(EbbId id, EbbRep* rep)
 {
   local_cache_rep(id, rep);
 }
 
 bool
-ebbrt::PrimitiveEbbAllocatorRoot::PreCall(Args* args,
+ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
                                           ptrdiff_t fnum,
                                           lrt::trans::FuncRet* fret,
                                           EbbId id)
 {
   auto it = reps_.find(get_location());
-  PrimitiveEbbAllocator* ref;
+  PrimitiveEbbManager* ref;
   bool ret = true;
   if (it == reps_.end()) {
     // If we missed while trying to cache a rep, we should
     // cache the rep first so that we can allocate memory if
     // need be
-    if (fnum == vtable_index<PrimitiveEbbAllocator>
-        (&PrimitiveEbbAllocator::CacheRep)) {
+    if (fnum == vtable_index<PrimitiveEbbManager>
+        (&PrimitiveEbbManager::CacheRep)) {
       //FIXME: not portable
       EbbId target_id = args->rsi;
       EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->rdx);
       local_cache_rep(target_id, target_rep);
       ret = false;
     }
-    ref = new PrimitiveEbbAllocator();
+    ref = new PrimitiveEbbManager();
     local_cache_rep(id, ref);
     reps_[get_location()] = ref;
   } else {
@@ -53,13 +52,13 @@ ebbrt::PrimitiveEbbAllocatorRoot::PreCall(Args* args,
 }
 
 void*
-ebbrt::PrimitiveEbbAllocatorRoot::PostCall(void* ret)
+ebbrt::PrimitiveEbbManagerRoot::PostCall(void* ret)
 {
   return ret;
 }
 
-ebbrt::EbbRoot* ebbrt::PrimitiveEbbAllocatorConstructRoot()
+ebbrt::EbbRoot* ebbrt::PrimitiveEbbManagerConstructRoot()
 {
-  static PrimitiveEbbAllocatorRoot root;
+  static PrimitiveEbbManagerRoot root;
   return &root;
 }

@@ -4,7 +4,7 @@
 #include <map>
 
 #include "ebb/ebb.hpp"
-#include "ebb/EbbAllocator/EbbAllocator.hpp"
+#include "ebb/EbbManager/EbbManager.hpp"
 
 namespace ebbrt {
   template <typename T>
