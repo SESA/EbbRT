@@ -22,6 +22,25 @@ ebbrt::in8(uint16_t port)
 }
 
 inline void
+ebbrt::out16(uint16_t val, uint16_t port)
+{
+  asm volatile ("outw %w[val], %w[port]"
+                : //no output
+                : [val] "a" (val),
+                [port] "Nd" (port));
+}
+
+inline uint16_t
+ebbrt::in16(uint16_t port)
+{
+  uint16_t val;
+  asm volatile ("inw %w[port], %w[val]"
+                : [val] "=a" (val)
+                : [port] "Nd" (port));
+  return val;
+}
+
+inline void
 ebbrt::out32(uint32_t val, uint16_t port)
 {
   asm volatile ("outl %[val], %w[port]"

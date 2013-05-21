@@ -1,64 +1,67 @@
 #ifndef EBBRT_DEVICE_VIRTIO_HPP
 #define EBBRT_DEVICE_VIRTIO_HPP
 
-#include <ostream>
+#include "misc/pci.hpp"
 
 namespace ebbrt {
-  class VirtioHeader {
+  class Virtio {
   public:
-    union {
-      uint32_t raw;
-      struct {
-        uint32_t csum :1;
-        uint32_t guest_csum :1;
-      uint32_t :3;
-        uint32_t mac :1;
-        uint32_t gso :1;
-        uint32_t guest_tso4 :1;
-        uint32_t guest_tso6 :1;
-        uint32_t guest_ecn :1;
-        uint32_t guest_ufo :1;
-        uint32_t host_tso4 :1;
-        uint32_t host_tso6 :1;
-        uint32_t host_ecn :1;
-        uint32_t host_ufo :1;
-        uint32_t mrg_rxbuf :1;
-        uint32_t status :1;
-        uint32_t ctrl_vq :1;
-        uint32_t ctrl_rx :1;
-        uint32_t ctrl_vlan :1;
-        uint32_t guest_announce :1;
+    class QueueDescriptor {
+    public:
+      uint64_t address;
+      uint32_t length;
+      union {
+        uint16_t raw;
+        struct {
+          uint16_t next :1;
+          uint16_t write :1;
+          uint16_t indirect :1;
+          uint16_t :13;
+        };
+      } flags;
+      uint16_t next;
+    };
+    class Available {
+    public:
+      union {
+        uint16_t raw;
+        struct {
+          uint16_t no_interrupt :1;
+          uint16_t :15;
+        };
       };
-    } hw_features; //RO
-    union {
-      uint32_t raw;
-      struct {
-        uint32_t csum :1;
-        uint32_t guest_csum :1;
-        uint32_t :3;
-        uint32_t mac :1;
-        uint32_t gso :1;
-        uint32_t guest_tso4 :1;
-        uint32_t guest_tso6 :1;
-        uint32_t guest_ecn :1;
-        uint32_t guest_ufo :1;
-        uint32_t host_tso4 :1;
-        uint32_t host_tso6 :1;
-        uint32_t host_ecn :1;
-        uint32_t host_ufo :1;
-        uint32_t mrg_rxbuf :1;
-        uint32_t status :1;
-        uint32_t ctrl_vq :1;
-        uint32_t ctrl_rx :1;
-        uint32_t ctrl_vlan :1;
-        uint32_t guest_announce :1;
+      uint16_t index;
+      uint16_t ring[];
+    };
+    class UsedElement {
+    public:
+      uint32_t index;
+      uint32_t length;
+    };
+    class Used {
+    public:
+      union {
+        uint16_t raw;
+        struct {
+          uint16_t no_notify :1;
+          uint16_t :15;
+        };
       };
-    } os_features; //RW
-    uint32_t queue_address; //RW
-    uint16_t queue_size; //RO
-    uint16_t queue_select; //RW
-    uint16_t queue_notify; //RW
-    union DeviceStatus {
+      uint16_t index;
+      UsedElement ring[];
+    };
+    explicit Virtio(pci::Device& device);
+    uint32_t DeviceFeatures();
+    uint32_t GuestFeatures();
+    void GuestFeatures(uint32_t features);
+    uint32_t QueueAddress();
+    void QueueAddress(uint32_t address);
+    uint16_t QueueSize();
+    uint16_t QueueSelect();
+    void QueueSelect(uint16_t queue_select);
+    uint16_t QueueNotify();
+    void QueueNotify(uint16_t queue_notify);
+    union device_status_t {
       uint8_t raw;
       struct {
         uint8_t acknowledge :1;
@@ -67,13 +70,25 @@ namespace ebbrt {
         uint8_t :4;
         uint8_t failed :1;
       };
-    } device_status;
-    uint8_t isr_status; //RO
-    // Only if MSI is enabled
-    uint16_t msi_config_vector; //RW
-    uint16_t msi_queue_vector; //RW
-  };
-  std::ostream& operator<<(std::ostream& os, const VirtioHeader& header);
-}
+    };
+    device_status_t DeviceStatus();
+    void Acknowledge();
+    void Driver();
+    void DriverOK();
+    void DeviceStatus(device_status_t device_status);
+    uint8_t ISRStatus();
 
+    // Only if MSI-X is enabled!
+    uint16_t ConfigurationVector();
+    void ConfigurationVector(uint16_t configuration_vector);
+    uint16_t QueueVector();
+    void QueueVector(uint16_t queue_vector);
+
+    // Helper
+    size_t QszBytes(uint16_t qsz);
+  protected:
+    const pci::Device& device_;
+    uint16_t io_addr_;
+  };
+}
 #endif

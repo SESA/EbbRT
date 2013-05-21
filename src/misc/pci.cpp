@@ -39,10 +39,16 @@ ebbrt::pci::Device::DeviceId() const
   return read16(0x02);
 }
 
-uint16_t
+ebbrt::pci::Device::Command_t
 ebbrt::pci::Device::Command() const
 {
   return read16(0x04);
+}
+
+void
+ebbrt::pci::Device::Command(Command_t c) const
+{
+  write16(c.raw, 0x04);
 }
 
 uint16_t
@@ -207,6 +213,14 @@ ebbrt::pci::Device::GeneralHeaderType() const
   return (HeaderType() & 0x7f) == 0x00;
 }
 
+void
+ebbrt::pci::Device::BusMaster(bool set) const
+{
+  Command_t c = Command();
+  c.bus_master = set;
+  Command(c);
+}
+
 std::ostream&
 ebbrt::pci::operator<<(std::ostream& os, const ebbrt::pci::Device& d)
 {
@@ -217,7 +231,7 @@ ebbrt::pci::operator<<(std::ostream& os, const ebbrt::pci::Device& d)
   os << "Device ID: 0x" << d.DeviceId() << std::endl;
   os << "Vendor ID: 0x" << d.VendorId() << std::endl;
   os << "Status: 0x" << d.Status() << std::endl;
-  os << "Command: 0x" << d.Command() << std::endl;
+  os << "Command: 0x" << d.Command().raw << std::endl;
   os << "Class code: 0x" << static_cast<int>(d.ClassCode()) << std::endl;
   os << "Subclass: 0x" << static_cast<int>(d.Subclass()) << std::endl;
   os << "Prog IF: 0x" << static_cast<int>(d.ProgIF()) << std::endl;
@@ -277,7 +291,7 @@ ebbrt::pci::Device::read8(uint8_t offset) const
   out32(addr.raw, PCI_ADDRESS_PORT); // write address
   uint32_t val = in32(PCI_DATA_PORT);
 
-  return val >> ((offset & 2) * 8); //offset return value
+  return val >> ((offset & 0x3) * 8); //offset return value
 }
 
 uint16_t
@@ -294,7 +308,7 @@ ebbrt::pci::Device::read16(uint8_t offset) const
   out32(addr.raw, PCI_ADDRESS_PORT); // write address
   uint32_t val = in32(PCI_DATA_PORT);
 
-  return val >> ((offset & 2) * 8); //offset return value
+  return val >> ((offset & 0x3) * 8); //offset return value
 }
 
 uint32_t
@@ -310,6 +324,25 @@ ebbrt::pci::Device::read32(uint8_t offset) const
 
   out32(addr.raw, PCI_ADDRESS_PORT); // write address
   return in32(PCI_DATA_PORT);
+}
+
+void
+ebbrt::pci::Device::write16(uint16_t val, uint8_t offset) const
+{
+  Address addr;
+  addr.raw = 0;
+  addr.enable = 1;
+  addr.busnum = bus_;
+  addr.devnum = device_;
+  addr.fnum = function_;
+  addr.offset = offset >> 2;
+
+  out32(addr.raw, PCI_ADDRESS_PORT); // write address
+  uint32_t read_val = in32(PCI_DATA_PORT);
+
+  read_val = (read_val & ~(0xFFFF << ((offset & 3) * 8))) |
+    val << ((offset & 3) * 8);
+  out32(read_val, PCI_DATA_PORT);
 }
 
 namespace {

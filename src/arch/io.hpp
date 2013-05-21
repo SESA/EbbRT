@@ -6,6 +6,8 @@
 namespace ebbrt {
   inline void out8(uint8_t val, uint16_t port);
   inline uint8_t in8(uint16_t port);
+  inline void out16(uint16_t val, uint16_t port);
+  inline uint16_t in16(uint16_t port);
   inline void out32(uint32_t val, uint16_t port);
   inline uint32_t in32(uint16_t port);
 }
