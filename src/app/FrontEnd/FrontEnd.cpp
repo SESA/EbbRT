@@ -1,9 +1,11 @@
+#include <cstdio>
 #include <iostream>
 
-using namespace std;
+#include "src/lib/ebblib/ebblib.hpp"
 
 int main()
 {
-    cout << "Hello World!" << endl;
-    return 0;
+  std::cout << "Hello FrontEnd!" << std::endl;
+  ebblib::init();
+  return 0;
 }
