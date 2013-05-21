@@ -1,4 +1,4 @@
-#include "lrt/mem_impl.hpp"
+#include "lrt/bare/mem_impl.hpp"
 
 extern char kend[];
 char* ebbrt::lrt::mem::mem_start = kend;

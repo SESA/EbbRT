@@ -9,7 +9,7 @@
 #include "lrt/boot.hpp"
 #include "lrt/console.hpp"
 #include "lrt/mem.hpp"
-#include "lrt/arch/x86_64/smp.hpp"
+#include "lrt/bare/arch/x86_64/smp.hpp"
 #include "misc/elf.hpp"
 #include "sync/compiler.hpp"
 

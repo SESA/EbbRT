@@ -1,22 +1,10 @@
 #ifndef EBBRT_LRT_MEM_IMPL_HPP
 #define EBBRT_LRT_MEM_IMPL_HPP
 
-#include "lrt/mem.hpp"
+#ifdef LRT_ULNX
+#include <src/lrt/ulnx/mem_impl.hpp>
+#elif LRT_BARE
+#include <src/lrt/bare/mem_impl.hpp>
+#endif
 
-namespace ebbrt {
-  namespace lrt {
-    namespace mem {
-      /**
-       * @brief Memory region for per-core allocation 
-       */
-      class Region {
-      public:
-        char* start;
-        char* current;
-        char* end;
-      };
-      extern Region* regions;
-    }
-  }
-}
 #endif

@@ -20,7 +20,7 @@ app_deps =
 
 if ARCH_X86_64
 app_linkflags += -n -z max-page-size=0x1000 \
-	-T $(top_srcdir)/src/lrt/arch/x86_64/link.ld
+	-T $(top_srcdir)/src/lrt/bare/arch/x86_64/link.ld
 
 # ebbrt.iso: ebbrt util/grub.cfg
 #	strip -d $< -o $<.stripped

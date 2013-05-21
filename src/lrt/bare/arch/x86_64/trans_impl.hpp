@@ -1,4 +1,4 @@
-#ifndef EBBRT_LRT_TRANS_IMPL_HPP
+#ifndef EBBRT_LRT_BARE_TRANS_IMPL_HPP
 #error "Don't include this file directly"
 #endif
 
