@@ -2,7 +2,7 @@
 #define EBBRT_LRT_BOOT_HPP
 
 #ifdef LRT_ULNX
-#include <src/lrt/ulnx/boot.hpp>
+/*space holder*/
 #elif LRT_BARE
 #include <src/lrt/bare/boot.hpp>
 #endif

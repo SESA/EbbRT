@@ -1,8 +1,3 @@
-#ifdef LRT_ULNX
-#include <src/lrt/ulnx/console.hpp>
-#endif
-/* baremetal console implemented in uart */
-
 namespace ebbrt {
   namespace lrt {
     namespace console {

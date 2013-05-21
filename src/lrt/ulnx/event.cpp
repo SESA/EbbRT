@@ -11,17 +11,17 @@ ebbrt::lrt::event::init(unsigned num_cores)
 void
 ebbrt::lrt::event::init_cpu()
 {
-  return;
+  while(1)
+    ;
 }
 
 void
 ebbrt::lrt::event::_event_altstack_push(uintptr_t val)
 {
-  return;
 }
 
 uintptr_t
 ebbrt::lrt::event::_event_altstack_pop()
 {
-  return;
+  return 0;
 }

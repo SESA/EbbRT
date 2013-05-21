@@ -1,7 +1,6 @@
 #ifndef EBBRT_LRT_BARE_TRANS_HPP
 #define EBBRT_LRT_BARE_TRANS_HPP
 
-#include "arch/args.hpp"
 #include "lrt/bare/arch/trans.hpp"
 
 namespace ebbrt {

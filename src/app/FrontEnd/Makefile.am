@@ -1,9 +1,9 @@
 EXTRA_PROGRAMS += src/app/FrontEnd/FrontEnd
 
 src_app_FrontEnd_FrontEnd_SOURCES = \
-	src/app/FrontEnd/FrontEnd.cpp
+	src/app/FrontEnd/FrontEnd.cpp 
 
-src_app_FrontEnd_FrontEnd_ebbs = \
+src_app_FrontEnd_FrontEnd_ebbs = 
 
 src_app_FrontEnd_FrontEnd_LDFLAGS = \
 	$(app_linkflags) \

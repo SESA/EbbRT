@@ -1,33 +1,26 @@
-#include <stdio.h>
+#include <cstdio>
 #include <cstdint>
 
-#include "lrt/console.hpp"
+#include "lrt/mem.hpp"
 
 
-void
-ebbrt::lrt::console::init()
+bool
+ebbrt::lrt::mem::init(unsigned num_cores)
 {
-  return;
+  std::printf("mem init\n");
+  return 1;
 }
 
-void
-ebbrt::lrt::console::write(char c)
+void*
+ebbrt::lrt::mem::malloc(size_t size, event::Location loc)
 {
-  /* kludge */
-  printf("%c",c);
+  return NULL;
 }
 
-int
-ebbrt::lrt::console::write(const char *str, int len)
-{
-  /* kludge */
-  printf("%s", str);
-  return len;
-}
-
-void
-ebbrt::lrt::console::write(const char *str)
+void*
+ebbrt::lrt::mem::memalign(size_t boundary, size_t size, event::Location loc)
 {
   /* kludge */
-  printf("%s", str);
+  return NULL;
 }
+

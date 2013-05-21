@@ -1,25 +1,33 @@
-#include <stdio.h>
+#include <cstdio>
 #include <cstdint>
 
-#include "lrt/mem.hpp"
+#include "lrt/console.hpp"
 
 
 void
-ebbrt::lrt::mem::init()
+ebbrt::lrt::console::init()
 {
   return;
 }
 
-void*
-ebbrt::lrt::mem::malloc(size_t size, event::Location loc);
+void
+ebbrt::lrt::console::write(char c)
 {
   /* kludge */
-  return malloc(size);
+  std::printf("%c", c);
 }
 
-void*
-ebbrt::lrt::mem::memalign(size_t boundary, size_t size, event::Location loc);
+int
+ebbrt::lrt::console::write(const char *str, int len)
 {
   /* kludge */
-  return memalign(boundary, size);
+  std::printf("%s", str);
+  return len;
+}
+
+void
+ebbrt::lrt::console::write(const char *str)
+{
+  /* kludge */
+  std::printf("%s", str);
 }

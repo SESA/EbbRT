@@ -1,6 +1,7 @@
 #ifndef EBBRT_LRT_MEM_HPP
 #define EBBRT_LRT_MEM_HPP
 
+#include <cstddef>
 #include "lrt/event.hpp"
 
 namespace ebbrt {
