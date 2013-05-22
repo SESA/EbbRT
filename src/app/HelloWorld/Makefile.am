@@ -22,3 +22,5 @@ src_app_HelloWorld_HelloWorld_DEPENDENCIES = \
 	$(app_deps) \
 	$(ebbrt_libs) \
 	$(src_app_HelloWorld_HelloWorld_ebbs)
+
+

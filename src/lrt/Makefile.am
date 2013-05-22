@@ -3,10 +3,12 @@ include src/lrt/ulnx/Makefile.am
 
 lrt_sources = \
 	src/lrt/boot.hpp \
+	src/lrt/boot.cpp \
 	src/lrt/console.hpp \
 	src/lrt/event.hpp \
 	src/lrt/mem.hpp \
-	src/lrt/trans.hpp 
+	src/lrt/trans.hpp \
+	src/lrt/trans_impl.hpp
 
 if LRT_ULNX
 lrt_sources += $(lrt_ulnx_sources)

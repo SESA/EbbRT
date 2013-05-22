@@ -5,7 +5,7 @@
 #include "lrt/boot.hpp"
 #include "lrt/event.hpp"
 #include "lrt/mem.hpp"
-#include "lrt/bare/trans_impl.hpp"
+#include "lrt/trans_impl.hpp"
 
 namespace {
   class RootBinding {
@@ -79,7 +79,7 @@ ebbrt::lrt::trans::_trans_precall(ebbrt::Args* args,
   EbbId id =
     (loc - reinterpret_cast<uintptr_t>(LOCAL_MEM_VIRT)) /
     sizeof(LocalEntry);
-  /* by default, the miss handler is configured to trans::InitRoot */
+  /* the default miss handler is configured to trans::InitRoot*/
   return miss_handler->PreCall(args, fnum, fret, id);
 }
 
@@ -104,12 +104,12 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
       break;
     }
   }
-  /* if properly configured this roots should be contructed at boot*/
+  /* if properly configured this roots should be constructed at boot*/
   if (root == nullptr) {
     while (1)
       ;
   }
-  /* ebb precall processes and ressult pushed onto our alt-stack */
+  /* ebb precall processes and result pushed onto our alt-stack */
   bool ret = root->PreCall(args, fnum, fret, id);
   if (ret) {
     event::_event_altstack_push
@@ -131,7 +131,9 @@ ebbrt::lrt::trans::InitRoot::PostCall(void* ret)
 void
 ebbrt::lrt::trans::cache_rep(EbbId id, EbbRep* rep)
 {
-  /* add rep location to local trans table */
+ /* @brief Add rep entry to this core's local translation table.
+  * note that the cache location is based on ebb id
+  * */ 
   reinterpret_cast<LocalEntry*>(LOCAL_MEM_VIRT)[id].ref = rep;
 }
 
