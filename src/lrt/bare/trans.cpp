@@ -101,7 +101,8 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
   }
   /* if properly configured this roots should be constructed at boot*/
   if (root == nullptr) {
-    root = ebb_manager->FindRoot(id);
+    ebb_manager->Install();
+    return miss_handler->PreCall(args, fnum, fret, id);
   }
   /* ebb precall processes and result pushed onto our alt-stack */
   bool ret = root->PreCall(args, fnum, fret, id);

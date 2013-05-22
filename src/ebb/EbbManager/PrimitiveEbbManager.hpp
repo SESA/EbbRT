@@ -18,7 +18,7 @@ namespace ebbrt {
     EbbId AllocateId() override;
     void Bind(EbbRoot* (*factory)(), EbbId id) override;
   private:
-    virtual EbbRoot* FindRoot(EbbId id) override;
+    virtual void Install() override;
     friend class PrimitiveEbbManagerRoot;
     EbbId next_free_;
     std::unordered_map<EbbId, EbbRoot*>& root_table_;

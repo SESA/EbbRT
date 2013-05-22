@@ -13,7 +13,7 @@ namespace ebbrt {
     virtual ~EbbManager() {}
   private:
     friend lrt::trans::InitRoot;
-    virtual EbbRoot* FindRoot(EbbId id) = 0;
+    virtual void Install() = 0;
   };
   extern char ebb_manager_id_resv
   __attribute__ ((section ("static_ebb_ids")));

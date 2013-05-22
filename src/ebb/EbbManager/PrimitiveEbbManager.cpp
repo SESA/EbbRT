@@ -105,8 +105,8 @@ namespace {
   };
 }
 
-ebbrt::EbbRoot*
-ebbrt::PrimitiveEbbManager::FindRoot(EbbId id)
+void
+ebbrt::PrimitiveEbbManager::Install()
 {
   root_table_lock_.Lock();
   if (root_table_.empty()) {
@@ -123,24 +123,7 @@ ebbrt::PrimitiveEbbManager::FindRoot(EbbId id)
                                                        factory_table_lock_);
     lrt::trans::install_miss_handler(prim_root);
   }
-  auto it = root_table_.find(id);
-  EbbRoot* root;
-  if (it == root_table_.end()) {
-    factory_table_lock_.Lock();
-    auto it_fact = factory_table_.find(id);
-    if (it_fact == factory_table_.end()) {
-      //TODO: Go remote
-      while (1)
-        ;
-    }
-    factory_table_lock_.Unlock();
-    root = it_fact->second();
-    root_table_.insert(std::make_pair(id, root));
-  } else {
-    root = it->second;
-  }
   root_table_lock_.Unlock();
-  return root;
 }
 
 bool
