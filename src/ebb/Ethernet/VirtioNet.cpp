@@ -4,6 +4,7 @@
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Ethernet/VirtioNet.hpp"
 #include "ebb/MemoryAllocator/MemoryAllocator.hpp"
+#include "lrt/console.hpp"
 
 namespace {
   union Features {
@@ -38,7 +39,7 @@ ebbrt::VirtioNet::ConstructRoot()
   return new SharedRoot<VirtioNet>();
 }
 
-ebbrt::VirtioNet::VirtioNet()
+ebbrt::VirtioNet::VirtioNet() : next_free_{0}, next_available_{0}, msix_enabled_{false}
 {
   pci::init();
 
@@ -70,6 +71,18 @@ ebbrt::VirtioNet::VirtioNet()
   supported_features.mac = features.mac;
   virtio::guest_features(io_addr_, supported_features.raw);
 
+  if (features.mac) {
+    uint16_t addr = io_addr_ + 20;
+    if (msix_enabled_) {
+      addr += 4;
+    }
+    for (unsigned i = 0; i < 6; ++i) {
+      mac_address_[i] = in8(addr + i);
+    }
+  } else {
+    lrt::console::write("No Mac Address!\n");
+  }
+
   //TODO: Initialize Receive
 
   // Initialize Send
@@ -87,6 +100,8 @@ ebbrt::VirtioNet::VirtioNet()
     ((reinterpret_cast<uintptr_t>(&send_available_->ring[send_max_]) + 4095)
      & ~4095);
 
+  send_available_->no_interrupt = true;
+
   // Tell the device we are good to go
   virtio::driver_ok(io_addr_);
 }
@@ -94,5 +109,42 @@ ebbrt::VirtioNet::VirtioNet()
 void*
 ebbrt::VirtioNet::Allocate(size_t size)
 {
-  return nullptr;
+  if (size > 1512) {
+    return nullptr;
+  }
+  char* buf = static_cast<char*>(memory_allocator->malloc(size + 10));
+  std::copy(mac_address_, &mac_address_[6], &buf[16]);
+  return buf + 10;
+}
+
+void
+ebbrt::VirtioNet::Send(void* buffer, size_t size)
+{
+  if (size > 1512) {
+    return;
+  }
+  uint16_t desc_index;
+  lock_.Lock();
+  if ((next_free_ + 1) < send_max_) {
+    desc_index = next_free_;
+    next_free_ += 2;
+  } else {
+    lock_.Unlock();
+    lrt::console::write("Unimplemented: find used descriptors\n");
+    while (1)
+      ;
+  }
+  send_descs_[desc_index].address=reinterpret_cast<uint64_t>(buffer) - 10;
+  send_descs_[desc_index].length = 10;
+  send_descs_[desc_index].flags.next = true;
+  send_descs_[desc_index].next = desc_index + 1;
+  send_descs_[desc_index+1].address = reinterpret_cast<uint64_t>(buffer);
+  send_descs_[desc_index+1].length = size;
+
+  send_available_->ring[next_available_] = desc_index;
+  std::atomic_thread_fence(std::memory_order_release);
+  send_available_->index++;
+  lock_.Unlock();
+  std::atomic_thread_fence(std::memory_order_release);
+  virtio::queue_notify(io_addr_, 1);
 }

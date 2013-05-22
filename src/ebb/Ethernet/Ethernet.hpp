@@ -7,6 +7,7 @@ namespace ebbrt {
   class Ethernet : public EbbRep {
   public:
     virtual void* Allocate(size_t size) = 0;
+    virtual void Send(void* buffer, size_t size) = 0;
   };
 }
 

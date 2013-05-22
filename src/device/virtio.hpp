@@ -81,6 +81,12 @@ namespace ebbrt {
       out16(n, io_addr + 14);
     }
 
+    inline void
+    queue_notify(uint16_t io_addr, uint16_t n)
+    {
+      out16(n, io_addr + 16);
+    }
+
     inline size_t
     qsz_bytes(uint16_t qsz)
     {
