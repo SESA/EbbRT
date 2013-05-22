@@ -45,4 +45,3 @@ include src/device/Makefile.am
 include src/ebb/Makefile.am
 include src/lib/Makefile.am
 include src/lrt/Makefile.am
-include src/misc/Makefile.am

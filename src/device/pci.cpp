@@ -1,5 +1,5 @@
 #include "arch/io.hpp"
-#include "misc/pci.hpp"
+#include "device/pci.hpp"
 
 namespace {
   class Address {

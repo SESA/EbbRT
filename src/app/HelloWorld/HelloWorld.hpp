@@ -11,8 +11,6 @@ namespace ebbrt {
   public:
     HelloWorldApp();
     void Start() override;
-  private:
-    std::atomic_flag lock_;
   };
 }
 

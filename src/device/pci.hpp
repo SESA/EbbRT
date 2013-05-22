@@ -1,5 +1,5 @@
-#ifndef EBBRT_MISC_PCI_HPP
-#define EBBRT_MISC_PCI_HPP
+#ifndef EBBRT_DEVICE_PCI_HPP
+#define EBBRT_DEVICE_PCI_HPP
 
 #include <cstdint>
 #include <list>

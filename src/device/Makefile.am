@@ -1,3 +1,2 @@
 device_sources = \
-	src/device/virtio.cpp \
-	src/device/virtio_net.cpp
+	src/device/pci.cpp

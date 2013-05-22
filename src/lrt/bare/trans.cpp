@@ -2,20 +2,17 @@
 
 #include "arch/args.hpp"
 #include "app/app.hpp"
+#include "ebb/EbbManager/EbbManager.hpp"
 #include "lrt/boot.hpp"
 #include "lrt/event.hpp"
 #include "lrt/mem.hpp"
 #include "lrt/trans_impl.hpp"
 
 namespace {
-  class RootBinding {
-  public:
-    ebbrt::lrt::trans::EbbId id;
-    ebbrt::lrt::trans::EbbRoot* root;
-  };
-  RootBinding* initial_root_table;
   ebbrt::lrt::trans::EbbRoot* miss_handler;
 }
+
+ebbrt::lrt::trans::RootBinding* ebbrt::lrt::trans::initial_root_table;
 
 ebbrt::lrt::trans::LocalEntry** ebbrt::lrt::trans::phys_local_entries;
 ebbrt::lrt::trans::InitRoot ebbrt::lrt::trans::init_root;
@@ -37,7 +34,6 @@ ebbrt::lrt::trans::init_ebbs()
     initial_root_table[i].root = app::config.init_ebbs[i].create_root();
   }
 }
-
 
 
 bool
@@ -105,8 +101,7 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
   }
   /* if properly configured this roots should be constructed at boot*/
   if (root == nullptr) {
-    while (1)
-      ;
+    root = ebb_manager->FindRoot(id);
   }
   /* ebb precall processes and result pushed onto our alt-stack */
   bool ret = root->PreCall(args, fnum, fret, id);
@@ -136,6 +131,11 @@ ebbrt::lrt::trans::cache_rep(EbbId id, EbbRep* rep)
   reinterpret_cast<LocalEntry*>(LOCAL_MEM_VIRT)[id].ref = rep;
 }
 
+void
+ebbrt::lrt::trans::install_miss_handler(EbbRoot* root)
+{
+  miss_handler = root;
+}
 
 extern "C" void default_func0();
 extern "C" void default_func1();
