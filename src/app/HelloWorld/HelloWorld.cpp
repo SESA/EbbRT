@@ -8,6 +8,7 @@
 #include "ebb/EbbManager/PrimitiveEbbManager.hpp"
 #include "ebb/Ethernet/VirtioNet.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
+#include "ebb/PCI/PCI.hpp"
 #include "lrt/console.hpp"
 
 namespace {
@@ -41,6 +42,8 @@ void
 ebbrt::HelloWorldApp::Start()
 {
   if (get_location() == 0) {
+    pci = Ebb<PCI>(ebb_manager->AllocateId());
+    ebb_manager->Bind(PCI::ConstructRoot, pci);
     Ebb<Ethernet> ethernet{ebb_manager->AllocateId()};
     ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
     char* buffer = static_cast<char*>(ethernet->Allocate(64));

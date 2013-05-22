@@ -2,7 +2,6 @@
 #define EBBRT_DEVICE_VIRTIO_HPP
 
 #include "arch/io.hpp"
-#include "device/pci.hpp"
 
 namespace ebbrt {
   namespace virtio {

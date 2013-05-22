@@ -6,7 +6,8 @@ src_app_HelloWorld_HelloWorld_SOURCES = \
 src_app_HelloWorld_HelloWorld_ebbs = \
 	src/ebb/EbbManager/libPrimitiveEbbManager.a \
 	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a \
-	src/ebb/Ethernet/libVirtioNet.a
+	src/ebb/Ethernet/libVirtioNet.a \
+	src/ebb/PCI/libPCI.a
 
 src_app_HelloWorld_HelloWorld_LDFLAGS = \
 	$(app_linkflags) \

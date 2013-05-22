@@ -4,6 +4,7 @@
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Ethernet/VirtioNet.hpp"
 #include "ebb/MemoryAllocator/MemoryAllocator.hpp"
+#include "ebb/PCI/PCI.hpp"
 #include "lrt/console.hpp"
 
 namespace {
@@ -41,10 +42,8 @@ ebbrt::VirtioNet::ConstructRoot()
 
 ebbrt::VirtioNet::VirtioNet() : next_free_{0}, next_available_{0}, msix_enabled_{false}
 {
-  pci::init();
-
-  auto it = std::find_if(pci::devices.begin(), pci::devices.end(),
-                         [] (const pci::Device& d) {
+  auto it = std::find_if(pci->DevicesBegin(), pci->DevicesEnd(),
+                         [] (const PCI::Device& d) {
                            return d.VendorId() == 0x1af4 &&
                            d.DeviceId() >= 0x1000 &&
                            d.DeviceId() <= 0x103f &&
@@ -52,7 +51,7 @@ ebbrt::VirtioNet::VirtioNet() : next_free_{0}, next_available_{0}, msix_enabled_
                            d.SubsystemId() == 1;
                          });
 
-  if (it == pci::devices.end()) {
+  if (it == pci->DevicesEnd()) {
     //FIXME: Throw an exception!
   }
 

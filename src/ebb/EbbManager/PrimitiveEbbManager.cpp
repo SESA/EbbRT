@@ -66,24 +66,26 @@ namespace {
     bool PreCall(Args* args, ptrdiff_t fnum,
                  lrt::trans::FuncRet* fret, EbbId id) override
     {
-      root_table_lock_.Lock();
+      //FIXME: Locks cause a deadlock on recursive miss!
+      //root_table_lock_.Lock();
       auto it = root_table_.find(id);
       EbbRoot* root;
       if (it == root_table_.end()) {
-        factory_table_lock_.Lock();
+        //factory_table_lock_.Lock();
         auto it_fact = factory_table_.find(id);
         if (it_fact == factory_table_.end()) {
           //TODO: Go remote
           while (1)
             ;
         }
-        factory_table_lock_.Unlock();
-        root = it_fact->second();
+        auto factory = it_fact->second;
+        //factory_table_lock_.Unlock();
+        root = factory();
         root_table_.insert(std::make_pair(id, root));
       } else {
         root = it->second;
       }
-      root_table_lock_.Unlock();
+      //root_table_lock_.Unlock();
       bool ret = root->PreCall(args, fnum, fret, id);
       if (ret) {
         lrt::event::_event_altstack_push
