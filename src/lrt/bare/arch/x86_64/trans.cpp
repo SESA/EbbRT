@@ -35,7 +35,7 @@ ebbrt::lrt::trans::init_cpu_arch()
                                        LTABLE_SIZE,
                                        event::get_location());
 
-  /* cores physical starting address saved for a rainy day */
+  /* store table physical starting address */
   phys_local_entries[event::get_location()] =
     static_cast<LocalEntry*>(local_mem_phys);
 
