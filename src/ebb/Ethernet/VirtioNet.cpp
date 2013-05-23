@@ -130,8 +130,7 @@ ebbrt::VirtioNet::Send(void* buffer, size_t size)
   } else {
     lock_.Unlock();
     lrt::console::write("Unimplemented: find used descriptors\n");
-    while (1)
-      ;
+    LRT_ASSERT(0);
   }
   send_descs_[desc_index].address=reinterpret_cast<uint64_t>(buffer) - 10;
   send_descs_[desc_index].length = 10;

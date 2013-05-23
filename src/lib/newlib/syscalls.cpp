@@ -31,9 +31,10 @@
 #include <errno.h>
 
 #include "ebb/MemoryAllocator/MemoryAllocator.hpp"
+#include "lrt/assert.hpp"
 
 #define NYI \
-  while (1) ;
+  LRT_ASSERT(0);
 
 
 extern "C" int

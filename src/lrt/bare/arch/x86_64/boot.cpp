@@ -28,10 +28,6 @@ _init_arch(ebbrt::MultibootInformation* mbi)
 {
   ebbrt::lrt::boot::multiboot_information = mbi;
   ebbrt::lrt::boot::init();
-
-  /* we should never return form boot init, but if we do...*/
-  while(1)
-    ;
 }
 
 char* _smp_stack;
