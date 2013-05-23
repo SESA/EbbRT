@@ -16,8 +16,8 @@ namespace ebbrt {
   extern char mem_allocator_id_resv
   __attribute__ ((section ("static_ebb_ids")));
   extern "C" char static_ebb_ids_start[];
-  const Ebb<MemoryAllocator> memory_allocator =
-    Ebb<MemoryAllocator>(static_cast<EbbId>(&mem_allocator_id_resv -
+  const EbbRef<MemoryAllocator> memory_allocator =
+    EbbRef<MemoryAllocator>(static_cast<EbbId>(&mem_allocator_id_resv -
                                             static_ebb_ids_start));
 }
 
