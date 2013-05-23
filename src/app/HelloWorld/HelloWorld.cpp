@@ -47,12 +47,16 @@ ebbrt::HelloWorldApp::Start()
     Ebb<Ethernet> ethernet{ebb_manager->AllocateId()};
     ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
     char* buffer = static_cast<char*>(ethernet->Allocate(64));
+    
+    // destination mac address, broadcast
     buffer[0] = 0xff;
     buffer[1] = 0xff;
     buffer[2] = 0xff;
     buffer[3] = 0xff;
     buffer[4] = 0xff;
     buffer[5] = 0xff;
+
+    // ethertype (protocol number) that is free
     buffer[12] = 0x88;
     buffer[13] = 0x12;
     std::strcpy(&buffer[14], "Hello World!\n");
