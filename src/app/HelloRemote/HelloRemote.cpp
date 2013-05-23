@@ -32,9 +32,9 @@ void
 ebbrt::HelloRemoteApp::Start()
 {
   if (get_location() == 0) {
-    pci = Ebb<PCI>(ebb_manager->AllocateId());
+    pci = EbbRef<PCI>(ebb_manager->AllocateId());
     ebb_manager->Bind(PCI::ConstructRoot, pci);
-    Ebb<Ethernet> ethernet{ebb_manager->AllocateId()};
+    EbbRef<Ethernet> ethernet{ebb_manager->AllocateId()};
     ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
     char* buffer = static_cast<char*>(ethernet->Allocate(64));
 
