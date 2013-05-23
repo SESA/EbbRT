@@ -66,7 +66,6 @@ namespace {
     bool PreCall(Args* args, ptrdiff_t fnum,
                  lrt::trans::FuncRet* fret, EbbId id) override
     {
-      //FIXME: Locks cause a deadlock on recursive miss!
       EbbRoot* root;
       do {
         root_table_lock_.Lock();
