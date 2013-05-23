@@ -4,7 +4,7 @@ src_app_HelloWorld_HelloWorld_SOURCES = \
 	src/app/HelloWorld/HelloWorld.cpp
 
 src_app_HelloWorld_HelloWorld_ebbs = \
-	src/ebb/EbbAllocator/libPrimitiveEbbAllocator.a \
+	src/ebb/EbbManager/libPrimitiveEbbManager.a \
 	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a
 
 src_app_HelloWorld_HelloWorld_LDFLAGS = \

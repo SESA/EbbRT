@@ -16,7 +16,7 @@
 uint32_t ebbrt::lrt::boot::smp_lock;
 const ebbrt::MultibootInformation* ebbrt::lrt::boot::multiboot_information;
 extern "C"
-/** 
+/**
  * @brief Initial architecture initialization. This acts as C++ entry upcalled
  * from assembly. For this reason, the function is not available elsewhere in
  * the system.
@@ -43,9 +43,9 @@ extern char _gdt_pointer_end[];
 
 extern "C"
 /**
- * @brief C++ entry for secondary cores, upcalled from asm 
+ * @brief C++ entry for secondary cores, upcalled from asm
  *
- * @param 
+ * @param
  */
 void __attribute__((noreturn))
 _init_cpu_arch()
@@ -65,7 +65,7 @@ ebbrt::lrt::boot::init_smp(unsigned num_cores)
   apic::Lapic::Enable();
   for (unsigned i = 1; i < num_cores; ++i) {
     /* Wake each core (1 .. num_cores) sequentually by sending high/low apic ipis and
-     * spinning untill the core has initilized. */ 
+     * spinning untill the core has initilized. */
     apic::Lapic::IcrLow icr_low;
     icr_low.raw_ = 0;
     icr_low.delivery_mode_ = apic::Lapic::IcrLow::DELIVERY_INIT;

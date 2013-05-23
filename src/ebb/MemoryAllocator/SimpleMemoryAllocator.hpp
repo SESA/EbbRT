@@ -16,7 +16,6 @@ namespace ebbrt {
     void* realloc(void* ptr, size_t size) override;
     void* calloc(size_t num, size_t size) override;
     static void* operator new(size_t size);
-    static void* operator new(size_t size, void* ptr);
     static void operator delete(void* p);
   private:
     char* start_;

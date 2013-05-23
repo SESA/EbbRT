@@ -4,7 +4,8 @@
 #include <map>
 
 #include "ebb/ebb.hpp"
-#include "ebb/EbbAllocator/EbbAllocator.hpp"
+#include "ebb/EbbManager/EbbManager.hpp"
+#include "sync/spinlock.hpp"
 
 namespace ebbrt {
   template <typename T>
@@ -24,7 +25,7 @@ namespace ebbrt {
          * @param fret Return value address
          * @param id   Ebb Id
          *
-         * @return 
+         * @return
          */
         bool PreCall(Args* args, ptrdiff_t fnum,
             lrt::trans::FuncRet* fret, EbbId id) override
@@ -32,6 +33,7 @@ namespace ebbrt {
           T* ref;
           /* check local map of representative exists. This is in the case a rep
            * entry is expelled from our local cache */
+          lock_.Lock();
           auto it = reps_.find(get_location());
           if (it == reps_.end()) {
             /* no rep for this location */
@@ -39,13 +41,14 @@ namespace ebbrt {
              * new call may trigger a miss on the memory manager */
             ref = new T();
             /* cache representative in translation system */
-            ebb_allocator->CacheRep(id, ref);
+            ebb_manager->CacheRep(id, ref);
             reps_[get_location()] = ref;
           } else {
             /* rep found in map */
             ref = it->second;
-            ebb_allocator->CacheRep(id, ref);
+            ebb_manager->CacheRep(id, ref);
           }
+          lock_.Unlock();
           //
           *reinterpret_cast<EbbRep**>(args) = ref;
           // rep is a pointer to pointer to array 256 of pointer to
@@ -58,7 +61,7 @@ namespace ebbrt {
         /**
          * @brief Ebb construction post-call.
          *
-         * @param ret ebb calls return 
+         * @param ret ebb calls return
          *
          * @return Return ebb call return value
          */
@@ -71,6 +74,7 @@ namespace ebbrt {
          * @brief local mapping of the distributed representative of root
          */
         std::map<Location, T*> reps_;
+        Spinlock lock_;
     };
 }
 

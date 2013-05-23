@@ -2,7 +2,6 @@
 #include <new>
 
 #include "ebb/DistributedRoot.hpp"
-#include "ebb/EbbAllocator/EbbAllocator.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
 #include "lrt/mem_impl.hpp"
 #include "lrt/trans_impl.hpp"
@@ -61,6 +60,11 @@ void*
 ebbrt::SimpleMemoryAllocator::operator new(size_t size)
 {
   return lrt::mem::malloc(size, get_location());
+}
+
+void
+ebbrt::SimpleMemoryAllocator::operator delete(void* p)
+{
 }
 
 ebbrt::EbbRoot* ebbrt::SimpleMemoryAllocatorConstructRoot()

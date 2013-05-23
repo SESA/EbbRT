@@ -102,6 +102,16 @@ namespace ebbrt {
       class Ebb {
       public:
         /**
+         * @brief Default Ebb Constructor
+         *
+         * The default constructor points to id 0 which should become
+         * the NullEbb
+         */
+        Ebb() :
+          ref_{reinterpret_cast<T**>(LOCAL_MEM_VIRT)}
+        {}
+
+        /**
          * @brief Ebb Object Constructor
          *
          * @param id Given ebb ID
@@ -113,10 +123,10 @@ namespace ebbrt {
         /**
          * @brief Overload arrow operator
          *
-         * @return return pointer to ebb reference 
+         * @return return pointer to ebb reference
          */
         T* operator->() const {
-          return *ref_; 
+          return *ref_;
         }
         /**
          * @brief Get ebb's id
@@ -131,7 +141,7 @@ namespace ebbrt {
         /**
          * @brief And in the end, the ebb you take is equal to the ebb you make.
          */
-        T** ref_; 
+        T** ref_;
       };
     }
   }
