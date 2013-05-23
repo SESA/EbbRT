@@ -1,5 +1,6 @@
 #include "app/app.hpp"
 #include "ebb/EbbManager/PrimitiveEbbManager.hpp"
+#include "lrt/assert.hpp"
 #include "lrt/trans_impl.hpp"
 #include "misc/vtable.hpp"
 
@@ -44,8 +45,7 @@ ebbrt::PrimitiveEbbManager::Bind(EbbRoot* (*factory)(), EbbId id)
     factory_table_lock_.Unlock();
   } else {
     //TODO: Go remote
-    while (1)
-      ;
+    LRT_ASSERT(0);
   }
 }
 
@@ -76,8 +76,7 @@ namespace {
           auto it_fact = factory_table_.find(id);
           if (it_fact == factory_table_.end()) {
             //TODO: Go remote
-            while (1)
-              ;
+            LRT_ASSERT(0);
           }
           auto factory = it_fact->second;
           factory_table_lock_.Unlock();

@@ -27,6 +27,8 @@ const ebbrt::app::Config ebbrt::app::config = {
   .init_ebbs = init_ebbs
 };
 
+#include "lrt/assert.hpp"
+
 void
 ebbrt::HelloWorldApp::Start()
 {
