@@ -5,6 +5,7 @@
 
 #include "ebb/ebb.hpp"
 #include "ebb/EbbManager/EbbManager.hpp"
+#include "sync/spinlock.hpp"
 
 namespace ebbrt {
   template <typename T>
@@ -32,6 +33,7 @@ namespace ebbrt {
           T* ref;
           /* check local map of representative exists. This is in the case a rep
            * entry is expelled from our local cache */
+          lock_.Lock();
           auto it = reps_.find(get_location());
           if (it == reps_.end()) {
             /* no rep for this location */
@@ -46,6 +48,7 @@ namespace ebbrt {
             ref = it->second;
             ebb_allocator->CacheRep(id, ref);
           }
+          lock_.Unlock();
           //
           *reinterpret_cast<EbbRep**>(args) = ref;
           // rep is a pointer to pointer to array 256 of pointer to
@@ -71,6 +74,7 @@ namespace ebbrt {
          * @brief local mapping of the distributed representative of root
          */
         std::map<Location, T*> reps_;
+        Spinlock lock_;
     };
 }
 

@@ -67,25 +67,30 @@ namespace {
                  lrt::trans::FuncRet* fret, EbbId id) override
     {
       //FIXME: Locks cause a deadlock on recursive miss!
-      //root_table_lock_.Lock();
-      auto it = root_table_.find(id);
       EbbRoot* root;
-      if (it == root_table_.end()) {
-        //factory_table_lock_.Lock();
-        auto it_fact = factory_table_.find(id);
-        if (it_fact == factory_table_.end()) {
-          //TODO: Go remote
-          while (1)
-            ;
+      do {
+        root_table_lock_.Lock();
+        auto it = root_table_.find(id);
+        if (it == root_table_.end()) {
+          factory_table_lock_.Lock();
+          auto it_fact = factory_table_.find(id);
+          if (it_fact == factory_table_.end()) {
+            //TODO: Go remote
+            while (1)
+              ;
+          }
+          auto factory = it_fact->second;
+          factory_table_lock_.Unlock();
+          root_table_.insert(std::make_pair(id, nullptr));
+          root_table_lock_.Unlock();
+          root = factory();
+          root_table_lock_.Lock();
+          root_table_[id] = root;
+        } else {
+          root = it->second;
         }
-        auto factory = it_fact->second;
-        //factory_table_lock_.Unlock();
-        root = factory();
-        root_table_.insert(std::make_pair(id, root));
-      } else {
-        root = it->second;
-      }
-      //root_table_lock_.Unlock();
+        root_table_lock_.Unlock();
+      } while (root == nullptr);
       bool ret = root->PreCall(args, fnum, fret, id);
       if (ret) {
         lrt::event::_event_altstack_push
@@ -134,7 +139,24 @@ ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
                                           lrt::trans::FuncRet* fret,
                                           EbbId id)
 {
-  lock_.Lock();
+  // We depend on the memory allocator to construct our reps but the
+  // memory allocator can call CacheRep. To prevent deadlock, in the
+  // scenario where we fail to acquire the lock and CacheRep was
+  // called, we just cache the rep and return without constructing a
+  // rep.
+  if (!lock_.TryLock()) {
+    if (fnum == vtable_index<PrimitiveEbbManager>
+        (&PrimitiveEbbManager::CacheRep)) {
+      //FIXME: not portable
+      EbbId target_id = args->rsi;
+      EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->rdx);
+      local_cache_rep(target_id, target_rep);
+      return false;
+    } else {
+      lock_.Lock();
+    }
+  }
+  // We should have the lock by now
   auto it = reps_.find(get_location());
   auto end = reps_.end();
   lock_.Unlock();

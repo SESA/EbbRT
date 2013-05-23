@@ -10,6 +10,10 @@ namespace ebbrt {
       while (lock_.test_and_set(std::memory_order_acquire))
         ;
     }
+    inline bool TryLock()
+    {
+      return lock_.test_and_set(std::memory_order_acquire);
+    }
     inline void Unlock()
     {
       lock_.clear(std::memory_order_release);
