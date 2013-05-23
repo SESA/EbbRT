@@ -6,7 +6,7 @@
 #include "lrt/trans.hpp"
 
 namespace ebbrt {
-  using lrt::trans::Ebb;
+  using lrt::trans::EbbRef;
   using lrt::trans::EbbId;
   using lrt::trans::EbbRep;
   using lrt::trans::EbbRoot;

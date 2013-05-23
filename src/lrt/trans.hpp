@@ -99,24 +99,24 @@ namespace ebbrt {
        * @brief Elastic Building Block template
        */
       template <class T>
-      class Ebb {
+      class EbbRef {
       public:
         /**
-         * @brief Default Ebb Constructor
+         * @brief Default EbbRef Constructor
          *
          * The default constructor points to id 0 which should become
          * the NullEbb
          */
-        Ebb() :
+        EbbRef() :
           ref_{reinterpret_cast<T**>(LOCAL_MEM_VIRT)}
         {}
 
         /**
-         * @brief Ebb Object Constructor
+         * @brief EbbRef Object Constructor
          *
          * @param id Given ebb ID
          */
-        explicit Ebb(EbbId id) :
+        explicit EbbRef(EbbId id) :
           /* construct the ref corresponding to the given id */
           ref_{ reinterpret_cast<T**> (&(reinterpret_cast<LocalEntry*> (LOCAL_MEM_VIRT)[id]
             ))} {}

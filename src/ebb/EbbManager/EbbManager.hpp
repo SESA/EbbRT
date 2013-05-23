@@ -18,8 +18,8 @@ namespace ebbrt {
   extern char ebb_manager_id_resv
   __attribute__ ((section ("static_ebb_ids")));
   extern "C" char static_ebb_ids_start[];
-  const Ebb<EbbManager> ebb_manager =
-    Ebb<EbbManager>(static_cast<EbbId>(&ebb_manager_id_resv -
+  const EbbRef<EbbManager> ebb_manager =
+    EbbRef<EbbManager>(static_cast<EbbId>(&ebb_manager_id_resv -
                                          static_ebb_ids_start));
 }
 

@@ -206,6 +206,6 @@ namespace ebbrt {
 
     std::list<Device> devices_;
   };
-  extern Ebb<PCI> pci;
+  extern EbbRef<PCI> pci;
 }
 #endif

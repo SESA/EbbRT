@@ -1,7 +1,7 @@
 #include "ebb/SharedRoot.hpp"
 #include "ebb/PCI/PCI.hpp"
 
-ebbrt::Ebb<ebbrt::PCI> ebbrt::pci;
+ebbrt::EbbRef<ebbrt::PCI> ebbrt::pci;
 
 ebbrt::EbbRoot*
 ebbrt::PCI::ConstructRoot()
