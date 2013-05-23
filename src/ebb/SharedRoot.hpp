@@ -26,7 +26,7 @@ namespace ebbrt {
         bool PreCall(Args* args, ptrdiff_t fnum,
             lrt::trans::FuncRet* fret, EbbId id) override
         {
-          ebb_allocator->CacheRep(id, &rep_);
+          ebb_manager->CacheRep(id, &rep_);
           *reinterpret_cast<EbbRep**>(args) = &rep_;
           // rep is a pointer to pointer to array 256 of pointer to
           // function returning void

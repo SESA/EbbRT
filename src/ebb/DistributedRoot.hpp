@@ -41,12 +41,12 @@ namespace ebbrt {
              * new call may trigger a miss on the memory manager */
             ref = new T();
             /* cache representative in translation system */
-            ebb_allocator->CacheRep(id, ref);
+            ebb_manager->CacheRep(id, ref);
             reps_[get_location()] = ref;
           } else {
             /* rep found in map */
             ref = it->second;
-            ebb_allocator->CacheRep(id, ref);
+            ebb_manager->CacheRep(id, ref);
           }
           lock_.Unlock();
           //
