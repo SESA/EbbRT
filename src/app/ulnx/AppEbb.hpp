@@ -8,11 +8,9 @@ namespace ebbrt {
   public:
     virtual void Start() = 0;
   };
-  extern char app_id_resv __attribute__ ((section ("static_ebb_ids")));
-  extern "C" char static_ebb_ids_start[];
-  const EbbRef<App> app_ebb =
-    EbbRef<App>(static_cast<EbbId>(&app_id_resv -
-                                   static_ebb_ids_start));
+  char app_id_resv = 0;
+  const Ebb<App> app_ebb =
+    Ebb<App>(static_cast<EbbId>(app_id_resv++));
 }
 
 #endif

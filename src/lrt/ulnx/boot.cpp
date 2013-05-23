@@ -10,7 +10,9 @@ namespace ebbrt {
       void
       init_smp(unsigned num_cores)
       {
-        std::printf("init smp\n");
+        /* no SMP to init on ulnx */
+        init_cpu();
+        /*FIXME: this spin to appease compiler */
         while(1)
           ;
       }

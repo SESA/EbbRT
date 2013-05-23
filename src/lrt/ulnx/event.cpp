@@ -1,27 +1,5 @@
-#include "lrt/mem.hpp"
-
-
+#include "lrt/event.hpp"
 bool
-ebbrt::lrt::event::init(unsigned num_cores)
-{
-  //return init_arch();
-  return true;
-}
-
+ebbrt::lrt::event::init_arch(){return 1;}
 void
-ebbrt::lrt::event::init_cpu()
-{
-  while(1)
-    ;
-}
-
-void
-ebbrt::lrt::event::_event_altstack_push(uintptr_t val)
-{
-}
-
-uintptr_t
-ebbrt::lrt::event::_event_altstack_pop()
-{
-  return 0;
-}
+ebbrt::lrt::event::init_cpu_arch(){while(1);}
