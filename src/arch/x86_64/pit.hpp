@@ -11,15 +11,15 @@ namespace {
 namespace ebbrt {
   namespace pit {
     /**
-     * @brief Disable programmable interval timer 
+     * @brief Disable programmable interval timer
      */
     inline void
     disable() {
       //set the counter to 0
-      outb(PIT_CHANNEL_0, 0x00);
+      out8(PIT_CHANNEL_0, 0x00);
       //affecting channel 0, write to both hi/lo bytes, operate in mode
       //0, binary
-      outb(PIT_COMMAND, 0x30);
+      out8(PIT_COMMAND, 0x30);
     }
   }
 }

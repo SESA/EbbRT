@@ -38,24 +38,24 @@ const int16_t SCRATCH_REG = 7; /* Scratch register */
 void
 ebbrt::lrt::console::init()
 {
-  outb(0, PORT + INT_ENABLE); //disable interrupts
+  out8(0, PORT + INT_ENABLE); //disable interrupts
 
-  outb(LINE_CNTL_REG_DLAB, PORT + LINE_CNTL_REG); //enable dlab
+  out8(LINE_CNTL_REG_DLAB, PORT + LINE_CNTL_REG); //enable dlab
   //set divisor to 1 (115200 baud)
-  outb(1, PORT + BAUD_DIV_LSB);
-  outb(0, PORT + BAUD_DIV_MSB);
+  out8(1, PORT + BAUD_DIV_LSB);
+  out8(0, PORT + BAUD_DIV_MSB);
 
   //set as 8N1 (8 bits, no parity, one stop bit)
-  outb(LINE_CNTL_REG_CHARLEN_8, PORT + LINE_CNTL_REG);
+  out8(LINE_CNTL_REG_CHARLEN_8, PORT + LINE_CNTL_REG);
 }
 
 void
 ebbrt::lrt::console::write(char c)
 {
-  while (!(inb(PORT + LINE_STATUS_REG) & LINE_STATUS_REG_THR_EMPTY))
+  while (!(in8(PORT + LINE_STATUS_REG) & LINE_STATUS_REG_THR_EMPTY))
     ;
 
-  outb(c, PORT + DATA_REG);
+  out8(c, PORT + DATA_REG);
 }
 
 int

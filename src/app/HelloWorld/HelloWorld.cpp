@@ -1,8 +1,7 @@
 #include "app/HelloWorld/HelloWorld.hpp"
 #include "ebb/SharedRoot.hpp"
-#include "ebb/EbbAllocator/PrimitiveEbbAllocator.hpp"
+#include "ebb/EbbManager/PrimitiveEbbManager.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
-
 #include "lrt/console.hpp"
 
 namespace {
@@ -16,8 +15,8 @@ ebbrt::app::Config::InitEbb init_ebbs[] =
 {
   {.id = ebbrt::memory_allocator,
    .create_root = ebbrt::SimpleMemoryAllocatorConstructRoot},
-  {.id = ebbrt::ebb_allocator,
-   .create_root = ebbrt::PrimitiveEbbAllocatorConstructRoot},
+  {.id = ebbrt::ebb_manager,
+   .create_root = ebbrt::PrimitiveEbbManagerConstructRoot},
   {.id = ebbrt::app_ebb,
    .create_root = construct_root}
 };
@@ -28,15 +27,10 @@ const ebbrt::app::Config ebbrt::app::config = {
   .init_ebbs = init_ebbs
 };
 
-ebbrt::HelloWorldApp::HelloWorldApp() : lock_(ATOMIC_FLAG_INIT)
-{
-}
-
 void
 ebbrt::HelloWorldApp::Start()
 {
-  while (lock_.test_and_set(std::memory_order_acquire))
-    ;
+  lock_.Lock();
   lrt::console::write("Hello World\n");
-  lock_.clear(std::memory_order_release);
+  lock_.Unlock();
 }

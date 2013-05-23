@@ -14,5 +14,6 @@ else
 if LRT_BARE
 app_sources += $(app_bare_sources)
 include src/app/HelloWorld/Makefile.am
+include src/app/HelloRemote/Makefile.am
 endif
 endif

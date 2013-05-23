@@ -20,8 +20,8 @@ ebbrt::apic::init()
   }
 
   //disable 8259 by masking IRQS on master and slave
-  outb(0x21, 0xff);
-  outb(0xa1, 0xff);
+  out8(0x21, 0xff);
+  out8(0xa1, 0xff);
 
   num_io_apics = acpi::get_num_io_apics();
   io_apics = new (lrt::mem::malloc(sizeof(IoApic) * num_io_apics, 0))
