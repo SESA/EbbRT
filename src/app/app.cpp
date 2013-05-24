@@ -17,8 +17,9 @@ void
 ebbrt::app::start(){
   
   lrt::trans::init_ebbs();
-  std::printf("app start\n");
-  return;
+
+  // Invoke the app ebb
+  app_ebb->Start();
 }
 
 #elif LRT_BARE

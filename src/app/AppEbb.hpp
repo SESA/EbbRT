@@ -18,7 +18,6 @@ namespace ebbrt {
                                    static_ebb_ids_start));
 #elif LRT_ULNX
 
-//  char app_id_resv = 0;
   const EbbRef<App> app_ebb =
     EbbRef<App>(static_cast<EbbId>(0));
 

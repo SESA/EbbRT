@@ -5,7 +5,9 @@
 namespace ebbrt {
   namespace lrt {
     namespace trans {
-      void* const LOCAL_MEM_VIRT = std::malloc(1<<21);
+      const size_t LTABLE_SIZE = 1 << 21;
+      class LocalEntry;
+      extern LocalEntry* local_table;
     }
   }
 }

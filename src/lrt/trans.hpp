@@ -107,8 +107,9 @@ namespace ebbrt {
          * The default constructor points to id 0 which should become
          * the NullEbb
          */
+
         EbbRef() :
-          ref_{reinterpret_cast<T**>(LOCAL_MEM_VIRT)}
+          ref_{reinterpret_cast<T**>(&(local_table[0].ref))}
         {}
 
         /**
@@ -118,24 +119,26 @@ namespace ebbrt {
          */
         explicit EbbRef(EbbId id) :
           /* construct the ref corresponding to the given id */
-          ref_{ reinterpret_cast<T**> (&(reinterpret_cast<LocalEntry*> (LOCAL_MEM_VIRT)[id]
-            ))} {}
+          ref_{reinterpret_cast<T**>(&(local_table[id].ref))}
+        {}
         /**
          * @brief Overload arrow operator
          *
          * @return return pointer to ebb reference
          */
-        T* operator->() const {
+        T* operator->() const 
+        {
           return *ref_;
         }
         /**
-         * @brief Get ebb's id
+         * @brief Conversion operator between EbbRef and EbbID
          *
-         * @return Ebb id
+         * @return EbbId of EbbRef
          */
-        operator EbbId() const {
-          return reinterpret_cast<LocalEntry*>(ref_) -
-            reinterpret_cast<LocalEntry*>(LOCAL_MEM_VIRT);
+        operator EbbId() const
+        {
+          return reinterpret_cast<LocalEntry*>(ref_) 
+            - local_table;
         }
       private:
         /**

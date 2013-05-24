@@ -7,7 +7,7 @@
 namespace ebbrt {
   namespace lrt {
     namespace trans {
-      const size_t LTABLE_SIZE = 1 << 21;
+      /*spaceholder*/
     }
   }
 }
