@@ -18,13 +18,13 @@ namespace {
     ebbrt::lrt::trans::EbbId id;
     ebbrt::lrt::trans::EbbRoot* root;
   };
-  RootBinding* initial_root_table;
   ebbrt::lrt::trans::EbbRoot* miss_handler;
 }
 
 ebbrt::lrt::trans::LocalEntry** ebbrt::lrt::trans::phys_local_entries;
 ebbrt::lrt::trans::InitRoot ebbrt::lrt::trans::init_root;
 ebbrt::lrt::trans::LocalEntry* local_table;
+ebbrt::lrt::trans::RootBinding* ebbrt::lrt::trans::initial_root_table;
 
 void
 ebbrt::lrt::trans::init_ebbs()
@@ -33,12 +33,15 @@ ebbrt::lrt::trans::init_ebbs()
         app::config.num_init, 0))
     RootBinding[app::config.num_init];
   miss_handler = &init_root;
+
+  initial_root_table[0].id =  0; // app::config.init_ebbs[i].id;
+  initial_root_table[0].root = NULL;// app::config.init_ebbs[i].create_root();
   /*
-  for (unsigned i = 0; i < app::config.num_init; ++i) {
-    initial_root_table[i].id = app::config.init_ebbs[i].id;
-    initial_root_table[i].root = app::config.init_ebbs[i].create_root();
-  }
-  */
+     for (unsigned i = 0; i < app::config.num_init; ++i) {
+     initial_root_table[i].id = app::config.init_ebbs[i].id;
+     initial_root_table[i].root = app::config.init_ebbs[i].create_root();
+     }
+     */
   return;
 }
 

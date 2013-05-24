@@ -2,10 +2,11 @@
 #include <cstdint>
 
 #include "ebb/SharedRoot.hpp"
-#include "ebb/EbbAllocator/PrimitiveEbbAllocator.hpp"
-#include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
-#include "src/lib/ebblib/ebblib.hpp"
-#include "src/lrt/boot.hpp"
+//#include "ebb/EbbManager/PrimitiveEbbManager.hpp"
+//#include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
+#include "lib/ebblib/ebblib.hpp"
+#include "lrt/boot.hpp"
+#include "lrt/console.hpp"
 
 namespace {
   ebbrt::EbbRoot* construct_root()
@@ -16,12 +17,14 @@ namespace {
 
 ebbrt::app::Config::InitEbb init_ebbs[] =
 {
+/*
   {.id = ebbrt::memory_allocator,
    .create_root = ebbrt::SimpleMemoryAllocatorConstructRoot},
   {.id = ebbrt::ebb_allocator,
    .create_root = ebbrt::PrimitiveEbbAllocatorConstructRoot},
   {.id = ebbrt::app_ebb,
    .create_root = construct_root}
+   */
 };
 
 const ebbrt::app::Config ebbrt::app::config = {
@@ -42,3 +45,11 @@ ebblib::init()
 }
 
 
+/*FIXME: this is ugly...*/
+void
+ebbrt::FrontEndApp::Start()
+{
+  //lock_.Lock();
+  lrt::console::write("Hello World\n");
+  //lock_.Unlock();
+}

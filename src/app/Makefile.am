@@ -1,8 +1,7 @@
-include src/app/bare/Makefile.am
-include src/app/ulnx/Makefile.am
-
 app_sources = \
+	src/app/app.cpp \
 	src/app/app.hpp \
+	src/app/AppEbb.cpp \
 	src/app/AppEbb.hpp
 
 EXTRA_PROGRAMS =

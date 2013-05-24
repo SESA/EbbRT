@@ -8,7 +8,6 @@ namespace ebblib {
 namespace ebbrt {
   class FrontEndApp : public App {
   public:
-    FrontEndApp();
     void Start() override;
   };
 }
