@@ -10,8 +10,11 @@ namespace ebbrt {
   public:
     static EbbRoot* ConstructRoot();
     VirtioNet();
-    void* Allocate(size_t size) override;
-    void Send(void* buffer, size_t size) override;
+    virtual void Send(char mac_addr[6],
+                      uint16_t ethertype,
+                      BufferList buffers,
+                      const std::function<void(BufferList)>& cb = nullptr)
+      override;
   private:
     uint16_t io_addr_;
     uint16_t next_free_;
@@ -23,6 +26,7 @@ namespace ebbrt {
     virtio::QueueDescriptor* send_descs_;
     virtio::Available* send_available_;
     virtio::Used* send_used_;
+    char empty_header_[10];
   };
 }
 

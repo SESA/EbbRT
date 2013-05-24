@@ -1,13 +1,16 @@
 #ifndef EBBRT_EBB_CONSOLE_CONSOLE_HPP
 #define EBBRT_EBB_CONSOLE_CONSOLE_HPP
 
+#include <functional>
+
 #include "ebb/ebb.hpp"
 
 namespace ebbrt {
   class Console : public EbbRep {
   public:
     static EbbRoot* ConstructRoot();
-    virtual void Write(const char* str);
+    virtual void Write(const char* str,
+                       const std::function<void(const char*)>& cb = nullptr);
   };
   extern char console_id_resv
   __attribute__ ((section ("static_ebb_ids")));

@@ -41,7 +41,8 @@ ebbrt::VirtioNet::ConstructRoot()
   return new SharedRoot<VirtioNet>();
 }
 
-ebbrt::VirtioNet::VirtioNet() : next_free_{0}, next_available_{0}, msix_enabled_{false}
+ebbrt::VirtioNet::VirtioNet() : next_free_{0}, next_available_{0},
+  msix_enabled_{false}
 {
   auto it = std::find_if(pci->DevicesBegin(), pci->DevicesEnd(),
                          [] (const PCI::Device& d) {
@@ -52,10 +53,9 @@ ebbrt::VirtioNet::VirtioNet() : next_free_{0}, next_available_{0}, msix_enabled_
                            d.SubsystemId() == 1;
                          });
 
-  if (it == pci->DevicesEnd()) {
-    //FIXME: Throw an exception!
-  }
+  LRT_ASSERT(it != pci->DevicesEnd());
 
+  memset(empty_header_, 0, HEADER_LEN);
   io_addr_ = static_cast<uint16_t>(it->BAR0() & ~0x3);
   it->BusMaster(true);
 
@@ -71,16 +71,13 @@ ebbrt::VirtioNet::VirtioNet() : next_free_{0}, next_available_{0}, msix_enabled_
   supported_features.mac = features.mac;
   virtio::guest_features(io_addr_, supported_features.raw);
 
-  if (features.mac) {
-    uint16_t addr = io_addr_ + 20;
-    if (msix_enabled_) {
-      addr += 4;
-    }
-    for (unsigned i = 0; i < 6; ++i) {
-      mac_address_[i] = in8(addr + i);
-    }
-  } else {
-    lrt::console::write("No Mac Address!\n");
+  LRT_ASSERT(features.mac);
+  uint16_t addr = io_addr_ + 20;
+  if (msix_enabled_) {
+    addr += 4;
+  }
+  for (unsigned i = 0; i < 6; ++i) {
+    mac_address_[i] = in8(addr + i);
   }
 
   //TODO: Initialize Receive
@@ -106,40 +103,54 @@ ebbrt::VirtioNet::VirtioNet() : next_free_{0}, next_available_{0}, msix_enabled_
   virtio::driver_ok(io_addr_);
 }
 
-void*
-ebbrt::VirtioNet::Allocate(size_t size)
-{
-  if (size > 1512) {
-    return nullptr;
-  }
-  char* buf = static_cast<char*>(memory_allocator->malloc(size + 10));
-  std::copy(mac_address_, &mac_address_[6], &buf[16]);
-  return buf + 10;
-}
-
 void
-ebbrt::VirtioNet::Send(void* buffer, size_t size)
+ebbrt::VirtioNet::Send(char mac_addr[6],
+                       uint16_t ethertype,
+                       BufferList buffers,
+                       const std::function<void(BufferList)>& cb)
 {
-  if (size > 1512) {
-    return;
+  size_t size = HEADER_LEN + sizeof(EthernetHeader);
+  for (auto& buffer : buffers) {
+    size += buffer.second;
   }
-  uint16_t desc_index;
-  lock_.Lock();
-  LRT_ASSERT((next_free_ + 1) < send_max_);
-  desc_index = next_free_;
-  next_free_ += 2;
-  lock_.Unlock();
-  send_descs_[desc_index].address=reinterpret_cast<uint64_t>(buffer) - 10;
-  send_descs_[desc_index].length = 10;
-  send_descs_[desc_index].flags.next = true;
-  send_descs_[desc_index].next = desc_index + 1;
-  send_descs_[desc_index+1].address = reinterpret_cast<uint64_t>(buffer);
-  send_descs_[desc_index+1].length = size;
+  LRT_ASSERT(size <= 1512);
 
+  lock_.Lock();
+  LRT_ASSERT((next_free_ + buffers.size() + 1) < send_max_);
+  uint16_t desc_index = next_free_;
+  next_free_ += buffers.size();
+  lock_.Unlock();
+
+  uint16_t index = desc_index;
+  send_descs_[index].address = reinterpret_cast<uint64_t>(empty_header_);
+  send_descs_[index].length = HEADER_LEN;
+  send_descs_[index].flags.next = true;
+  send_descs_[index].next = index + 1;
+  ++index;
+  auto eth_header = new EthernetHeader;
+  memcpy(eth_header->destination, mac_addr, 6);
+  memcpy(eth_header->source, mac_address_, 6);
+  eth_header->ethertype = htons(ethertype);
+  send_descs_[index].address = reinterpret_cast<uint64_t>(eth_header);
+  send_descs_[index].length = sizeof(EthernetHeader);
+  send_descs_[index].flags.next = true;
+  send_descs_[index].next = index + 1;
+  ++index;
+  for (auto& buffer : buffers) {
+    send_descs_[index].address = reinterpret_cast<uint64_t>(buffer.first);
+    send_descs_[index].length = buffer.second;
+    send_descs_[index].flags.next = true;
+    send_descs_[index].next = index + 1;
+    ++index;
+  }
+  send_descs_[index - 1].flags.next = false;
+
+  lock_.Lock();
   send_available_->ring[next_available_] = desc_index;
   std::atomic_thread_fence(std::memory_order_release);
   send_available_->index++;
   lock_.Unlock();
   std::atomic_thread_fence(std::memory_order_release);
   virtio::queue_notify(io_addr_, 1);
+  LRT_ASSERT(!cb);
 }

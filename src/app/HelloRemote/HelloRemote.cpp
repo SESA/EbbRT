@@ -2,7 +2,10 @@
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Console/Console.hpp"
 #include "ebb/EbbManager/PrimitiveEbbManager.hpp"
+#include "ebb/Ethernet/VirtioNet.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
+#include "ebb/MessageManager/MessageManager.hpp"
+#include "ebb/PCI/PCI.hpp"
 
 namespace {
   ebbrt::EbbRoot* construct_root()
@@ -20,7 +23,9 @@ ebbrt::app::Config::InitEbb init_ebbs[] =
   {.id = ebbrt::app_ebb,
    .create_root = construct_root},
   {.id = ebbrt::console,
-   .create_root = ebbrt::Console::ConstructRoot}
+   .create_root = ebbrt::Console::ConstructRoot},
+  {.id = ebbrt::message_manager,
+   .create_root = ebbrt::MessageManager::ConstructRoot}
 };
 
 const ebbrt::app::Config ebbrt::app::config = {
@@ -33,11 +38,11 @@ void
 ebbrt::HelloRemoteApp::Start()
 {
   if (get_location() == 0) {
+    pci = EbbRef<PCI>(ebb_manager->AllocateId());
+    ebb_manager->Bind(PCI::ConstructRoot, pci);
+    ethernet = EbbRef<Ethernet>(ebb_manager->AllocateId());
+    ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
     console->Write("Hello World\n");
-    // pci = EbbRef<PCI>(ebb_manager->AllocateId());
-    // ebb_manager->Bind(PCI::ConstructRoot, pci);
-    // EbbRef<Ethernet> ethernet{ebb_manager->AllocateId()};
-    // ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
     // char* buffer = static_cast<char*>(ethernet->Allocate(64));
 
     // // destination mac address, broadcast
