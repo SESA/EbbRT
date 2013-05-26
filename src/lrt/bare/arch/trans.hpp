@@ -6,7 +6,7 @@ namespace ebbrt {
   namespace lrt {
     namespace trans {
       void init_cpu_arch();
-      LocalEntry* const local_table;
+      class LocalEntry;
     }
   }
 }

@@ -17,9 +17,6 @@ ebbrt::lrt::trans::RootBinding* ebbrt::lrt::trans::initial_root_table;
 ebbrt::lrt::trans::LocalEntry** ebbrt::lrt::trans::phys_local_entries;
 ebbrt::lrt::trans::InitRoot ebbrt::lrt::trans::init_root;
 /** set the local_table location to a shared virtual address */
-ebbrt::lrt::trans::LocalEntry* const local_table =
-  reinterpret_cast<ebbrt::lrt::trans::LocalEntry*>
-  (ebbrt::lrt::trans::LOCAL_MEM_VIRT);
 
 
 void
