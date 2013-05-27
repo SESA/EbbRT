@@ -10,11 +10,13 @@ using namespace ebbrt;
 
 ebbrt::SimpleMemoryAllocator::SimpleMemoryAllocator(Location loc)
 {
+#ifdef LRT_BARE
   lrt::mem::Region* r = &lrt::mem::regions[loc];
   start_ = r->start;
   current_ = r->current;
   end_ = r->end;
   r->start = r->end;
+#endif
 }
 
 void*
