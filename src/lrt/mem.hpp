@@ -9,11 +9,11 @@ namespace ebbrt {
     namespace mem {
       extern char* mem_start;
       /**
-       * @brief Initial memory configuration 
+       * @brief Initial system memory config
        *
-       * @param num_cores
+       * @param num_cores Number of cores on system
        *
-       * @return 
+       * @return success / fail
        */
       bool init(unsigned num_cores);
       /**

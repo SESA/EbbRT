@@ -1,3 +1,5 @@
+
 namespace ebblib {
   void init();
 }
+

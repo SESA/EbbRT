@@ -1,21 +1,52 @@
+#include <cstdio>
+#include <cstdint>
 #include <unordered_map>
 
 #include "arch/args.hpp"
 #include "app/app.hpp"
+#include "ebb/EbbManager/EbbManager.hpp"
 #include "lrt/boot.hpp"
+#include "lrt/console.hpp"
 #include "lrt/event.hpp"
 #include "lrt/mem.hpp"
+#include "lrt/trans.hpp"
+#include "lrt/ulnx/trans.hpp"
 #include "lrt/trans_impl.hpp"
+
+namespace {
+  class RootBinding {
+  public:
+    ebbrt::lrt::trans::EbbId id;
+    ebbrt::lrt::trans::EbbRoot* root;
+  };
+  ebbrt::lrt::trans::EbbRoot* miss_handler;
+}
+
+ebbrt::lrt::trans::LocalEntry** ebbrt::lrt::trans::phys_local_entries;
+ebbrt::lrt::trans::InitRoot ebbrt::lrt::trans::init_root;
+ebbrt::lrt::trans::RootBinding* ebbrt::lrt::trans::initial_root_table;
+ebbrt::lrt::trans::LocalEntry* ebbrt::lrt::trans::local_table;
 
 void
 ebbrt::lrt::trans::init_ebbs()
 {
+
+  initial_root_table = new (mem::malloc(sizeof(RootBinding) *
+        app::config.num_init, 0))
+    RootBinding[app::config.num_init];
+  miss_handler = &init_root;
+
+  for (unsigned i = 0; i < app::config.num_init; ++i) {
+    initial_root_table[i].id = app::config.init_ebbs[i].id;
+    initial_root_table[i].root = app::config.init_ebbs[i].create_root();
+  }
   return;
 }
 
 bool
 ebbrt::lrt::trans::init(unsigned num_cores)
 {
+  /* all trans init happen in init_cpu */
   return true;
 }
 
@@ -23,21 +54,94 @@ ebbrt::lrt::trans::init(unsigned num_cores)
 void
 ebbrt::lrt::trans::init_cpu()
 {
+
+  local_table = reinterpret_cast<LocalEntry*>(std::malloc(LTABLE_SIZE));
+
+  /* initialize local translation table */
+  for (auto i = 0; i < NUM_LOCAL_ENTRIES; ++i) {
+    /* populate each entry with a pointer to default virtual function table.
+     * On dereference, each default fuction will resolve into the local miss
+     * functionality */
+    local_table[i].ref = reinterpret_cast<EbbRep*> (&local_table[i].rep);
+    local_table[i].rep = &default_vtable;
+  }
   return;
 }
+///
+///bool
+///ebbrt::lrt::trans::_trans_precall(ebbrt::Args* args,
+///                                  ptrdiff_t fnum,
+///                                  FuncRet* fret)
+///{
+///  console::write("trans-precall\n");
+///  return true;
+///}
+///
+///void*
+///ebbrt::lrt::trans::_trans_postcall(void* ret)
+///{
+///  console::write("trans-postcall\n");
+///  return NULL; 
+///}
+///
+///bool
+///ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
+///                                     ptrdiff_t fnum,
+///                                     FuncRet* fret,
+///                                     EbbId id)
+///{
+///  console::write("InitRoot PreCall\n");
+///  return true;
+///}
+///
+///void*
+///ebbrt::lrt::trans::InitRoot::PostCall(void* ret)
+///{
+///  console::write("InitRoot PostCall\n");
+///  return NULL;
+///}
+///
+///void
+///ebbrt::lrt::trans::cache_rep(EbbId id, EbbRep* rep)
+///{
+///  console::write("cache_rep\n");
+///  return;
+///}
+///
+///void
+///ebbrt::lrt::trans::install_miss_handler(EbbRoot* root)
+///{
+///  miss_handler = root;
+///}
+///
 
 bool
 ebbrt::lrt::trans::_trans_precall(ebbrt::Args* args,
                                   ptrdiff_t fnum,
                                   FuncRet* fret)
 {
-  return true;
+  void* rep = *reinterpret_cast<void**>(args);
+
+  LocalEntry* le =
+    reinterpret_cast<LocalEntry*>
+    (static_cast<uintptr_t*>(rep) - 1);
+
+  uintptr_t loc = reinterpret_cast<uintptr_t>(le);
+
+  /* resolve EbbId and call into default miss handler */
+  EbbId id =
+    (loc - reinterpret_cast<uintptr_t>(local_table)) /
+    sizeof(LocalEntry);
+
+  /* the default miss handler is configured to trans::InitRoot*/
+  return miss_handler->PreCall(args, fnum, fret, id);
 }
 
 void*
 ebbrt::lrt::trans::_trans_postcall(void* ret)
 {
-  return NULL; 
+  /* by default, the miss handler is configured to trans::InitRoot */
+  return miss_handler->PostCall(ret);
 }
 
 bool
@@ -46,303 +150,336 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
                                      FuncRet* fret,
                                      EbbId id)
 {
-  return true;
+  EbbRoot* root = nullptr;
+  /* look up root in initial global translation table */
+  for (unsigned i = 0; i < app::config.num_init; ++i) {
+    if (initial_root_table[i].id == id) {
+      root = initial_root_table[i].root;
+      break;
+    }
+  }
+  /* if properly configured this roots should be constructed at boot*/
+  if (root == nullptr) {
+    ebb_manager->Install();
+    return miss_handler->PreCall(args, fnum, fret, id);
+  }
+  /* ebb precall processes and result pushed onto our alt-stack */
+  bool ret = root->PreCall(args, fnum, fret, id);
+  if (ret) {
+    event::_event_altstack_push
+      (reinterpret_cast<uintptr_t>(root));
+  }
+  return ret;
 }
 
 void*
 ebbrt::lrt::trans::InitRoot::PostCall(void* ret)
 {
-  return NULL;
+  /* ebb post-call processed and returned */
+  EbbRoot* root =
+    reinterpret_cast<EbbRoot*>
+    (event::_event_altstack_pop());
+  return root->PostCall(ret);
 }
 
 void
 ebbrt::lrt::trans::cache_rep(EbbId id, EbbRep* rep)
 {
-  return;
+ /* @brief Add rep entry to this core's local translation table.
+  * note that the cache location is based on ebb id
+  * */ 
+  local_table[id].ref = rep;
+}
+
+void
+ebbrt::lrt::trans::install_miss_handler(EbbRoot* root)
+{
+  miss_handler = root;
 }
 
 
-void default_func0(){}
-void default_func1(){}
-void default_func2(){}
-void default_func3(){}
-void default_func4(){}
-void default_func5(){}
-void default_func6(){}
-void default_func7(){}
-void default_func8(){}
-void default_func9(){}
 
-void default_func10(){}
-void default_func11(){}
-void default_func12(){}
-void default_func13(){}
-void default_func14(){}
-void default_func15(){}
-void default_func16(){}
-void default_func17(){}
-void default_func18(){}
-void default_func19(){}
+extern "C" void default_func0();
+extern "C" void default_func1();
+extern "C" void default_func2();
+extern "C" void default_func3();
+extern "C" void default_func4();
+extern "C" void default_func5();
+extern "C" void default_func6();
+extern "C" void default_func7();
+extern "C" void default_func8();
+extern "C" void default_func9();
 
-void default_func20(){}
-void default_func21(){}
-void default_func22(){}
-void default_func23(){}
-void default_func24(){}
-void default_func25(){}
-void default_func26(){}
-void default_func27(){}
-void default_func28(){}
-void default_func29(){}
+extern "C" void default_func10();
+extern "C" void default_func11();
+extern "C" void default_func12();
+extern "C" void default_func13();
+extern "C" void default_func14();
+extern "C" void default_func15();
+extern "C" void default_func16();
+extern "C" void default_func17();
+extern "C" void default_func18();
+extern "C" void default_func19();
 
-void default_func30(){}
-void default_func31(){}
-void default_func32(){}
-void default_func33(){}
-void default_func34(){}
-void default_func35(){}
-void default_func36(){}
-void default_func37(){}
-void default_func38(){}
-void default_func39(){}
+extern "C" void default_func20();
+extern "C" void default_func21();
+extern "C" void default_func22();
+extern "C" void default_func23();
+extern "C" void default_func24();
+extern "C" void default_func25();
+extern "C" void default_func26();
+extern "C" void default_func27();
+extern "C" void default_func28();
+extern "C" void default_func29();
 
-void default_func40(){}
-void default_func41(){}
-void default_func42(){}
-void default_func43(){}
-void default_func44(){}
-void default_func45(){}
-void default_func46(){}
-void default_func47(){}
-void default_func48(){}
-void default_func49(){}
+extern "C" void default_func30();
+extern "C" void default_func31();
+extern "C" void default_func32();
+extern "C" void default_func33();
+extern "C" void default_func34();
+extern "C" void default_func35();
+extern "C" void default_func36();
+extern "C" void default_func37();
+extern "C" void default_func38();
+extern "C" void default_func39();
 
-void default_func50(){}
-void default_func51(){}
-void default_func52(){}
-void default_func53(){}
-void default_func54(){}
-void default_func55(){}
-void default_func56(){}
-void default_func57(){}
-void default_func58(){}
-void default_func59(){}
+extern "C" void default_func40();
+extern "C" void default_func41();
+extern "C" void default_func42();
+extern "C" void default_func43();
+extern "C" void default_func44();
+extern "C" void default_func45();
+extern "C" void default_func46();
+extern "C" void default_func47();
+extern "C" void default_func48();
+extern "C" void default_func49();
 
-void default_func60(){}
-void default_func61(){}
-void default_func62(){}
-void default_func63(){}
-void default_func64(){}
-void default_func65(){}
-void default_func66(){}
-void default_func67(){}
-void default_func68(){}
-void default_func69(){}
+extern "C" void default_func50();
+extern "C" void default_func51();
+extern "C" void default_func52();
+extern "C" void default_func53();
+extern "C" void default_func54();
+extern "C" void default_func55();
+extern "C" void default_func56();
+extern "C" void default_func57();
+extern "C" void default_func58();
+extern "C" void default_func59();
 
-void default_func70(){}
-void default_func71(){}
-void default_func72(){}
-void default_func73(){}
-void default_func74(){}
-void default_func75(){}
-void default_func76(){}
-void default_func77(){}
-void default_func78(){}
-void default_func79(){}
+extern "C" void default_func60();
+extern "C" void default_func61();
+extern "C" void default_func62();
+extern "C" void default_func63();
+extern "C" void default_func64();
+extern "C" void default_func65();
+extern "C" void default_func66();
+extern "C" void default_func67();
+extern "C" void default_func68();
+extern "C" void default_func69();
 
-void default_func80(){}
-void default_func81(){}
-void default_func82(){}
-void default_func83(){}
-void default_func84(){}
-void default_func85(){}
-void default_func86(){}
-void default_func87(){}
-void default_func88(){}
-void default_func89(){}
+extern "C" void default_func70();
+extern "C" void default_func71();
+extern "C" void default_func72();
+extern "C" void default_func73();
+extern "C" void default_func74();
+extern "C" void default_func75();
+extern "C" void default_func76();
+extern "C" void default_func77();
+extern "C" void default_func78();
+extern "C" void default_func79();
 
-void default_func90(){}
-void default_func91(){}
-void default_func92(){}
-void default_func93(){}
-void default_func94(){}
-void default_func95(){}
-void default_func96(){}
-void default_func97(){}
-void default_func98(){}
-void default_func99(){}
+extern "C" void default_func80();
+extern "C" void default_func81();
+extern "C" void default_func82();
+extern "C" void default_func83();
+extern "C" void default_func84();
+extern "C" void default_func85();
+extern "C" void default_func86();
+extern "C" void default_func87();
+extern "C" void default_func88();
+extern "C" void default_func89();
 
-void default_func100(){}
-void default_func101(){}
-void default_func102(){}
-void default_func103(){}
-void default_func104(){}
-void default_func105(){}
-void default_func106(){}
-void default_func107(){}
-void default_func108(){}
-void default_func109(){}
+extern "C" void default_func90();
+extern "C" void default_func91();
+extern "C" void default_func92();
+extern "C" void default_func93();
+extern "C" void default_func94();
+extern "C" void default_func95();
+extern "C" void default_func96();
+extern "C" void default_func97();
+extern "C" void default_func98();
+extern "C" void default_func99();
 
-void default_func110(){}
-void default_func111(){}
-void default_func112(){}
-void default_func113(){}
-void default_func114(){}
-void default_func115(){}
-void default_func116(){}
-void default_func117(){}
-void default_func118(){}
-void default_func119(){}
+extern "C" void default_func100();
+extern "C" void default_func101();
+extern "C" void default_func102();
+extern "C" void default_func103();
+extern "C" void default_func104();
+extern "C" void default_func105();
+extern "C" void default_func106();
+extern "C" void default_func107();
+extern "C" void default_func108();
+extern "C" void default_func109();
 
-void default_func120(){}
-void default_func121(){}
-void default_func122(){}
-void default_func123(){}
-void default_func124(){}
-void default_func125(){}
-void default_func126(){}
-void default_func127(){}
-void default_func128(){}
-void default_func129(){}
+extern "C" void default_func110();
+extern "C" void default_func111();
+extern "C" void default_func112();
+extern "C" void default_func113();
+extern "C" void default_func114();
+extern "C" void default_func115();
+extern "C" void default_func116();
+extern "C" void default_func117();
+extern "C" void default_func118();
+extern "C" void default_func119();
 
-void default_func130(){}
-void default_func131(){}
-void default_func132(){}
-void default_func133(){}
-void default_func134(){}
-void default_func135(){}
-void default_func136(){}
-void default_func137(){}
-void default_func138(){}
-void default_func139(){}
+extern "C" void default_func120();
+extern "C" void default_func121();
+extern "C" void default_func122();
+extern "C" void default_func123();
+extern "C" void default_func124();
+extern "C" void default_func125();
+extern "C" void default_func126();
+extern "C" void default_func127();
+extern "C" void default_func128();
+extern "C" void default_func129();
 
-void default_func140(){}
-void default_func141(){}
-void default_func142(){}
-void default_func143(){}
-void default_func144(){}
-void default_func145(){}
-void default_func146(){}
-void default_func147(){}
-void default_func148(){}
-void default_func149(){}
+extern "C" void default_func130();
+extern "C" void default_func131();
+extern "C" void default_func132();
+extern "C" void default_func133();
+extern "C" void default_func134();
+extern "C" void default_func135();
+extern "C" void default_func136();
+extern "C" void default_func137();
+extern "C" void default_func138();
+extern "C" void default_func139();
 
-void default_func150(){}
-void default_func151(){}
-void default_func152(){}
-void default_func153(){}
-void default_func154(){}
-void default_func155(){}
-void default_func156(){}
-void default_func157(){}
-void default_func158(){}
-void default_func159(){}
+extern "C" void default_func140();
+extern "C" void default_func141();
+extern "C" void default_func142();
+extern "C" void default_func143();
+extern "C" void default_func144();
+extern "C" void default_func145();
+extern "C" void default_func146();
+extern "C" void default_func147();
+extern "C" void default_func148();
+extern "C" void default_func149();
 
-void default_func160(){}
-void default_func161(){}
-void default_func162(){}
-void default_func163(){}
-void default_func164(){}
-void default_func165(){}
-void default_func166(){}
-void default_func167(){}
-void default_func168(){}
-void default_func169(){}
+extern "C" void default_func150();
+extern "C" void default_func151();
+extern "C" void default_func152();
+extern "C" void default_func153();
+extern "C" void default_func154();
+extern "C" void default_func155();
+extern "C" void default_func156();
+extern "C" void default_func157();
+extern "C" void default_func158();
+extern "C" void default_func159();
 
-void default_func170(){}
-void default_func171(){}
-void default_func172(){}
-void default_func173(){}
-void default_func174(){}
-void default_func175(){}
-void default_func176(){}
-void default_func177(){}
-void default_func178(){}
-void default_func179(){}
+extern "C" void default_func160();
+extern "C" void default_func161();
+extern "C" void default_func162();
+extern "C" void default_func163();
+extern "C" void default_func164();
+extern "C" void default_func165();
+extern "C" void default_func166();
+extern "C" void default_func167();
+extern "C" void default_func168();
+extern "C" void default_func169();
 
-void default_func180(){}
-void default_func181(){}
-void default_func182(){}
-void default_func183(){}
-void default_func184(){}
-void default_func185(){}
-void default_func186(){}
-void default_func187(){}
-void default_func188(){}
-void default_func189(){}
+extern "C" void default_func170();
+extern "C" void default_func171();
+extern "C" void default_func172();
+extern "C" void default_func173();
+extern "C" void default_func174();
+extern "C" void default_func175();
+extern "C" void default_func176();
+extern "C" void default_func177();
+extern "C" void default_func178();
+extern "C" void default_func179();
 
-void default_func190(){}
-void default_func191(){}
-void default_func192(){}
-void default_func193(){}
-void default_func194(){}
-void default_func195(){}
-void default_func196(){}
-void default_func197(){}
-void default_func198(){}
-void default_func199(){}
+extern "C" void default_func180();
+extern "C" void default_func181();
+extern "C" void default_func182();
+extern "C" void default_func183();
+extern "C" void default_func184();
+extern "C" void default_func185();
+extern "C" void default_func186();
+extern "C" void default_func187();
+extern "C" void default_func188();
+extern "C" void default_func189();
 
-void default_func200(){}
-void default_func201(){}
-void default_func202(){}
-void default_func203(){}
-void default_func204(){}
-void default_func205(){}
-void default_func206(){}
-void default_func207(){}
-void default_func208(){}
-void default_func209(){}
+extern "C" void default_func190();
+extern "C" void default_func191();
+extern "C" void default_func192();
+extern "C" void default_func193();
+extern "C" void default_func194();
+extern "C" void default_func195();
+extern "C" void default_func196();
+extern "C" void default_func197();
+extern "C" void default_func198();
+extern "C" void default_func199();
 
-void default_func210(){}
-void default_func211(){}
-void default_func212(){}
-void default_func213(){}
-void default_func214(){}
-void default_func215(){}
-void default_func216(){}
-void default_func217(){}
-void default_func218(){}
-void default_func219(){}
+extern "C" void default_func200();
+extern "C" void default_func201();
+extern "C" void default_func202();
+extern "C" void default_func203();
+extern "C" void default_func204();
+extern "C" void default_func205();
+extern "C" void default_func206();
+extern "C" void default_func207();
+extern "C" void default_func208();
+extern "C" void default_func209();
 
-void default_func220(){}
-void default_func221(){}
-void default_func222(){}
-void default_func223(){}
-void default_func224(){}
-void default_func225(){}
-void default_func226(){}
-void default_func227(){}
-void default_func228(){}
-void default_func229(){}
+extern "C" void default_func210();
+extern "C" void default_func211();
+extern "C" void default_func212();
+extern "C" void default_func213();
+extern "C" void default_func214();
+extern "C" void default_func215();
+extern "C" void default_func216();
+extern "C" void default_func217();
+extern "C" void default_func218();
+extern "C" void default_func219();
 
-void default_func230(){}
-void default_func231(){}
-void default_func232(){}
-void default_func233(){}
-void default_func234(){}
-void default_func235(){}
-void default_func236(){}
-void default_func237(){}
-void default_func238(){}
-void default_func239(){}
+extern "C" void default_func220();
+extern "C" void default_func221();
+extern "C" void default_func222();
+extern "C" void default_func223();
+extern "C" void default_func224();
+extern "C" void default_func225();
+extern "C" void default_func226();
+extern "C" void default_func227();
+extern "C" void default_func228();
+extern "C" void default_func229();
 
-void default_func240(){}
-void default_func241(){}
-void default_func242(){}
-void default_func243(){}
-void default_func244(){}
-void default_func245(){}
-void default_func246(){}
-void default_func247(){}
-void default_func248(){}
-void default_func249(){}
+extern "C" void default_func230();
+extern "C" void default_func231();
+extern "C" void default_func232();
+extern "C" void default_func233();
+extern "C" void default_func234();
+extern "C" void default_func235();
+extern "C" void default_func236();
+extern "C" void default_func237();
+extern "C" void default_func238();
+extern "C" void default_func239();
 
-void default_func250(){}
-void default_func251(){}
-void default_func252(){}
-void default_func253(){}
-void default_func254(){}
-void default_func255(){}
+extern "C" void default_func240();
+extern "C" void default_func241();
+extern "C" void default_func242();
+extern "C" void default_func243();
+extern "C" void default_func244();
+extern "C" void default_func245();
+extern "C" void default_func246();
+extern "C" void default_func247();
+extern "C" void default_func248();
+extern "C" void default_func249();
+
+extern "C" void default_func250();
+extern "C" void default_func251();
+extern "C" void default_func252();
+extern "C" void default_func253();
+extern "C" void default_func254();
+extern "C" void default_func255();
 
 void (*ebbrt::lrt::trans::default_vtable[256])() = {
   default_func0,

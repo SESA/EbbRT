@@ -7,8 +7,22 @@
 #include "lrt/boot.hpp"
 #include "lrt/console.hpp"
 #include "lrt/event.hpp"
+#include "lrt/trans.hpp"
 #include "misc/elf.hpp"
 #include "sync/compiler.hpp"
+
+#ifdef LRT_ULNX
+
+void
+ebbrt::app::start(){
+  
+  lrt::trans::init_ebbs();
+
+  // Invoke the app ebb
+  app_ebb->Start();
+}
+
+#elif LRT_BARE
 
 namespace {
   bool flag;
@@ -41,3 +55,5 @@ ebbrt::app::start()
   // Invoke the app ebb
   app_ebb->Start();
 }
+
+#endif

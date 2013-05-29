@@ -1,8 +1,9 @@
 #include <cstdio>
 #include <cstdint>
 
-#include "src/lib/ebblib/ebblib.hpp"
-#include "src/lrt/boot.hpp"
+#include "lib/ebblib/ebblib.hpp"
+#include "lrt/boot.hpp"
+#include "lrt/console.hpp"
 
 
 void
@@ -14,5 +15,4 @@ ebblib::init()
 
   return;
 }
-
 

@@ -8,7 +8,7 @@ namespace ebbrt {
   namespace lrt {
     namespace event {
       /**
-       * @brief Initial event configuration
+       * @brief Initial event system
        *
        * @param num_cores
        *
@@ -17,7 +17,7 @@ namespace ebbrt {
       bool init(unsigned num_cores);
       typedef uint32_t Location;
       /**
-       * @brief Per-core event configuration
+       * @brief Per-core event initiation 
        *
        */
       void init_cpu() __attribute__((noreturn));
