@@ -86,7 +86,7 @@ ebbrt::lrt::boot::init_smp(unsigned num_cores)
     while (access_once(smp_lock) != i)
       ;
   }
-  /* at this point, num_cores are initialized and running */
+  /* at this point, secondary cores are initialized and running */
   access_once(smp_lock) = -1;
   _init_cpu_arch();
 }

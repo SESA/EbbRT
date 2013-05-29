@@ -5,7 +5,9 @@ lrt_sources = \
 	src/lrt/boot.hpp \
 	src/lrt/boot.cpp \
 	src/lrt/console.hpp \
+	src/lrt/event.cpp \
 	src/lrt/event.hpp \
+	src/lrt/event_impl.hpp \
 	src/lrt/mem.hpp \
 	src/lrt/trans.hpp \
 	src/lrt/trans_impl.hpp

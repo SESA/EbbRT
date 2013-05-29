@@ -55,10 +55,11 @@ ebbrt::lrt::event::init_cpu_arch()
   idtr.base = reinterpret_cast<uint64_t>(idt);
   lidt(idtr);
 
-  /* core location */
+  /* set core location */
   Location loc = boot::smp_lock + 1;
   Location* my_loc = new (mem::malloc(sizeof(Location), loc)) Location(loc);
 
+  /* TODO: what's this guy do? */
   wrmsr(MSR_FS_BASE, reinterpret_cast<uint64_t>(my_loc));
 
   if (get_location() != 0) {

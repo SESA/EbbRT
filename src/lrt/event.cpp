@@ -1,6 +1,6 @@
 #include <new>
 
-#include "lrt/bare/event_impl.hpp"
+#include "lrt/event_impl.hpp"
 #include "lrt/mem.hpp"
 
 uintptr_t** ebbrt::lrt::event::altstack;
@@ -8,8 +8,11 @@ uintptr_t** ebbrt::lrt::event::altstack;
 bool
 ebbrt::lrt::event::init(unsigned num_cores)
 {
+  /* allocate the alternative stack */
   altstack = new (mem::malloc(sizeof(uintptr_t*) * num_cores, 0))
     uintptr_t*[num_cores];
+
+
   return init_arch();
 }
 

@@ -1,6 +1,8 @@
 #ifndef EBBRT_SYNC_SPINLOCK_HPP
 #define EBBRT_SYNC_SPINLOCK_HPP
 
+#include <atomic>
+
 namespace ebbrt {
   class Spinlock {
   public:

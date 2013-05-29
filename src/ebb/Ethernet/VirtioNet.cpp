@@ -5,6 +5,7 @@
 #include "ebb/Ethernet/VirtioNet.hpp"
 #include "ebb/MemoryAllocator/MemoryAllocator.hpp"
 #include "ebb/PCI/PCI.hpp"
+#include "lrt/assert.hpp"
 #include "lrt/console.hpp"
 
 namespace {
@@ -124,14 +125,10 @@ ebbrt::VirtioNet::Send(void* buffer, size_t size)
   }
   uint16_t desc_index;
   lock_.Lock();
-  if ((next_free_ + 1) < send_max_) {
-    desc_index = next_free_;
-    next_free_ += 2;
-  } else {
-    lock_.Unlock();
-    lrt::console::write("Unimplemented: find used descriptors\n");
-    LRT_ASSERT(0);
-  }
+  LRT_ASSERT((next_free_ + 1) < send_max_);
+  desc_index = next_free_;
+  next_free_ += 2;
+  lock_.Unlock();
   send_descs_[desc_index].address=reinterpret_cast<uint64_t>(buffer) - 10;
   send_descs_[desc_index].length = 10;
   send_descs_[desc_index].flags.next = true;
