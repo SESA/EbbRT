@@ -37,11 +37,10 @@ if ARCH_POWERPC
 endif
 
 #end of LRT_BARE
-endif 
+endif
 
 include src/arch/Makefile.am
 include src/app/Makefile.am
-include src/device/Makefile.am
 include src/ebb/Makefile.am
 include src/lib/Makefile.am
 include src/lrt/Makefile.am

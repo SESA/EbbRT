@@ -167,7 +167,7 @@ namespace ebbrt {
           volatile uint32_t reserved7_ __attribute__((aligned(16)));
           volatile uint32_t reserved8_ __attribute__((aligned(16)));
           volatile uint32_t reserved9_ __attribute__((aligned(16)));
-          volatile uint32_t reserved10_ __attribute__((aligned(16)));
+          volatile uint32_t eoi __attribute__((aligned(16)));
           volatile uint32_t reserved11_ __attribute__((aligned(16)));
           volatile uint32_t lvt_cmci_ __attribute__((aligned(16)));
           volatile IcrLow lil_ __attribute__((aligned(16)));

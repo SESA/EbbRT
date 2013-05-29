@@ -12,7 +12,7 @@ namespace ebbrt {
        *
        * @param num_cores
        *
-       * @return 
+       * @return
        */
       bool init(unsigned num_cores);
       typedef uint32_t Location;
@@ -27,15 +27,24 @@ namespace ebbrt {
        *
        * @param val
        *
-       * @return 
+       * @return
        */
       extern "C" void _event_altstack_push(uintptr_t val);
       /**
        * @brief Pop from the alt-stack
        *
-       * @return 
+       * @return
        */
       extern "C" uintptr_t _event_altstack_pop();
+
+      /**
+       * @brief handle interrupt
+       *
+       * @param interrupt
+       *
+       * @return
+       */
+      extern "C" void _event_interrupt(uint8_t interrupt);
     }
   }
 }

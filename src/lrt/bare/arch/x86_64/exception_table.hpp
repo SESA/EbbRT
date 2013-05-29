@@ -1,521 +1,521 @@
 #ifndef EXCEPTION_TABLE_HPP
 #define EXCEPTION_TABLE_HPP
 
-extern char exception0[];
-extern char exception1[];
-extern char exception2[];
-extern char exception3[];
-extern char exception4[];
-extern char exception5[];
-extern char exception6[];
-extern char exception7[];
-extern char exception8[];
-extern char exception9[];
-extern char exception10[];
-extern char exception11[];
-extern char exception12[];
-extern char exception13[];
-extern char exception14[];
-extern char exception15[];
-extern char exception16[];
-extern char exception17[];
-extern char exception18[];
-extern char exception19[];
-extern char exception20[];
-extern char exception21[];
-extern char exception22[];
-extern char exception23[];
-extern char exception24[];
-extern char exception25[];
-extern char exception26[];
-extern char exception27[];
-extern char exception28[];
-extern char exception29[];
-extern char exception30[];
-extern char exception31[];
-extern char exception32[];
-extern char exception33[];
-extern char exception34[];
-extern char exception35[];
-extern char exception36[];
-extern char exception37[];
-extern char exception38[];
-extern char exception39[];
-extern char exception40[];
-extern char exception41[];
-extern char exception42[];
-extern char exception43[];
-extern char exception44[];
-extern char exception45[];
-extern char exception46[];
-extern char exception47[];
-extern char exception48[];
-extern char exception49[];
-extern char exception50[];
-extern char exception51[];
-extern char exception52[];
-extern char exception53[];
-extern char exception54[];
-extern char exception55[];
-extern char exception56[];
-extern char exception57[];
-extern char exception58[];
-extern char exception59[];
-extern char exception60[];
-extern char exception61[];
-extern char exception62[];
-extern char exception63[];
-extern char exception64[];
-extern char exception65[];
-extern char exception66[];
-extern char exception67[];
-extern char exception68[];
-extern char exception69[];
-extern char exception70[];
-extern char exception71[];
-extern char exception72[];
-extern char exception73[];
-extern char exception74[];
-extern char exception75[];
-extern char exception76[];
-extern char exception77[];
-extern char exception78[];
-extern char exception79[];
-extern char exception80[];
-extern char exception81[];
-extern char exception82[];
-extern char exception83[];
-extern char exception84[];
-extern char exception85[];
-extern char exception86[];
-extern char exception87[];
-extern char exception88[];
-extern char exception89[];
-extern char exception90[];
-extern char exception91[];
-extern char exception92[];
-extern char exception93[];
-extern char exception94[];
-extern char exception95[];
-extern char exception96[];
-extern char exception97[];
-extern char exception98[];
-extern char exception99[];
-extern char exception100[];
-extern char exception101[];
-extern char exception102[];
-extern char exception103[];
-extern char exception104[];
-extern char exception105[];
-extern char exception106[];
-extern char exception107[];
-extern char exception108[];
-extern char exception109[];
-extern char exception110[];
-extern char exception111[];
-extern char exception112[];
-extern char exception113[];
-extern char exception114[];
-extern char exception115[];
-extern char exception116[];
-extern char exception117[];
-extern char exception118[];
-extern char exception119[];
-extern char exception120[];
-extern char exception121[];
-extern char exception122[];
-extern char exception123[];
-extern char exception124[];
-extern char exception125[];
-extern char exception126[];
-extern char exception127[];
-extern char exception128[];
-extern char exception129[];
-extern char exception130[];
-extern char exception131[];
-extern char exception132[];
-extern char exception133[];
-extern char exception134[];
-extern char exception135[];
-extern char exception136[];
-extern char exception137[];
-extern char exception138[];
-extern char exception139[];
-extern char exception140[];
-extern char exception141[];
-extern char exception142[];
-extern char exception143[];
-extern char exception144[];
-extern char exception145[];
-extern char exception146[];
-extern char exception147[];
-extern char exception148[];
-extern char exception149[];
-extern char exception150[];
-extern char exception151[];
-extern char exception152[];
-extern char exception153[];
-extern char exception154[];
-extern char exception155[];
-extern char exception156[];
-extern char exception157[];
-extern char exception158[];
-extern char exception159[];
-extern char exception160[];
-extern char exception161[];
-extern char exception162[];
-extern char exception163[];
-extern char exception164[];
-extern char exception165[];
-extern char exception166[];
-extern char exception167[];
-extern char exception168[];
-extern char exception169[];
-extern char exception170[];
-extern char exception171[];
-extern char exception172[];
-extern char exception173[];
-extern char exception174[];
-extern char exception175[];
-extern char exception176[];
-extern char exception177[];
-extern char exception178[];
-extern char exception179[];
-extern char exception180[];
-extern char exception181[];
-extern char exception182[];
-extern char exception183[];
-extern char exception184[];
-extern char exception185[];
-extern char exception186[];
-extern char exception187[];
-extern char exception188[];
-extern char exception189[];
-extern char exception190[];
-extern char exception191[];
-extern char exception192[];
-extern char exception193[];
-extern char exception194[];
-extern char exception195[];
-extern char exception196[];
-extern char exception197[];
-extern char exception198[];
-extern char exception199[];
-extern char exception200[];
-extern char exception201[];
-extern char exception202[];
-extern char exception203[];
-extern char exception204[];
-extern char exception205[];
-extern char exception206[];
-extern char exception207[];
-extern char exception208[];
-extern char exception209[];
-extern char exception210[];
-extern char exception211[];
-extern char exception212[];
-extern char exception213[];
-extern char exception214[];
-extern char exception215[];
-extern char exception216[];
-extern char exception217[];
-extern char exception218[];
-extern char exception219[];
-extern char exception220[];
-extern char exception221[];
-extern char exception222[];
-extern char exception223[];
-extern char exception224[];
-extern char exception225[];
-extern char exception226[];
-extern char exception227[];
-extern char exception228[];
-extern char exception229[];
-extern char exception230[];
-extern char exception231[];
-extern char exception232[];
-extern char exception233[];
-extern char exception234[];
-extern char exception235[];
-extern char exception236[];
-extern char exception237[];
-extern char exception238[];
-extern char exception239[];
-extern char exception240[];
-extern char exception241[];
-extern char exception242[];
-extern char exception243[];
-extern char exception244[];
-extern char exception245[];
-extern char exception246[];
-extern char exception247[];
-extern char exception248[];
-extern char exception249[];
-extern char exception250[];
-extern char exception251[];
-extern char exception252[];
-extern char exception253[];
-extern char exception254[];
-extern char exception255[];
+extern char isr0[];
+extern char isr1[];
+extern char isr2[];
+extern char isr3[];
+extern char isr4[];
+extern char isr5[];
+extern char isr6[];
+extern char isr7[];
+extern char isr8[];
+extern char isr9[];
+extern char isr10[];
+extern char isr11[];
+extern char isr12[];
+extern char isr13[];
+extern char isr14[];
+extern char isr15[];
+extern char isr16[];
+extern char isr17[];
+extern char isr18[];
+extern char isr19[];
+extern char isr20[];
+extern char isr21[];
+extern char isr22[];
+extern char isr23[];
+extern char isr24[];
+extern char isr25[];
+extern char isr26[];
+extern char isr27[];
+extern char isr28[];
+extern char isr29[];
+extern char isr30[];
+extern char isr31[];
+extern char isr32[];
+extern char isr33[];
+extern char isr34[];
+extern char isr35[];
+extern char isr36[];
+extern char isr37[];
+extern char isr38[];
+extern char isr39[];
+extern char isr40[];
+extern char isr41[];
+extern char isr42[];
+extern char isr43[];
+extern char isr44[];
+extern char isr45[];
+extern char isr46[];
+extern char isr47[];
+extern char isr48[];
+extern char isr49[];
+extern char isr50[];
+extern char isr51[];
+extern char isr52[];
+extern char isr53[];
+extern char isr54[];
+extern char isr55[];
+extern char isr56[];
+extern char isr57[];
+extern char isr58[];
+extern char isr59[];
+extern char isr60[];
+extern char isr61[];
+extern char isr62[];
+extern char isr63[];
+extern char isr64[];
+extern char isr65[];
+extern char isr66[];
+extern char isr67[];
+extern char isr68[];
+extern char isr69[];
+extern char isr70[];
+extern char isr71[];
+extern char isr72[];
+extern char isr73[];
+extern char isr74[];
+extern char isr75[];
+extern char isr76[];
+extern char isr77[];
+extern char isr78[];
+extern char isr79[];
+extern char isr80[];
+extern char isr81[];
+extern char isr82[];
+extern char isr83[];
+extern char isr84[];
+extern char isr85[];
+extern char isr86[];
+extern char isr87[];
+extern char isr88[];
+extern char isr89[];
+extern char isr90[];
+extern char isr91[];
+extern char isr92[];
+extern char isr93[];
+extern char isr94[];
+extern char isr95[];
+extern char isr96[];
+extern char isr97[];
+extern char isr98[];
+extern char isr99[];
+extern char isr100[];
+extern char isr101[];
+extern char isr102[];
+extern char isr103[];
+extern char isr104[];
+extern char isr105[];
+extern char isr106[];
+extern char isr107[];
+extern char isr108[];
+extern char isr109[];
+extern char isr110[];
+extern char isr111[];
+extern char isr112[];
+extern char isr113[];
+extern char isr114[];
+extern char isr115[];
+extern char isr116[];
+extern char isr117[];
+extern char isr118[];
+extern char isr119[];
+extern char isr120[];
+extern char isr121[];
+extern char isr122[];
+extern char isr123[];
+extern char isr124[];
+extern char isr125[];
+extern char isr126[];
+extern char isr127[];
+extern char isr128[];
+extern char isr129[];
+extern char isr130[];
+extern char isr131[];
+extern char isr132[];
+extern char isr133[];
+extern char isr134[];
+extern char isr135[];
+extern char isr136[];
+extern char isr137[];
+extern char isr138[];
+extern char isr139[];
+extern char isr140[];
+extern char isr141[];
+extern char isr142[];
+extern char isr143[];
+extern char isr144[];
+extern char isr145[];
+extern char isr146[];
+extern char isr147[];
+extern char isr148[];
+extern char isr149[];
+extern char isr150[];
+extern char isr151[];
+extern char isr152[];
+extern char isr153[];
+extern char isr154[];
+extern char isr155[];
+extern char isr156[];
+extern char isr157[];
+extern char isr158[];
+extern char isr159[];
+extern char isr160[];
+extern char isr161[];
+extern char isr162[];
+extern char isr163[];
+extern char isr164[];
+extern char isr165[];
+extern char isr166[];
+extern char isr167[];
+extern char isr168[];
+extern char isr169[];
+extern char isr170[];
+extern char isr171[];
+extern char isr172[];
+extern char isr173[];
+extern char isr174[];
+extern char isr175[];
+extern char isr176[];
+extern char isr177[];
+extern char isr178[];
+extern char isr179[];
+extern char isr180[];
+extern char isr181[];
+extern char isr182[];
+extern char isr183[];
+extern char isr184[];
+extern char isr185[];
+extern char isr186[];
+extern char isr187[];
+extern char isr188[];
+extern char isr189[];
+extern char isr190[];
+extern char isr191[];
+extern char isr192[];
+extern char isr193[];
+extern char isr194[];
+extern char isr195[];
+extern char isr196[];
+extern char isr197[];
+extern char isr198[];
+extern char isr199[];
+extern char isr200[];
+extern char isr201[];
+extern char isr202[];
+extern char isr203[];
+extern char isr204[];
+extern char isr205[];
+extern char isr206[];
+extern char isr207[];
+extern char isr208[];
+extern char isr209[];
+extern char isr210[];
+extern char isr211[];
+extern char isr212[];
+extern char isr213[];
+extern char isr214[];
+extern char isr215[];
+extern char isr216[];
+extern char isr217[];
+extern char isr218[];
+extern char isr219[];
+extern char isr220[];
+extern char isr221[];
+extern char isr222[];
+extern char isr223[];
+extern char isr224[];
+extern char isr225[];
+extern char isr226[];
+extern char isr227[];
+extern char isr228[];
+extern char isr229[];
+extern char isr230[];
+extern char isr231[];
+extern char isr232[];
+extern char isr233[];
+extern char isr234[];
+extern char isr235[];
+extern char isr236[];
+extern char isr237[];
+extern char isr238[];
+extern char isr239[];
+extern char isr240[];
+extern char isr241[];
+extern char isr242[];
+extern char isr243[];
+extern char isr244[];
+extern char isr245[];
+extern char isr246[];
+extern char isr247[];
+extern char isr248[];
+extern char isr249[];
+extern char isr250[];
+extern char isr251[];
+extern char isr252[];
+extern char isr253[];
+extern char isr254[];
+extern char isr255[];
 
 namespace {
-  void* exception_table[] = {
-    exception0,
-    exception1,
-    exception2,
-    exception3,
-    exception4,
-    exception5,
-    exception6,
-    exception7,
-    exception8,
-    exception9,
-    exception10,
-    exception11,
-    exception12,
-    exception13,
-    exception14,
-    exception15,
-    exception16,
-    exception17,
-    exception18,
-    exception19,
-    exception20,
-    exception21,
-    exception22,
-    exception23,
-    exception24,
-    exception25,
-    exception26,
-    exception27,
-    exception28,
-    exception29,
-    exception30,
-    exception31,
-    exception32,
-    exception33,
-    exception34,
-    exception35,
-    exception36,
-    exception37,
-    exception38,
-    exception39,
-    exception40,
-    exception41,
-    exception42,
-    exception43,
-    exception44,
-    exception45,
-    exception46,
-    exception47,
-    exception48,
-    exception49,
-    exception50,
-    exception51,
-    exception52,
-    exception53,
-    exception54,
-    exception55,
-    exception56,
-    exception57,
-    exception58,
-    exception59,
-    exception60,
-    exception61,
-    exception62,
-    exception63,
-    exception64,
-    exception65,
-    exception66,
-    exception67,
-    exception68,
-    exception69,
-    exception70,
-    exception71,
-    exception72,
-    exception73,
-    exception74,
-    exception75,
-    exception76,
-    exception77,
-    exception78,
-    exception79,
-    exception80,
-    exception81,
-    exception82,
-    exception83,
-    exception84,
-    exception85,
-    exception86,
-    exception87,
-    exception88,
-    exception89,
-    exception90,
-    exception91,
-    exception92,
-    exception93,
-    exception94,
-    exception95,
-    exception96,
-    exception97,
-    exception98,
-    exception99,
-    exception100,
-    exception101,
-    exception102,
-    exception103,
-    exception104,
-    exception105,
-    exception106,
-    exception107,
-    exception108,
-    exception109,
-    exception110,
-    exception111,
-    exception112,
-    exception113,
-    exception114,
-    exception115,
-    exception116,
-    exception117,
-    exception118,
-    exception119,
-    exception120,
-    exception121,
-    exception122,
-    exception123,
-    exception124,
-    exception125,
-    exception126,
-    exception127,
-    exception128,
-    exception129,
-    exception130,
-    exception131,
-    exception132,
-    exception133,
-    exception134,
-    exception135,
-    exception136,
-    exception137,
-    exception138,
-    exception139,
-    exception140,
-    exception141,
-    exception142,
-    exception143,
-    exception144,
-    exception145,
-    exception146,
-    exception147,
-    exception148,
-    exception149,
-    exception150,
-    exception151,
-    exception152,
-    exception153,
-    exception154,
-    exception155,
-    exception156,
-    exception157,
-    exception158,
-    exception159,
-    exception160,
-    exception161,
-    exception162,
-    exception163,
-    exception164,
-    exception165,
-    exception166,
-    exception167,
-    exception168,
-    exception169,
-    exception170,
-    exception171,
-    exception172,
-    exception173,
-    exception174,
-    exception175,
-    exception176,
-    exception177,
-    exception178,
-    exception179,
-    exception180,
-    exception181,
-    exception182,
-    exception183,
-    exception184,
-    exception185,
-    exception186,
-    exception187,
-    exception188,
-    exception189,
-    exception190,
-    exception191,
-    exception192,
-    exception193,
-    exception194,
-    exception195,
-    exception196,
-    exception197,
-    exception198,
-    exception199,
-    exception200,
-    exception201,
-    exception202,
-    exception203,
-    exception204,
-    exception205,
-    exception206,
-    exception207,
-    exception208,
-    exception209,
-    exception210,
-    exception211,
-    exception212,
-    exception213,
-    exception214,
-    exception215,
-    exception216,
-    exception217,
-    exception218,
-    exception219,
-    exception220,
-    exception221,
-    exception222,
-    exception223,
-    exception224,
-    exception225,
-    exception226,
-    exception227,
-    exception228,
-    exception229,
-    exception230,
-    exception231,
-    exception232,
-    exception233,
-    exception234,
-    exception235,
-    exception236,
-    exception237,
-    exception238,
-    exception239,
-    exception240,
-    exception241,
-    exception242,
-    exception243,
-    exception244,
-    exception245,
-    exception246,
-    exception247,
-    exception248,
-    exception249,
-    exception250,
-    exception251,
-    exception252,
-    exception253,
-    exception254,
-    exception255
+  void* isr_table[] = {
+    isr0,
+    isr1,
+    isr2,
+    isr3,
+    isr4,
+    isr5,
+    isr6,
+    isr7,
+    isr8,
+    isr9,
+    isr10,
+    isr11,
+    isr12,
+    isr13,
+    isr14,
+    isr15,
+    isr16,
+    isr17,
+    isr18,
+    isr19,
+    isr20,
+    isr21,
+    isr22,
+    isr23,
+    isr24,
+    isr25,
+    isr26,
+    isr27,
+    isr28,
+    isr29,
+    isr30,
+    isr31,
+    isr32,
+    isr33,
+    isr34,
+    isr35,
+    isr36,
+    isr37,
+    isr38,
+    isr39,
+    isr40,
+    isr41,
+    isr42,
+    isr43,
+    isr44,
+    isr45,
+    isr46,
+    isr47,
+    isr48,
+    isr49,
+    isr50,
+    isr51,
+    isr52,
+    isr53,
+    isr54,
+    isr55,
+    isr56,
+    isr57,
+    isr58,
+    isr59,
+    isr60,
+    isr61,
+    isr62,
+    isr63,
+    isr64,
+    isr65,
+    isr66,
+    isr67,
+    isr68,
+    isr69,
+    isr70,
+    isr71,
+    isr72,
+    isr73,
+    isr74,
+    isr75,
+    isr76,
+    isr77,
+    isr78,
+    isr79,
+    isr80,
+    isr81,
+    isr82,
+    isr83,
+    isr84,
+    isr85,
+    isr86,
+    isr87,
+    isr88,
+    isr89,
+    isr90,
+    isr91,
+    isr92,
+    isr93,
+    isr94,
+    isr95,
+    isr96,
+    isr97,
+    isr98,
+    isr99,
+    isr100,
+    isr101,
+    isr102,
+    isr103,
+    isr104,
+    isr105,
+    isr106,
+    isr107,
+    isr108,
+    isr109,
+    isr110,
+    isr111,
+    isr112,
+    isr113,
+    isr114,
+    isr115,
+    isr116,
+    isr117,
+    isr118,
+    isr119,
+    isr120,
+    isr121,
+    isr122,
+    isr123,
+    isr124,
+    isr125,
+    isr126,
+    isr127,
+    isr128,
+    isr129,
+    isr130,
+    isr131,
+    isr132,
+    isr133,
+    isr134,
+    isr135,
+    isr136,
+    isr137,
+    isr138,
+    isr139,
+    isr140,
+    isr141,
+    isr142,
+    isr143,
+    isr144,
+    isr145,
+    isr146,
+    isr147,
+    isr148,
+    isr149,
+    isr150,
+    isr151,
+    isr152,
+    isr153,
+    isr154,
+    isr155,
+    isr156,
+    isr157,
+    isr158,
+    isr159,
+    isr160,
+    isr161,
+    isr162,
+    isr163,
+    isr164,
+    isr165,
+    isr166,
+    isr167,
+    isr168,
+    isr169,
+    isr170,
+    isr171,
+    isr172,
+    isr173,
+    isr174,
+    isr175,
+    isr176,
+    isr177,
+    isr178,
+    isr179,
+    isr180,
+    isr181,
+    isr182,
+    isr183,
+    isr184,
+    isr185,
+    isr186,
+    isr187,
+    isr188,
+    isr189,
+    isr190,
+    isr191,
+    isr192,
+    isr193,
+    isr194,
+    isr195,
+    isr196,
+    isr197,
+    isr198,
+    isr199,
+    isr200,
+    isr201,
+    isr202,
+    isr203,
+    isr204,
+    isr205,
+    isr206,
+    isr207,
+    isr208,
+    isr209,
+    isr210,
+    isr211,
+    isr212,
+    isr213,
+    isr214,
+    isr215,
+    isr216,
+    isr217,
+    isr218,
+    isr219,
+    isr220,
+    isr221,
+    isr222,
+    isr223,
+    isr224,
+    isr225,
+    isr226,
+    isr227,
+    isr228,
+    isr229,
+    isr230,
+    isr231,
+    isr232,
+    isr233,
+    isr234,
+    isr235,
+    isr236,
+    isr237,
+    isr238,
+    isr239,
+    isr240,
+    isr241,
+    isr242,
+    isr243,
+    isr244,
+    isr245,
+    isr246,
+    isr247,
+    isr248,
+    isr249,
+    isr250,
+    isr251,
+    isr252,
+    isr253,
+    isr254,
+    isr255
   };
 }
 
