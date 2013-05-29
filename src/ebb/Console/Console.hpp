@@ -10,7 +10,7 @@ namespace ebbrt {
   public:
     static EbbRoot* ConstructRoot();
     virtual void Write(const char* str,
-                       const std::function<void(const char*)>& cb = nullptr);
+                       std::function<void()> cb = nullptr);
   };
   extern char console_id_resv
   __attribute__ ((section ("static_ebb_ids")));

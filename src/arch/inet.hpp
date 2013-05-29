@@ -1,6 +1,8 @@
 #ifndef EBBRT_ARCH_INET_HPP
 #define EBBRT_ARCH_INET_HPP
 
+#include <cstdint>
+
 namespace ebbrt {
   inline uint16_t htons(uint16_t hostshort);
 }

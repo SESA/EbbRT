@@ -1,6 +1,8 @@
 #ifndef EBBRT_EBB_ETHERNET_VIRTIONET_HPP
 #define EBBRT_EBB_ETHERNET_VIRTIONET_HPP
 
+#include <map>
+
 #include "ebb/Ethernet/Ethernet.hpp"
 #include "device/virtio.hpp"
 #include "sync/spinlock.hpp"
@@ -10,15 +12,15 @@ namespace ebbrt {
   public:
     static EbbRoot* ConstructRoot();
     VirtioNet();
-    virtual void Send(char mac_addr[6],
-                      uint16_t ethertype,
-                      BufferList buffers,
-                      const std::function<void(BufferList)>& cb = nullptr)
-      override;
+    void Send(BufferList buffers,
+              std::function<void()> cb = nullptr) override;
+    const char* MacAddress() override;
+    void SendComplete() override;
   private:
     uint16_t io_addr_;
     uint16_t next_free_;
     uint16_t next_available_;
+    uint16_t last_sent_used_ = 0;
     Spinlock lock_;
     uint16_t send_max_;
     bool msix_enabled_;
@@ -27,6 +29,7 @@ namespace ebbrt {
     virtio::Available* send_available_;
     virtio::Used* send_used_;
     char empty_header_[10];
+    std::map<uint16_t, std::function<void()> > cb_map_;
   };
 }
 

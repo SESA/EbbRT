@@ -3,16 +3,20 @@
 
 #include <functional>
 
+#include "misc/network.hpp"
 #include "misc/buffer.hpp"
 
 namespace ebbrt {
   class MessageManager : public EbbRep {
   public:
     static EbbRoot* ConstructRoot();
-    virtual void Send(NodeId node,
+    MessageManager();
+    virtual void Send(NetworkId to,
                       EbbId ebb,
                       BufferList buffers,
-                      const std::function<void(BufferList)>& cb = nullptr);
+                      std::function<void()> cb = nullptr);
+  private:
+    uint8_t mac_addr_[6];
   };
   extern char message_manager_id_resv
   __attribute__ ((section ("static_ebb_ids")));

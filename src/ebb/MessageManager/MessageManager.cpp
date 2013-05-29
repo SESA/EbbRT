@@ -1,3 +1,6 @@
+#include <cstdlib>
+
+#include "arch/inet.hpp"
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Ethernet/Ethernet.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
@@ -16,34 +19,35 @@ namespace {
   class MessageHeader {
   public:
     ebbrt::EbbId ebb;
-    ebbrt::NodeId from;
-  } __attribute__((packed));
+  };
 };
 
+ebbrt::MessageManager::MessageManager()
+{
+  const char* addr = ethernet->MacAddress();
+  std::copy(&addr[0], &addr[6], mac_addr_);
+}
+
 void
-ebbrt::MessageManager::Send(NodeId node,
+ebbrt::MessageManager::Send(NetworkId to,
                             EbbId id,
                             BufferList buffers,
-                            const std::function<void(BufferList)>& cb)
+                            std::function<void()> cb)
 {
-  MessageHeader* header = new MessageHeader;
-  header->ebb = id;
-  header->from = node;
-  buffers.emplace_front(header, sizeof(MessageHeader));
-  char addr[] = {static_cast<char>(0xff),
-                 static_cast<char>(0xff),
-                 static_cast<char>(0xff),
-                 static_cast<char>(0xff),
-                 static_cast<char>(0xff),
-                 static_cast<char>(0xff)};
+  void* addr = std::malloc(sizeof(MessageHeader) + sizeof(Ethernet::Header));
+
+  Ethernet::Header* eth_header = static_cast<Ethernet::Header*>(addr);
+  std::copy(&to.mac_addr[0], &to.mac_addr[6], eth_header->destination);
+  std::copy(&mac_addr_[0], &mac_addr_[6], eth_header->source);
+  eth_header->ethertype = htons(0x8812);
+
+  MessageHeader* msg_header = reinterpret_cast<MessageHeader*>(eth_header + 1);
+  msg_header->ebb = id;
+
+  buffers.emplace_front(eth_header, sizeof(MessageHeader) + sizeof(Ethernet::Header));
   LRT_ASSERT(!cb);
-  ethernet->Send(addr,
-                 0x8812,
-                 std::move(buffers),
-                 [](BufferList list) {
-                   auto header =
-                     static_cast<const MessageHeader*>(list.front().first);
-                   delete header;
-                   list.pop_front();
+  ethernet->Send(std::move(buffers),
+                 [=]() {
+                   free(addr);
                  });
 }

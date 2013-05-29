@@ -3,6 +3,7 @@
 #include "ebb/Console/Console.hpp"
 #include "ebb/EbbManager/PrimitiveEbbManager.hpp"
 #include "ebb/Ethernet/VirtioNet.hpp"
+#include "ebb/EventManager/SimpleEventManager.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
 #include "ebb/PCI/PCI.hpp"
@@ -20,6 +21,8 @@ ebbrt::app::Config::InitEbb init_ebbs[] =
    .create_root = ebbrt::SimpleMemoryAllocatorConstructRoot},
   {.id = ebbrt::ebb_manager,
    .create_root = ebbrt::PrimitiveEbbManagerConstructRoot},
+  {.id = ebbrt::event_manager,
+   .create_root = ebbrt::SimpleEventManager::ConstructRoot},
   {.id = ebbrt::app_ebb,
    .create_root = construct_root},
   {.id = ebbrt::console,
@@ -42,21 +45,7 @@ ebbrt::HelloRemoteApp::Start()
     ebb_manager->Bind(PCI::ConstructRoot, pci);
     ethernet = EbbRef<Ethernet>(ebb_manager->AllocateId());
     ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
+
     console->Write("Hello World\n");
-    // char* buffer = static_cast<char*>(ethernet->Allocate(64));
-
-    // // destination mac address, broadcast
-    // buffer[0] = 0xff;
-    // buffer[1] = 0xff;
-    // buffer[2] = 0xff;
-    // buffer[3] = 0xff;
-    // buffer[4] = 0xff;
-    // buffer[5] = 0xff;
-
-    // // ethertype (protocol number) that is free
-    // buffer[12] = 0x88;
-    // buffer[13] = 0x12;
-    // std::strcpy(&buffer[14], "Hello World!\n");
-    // ethernet->Send(buffer, 64);
   }
 }

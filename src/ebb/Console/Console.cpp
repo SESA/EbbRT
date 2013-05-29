@@ -14,9 +14,16 @@ ebbrt::Console::ConstructRoot()
 
 void
 ebbrt::Console::Write(const char* str,
-                      const std::function<void(const char*)>& cb)
+                      std::function<void()> cb)
 {
   BufferList list = BufferList(1, std::make_pair(str, strlen(str) + 1));
   LRT_ASSERT(!cb);
-  message_manager->Send(0, console, std::move(list));
+  NetworkId id;
+  id.mac_addr[0] = 0xff;
+  id.mac_addr[1] = 0xff;
+  id.mac_addr[2] = 0xff;
+  id.mac_addr[3] = 0xff;
+  id.mac_addr[4] = 0xff;
+  id.mac_addr[5] = 0xff;
+  message_manager->Send(id, console, std::move(list));
 }

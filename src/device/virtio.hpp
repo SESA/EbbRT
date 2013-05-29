@@ -43,7 +43,7 @@ namespace ebbrt {
         uint16_t raw;
         struct {
           uint16_t no_notify :1;
-        uint16_t :15;
+          uint16_t :15;
         };
       };
       uint16_t index;
@@ -84,6 +84,18 @@ namespace ebbrt {
     queue_notify(uint16_t io_addr, uint16_t n)
     {
       out16(n, io_addr + 16);
+    }
+
+    inline void
+    queue_vector(uint16_t io_addr, uint16_t n)
+    {
+      out16(n, io_addr + 22);
+    }
+
+    inline uint16_t
+    queue_vector(uint16_t io_addr)
+    {
+      return in16(io_addr + 22);
     }
 
     inline size_t
