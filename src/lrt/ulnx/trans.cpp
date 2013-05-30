@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdint>
+#include <cstring>
 #include <unordered_map>
 
 #include "arch/args.hpp"
@@ -43,6 +44,17 @@ ebbrt::lrt::trans::init_ebbs()
   return;
 }
 
+ebbrt::lrt::trans::EbbId
+ebbrt::lrt::trans::find_static_ebb_id(const char* name)
+{
+  for (unsigned i = 0; i < app::config.num_statics; ++i) {
+    if (std::strcmp(app::config.static_ebb_ids[i].name, name) == 0) {
+      return app::config.static_ebb_ids[i].id;
+    }
+  }
+  return 0;
+}
+
 bool
 ebbrt::lrt::trans::init(unsigned num_cores)
 {
@@ -81,7 +93,7 @@ ebbrt::lrt::trans::init_cpu()
 ///ebbrt::lrt::trans::_trans_postcall(void* ret)
 ///{
 ///  console::write("trans-postcall\n");
-///  return NULL; 
+///  return NULL;
 ///}
 ///
 ///bool
@@ -187,7 +199,7 @@ ebbrt::lrt::trans::cache_rep(EbbId id, EbbRep* rep)
 {
  /* @brief Add rep entry to this core's local translation table.
   * note that the cache location is based on ebb id
-  * */ 
+  * */
   local_table[id].ref = rep;
 }
 

@@ -6,7 +6,7 @@
 namespace ebbrt {
   namespace app {
     /**
-     * @brief 
+     * @brief
      */
     class Config {
     public:
@@ -18,6 +18,13 @@ namespace ebbrt {
       };
       size_t num_init;
       const InitEbb* init_ebbs;
+      size_t num_statics;
+      class StaticEbbId {
+      public:
+        const char* name;
+        lrt::trans::EbbId id;
+      };
+      StaticEbbId* static_ebb_ids;
     };
 
     extern const Config config;

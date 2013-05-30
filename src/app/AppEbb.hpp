@@ -9,19 +9,8 @@ namespace ebbrt {
     virtual void Start() = 0;
   };
 
-#ifdef LRT_BARE
-
-  extern char app_id_resv __attribute__ ((section ("static_ebb_ids")));
-  extern "C" char static_ebb_ids_start[];
   const EbbRef<App> app_ebb =
-    EbbRef<App>(static_cast<EbbId>(&app_id_resv -
-                                   static_ebb_ids_start));
-#elif LRT_ULNX
-
-  const EbbRef<App> app_ebb =
-    EbbRef<App>(static_cast<EbbId>(0));
-
-#endif
+    EbbRef<App>(lrt::trans::find_static_ebb_id("App"));
 }
 
 #endif

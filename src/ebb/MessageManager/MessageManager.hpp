@@ -15,14 +15,11 @@ namespace ebbrt {
                       EbbId ebb,
                       BufferList buffers,
                       std::function<void()> cb = nullptr);
+    virtual void StartListening();
   private:
     uint8_t mac_addr_[6];
   };
-  extern char message_manager_id_resv
-  __attribute__ ((section ("static_ebb_ids")));
-  extern "C" char static_ebb_ids_start[];
   const EbbRef<MessageManager> message_manager =
-    EbbRef<MessageManager>(static_cast<EbbId>(&message_manager_id_resv -
-                                              static_ebb_ids_start));
+    EbbRef<MessageManager>(lrt::trans::find_static_ebb_id("MessageManager"));
 }
 #endif

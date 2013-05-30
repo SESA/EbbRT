@@ -17,8 +17,11 @@ namespace ebbrt {
     } __attribute__((packed));
     virtual void Send(BufferList buffers,
                       std::function<void()> cb = nullptr) = 0;
-    virtual const char* MacAddress() = 0;
+    virtual const uint8_t* MacAddress() = 0;
     virtual void SendComplete() = 0;
+    virtual void Register(uint16_t ethertype,
+                          std::function<void(const uint8_t*, size_t)> func) = 0;
+    virtual void Receive() = 0;
   };
   extern EbbRef<Ethernet> ethernet;
 }

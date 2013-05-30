@@ -17,12 +17,6 @@ ebbrt::lrt::event::init(unsigned num_cores)
 }
 
 void
-ebbrt::lrt::event::init_cpu()
-{
-  init_cpu_arch();
-}
-
-void
 ebbrt::lrt::event::_event_altstack_push(uintptr_t val)
 {
   *(altstack[get_location()]++) = val;

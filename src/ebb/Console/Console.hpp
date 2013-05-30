@@ -11,12 +11,10 @@ namespace ebbrt {
     static EbbRoot* ConstructRoot();
     virtual void Write(const char* str,
                        std::function<void()> cb = nullptr);
+    void HandleMessage(const uint8_t* message,
+                       size_t len) override;
   };
-  extern char console_id_resv
-  __attribute__ ((section ("static_ebb_ids")));
-  extern "C" char static_ebb_ids_start[];
   const EbbRef<Console> console =
-    EbbRef<Console>(static_cast<EbbId>(&console_id_resv -
-                                       static_ebb_ids_start));
+    EbbRef<Console>(lrt::trans::find_static_ebb_id("Console"));
 }
 #endif

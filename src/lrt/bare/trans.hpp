@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cstddef>
 #include "arch/args.hpp"
+#include "lrt/assert.hpp"
 #include "lrt/bare/arch/trans.hpp"
 
 namespace ebbrt {
@@ -44,6 +45,7 @@ namespace ebbrt {
       };
       typedef uint32_t EbbId;
 
+      EbbId find_static_ebb_id(const char* name);
       /**
        * @brief Ebb Factory
        */
@@ -77,6 +79,11 @@ namespace ebbrt {
        * @brief Ebb Representative
        */
       class EbbRep {
+      public:
+        virtual void HandleMessage(const uint8_t* buf, size_t len)
+        {
+          LRT_ASSERT(0);
+        }
       };
 
       /**
@@ -129,7 +136,7 @@ namespace ebbrt {
          *
          * @return return pointer to ebb reference
          */
-        T* operator->() const 
+        T* operator->() const
         {
           return *ref_;
         }
@@ -140,7 +147,7 @@ namespace ebbrt {
          */
         operator EbbId() const
         {
-          return reinterpret_cast<LocalEntry*>(ref_) 
+          return reinterpret_cast<LocalEntry*>(ref_)
             - local_table;
         }
       private:

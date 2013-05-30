@@ -14,11 +14,7 @@ namespace ebbrt {
     friend void lrt::event::_event_interrupt(uint8_t interrupt);
     virtual void HandleInterrupt(uint8_t interrupt) = 0;
   };
-  extern char event_manager_id_resv
-  __attribute__ ((section ("static_ebb_ids")));
-  extern "C" char static_ebb_ids_start[];
   const EbbRef<EventManager> event_manager =
-    EbbRef<EventManager>(static_cast<EbbId>(&event_manager_id_resv -
-                                            static_ebb_ids_start));
+    EbbRef<EventManager>(lrt::trans::find_static_ebb_id("EventManager"));
 }
 #endif

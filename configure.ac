@@ -8,11 +8,11 @@ AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([Makefile])
 
 AC_CANONICAL_HOST
-AS_CASE([$host_cpu], [x86_64], 
-		     [AC_DEFINE([ARCH_X86_64], [1], [x86_64 architecture])],
-		     [powerpc], 
-		     [AC_DEFINE([ARCH_POWERPC], [1], [powerpc32 architecture])],
-		     [AC_MSG_ERROR([not on a supported architecture])])
+AS_CASE([$host_cpu], [x86_64],
+                     [AC_DEFINE([ARCH_X86_64], [1], [x86_64 architecture])],
+                     [powerpc],
+                     [AC_DEFINE([ARCH_POWERPC], [1], [powerpc32 architecture])],
+                     [AC_MSG_ERROR([not on a supported architecture])])
 AM_CONDITIONAL([ARCH_X86_64], [test x$host_cpu == xx86_64])
 AM_CONDITIONAL([ARCH_POWERPC], [test x$host_cpu == xpowerpc])
 
@@ -22,9 +22,9 @@ AC_ARG_ENABLE([baremetal],
   [lrt=bare],
   [lrt=ulnx])
 
-AS_CASE([$lrt], 
+AS_CASE([$lrt],
         [bare], [AC_DEFINE([LRT_BARE], [1], [Baremetal LRT])],
-		    [ulnx], [AC_DEFINE([LRT_ULNX], [1], [Baremetal ULNX])])
+                    [ulnx], [AC_DEFINE([LRT_ULNX], [1], [Baremetal ULNX])])
 
 AM_CONDITIONAL(LRT_BARE, test x$lrt = xbare)
 AM_CONDITIONAL(LRT_ULNX, test x$lrt = xulnx)
@@ -37,17 +37,5 @@ AC_PROG_RANLIB
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
-
-# Checks for library functions.
-AS_IF([test x$lrt = xulnx],
-	    [AC_SEARCH_LIBS([pthread_create],
-	      [pthread],
-	      [],
-	      [AC_MSG_ERROR([pthread library missing])])])
-AS_IF([test x$lrt = xulnx],
-	    [AC_SEARCH_LIBS([pcap_freealldevs],
-	      [pcap],
-	      [],
-	      [AC_MSG_ERROR([pcap library missing])])])
 
 AC_OUTPUT
