@@ -6,6 +6,9 @@ src_app_HelloRemote_HelloRemote_SOURCES = \
 src_app_HelloRemote_HelloRemote_ebbs = \
 	src/ebb/EbbManager/libPrimitiveEbbManager.a \
 	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a \
+	src/ebb/EventManager/libSimpleEventManager.a \
+	src/ebb/Console/libConsole.a \
+	src/ebb/MessageManager/libMessageManager.a \
 	src/ebb/Ethernet/libVirtioNet.a \
 	src/ebb/PCI/libPCI.a
 

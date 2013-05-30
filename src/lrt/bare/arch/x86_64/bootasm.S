@@ -137,6 +137,12 @@ _start.jump_to_64:
               ljmp $0x8, $_start.complete
 .code64
 _start.complete:
+              mov $0x0, %ax
+              mov %ax, %es
+              mov %ax, %ss
+              mov %ax, %ds
+              mov %ax, %fs
+              mov %ax, %gs
               mov %esi, %edi //pass multiboot struct pointer
               call _init_arch
 _start.hang:

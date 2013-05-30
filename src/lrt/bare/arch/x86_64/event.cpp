@@ -4,8 +4,10 @@
 #include "arch/x86_64/apic.hpp"
 #include "arch/x86_64/idtdesc.hpp"
 #include "arch/x86_64/idtr.hpp"
+#include "arch/x86_64/pic.hpp"
 #include "arch/x86_64/pit.hpp"
 #include "arch/x86_64/rtc.hpp"
+#include "ebb/EventManager/EventManager.hpp"
 #include "lrt/boot.hpp"
 #include "lrt/event_impl.hpp"
 #include "lrt/mem.hpp"
@@ -26,8 +28,9 @@ ebbrt::lrt::event::init_arch()
 {
   /* x86_64 interrupt descriptor table */
   for (auto i = 0; i < 256; ++i) {
-    idt[i].set(0x8, exception_table[i]);
+    idt[i].set(0x8, isr_table[i]);
   }
+  pic::disable();
 
   /* disable internal sources of interrupts */
   pit::disable();
@@ -85,6 +88,20 @@ ebbrt::lrt::event::init_cpu_arch()
   boot::init_cpu();
 
   /* Event loop goes here */
-  while(1)
-    ;
+  while (1) {
+    asm volatile ("sti;"
+                  "hlt;"
+                  "cli;"
+                  :
+                  :
+                  : "rax", "rcx", "rdx", "rsi",
+                  "rdi", "r8", "r9", "r10", "r11");
+  }
+}
+
+void
+ebbrt::lrt::event::_event_interrupt(uint8_t interrupt)
+{
+  apic::lapic->eoi = 0;
+  event_manager->HandleInterrupt(interrupt);
 }
