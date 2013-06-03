@@ -11,8 +11,8 @@ namespace ebbrt {
     static EbbRoot* ConstructRoot();
     virtual void Write(const char* str,
                        std::function<void()> cb = nullptr);
-    void HandleMessage(const uint8_t* message,
-                       size_t len) override;
+    virtual void HandleMessage(const uint8_t* message,
+                               size_t len) override;
   };
   const EbbRef<Console> console =
     EbbRef<Console>(lrt::trans::find_static_ebb_id("Console"));

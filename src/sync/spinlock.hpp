@@ -14,7 +14,7 @@ namespace ebbrt {
     }
     inline bool TryLock()
     {
-      return lock_.test_and_set(std::memory_order_acquire);
+      return !lock_.test_and_set(std::memory_order_acquire);
     }
     inline void Unlock()
     {

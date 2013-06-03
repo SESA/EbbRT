@@ -4,7 +4,7 @@
 #include <functional>
 
 #include "ebb/ebb.hpp"
-#include "lrt/event.hpp"
+#include "lrt/event_impl.hpp"
 
 namespace ebbrt {
   class EventManager : public EbbRep {

@@ -39,6 +39,7 @@ endif
 #end of LRT_BARE
 endif
 
+include docs/Makefile.am
 include src/arch/Makefile.am
 include src/app/Makefile.am
 include src/ebb/Makefile.am

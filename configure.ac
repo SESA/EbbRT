@@ -7,6 +7,10 @@ AC_CONFIG_SRCDIR([src/lrt/boot.cpp])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([Makefile])
 
+m4_include([m4/doxy.m4])
+DX_HTML_FEATURE(ON)
+DX_INIT_DOXYGEN($PACKAGE_NAME, docs/Doxyfile)
+
 AC_CANONICAL_HOST
 AS_CASE([$host_cpu], [x86_64],
                      [AC_DEFINE([ARCH_X86_64], [1], [x86_64 architecture])],

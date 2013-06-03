@@ -118,7 +118,7 @@ namespace ebbrt {
          * the NullEbb
          */
 
-        EbbRef() :
+        constexpr EbbRef() :
           ref_{reinterpret_cast<T**>(&(local_table[0].ref))}
         {}
 
@@ -127,7 +127,7 @@ namespace ebbrt {
          *
          * @param id Given ebb ID
          */
-        explicit EbbRef(EbbId id) :
+        constexpr explicit EbbRef(EbbId id) :
           /* construct the ref corresponding to the given id */
           ref_{reinterpret_cast<T**>(&(local_table[id].ref))}
         {}
@@ -145,7 +145,7 @@ namespace ebbrt {
          *
          * @return EbbId of EbbRef
          */
-        operator EbbId() const
+        constexpr operator EbbId() const
         {
           return reinterpret_cast<LocalEntry*>(ref_)
             - local_table;
