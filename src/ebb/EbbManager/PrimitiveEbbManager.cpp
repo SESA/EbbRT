@@ -20,7 +20,7 @@ ebbrt::PrimitiveEbbManager::PrimitiveEbbManager(std::unordered_map
   : root_table_(root_table), root_table_lock_(root_table_lock),
     factory_table_(factory_table), factory_table_lock_(factory_table_lock)
 {
-  next_free_ = app::config.node_id << 16 |
+  next_free_ = app::config.space_id << 16 |
     ((1 << 16) / lrt::event::get_num_cores()) * get_location();
 }
 
@@ -39,7 +39,7 @@ ebbrt::PrimitiveEbbManager::AllocateId()
 void
 ebbrt::PrimitiveEbbManager::Bind(EbbRoot* (*factory)(), EbbId id)
 {
-  if ((id >> 16) == app::config.node_id) {
+  if ((id >> 16) == app::config.space_id) {
     factory_table_lock_.Lock();
     factory_table_[id] = factory;
     factory_table_lock_.Unlock();

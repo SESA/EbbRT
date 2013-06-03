@@ -6,45 +6,41 @@
 
 namespace ebbrt {
   namespace lrt {
+    /**
+     * The subsystem responsible for managing execution on a core or
+     * thread.
+     * The system is event driven and so we refer to each thread of
+     * execution as an event which will not be preempted.
+     */
     namespace event {
       /**
-       * @brief Initial event system
-       *
-       * @param num_cores
-       *
-       * @return
+       * Initialize the event subsystem.
+       * @param[in] num_cores The number of cores that will be
+       * initialized.
        */
-      bool init(unsigned num_cores);
+      void init(unsigned num_cores);
+
+      /**
+       * The core identifier.
+       */
       typedef uint32_t Location;
       /**
-       * @brief Per-core event initiation 
+       * Per-core event subsystem initialization
        *
        */
       void init_cpu() __attribute__((noreturn));
 
       /**
-       * @brief Push onto alt-stack
-       *
-       * @param val
-       *
-       * @return
+       * Push a value onto the alternate stack
+       * @param [in] val The word to be pushed onto the stack
        */
       extern "C" void _event_altstack_push(uintptr_t val);
       /**
-       * @brief Pop from the alt-stack
+       * Pop a value off the alternate stack
        *
-       * @return
+       * @return The word on top of the stack
        */
       extern "C" uintptr_t _event_altstack_pop();
-
-      /**
-       * @brief handle interrupt
-       *
-       * @param interrupt
-       *
-       * @return
-       */
-      extern "C" void _event_interrupt(uint8_t interrupt);
     }
   }
 }

@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <cstddef>
 #include "arch/args.hpp"
-
+#include "lrt/assert.hpp"
 
 namespace ebbrt {
   namespace lrt {
@@ -39,6 +39,8 @@ namespace ebbrt {
       };
       typedef uint32_t EbbId;
 
+      EbbId find_static_ebb_id(const char* name);
+
       /**
        * @brief Ebb Factory
        */
@@ -72,6 +74,11 @@ namespace ebbrt {
        * @brief Ebb Representative
        */
       class EbbRep {
+      public:
+        virtual void HandleMessage(const uint8_t* buf, size_t len)
+        {
+          LRT_ASSERT(0);
+        }
       };
 
       /**
@@ -125,7 +132,7 @@ namespace ebbrt {
          *
          * @return return pointer to ebb reference
          */
-        T* operator->() const 
+        T* operator->() const
         {
           return reinterpret_cast<T*>((local_table[ref_].ref));
         }

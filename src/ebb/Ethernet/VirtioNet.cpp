@@ -172,7 +172,7 @@ ebbrt::VirtioNet::Send(BufferList buffers,
   virtio::queue_notify(io_addr_, 1);
 }
 
-const char*
+const uint8_t*
 ebbrt::VirtioNet::MacAddress()
 {
   return mac_address_;
@@ -193,4 +193,17 @@ ebbrt::VirtioNet::SendComplete()
       last_sent_used_ = (last_sent_used_ + 1) % send_max_;
     }
   } while (index != send_used_->index);
+}
+
+void
+ebbrt::VirtioNet::Register(uint16_t ethertype,
+                           std::function<void(const uint8_t*, size_t)> func)
+{
+  LRT_ASSERT(0);
+}
+
+void
+ebbrt::VirtioNet::Receive()
+{
+  LRT_ASSERT(0);
 }

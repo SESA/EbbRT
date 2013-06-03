@@ -8,9 +8,19 @@ src_app_HelloRemote_HelloRemote_ebbs = \
 	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a \
 	src/ebb/EventManager/libSimpleEventManager.a \
 	src/ebb/Console/libConsole.a \
-	src/ebb/MessageManager/libMessageManager.a \
+	src/ebb/MessageManager/libMessageManager.a
+
+if LRT_ULNX
+src_app_HelloRemote_HelloRemote_ebbs += \
+	src/ebb/Ethernet/libRawSocket.a
+else
+if LRT_BARE
+src_app_HelloRemote_HelloRemote_ebbs += \
 	src/ebb/Ethernet/libVirtioNet.a \
 	src/ebb/PCI/libPCI.a
+endif
+endif
+
 
 src_app_HelloRemote_HelloRemote_LDFLAGS = \
 	$(app_linkflags) \
@@ -21,6 +31,11 @@ src_app_HelloRemote_HelloRemote_LDFLAGS = \
 
 src_app_HelloRemote_HelloRemote_LDADD = \
 	libebbrt.a
+
+if LRT_ULNX
+src_app_HelloRemote_HelloRemote_LDADD += \
+	-lpcap
+endif
 
 src_app_HelloRemote_HelloRemote_DEPENDENCIES = \
 	libebbrt.a \

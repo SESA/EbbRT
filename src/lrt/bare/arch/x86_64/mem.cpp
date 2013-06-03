@@ -3,13 +3,11 @@
 #include "lrt/mem_impl.hpp"
 
 
-bool
+void
 ebbrt::lrt::mem::init(unsigned num_cores)
 {
   /**@brief Partition available address space into core-specific regions */
-  if (!boot::multiboot_information->has_mem) {
-    return false;
-  }
+  LRT_ASSERT(boot::multiboot_information->has_mem);
   /* regions array stored at start of free memory */
   regions = reinterpret_cast<Region*>(mem_start);
   char* ptr = mem_start + (num_cores * sizeof(Region));
@@ -23,5 +21,4 @@ ebbrt::lrt::mem::init(unsigned num_cores)
     ptr += num_bytes / num_cores;
     regions[i].end = ptr;
   }
-  return true;
 }

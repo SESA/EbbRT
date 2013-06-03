@@ -1,6 +1,3 @@
-ebb_EventManager_sources = \
-	src/ebb/EventManager/EventManager.cpp
-
 EXTRA_LIBRARIES += src/ebb/EventManager/libSimpleEventManager.a
 
 src_ebb_EventManager_libSimpleEventManager_a_SOURCES = \

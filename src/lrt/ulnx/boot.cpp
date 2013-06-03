@@ -2,7 +2,7 @@
 #include <cstdint>
 
 #include "lrt/boot.hpp"
-
+#include "lrt/event.hpp"
 
 namespace ebbrt {
   namespace lrt {
@@ -11,10 +11,7 @@ namespace ebbrt {
       init_smp(unsigned num_cores)
       {
         /* no SMP to init on ulnx */
-        init_cpu();
-        /*FIXME: this spin to appease compiler */
-        while(1)
-          ;
+        event::init_cpu();
       }
     }
   }
