@@ -2,6 +2,7 @@
 #error "Don't include this file directly"
 #endif
 
+#include <sys/epoll.h>
 
 namespace {
   /* kludged out */
@@ -15,7 +16,7 @@ namespace ebbrt {
       /**
        * @brief Get core/thread count
        *
-       * @return 
+       * @return
        */
       inline unsigned
       get_num_cores()
@@ -26,16 +27,18 @@ namespace ebbrt {
       /**
        * @brief Get cores location
        *
-       * @return 
+       * @return
        */
       inline Location
       get_location()
       {
         /* kludged out */
-        return 1;
+        return 0;
       }
-      bool init_arch(); 
+      bool init_arch();
       void init_cpu_arch()__attribute__((noreturn));
+
+      void register_fd(int fd, uint32_t events, uint8_t interrupt);
     }
   }
 }

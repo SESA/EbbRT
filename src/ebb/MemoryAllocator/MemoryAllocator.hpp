@@ -13,17 +13,8 @@ namespace ebbrt {
     virtual void* calloc(size_t num, size_t size) = 0;
     virtual ~MemoryAllocator() {}
   };
-#ifdef LRT_BARE
-  extern char mem_allocator_id_resv
-  __attribute__ ((section ("static_ebb_ids")));
-  extern "C" char static_ebb_ids_start[];
   const EbbRef<MemoryAllocator> memory_allocator =
-    EbbRef<MemoryAllocator>(static_cast<EbbId>(&mem_allocator_id_resv -
-                                            static_ebb_ids_start));
-#elif LRT_ULNX
-  const EbbRef<MemoryAllocator> memory_allocator =
-    EbbRef<MemoryAllocator>(static_cast<EbbId>(2));
-#endif
+    EbbRef<MemoryAllocator>(lrt::trans::find_static_ebb_id("MemoryAllocator"));
 }
 
 #endif

@@ -1,6 +1,10 @@
 #ifndef LRT_ASSERT_HPP
 #define LRT_ASSERT_HPP
 
+#ifdef __linux__
+#include <cassert>
+#define LRT_ASSERT(expr) assert(expr)
+#elif __ebbrt__
 #ifdef NDEBUG
 #define LRT_ASSERT(expr)
 #else
@@ -17,6 +21,7 @@
     }									\
   } while (0)
 
+#endif
 #endif
 
 #endif

@@ -5,21 +5,15 @@
 
 uintptr_t** ebbrt::lrt::event::altstack;
 
-bool
+void
 ebbrt::lrt::event::init(unsigned num_cores)
 {
-  /* allocate the alternative stack */
+  /* allocate the array of pointers to alternative stacks */
   altstack = new (mem::malloc(sizeof(uintptr_t*) * num_cores, 0))
     uintptr_t*[num_cores];
 
 
-  return init_arch();
-}
-
-void
-ebbrt::lrt::event::init_cpu()
-{
-  init_cpu_arch();
+  init_arch();
 }
 
 void

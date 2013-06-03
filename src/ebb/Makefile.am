@@ -1,8 +1,5 @@
 ebb_sources = \
-	src/ebb/ebb.hpp \
-	$(ebb_EbbManager_sources) \
-	$(ebb_MemoryAllocator_sources) \
-	$(ebb_EventManager_sources)
+	src/ebb/ebb.hpp
 
 include src/ebb/Console/Makefile.am
 include src/ebb/EbbManager/Makefile.am

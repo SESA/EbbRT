@@ -12,17 +12,18 @@
 namespace ebbrt {
   namespace lrt {
     namespace boot {
-      /** @brief Initialize core system functionality. This should be
-       * initiated before other cores are activated */
+      /**
+       *  Initialize LRT.
+       *  This is done once, before core-specific initialization.
+      */
       void init() __attribute__((noreturn));
       /**
-       * @brief Wake up secondary cores
-       *
-       * @param num_core 
+       * Start other cores then do per core initialization.
+       * @param[in] num_cores The total number of cores to start
        */
       void init_smp(unsigned num_cores) __attribute__((noreturn));
       /**
-       * @brief Individual core initiation
+       * Per core initialization.
        */
       void init_cpu();
     }

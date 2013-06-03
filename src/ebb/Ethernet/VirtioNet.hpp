@@ -14,8 +14,11 @@ namespace ebbrt {
     VirtioNet();
     void Send(BufferList buffers,
               std::function<void()> cb = nullptr) override;
-    const char* MacAddress() override;
+    const uint8_t* MacAddress() override;
     void SendComplete() override;
+    void Register(uint16_t ethertype,
+                  std::function<void(const uint8_t*, size_t)> func) override;
+    void Receive() override;
   private:
     uint16_t io_addr_;
     uint16_t next_free_;
@@ -24,7 +27,7 @@ namespace ebbrt {
     Spinlock lock_;
     uint16_t send_max_;
     bool msix_enabled_;
-    char mac_address_[6];
+    uint8_t mac_address_[6];
     virtio::QueueDescriptor* send_descs_;
     virtio::Available* send_available_;
     virtio::Used* send_used_;

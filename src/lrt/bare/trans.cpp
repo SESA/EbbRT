@@ -32,6 +32,16 @@ ebbrt::lrt::trans::init_ebbs()
   }
 }
 
+ebbrt::lrt::trans::EbbId
+ebbrt::lrt::trans::find_static_ebb_id(const char* name)
+{
+  for (unsigned i = 0; i < app::config.num_statics; ++i) {
+    if (std::strcmp(app::config.static_ebb_ids[i].name, name) == 0) {
+      return app::config.static_ebb_ids[i].id;
+    }
+  }
+  return 0;
+}
 
 bool
 ebbrt::lrt::trans::init(unsigned num_cores)
@@ -125,7 +135,7 @@ ebbrt::lrt::trans::cache_rep(EbbId id, EbbRep* rep)
 {
  /* @brief Add rep entry to this core's local translation table.
   * note that the cache location is based on ebb id
-  * */ 
+  * */
   reinterpret_cast<LocalEntry*>(LOCAL_MEM_VIRT)[id].ref = rep;
 }
 

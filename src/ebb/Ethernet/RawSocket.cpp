@@ -1,0 +1,106 @@
+#include <cassert>
+#include <cstring>
+
+#include <sys/socket.h>
+#include <netpacket/packet.h>
+#include <pcap.h>
+#include <netinet/in.h>
+
+#include "ebb/SharedRoot.hpp"
+#include "ebb/Ethernet/RawSocket.hpp"
+#include "ebb/EventManager/EventManager.hpp"
+
+namespace {
+  char dev[] = "tap0";
+}
+
+ebbrt::EbbRoot*
+ebbrt::RawSocket::ConstructRoot()
+{
+  return new SharedRoot<RawSocket>();
+}
+
+ebbrt::RawSocket::RawSocket()
+{
+  char errbuf[PCAP_ERRBUF_SIZE];
+  pcap_if_t* alldevs;
+
+  int ret = pcap_findalldevs(&alldevs, errbuf);
+  assert(ret != -1);
+
+  while (alldevs != NULL) {
+    if (strcmp(alldevs->name, dev) == 0) {
+      break;
+    }
+    alldevs = alldevs->next;
+  }
+
+  assert(alldevs != NULL);
+
+  auto addr = alldevs->addresses;
+  while (addr != NULL) {
+    if (addr->addr->sa_family == AF_PACKET) {
+      break;
+    }
+    addr = addr->next;
+  }
+  assert(addr != NULL);
+
+  auto packet_addr = reinterpret_cast<struct sockaddr_ll*>(addr->addr);
+  std::copy(&packet_addr->sll_addr[0], &packet_addr->sll_addr[5], mac_addr_);
+
+  pdev_ = pcap_open_live(dev, 65535, 0, 0, errbuf);
+  assert(dev != NULL);
+
+  ret = pcap_setnonblock(pdev_, 1, errbuf);
+  assert(ret != -1);
+
+  int fd = pcap_get_selectable_fd(pdev_);
+  assert(fd != -1);
+
+  uint8_t interrupt = event_manager->AllocateInterrupt([]() {
+      ethernet->Receive();
+    });
+  lrt::event::register_fd(fd, EPOLLIN, interrupt);
+}
+
+void
+ebbrt::RawSocket::Send(BufferList buffers,
+                       std::function<void()> cb)
+{
+  assert(0);
+}
+
+const uint8_t*
+ebbrt::RawSocket::MacAddress()
+{
+  return mac_addr_;
+}
+
+void
+ebbrt::RawSocket::SendComplete()
+{
+  assert(0);
+}
+
+void
+ebbrt::RawSocket::Register(uint16_t ethertype,
+                           std::function<void(const uint8_t*, size_t)> func)
+{
+  map_[ethertype] = func;
+}
+
+void
+ebbrt::RawSocket::Receive()
+{
+  struct pcap_pkthdr* header;
+  const uint8_t* data;
+  while (pcap_next_ex(pdev_, &header, &data) == 1) {
+    assert(header->caplen >= 14);
+    uint16_t ethertype = ntohs(*reinterpret_cast<const uint16_t*>(&data[12]));
+    auto it = map_.find(ethertype);
+    if (it != map_.end()) {
+      it->second(data, header->caplen);
+    }
+  }
+}
