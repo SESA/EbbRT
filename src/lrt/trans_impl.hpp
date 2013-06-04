@@ -1,15 +1,31 @@
+/*
+  EbbRT: Distributed, Elastic, Runtime
+  Copyright (C) 2013 SESA Group, Boston University
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #ifndef EBBRT_LRT_TRANS_IMPL_HPP
 #define EBBRT_LRT_TRANS_IMPL_HPP
 
-#ifdef LRT_ULNX
-#include <src/lrt/ulnx/trans_impl.hpp>
-#elif LRT_BARE
+#ifdef LRT_BARE
 #include <src/lrt/bare/trans_impl.hpp>
 #endif
 
 #include <cstddef>
 #include <unordered_map>
 
+#include "lrt/InitRoot.hpp"
 #include "lrt/trans.hpp"
 
 namespace ebbrt {
@@ -17,9 +33,6 @@ namespace ebbrt {
     namespace trans {
       /** virtual function table */
       extern void (*default_vtable[256])();
-      /**  physical addresses of local translation tables */
-      extern LocalEntry** phys_local_entries;
-      const std::ptrdiff_t NUM_LOCAL_ENTRIES = LTABLE_SIZE / sizeof(LocalEntry);
 
       /**
        * @brief Set up and process a miss on the local translation system.
@@ -45,6 +58,7 @@ namespace ebbrt {
        */
       extern "C" void* _trans_postcall(void* ret);
 
+      class EbbRep;
       /**
        * @brief Cache ebb rep in the local translation system. This is called
        * most likely called from the ebb manager.
@@ -54,6 +68,7 @@ namespace ebbrt {
        */
       void cache_rep(EbbId id, EbbRep* rep);
 
+      class EbbRoot;
       /**
        * @brief Swap out existing miss handler
        *
@@ -67,19 +82,7 @@ namespace ebbrt {
         ebbrt::lrt::trans::EbbRoot* root;
       };
 
-      extern RootBinding* initial_root_table;
-
-      /**
-       * @brief InitRoot acts as our initial root miss handler / translation
-       * ebb that works off the initial root table constructed on bring up.
-       * InitRoot will be replaced by the event manager upon the miss on an
-       * ebb not in the static root table.
-       */
-      class InitRoot : public EbbRoot {
-        bool PreCall(Args* args, ptrdiff_t fnum,
-                     FuncRet* fret, EbbId id) override;
-        void* PostCall(void* ret) override;
-      };
+      const RootBinding& initial_root_table(unsigned i);
       extern InitRoot init_root;
     }
   }

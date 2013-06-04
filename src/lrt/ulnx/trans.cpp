@@ -1,3 +1,20 @@
+/*
+  EbbRT: Distributed, Elastic, Runtime
+  Copyright (C) 2013 SESA Group, Boston University
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include <cstdio>
 #include <cstdint>
 #include <cstring>
@@ -6,155 +23,36 @@
 #include "arch/args.hpp"
 #include "app/app.hpp"
 #include "ebb/EbbManager/EbbManager.hpp"
-#include "lrt/boot.hpp"
-#include "lrt/console.hpp"
+#include "lrt/ulnx/init.hpp"
 #include "lrt/event.hpp"
-#include "lrt/mem.hpp"
-#include "lrt/trans.hpp"
-#include "lrt/ulnx/trans.hpp"
 #include "lrt/trans_impl.hpp"
 
 namespace {
-  class RootBinding {
-  public:
-    ebbrt::lrt::trans::EbbId id;
-    ebbrt::lrt::trans::EbbRoot* root;
-  };
-  ebbrt::lrt::trans::EbbRoot* miss_handler;
+  auto def_rep = &ebbrt::lrt::trans::default_vtable;
 }
-
-ebbrt::lrt::trans::LocalEntry** ebbrt::lrt::trans::phys_local_entries;
-ebbrt::lrt::trans::InitRoot ebbrt::lrt::trans::init_root;
-ebbrt::lrt::trans::RootBinding* ebbrt::lrt::trans::initial_root_table;
-ebbrt::lrt::trans::LocalEntry* ebbrt::lrt::trans::local_table;
-
-void
-ebbrt::lrt::trans::init_ebbs()
-{
-
-  initial_root_table = new (mem::malloc(sizeof(RootBinding) *
-        app::config.num_init, 0))
-    RootBinding[app::config.num_init];
-  miss_handler = &init_root;
-
-  for (unsigned i = 0; i < app::config.num_init; ++i) {
-    initial_root_table[i].id = app::config.init_ebbs[i].id;
-    initial_root_table[i].root = app::config.init_ebbs[i].create_root();
-  }
-  return;
-}
-
-ebbrt::lrt::trans::EbbId
-ebbrt::lrt::trans::find_static_ebb_id(const char* name)
-{
-  for (unsigned i = 0; i < app::config.num_statics; ++i) {
-    if (std::strcmp(app::config.static_ebb_ids[i].name, name) == 0) {
-      return app::config.static_ebb_ids[i].id;
-    }
-  }
-  return 0;
-}
-
-bool
-ebbrt::lrt::trans::init(unsigned num_cores)
-{
-  /* all trans init happen in init_cpu */
-  return true;
-}
-
-
-void
-ebbrt::lrt::trans::init_cpu()
-{
-
-  local_table = reinterpret_cast<LocalEntry*>(std::malloc(LTABLE_SIZE));
-
-  /* initialize local translation table */
-  for (auto i = 0; i < NUM_LOCAL_ENTRIES; ++i) {
-    /* populate each entry with a pointer to default virtual function table.
-     * On dereference, each default fuction will resolve into the local miss
-     * functionality */
-    local_table[i].ref = reinterpret_cast<EbbRep*> (&local_table[i].rep);
-    local_table[i].rep = &default_vtable;
-  }
-  return;
-}
-///
-///bool
-///ebbrt::lrt::trans::_trans_precall(ebbrt::Args* args,
-///                                  ptrdiff_t fnum,
-///                                  FuncRet* fret)
-///{
-///  console::write("trans-precall\n");
-///  return true;
-///}
-///
-///void*
-///ebbrt::lrt::trans::_trans_postcall(void* ret)
-///{
-///  console::write("trans-postcall\n");
-///  return NULL;
-///}
-///
-///bool
-///ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
-///                                     ptrdiff_t fnum,
-///                                     FuncRet* fret,
-///                                     EbbId id)
-///{
-///  console::write("InitRoot PreCall\n");
-///  return true;
-///}
-///
-///void*
-///ebbrt::lrt::trans::InitRoot::PostCall(void* ret)
-///{
-///  console::write("InitRoot PostCall\n");
-///  return NULL;
-///}
-///
-///void
-///ebbrt::lrt::trans::cache_rep(EbbId id, EbbRep* rep)
-///{
-///  console::write("cache_rep\n");
-///  return;
-///}
-///
-///void
-///ebbrt::lrt::trans::install_miss_handler(EbbRoot* root)
-///{
-///  miss_handler = root;
-///}
-///
+ebbrt::lrt::trans::EbbRep* ebbrt::lrt::trans::default_rep =
+  reinterpret_cast<ebbrt::lrt::trans::EbbRep*>(&def_rep);
 
 bool
 ebbrt::lrt::trans::_trans_precall(ebbrt::Args* args,
                                   ptrdiff_t fnum,
                                   FuncRet* fret)
 {
-  void* rep = *reinterpret_cast<void**>(args);
-
-  LocalEntry* le =
-    reinterpret_cast<LocalEntry*>
-    (static_cast<uintptr_t*>(rep) - 1);
-
-  uintptr_t loc = reinterpret_cast<uintptr_t>(le);
-
   /* resolve EbbId and call into default miss handler */
-  EbbId id =
-    (loc - reinterpret_cast<uintptr_t>(local_table)) /
-    sizeof(LocalEntry);
+  EbbId id = active_context->last_ebbcall_id_;
 
   /* the default miss handler is configured to trans::InitRoot*/
-  return miss_handler->PreCall(args, fnum, fret, id);
+  return active_context->instance_.miss_handler_->PreCall(args, fnum, fret, id);
 }
 
 void*
 ebbrt::lrt::trans::_trans_postcall(void* ret)
 {
   /* by default, the miss handler is configured to trans::InitRoot */
-  return miss_handler->PostCall(ret);
+  return active_context->instance_.miss_handler_->PostCall(ret);
 }
+
+ebbrt::lrt::trans::InitRoot ebbrt::lrt::trans::init_root;
 
 bool
 ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
@@ -165,15 +63,18 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
   EbbRoot* root = nullptr;
   /* look up root in initial global translation table */
   for (unsigned i = 0; i < app::config.num_init; ++i) {
-    if (initial_root_table[i].id == id) {
-      root = initial_root_table[i].root;
+    if (active_context->instance_.initial_root_table_[i].id == id) {
+      root = active_context->instance_.initial_root_table_[i].root;
       break;
     }
   }
   /* if properly configured this roots should be constructed at boot*/
   if (root == nullptr) {
     ebb_manager->Install();
-    return miss_handler->PreCall(args, fnum, fret, id);
+    return active_context->instance_.miss_handler_->PreCall(args,
+                                                            fnum,
+                                                            fret,
+                                                            id);
   }
   /* ebb precall processes and result pushed onto our alt-stack */
   bool ret = root->PreCall(args, fnum, fret, id);
@@ -195,21 +96,22 @@ ebbrt::lrt::trans::InitRoot::PostCall(void* ret)
 }
 
 void
-ebbrt::lrt::trans::cache_rep(EbbId id, EbbRep* rep)
+ebbrt::lrt::trans::install_miss_handler(EbbRoot* root)
 {
- /* @brief Add rep entry to this core's local translation table.
-  * note that the cache location is based on ebb id
-  * */
-  local_table[id].ref = rep;
+  active_context->instance_.miss_handler_ = root;
 }
 
 void
-ebbrt::lrt::trans::install_miss_handler(EbbRoot* root)
+ebbrt::lrt::trans::cache_rep(EbbId id, EbbRep* rep)
 {
-  miss_handler = root;
+  active_context->local_table_[id] = rep;
 }
 
-
+const ebbrt::lrt::trans::RootBinding&
+ebbrt::lrt::trans::initial_root_table(unsigned i)
+{
+  return active_context->instance_.initial_root_table_[i];
+}
 
 extern "C" void default_func0();
 extern "C" void default_func1();

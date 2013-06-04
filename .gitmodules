@@ -1,18 +1,24 @@
 [submodule "util/toolchain/binutils"]
 	path = util/toolchain/binutils
 	url = git://github.com/SESA/EbbRT-binutils.git
+        ignore = dirty
 [submodule "util/toolchain/gcc"]
 	path = util/toolchain/gcc
 	url = git://github.com/SESA/EbbRT-gcc.git
+        ignore = dirty
 [submodule "util/toolchain/gmp"]
 	path = util/toolchain/gmp
 	url = git://github.com/SESA/EbbRT-gmp.git
+        ignore = dirty
 [submodule "util/toolchain/mpc"]
 	path = util/toolchain/mpc
 	url = git://github.com/SESA/EbbRT-mpc.git
+        ignore = dirty
 [submodule "util/toolchain/mpfr"]
 	path = util/toolchain/mpfr
 	url = git://github.com/SESA/EbbRT-mpfr.git
+        ignore = dirty
 [submodule "util/toolchain/newlib"]
 	path = util/toolchain/newlib
 	url = git://github.com/SESA/EbbRT-newlib.git
+        ignore = dirty
