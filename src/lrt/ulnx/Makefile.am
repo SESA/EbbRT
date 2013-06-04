@@ -1,14 +1,19 @@
-include src/lrt/ulnx/arch/Makefile.am
+# EbbRT: Distributed, Elastic, Runtime
+# Copyright (C) 2013 SESA Group, Boston University
 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 lrt_ulnx_sources = \
-	$(lrt_ulnx_arch_sources) \
-	src/lrt/ulnx/boot.cpp \
-	src/lrt/ulnx/console.cpp \
 	src/lrt/ulnx/event.cpp \
-	src/lrt/ulnx/event.hpp \
-	src/lrt/ulnx/event_impl.hpp \
-	src/lrt/ulnx/mem.cpp \
-	src/lrt/ulnx/trans.cpp \
-	src/lrt/ulnx/trans.hpp \
-	src/lrt/ulnx/trans_impl.hpp 
-
+	src/lrt/ulnx/init.cpp \
+	src/lrt/ulnx/trans.cpp

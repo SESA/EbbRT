@@ -1,9 +1,24 @@
+# EbbRT: Distributed, Elastic, Runtime
+# Copyright (C) 2013 SESA Group, Boston University
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 AC_PREREQ(2.61)
 AC_INIT([EbbRT],[0.3],[sesa-developers@googlegroups.com])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign subdir-objects -Wall -Werror -Wno-portability])
 #some random file which we assert exists in source tree
-AC_CONFIG_SRCDIR([src/lrt/boot.cpp])
+AC_CONFIG_SRCDIR([src/ebbrt.hpp])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([Makefile])
 

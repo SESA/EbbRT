@@ -1,8 +1,29 @@
+/*
+  EbbRT: Distributed, Elastic, Runtime
+  Copyright (C) 2013 SESA Group, Boston University
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+#include "arch/args.hpp"
 #include "app/app.hpp"
 #include "ebb/EbbManager/PrimitiveEbbManager.hpp"
-#include "lrt/assert.hpp"
 #include "lrt/trans_impl.hpp"
 #include "misc/vtable.hpp"
+
+#ifdef __ebbrt__
+#include "lrt/bare/assert.hpp"
+#endif
 
 namespace {
   void local_cache_rep(ebbrt::EbbId id, ebbrt::EbbRep* rep)
@@ -21,7 +42,13 @@ ebbrt::PrimitiveEbbManager::PrimitiveEbbManager(std::unordered_map
     factory_table_(factory_table), factory_table_lock_(factory_table_lock)
 {
   next_free_ = app::config.space_id << 16 |
-    ((1 << 16) / lrt::event::get_num_cores()) * get_location();
+    ((1 << 16) /
+#ifdef __linux__
+     lrt::event::get_max_contexts()
+#elif __ebbrt__
+     lrt::event::get_num_cores()
+#endif
+     ) * get_location();
 }
 
 void
@@ -45,7 +72,11 @@ ebbrt::PrimitiveEbbManager::Bind(EbbRoot* (*factory)(), EbbId id)
     factory_table_lock_.Unlock();
   } else {
     //TODO: Go remote
+#ifdef __linux__
+    assert(0);
+#elif __ebbrt__
     LRT_ASSERT(0);
+#endif
   }
 }
 
@@ -75,7 +106,11 @@ namespace {
           auto it_fact = factory_table_.find(id);
           if (it_fact == factory_table_.end()) {
             //TODO: Go remote
+#ifdef __linux__
+            assert(0);
+#elif __ebbrt__
             LRT_ASSERT(0);
+#endif
           }
           auto factory = it_fact->second;
           factory_table_lock_.Unlock();
@@ -119,8 +154,9 @@ ebbrt::PrimitiveEbbManager::Install()
     // handler
     auto it = root_table_.begin();
     for (unsigned i = 0; i < app::config.num_init; ++i) {
-      it = root_table_.insert(it, std::make_pair(lrt::trans::initial_root_table[i].id,
-                                                 lrt::trans::initial_root_table[i].root));
+      auto binding = lrt::trans::initial_root_table(i);
+      it = root_table_.insert(it, std::make_pair(binding.id,
+                                                 binding.root));
     }
     PrimitiveEbbRoot* prim_root = new PrimitiveEbbRoot(root_table_,
                                                        root_table_lock_,

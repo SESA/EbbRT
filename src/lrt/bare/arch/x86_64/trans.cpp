@@ -1,3 +1,20 @@
+/*
+  EbbRT: Distributed, Elastic, Runtime
+  Copyright (C) 2013 SESA Group, Boston University
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include <cstring>
 
 #include <algorithm>
@@ -5,14 +22,14 @@
 
 #include "arch/x86_64/mmu.hpp"
 #include "lrt/event.hpp"
-#include "lrt/mem.hpp"
+#include "lrt/bare/mem.hpp"
 #include "lrt/trans_impl.hpp"
 
 /**
  * @brief When cores wake up then latch onto the virtual memory paging
  * structure set up by the primary core at boot. In this function we strive to
  * associate an array allocated per-core with a single virtual address. To
- * achieve this, we must set up each core with their own VM structure. 
+ * achieve this, we must set up each core with their own VM structure.
  */
 void
 ebbrt::lrt::trans::init_cpu_arch()
