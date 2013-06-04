@@ -1,46 +1,56 @@
+/*
+  EbbRT: Distributed, Elastic, Runtime
+  Copyright (C) 2013 SESA Group, Boston University
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as
+  published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include <unordered_map>
 
 #include "arch/args.hpp"
 #include "app/app.hpp"
 #include "ebb/EbbManager/EbbManager.hpp"
-#include "lrt/boot.hpp"
+#include "lrt/bare/boot.hpp"
 #include "lrt/event.hpp"
-#include "lrt/mem.hpp"
+#include "lrt/bare/mem.hpp"
 #include "lrt/trans_impl.hpp"
 
 namespace {
   ebbrt::lrt::trans::EbbRoot* miss_handler;
+  ebbrt::lrt::trans::RootBinding* init_root_table;
 }
-
-ebbrt::lrt::trans::RootBinding* ebbrt::lrt::trans::initial_root_table;
 
 ebbrt::lrt::trans::LocalEntry** ebbrt::lrt::trans::phys_local_entries;
 ebbrt::lrt::trans::InitRoot ebbrt::lrt::trans::init_root;
 /** set the local_table location to a shared virtual address */
 
+const ebbrt::lrt::trans::RootBinding&
+ebbrt::lrt::trans::initial_root_table(unsigned i)
+{
+  return init_root_table[i];
+}
 
 void
 ebbrt::lrt::trans::init_ebbs()
 {
-  initial_root_table = new (mem::malloc(sizeof(RootBinding) *
+  init_root_table = new (mem::malloc(sizeof(RootBinding) *
                                         app::config.num_init, 0))
     RootBinding[app::config.num_init];
   miss_handler = &init_root;
   for (unsigned i = 0; i < app::config.num_init; ++i) {
-    initial_root_table[i].id = app::config.init_ebbs[i].id;
-    initial_root_table[i].root = app::config.init_ebbs[i].create_root();
+    init_root_table[i].id = app::config.init_ebbs[i].id;
+    init_root_table[i].root = app::config.init_ebbs[i].create_root();
   }
-}
-
-ebbrt::lrt::trans::EbbId
-ebbrt::lrt::trans::find_static_ebb_id(const char* name)
-{
-  for (unsigned i = 0; i < app::config.num_statics; ++i) {
-    if (std::strcmp(app::config.static_ebb_ids[i].name, name) == 0) {
-      return app::config.static_ebb_ids[i].id;
-    }
-  }
-  return 0;
 }
 
 bool
@@ -101,8 +111,8 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
   EbbRoot* root = nullptr;
   /* look up root in initial global translation table */
   for (unsigned i = 0; i < app::config.num_init; ++i) {
-    if (initial_root_table[i].id == id) {
-      root = initial_root_table[i].root;
+    if (init_root_table[i].id == id) {
+      root = init_root_table[i].root;
       break;
     }
   }
