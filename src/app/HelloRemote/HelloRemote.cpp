@@ -23,8 +23,11 @@
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
 #ifdef __linux__
+#include <chrono>
+#include <thread>
 #include "ebbrt.hpp"
 #include "ebb/Ethernet/RawSocket.hpp"
+#include "ebb/NodeAllocator/QemuX8664.hpp"
 #elif __ebbrt__
 #include "ebb/PCI/PCI.hpp"
 #include "ebb/Ethernet/VirtioNet.hpp"
@@ -80,10 +83,13 @@ ebbrt::app::start()
   ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
 #elif __linux__
   ethernet = EbbRef<Ethernet>(ebb_manager->AllocateId());
+  node_allocator = EbbRef<NodeAllocator>(ebb_manager->AllocateId());
   ebb_manager->Bind(RawSocket::ConstructRoot, ethernet);
+  ebb_manager->Bind(QemuX8664::ConstructRoot, node_allocator);
+  auto a = node_allocator->Allocate("/home/jmcadden/work/build/bare/src/app/HelloRemote/HelloRemote.iso");
   message_manager->StartListening();
 #endif
-  console->Write("Hello World\n");
+  console->Write("Hello Remote\n");
 }
 
 #ifdef __linux__
