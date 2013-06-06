@@ -23,6 +23,8 @@ namespace ebbrt {
   public:
     char mac_addr[6];
   };
+
+  typedef int32_t NodeId; 
 }
 
 #endif
