@@ -1,0 +1,9 @@
+display_library: nogui
+com1: enabled=1, mode=file, dev=serial.out
+boot: cdrom
+ata0-slave: type=cdrom, path=src/app/HelloWorld/HelloWorld.iso, status=inserted
+clock: sync=realtime
+#cpu: count=4
+magic_break: enabled=1
+debug_symbols: file=src/app/HelloWorld/HelloWorld.sym
+gdbstub: enabled=1, port=1234
