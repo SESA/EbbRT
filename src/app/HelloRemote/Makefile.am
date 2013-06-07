@@ -27,7 +27,8 @@ src_app_HelloRemote_HelloRemote_ebbs = \
 
 if LRT_ULNX
 src_app_HelloRemote_HelloRemote_ebbs += \
-	src/ebb/Ethernet/libRawSocket.a
+	src/ebb/Ethernet/libRawSocket.a \
+	src/ebb/NodeAllocator/libQemuX8664.a
 else
 if LRT_BARE
 src_app_HelloRemote_HelloRemote_ebbs += \

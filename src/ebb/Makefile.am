@@ -22,4 +22,5 @@ include src/ebb/Ethernet/Makefile.am
 include src/ebb/EventManager/Makefile.am
 include src/ebb/MemoryAllocator/Makefile.am
 include src/ebb/MessageManager/Makefile.am
+include src/ebb/NodeAllocator/Makefile.am
 include src/ebb/PCI/Makefile.am

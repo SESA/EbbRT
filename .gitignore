@@ -12,6 +12,11 @@
 *.la
 *.a
 
+# Editor temp files
+*~
+*.swo
+*.swp
+
 Makefile.in
 aclocal.m4
 autom4te.cache/
