@@ -33,8 +33,8 @@ namespace ebbrt {
     friend lrt::trans::InitRoot;
     virtual void Install() = 0;
   };
-  const EbbRef<EbbManager> ebb_manager =
-    EbbRef<EbbManager>(lrt::trans::find_static_ebb_id("EbbManager"));
+  constexpr EbbRef<EbbManager> ebb_manager =
+    EbbRef<EbbManager>(static_cast<EbbId>(1));
 }
 
 #endif

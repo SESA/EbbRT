@@ -19,183 +19,97 @@
 #include <cstdint>
 #include <cerrno>
 
-#include "lrt/event.hpp"
-#include "sync/compiler.hpp"
+#include "ebb/Gthread/Gthread.hpp"
 
-//DO NOT CHANGE: these are defined in the gcc tree to match
-//FIXME: maybe these should be padded?
-typedef void *__gthread_key_t;
-typedef void *__gthread_once_t;
-typedef void *__gthread_mutex_t;
-typedef void *__gthread_recursive_mutex_t;
-
-namespace {
-  const int NUM_KEYS = 32;
-  int key_index = 0;
-  const void *key_array[NUM_KEYS];
-};
+using namespace ebbrt;
 
 extern "C" void
-ebbrt_gthread_mutex_init(__gthread_mutex_t *mutex)
+ebbrt_gthread_mutex_init(Gthread::Mutex* mutex)
 {
-  *mutex = 0;
+  gthread->MutexInit(mutex);
 }
 
 extern "C" void
-ebbrt_gthread_recursive_mutex_init(__gthread_recursive_mutex_t *mutex)
+ebbrt_gthread_recursive_mutex_init(Gthread::RecursiveMutex* mutex)
 {
-  *mutex = 0;
+  gthread->RecursiveMutexInit(mutex);
 }
 
 extern "C" int
 ebbrt_gthread_active_p(void)
 {
-  return 1;
+  return gthread_active;
 }
 
 extern "C" int
-ebbrt_gthread_once(__gthread_once_t *once, void (*func) (void))
+ebbrt_gthread_once(Gthread::Once* once, void (*func) (void))
 {
-  __gthread_once_t val = __sync_val_compare_and_swap(once, 0, 1);
-  if (val == 0) {
-    func();
-    __sync_synchronize();
-    *once = reinterpret_cast<__gthread_once_t>(2);
-  } else {
-    while (ebbrt::access_once(*once) != reinterpret_cast<__gthread_once_t>(2))
-      ;
-  }
-  return 0;
+  return gthread->DoOnce(once, func);
 }
 
 extern "C" int
-ebbrt_gthread_key_create(__gthread_key_t *keyp,
-                         void (*dtor) (void *) __attribute__((unused)))
+ebbrt_gthread_key_create(Gthread::Key* keyp,
+                         void (*dtor) (void*))
 {
-  int index = __sync_fetch_and_add(&key_index, 1);
-  if (index >= NUM_KEYS) {
-    return ENOMEM;
-  }
-  const void ***key_pointer =
-    const_cast<const void ***>(reinterpret_cast<void ***>(keyp));
-  *key_pointer = &key_array[index];
-  **key_pointer = NULL;
-  return 0;
+  return gthread->KeyCreate(keyp, dtor);
 }
 
 extern "C" int
-ebbrt_gthread_key_delete(__gthread_key_t key)
+ebbrt_gthread_key_delete(Gthread::Key key)
 {
-  return 0;
+  return gthread->KeyDelete(key);
 }
 
-extern "C" void *
-ebbrt_gthread_getspecific(__gthread_key_t key)
+extern "C" void*
+ebbrt_gthread_getspecific(Gthread::Key key)
 {
-  return (*reinterpret_cast<void **>(key));
-}
-
-extern "C" int
-ebbrt_gthread_setspecific(__gthread_key_t key, const void *ptr)
-{
-  *const_cast<const void **>(reinterpret_cast<void **>(key)) = ptr;
-  return 0;
+  return gthread->GetSpecific(key);
 }
 
 extern "C" int
-ebbrt_gthread_mutex_destroy(__gthread_mutex_t *mutex __attribute__((unused)))
+ebbrt_gthread_setspecific(Gthread::Key key, const void* ptr)
 {
-  return 0;
+  return gthread->SetSpecific(key, ptr);
 }
 
 extern "C" int
-ebbrt_gthread_mutex_lock(__gthread_mutex_t *mutex)
+ebbrt_gthread_mutex_destroy(Gthread::Mutex* mutex)
 {
-  while (!__sync_bool_compare_and_swap(mutex, 0, 1))
-    ;
-  return 0;
+  return gthread->MutexDestroy(mutex);
 }
 
 extern "C" int
-ebbrt_gthread_mutex_trylock(__gthread_mutex_t *mutex)
+ebbrt_gthread_mutex_lock(Gthread::Mutex* mutex)
 {
-  if (__sync_bool_compare_and_swap(mutex, 0, 1)) {
-    return 0;
-  }
-  return EBUSY;
+  return gthread->MutexLock(mutex);
 }
 
 extern "C" int
-ebbrt_gthread_mutex_unlock(__gthread_mutex_t *mutex)
+ebbrt_gthread_mutex_trylock(Gthread::Mutex* mutex)
 {
-  __sync_synchronize();
-  *mutex = 0;
-  return 0;
-}
-
-typedef union {
-  intptr_t val;
-  struct {
-    int16_t count;
-    uint8_t loc; //location
-    int8_t lock;
-  };
-} rec_spinlock;
-
-static_assert(sizeof(rec_spinlock) == sizeof(void *), "rec_spinlock size");
-
-extern "C" int
-ebbrt_gthread_recursive_mutex_trylock(__gthread_recursive_mutex_t *mutex)
-{
-  rec_spinlock *mut = reinterpret_cast<rec_spinlock *>(mutex);
-  while (!__sync_bool_compare_and_swap(&mut->lock, 0, 1))
-    ;
-
-  if (mut->count == 0) {
-    //we are the first to lock it
-    mut->loc = ebbrt::lrt::event::get_location();
-    mut->count = 1;
-    __sync_synchronize();
-    ebbrt::access_once(mut->lock) = 0;
-    return 0;
-  }
-
-  if (mut->loc == ebbrt::lrt::event::get_location()) {
-    //this is a recursive lock by us
-    if (mut->count == INT16_MAX) {
-      return 1; //holding the lock with too much recursion!
-    }
-    mut->count++;
-    __sync_synchronize();
-    ebbrt::access_once(mut->lock) = 0;
-    return 0;
-  }
-
-  //someone holds the lock that is not us, fail!
-  __sync_synchronize();
-  ebbrt::access_once(mut->lock) = 0;
-  return 1;
+  return gthread->MutexTryLock(mutex);
 }
 
 extern "C" int
-ebbrt_gthread_recursive_mutex_lock(__gthread_recursive_mutex_t *mutex)
+ebbrt_gthread_mutex_unlock(Gthread::Mutex* mutex)
 {
-  while (ebbrt_gthread_recursive_mutex_trylock(mutex) != 0)
-    ;
-
-  return 0;
+  return gthread->MutexUnlock(mutex);
 }
 
 extern "C" int
-ebbrt_gthread_recursive_mutex_unlock(__gthread_recursive_mutex_t *mutex)
+ebbrt_gthread_recursive_mutex_trylock(Gthread::RecursiveMutex* mutex)
 {
-  rec_spinlock *mut = reinterpret_cast<rec_spinlock *>(mutex);
-  while (!__sync_bool_compare_and_swap(&mut->lock, 0, 1))
-    ;
+  return gthread->RecursiveMutexTryLock(mutex);
+}
 
-  mut->count--;
+extern "C" int
+ebbrt_gthread_recursive_mutex_lock(Gthread::RecursiveMutex* mutex)
+{
+  return gthread->RecursiveMutexLock(mutex);
+}
 
-  __sync_synchronize();
-  ebbrt::access_once(mut->lock) = 0;
-  return 0;
+extern "C" int
+ebbrt_gthread_recursive_mutex_unlock(Gthread::RecursiveMutex* mutex)
+{
+  return gthread->RecursiveMutexUnlock(mutex);
 }

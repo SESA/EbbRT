@@ -17,99 +17,65 @@
 */
 #include <cstdint>
 
-#include "lrt/event.hpp"
-#include "sync/compiler.hpp"
+#include "ebb/Gthread/Gthread.hpp"
 
-//DO NOT CHANGE: these are defined in the newlib tree
-typedef void *_LOCK_T;
-typedef void *_LOCK_RECURSIVE_T;
+using namespace ebbrt;
+extern "C" int
+ebbrt_gthread_active_p(void);
 
 extern "C" void
-ebbrt_newlib_lock_init_recursive(_LOCK_RECURSIVE_T *lock)
+ebbrt_newlib_lock_init_recursive(Gthread::RecursiveMutex* mutex)
 {
-  *lock = 0;
+  if (ebbrt_gthread_active_p()) {
+    gthread->RecursiveMutexInit(mutex);
+  }
 }
 
 extern "C" void
-ebbrt_newlib_lock_close_recursive(_LOCK_RECURSIVE_T *lock)
+ebbrt_newlib_lock_close_recursive(Gthread::RecursiveMutex* mutex)
 {
-  return;
+  if (ebbrt_gthread_active_p()) {
+    gthread->RecursiveMutexDestroy(mutex);
+  }
 }
 
 extern "C" void
-ebbrt_newlib_lock_acquire(_LOCK_T *lock)
+ebbrt_newlib_lock_acquire(Gthread::Mutex* mutex)
 {
-  while (!__sync_bool_compare_and_swap(lock, 0, 1))
-    ;
+  if (ebbrt_gthread_active_p()) {
+    gthread->MutexLock(mutex);
+  }
 }
-
-typedef union {
-  intptr_t val;
-  struct {
-    int16_t count;
-    uint8_t loc; //location
-    int8_t lock;
-  };
-} rec_spinlock;
-
-static_assert(sizeof(rec_spinlock) == sizeof(void *), "rec_spinlock size");
 
 extern "C" int
-ebbrt_newlib_lock_try_acquire_recursive(_LOCK_RECURSIVE_T *lock)
+ebbrt_newlib_lock_try_acquire_recursive(Gthread::RecursiveMutex* mutex)
 {
-  rec_spinlock *mut = reinterpret_cast<rec_spinlock *>(lock);
-  while (!__sync_bool_compare_and_swap(&mut->lock, 0, 1))
-    ;
-
-  if (mut->count == 0) {
-    //we are the first to lock it
-    mut->loc = ebbrt::lrt::event::get_location();
-    mut->count = 1;
-    __sync_synchronize();
-    ebbrt::access_once(mut->lock) = 0;
-    return 0;
+  if (ebbrt_gthread_active_p()) {
+    return gthread->RecursiveMutexTryLock(mutex);
   }
+  return 0;
+}
 
-  if (mut->loc == ebbrt::lrt::event::get_location()) {
-    //this is a recursive lock by us
-    if (mut->count == INT16_MAX) {
-      return 1; //holding the lock with too much recursion!
-    }
-    mut->count++;
-    __sync_synchronize();
-    ebbrt::access_once(mut->lock) = 0;
-    return 0;
+extern "C" void
+ebbrt_newlib_lock_acquire_recursive(Gthread::RecursiveMutex* mutex)
+{
+  if (ebbrt_gthread_active_p()) {
+    gthread->RecursiveMutexLock(mutex);
   }
-
-  //someone holds the lock that is not us, fail!
-  __sync_synchronize();
-  ebbrt::access_once(mut->lock) = 0;
-  return 1;
 }
 
 extern "C" void
-ebbrt_newlib_lock_acquire_recursive(_LOCK_RECURSIVE_T *lock)
+ebbrt_newlib_lock_release(Gthread::Mutex* mutex)
 {
-  while (ebbrt_newlib_lock_try_acquire_recursive(lock) != 0)
-    ;
+  if (ebbrt_gthread_active_p()) {
+    gthread->MutexLock(mutex);
+  }
 }
 
 extern "C" void
-ebbrt_newlib_lock_release(_LOCK_T *lock)
+ebbrt_newlib_lock_release_recursive(Gthread::RecursiveMutex* mutex)
 {
-  __sync_synchronize();
-  *lock = 0;
-}
-
-extern "C" void
-ebbrt_newlib_lock_release_recursive(_LOCK_RECURSIVE_T *lock)
-{
-  rec_spinlock *mut = reinterpret_cast<rec_spinlock *>(lock);
-  while (!__sync_bool_compare_and_swap(&mut->lock, 0, 1))
-    ;
-
-  mut->count--;
-
-  __sync_synchronize();
-  ebbrt::access_once(mut->lock) = 0;
+  if (ebbrt_gthread_active_p()) {
+    gthread->RecursiveMutexUnlock(mutex);
+  }
 }

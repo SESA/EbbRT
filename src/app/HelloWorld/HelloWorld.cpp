@@ -20,6 +20,10 @@
 #include <mutex>
 
 #include "app/app.hpp"
+#include "ebb/EbbManager/PrimitiveEbbManager.hpp"
+#include "ebb/Gthread/Gthread.hpp"
+#include "ebb/Syscall/Syscall.hpp"
+#include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
 
 #ifdef __linux__
 #include <iostream>
@@ -30,10 +34,31 @@
 #include "sync/spinlock.hpp"
 #endif
 
+const ebbrt::app::Config::InitEbb init_ebbs[] =
+{
+  {
+    .create_root = ebbrt::SimpleMemoryAllocatorConstructRoot,
+    .id = ebbrt::memory_allocator
+  },
+  {
+    .create_root = ebbrt::PrimitiveEbbManagerConstructRoot,
+    .id = ebbrt::ebb_manager
+  },
+  {
+    .create_root = ebbrt::Gthread::ConstructRoot,
+    .id = ebbrt::gthread
+  },
+  {
+    .create_root = ebbrt::Syscall::ConstructRoot,
+    .id = ebbrt::syscall
+  }
+};
+
 const ebbrt::app::Config ebbrt::app::config = {
   .space_id = 0,
-  .num_init = 0,
-  .init_ebbs = nullptr,
+  .num_early_init = 4,
+  .num_init = sizeof(init_ebbs) / sizeof(Config::InitEbb),
+  .init_ebbs = init_ebbs,
   .num_statics = 0,
   .static_ebb_ids = nullptr
 };
@@ -62,7 +87,7 @@ int main()
 {
   ebbrt::EbbRT instance;
 
-  std::thread threads[std::thread::hardware_concurrency()];
+    std::thread threads[std::thread::hardware_concurrency()];
   for (auto& thread : threads) {
     thread = std::thread([&]{ebbrt::Context context{instance};});
   }

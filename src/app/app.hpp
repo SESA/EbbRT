@@ -41,8 +41,7 @@ namespace ebbrt {
       /** The space this node should allocate
           ebbrt::lrt::trans::EbbId%s out of */
       uint16_t space_id;
-      /** Size of ebbrt::app::Config::init_ebbs */
-      size_t num_init;
+
       /**
        * An element used to statically construct Ebbs.
        */
@@ -53,6 +52,13 @@ namespace ebbrt {
         /** The id to install the root on */
         lrt::trans::EbbId id;
       };
+
+      /** Number of Ebbs to statically construct early
+          These Ebbs cannot rely on globally constructed objects or
+          exceptions at construction time */
+      size_t num_early_init;
+      /** Size of ebbrt::app::Config::init_ebbs */
+      size_t num_init;
       /** Array describing which Ebbs to statically construct */
       const InitEbb* init_ebbs;
       /** Size of ebbrt::app::Config::static_ebb_ids */
