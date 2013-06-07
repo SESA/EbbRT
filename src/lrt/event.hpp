@@ -27,8 +27,6 @@
 #endif
 
 
-BROKEN!
-
 namespace ebbrt {
   namespace lrt {
     /**
