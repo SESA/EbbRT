@@ -33,7 +33,6 @@ namespace ebbrt {
 
     virtual void MutexInit(Mutex* mutex);
     virtual void RecursiveMutexInit(RecursiveMutex* mutex);
-    virtual int Active();
     virtual int DoOnce(Once* once, void (*func) (void));
     virtual int KeyCreate(Key* keyp, void (*dtor) (void *));
     virtual int KeyDelete(Key key);

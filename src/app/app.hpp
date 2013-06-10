@@ -50,13 +50,15 @@ namespace ebbrt {
         /** The function to construct the root */
         lrt::trans::EbbRoot* (*create_root)();
         /** The id to install the root on */
-        lrt::trans::EbbId id;
+        const char* name;
       };
 
+#ifdef __ebbrt__
       /** Number of Ebbs to statically construct early
           These Ebbs cannot rely on globally constructed objects or
           exceptions at construction time */
       size_t num_early_init;
+#endif
       /** Size of ebbrt::app::Config::init_ebbs */
       size_t num_init;
       /** Array describing which Ebbs to statically construct */

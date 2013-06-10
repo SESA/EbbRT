@@ -31,7 +31,7 @@ namespace ebbrt {
     virtual ~MemoryAllocator() {}
   };
   constexpr EbbRef<MemoryAllocator> memory_allocator =
-    EbbRef<MemoryAllocator>(static_cast<EbbId>(2));
+    EbbRef<MemoryAllocator>(static_cast<EbbId>(1));
 }
 
 #endif

@@ -15,6 +15,8 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <atomic>
+
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Gthread/Gthread.hpp"
 #include "lrt/bare/assert.hpp"
@@ -33,7 +35,8 @@ Gthread::ConstructRoot()
 void
 Gthread::MutexInit(Mutex* mutex)
 {
-  LRT_ASSERT(0);
+  auto flag = reinterpret_cast<std::atomic_flag*>(mutex);
+  flag->clear();
 }
 
 void
@@ -43,16 +46,20 @@ Gthread::RecursiveMutexInit(RecursiveMutex* rec_mutex)
 }
 
 int
-Gthread::Active()
-{
-  LRT_ASSERT(0);
-  return 0;
-}
-
-int
 Gthread::DoOnce(Once* once, void (*func) (void))
 {
-  LRT_ASSERT(0);
+  auto flag = reinterpret_cast<std::atomic<int>*>(once);
+
+  int expected = 0;
+  auto success = atomic_compare_exchange_strong(flag, &expected, 1);
+
+  if (success) {
+    func();
+    *flag = 2;
+  } else {
+    while (*flag != 2)
+      ;
+  }
   return 0;
 }
 
@@ -94,21 +101,24 @@ Gthread::MutexDestroy(Mutex* mutex)
 int
 Gthread::MutexLock(Mutex* mutex)
 {
-  LRT_ASSERT(0);
+  auto flag = reinterpret_cast<std::atomic_flag*>(mutex);
+  while (flag->test_and_set(std::memory_order_acquire))
+    ;
   return 0;
 }
 
 int
 Gthread::MutexTryLock(Mutex* mutex)
 {
-  LRT_ASSERT(0);
-  return 0;
+  auto flag = reinterpret_cast<std::atomic_flag*>(mutex);
+  return !flag->test_and_set(std::memory_order_acquire);
 }
 
 int
 Gthread::MutexUnlock(Mutex* mutex)
 {
-  LRT_ASSERT(0);
+  auto flag = reinterpret_cast<std::atomic_flag*>(mutex);
+  flag->clear(std::memory_order_release);
   return 0;
 }
 

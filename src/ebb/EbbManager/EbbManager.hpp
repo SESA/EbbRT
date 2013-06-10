@@ -34,7 +34,7 @@ namespace ebbrt {
     virtual void Install() = 0;
   };
   constexpr EbbRef<EbbManager> ebb_manager =
-    EbbRef<EbbManager>(static_cast<EbbId>(1));
+    EbbRef<EbbManager>(static_cast<EbbId>(2));
 }
 
 #endif

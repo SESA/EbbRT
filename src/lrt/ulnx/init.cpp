@@ -55,7 +55,8 @@ ebbrt::Context::Context(EbbRT& instance) : instance_(instance)
     // this is done from within a context and not when we construct
     // the EbbRT
     for (unsigned i = 0; i < app::config.num_init; ++i) {
-      instance_.initial_root_table_[i].id = app::config.init_ebbs[i].id;
+      instance_.initial_root_table_[i].id =
+        lrt::trans::find_static_ebb_id(app::config.init_ebbs[i].name);
       instance_.initial_root_table_[i].root =
         app::config.init_ebbs[i].create_root();
     }

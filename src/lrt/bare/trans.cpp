@@ -43,13 +43,13 @@ ebbrt::lrt::trans::initial_root_table(unsigned i)
 void
 ebbrt::lrt::trans::early_init_ebbs()
 {
-  int num_roots = app::config.num_early_init + app::config.num_init;
+  int num_roots = app::config.num_init;
   init_root_table = new (mem::malloc(sizeof(RootBinding) *
                                      num_roots, 0))
     RootBinding[num_roots];
 
   for (unsigned i = 0; i < app::config.num_early_init; ++i) {
-    init_root_table[i].id = app::config.init_ebbs[i].id;
+    init_root_table[i].id = find_static_ebb_id(app::config.init_ebbs[i].name);
     init_root_table[i].root = app::config.init_ebbs[i].create_root();
   }
 }
@@ -60,7 +60,7 @@ ebbrt::lrt::trans::init_ebbs()
   for (unsigned i = app::config.num_early_init;
        i < app::config.num_init;
        ++i) {
-    init_root_table[i].id = app::config.init_ebbs[i].id;
+    init_root_table[i].id = find_static_ebb_id(app::config.init_ebbs[i].name);
     init_root_table[i].root = app::config.init_ebbs[i].create_root();
   }
 }

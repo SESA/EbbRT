@@ -15,12 +15,14 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <exception>
 #include "app/app.hpp"
 #include "lrt/bare/boot.hpp"
 #include "lrt/bare/console.hpp"
 #include "lrt/event.hpp"
 #include "lrt/bare/mem.hpp"
 #include "lrt/trans.hpp"
+#include "sync/spinlock.hpp"
 
 void
 ebbrt::lrt::boot::init()
@@ -57,6 +59,20 @@ namespace {
     }
     ebbrt::lrt::trans::init_ebbs();
   }
+
+  ebbrt::Spinlock lock;
+  void run_app()
+  {
+    try {
+      ebbrt::app::start();
+    } catch (std::exception& e) {
+      ebbrt::lrt::console::write("Exception caught: ");
+      ebbrt::lrt::console::write(e.what());
+      ebbrt::lrt::console::write("\n");
+    } catch (...) {
+      ebbrt::lrt::console::write("Exception caught\n");
+    }
+  }
 }
 
 /* by default no secondary cores will come up */
@@ -78,21 +94,9 @@ ebbrt::lrt::boot::init_cpu()
       while (initialized == false)
         ;
     }
-    try {
-      throw 0;
-      app::start();
-    } catch (...) {
-      while (1)
-        ;
-    }
+    run_app();
   } else if (event::get_location() == 0) {
-    try {
-      throw 0;
-      construct();
-      app::start();
-    } catch (...) {
-      while (1)
-        ;
-    }
+    construct();
+    run_app();
   }
 }
