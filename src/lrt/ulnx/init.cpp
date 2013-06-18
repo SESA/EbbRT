@@ -62,6 +62,7 @@ ebbrt::Context::Context(EbbRT& instance) : instance_(instance)
     }
     std::lock_guard<std::mutex> lock(instance_.init_lock_);
     instance_.initialized_ = true;
+    instance_.init_cv_.notify_all();
   } else {
     std::unique_lock<std::mutex> lock{instance_.init_lock_};
     if (!instance_.initialized_) {
