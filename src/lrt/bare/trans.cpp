@@ -26,7 +26,7 @@
 #include "lrt/trans_impl.hpp"
 
 namespace {
-  ebbrt::lrt::trans::EbbRoot* miss_handler;
+  ebbrt::lrt::trans::EbbRoot* miss_handler = &ebbrt::lrt::trans::init_root;
   ebbrt::lrt::trans::RootBinding* init_root_table;
 }
 
@@ -41,24 +41,29 @@ ebbrt::lrt::trans::initial_root_table(unsigned i)
 }
 
 void
-ebbrt::lrt::trans::init_ebbs()
+ebbrt::lrt::trans::early_init_ebbs()
 {
+  int num_roots = app::config.num_init;
   init_root_table = new (mem::malloc(sizeof(RootBinding) *
-                                        app::config.num_init, 0))
-    RootBinding[app::config.num_init];
-  miss_handler = &init_root;
-  for (unsigned i = 0; i < app::config.num_init; ++i) {
-    init_root_table[i].id = app::config.init_ebbs[i].id;
+                                     num_roots, 0))
+    RootBinding[num_roots];
+
+  for (unsigned i = 0; i < app::config.num_early_init; ++i) {
+    init_root_table[i].id = find_static_ebb_id(app::config.init_ebbs[i].name);
     init_root_table[i].root = app::config.init_ebbs[i].create_root();
   }
 }
 
-bool
-ebbrt::lrt::trans::init(unsigned num_cores)
+void
+ebbrt::lrt::trans::init_ebbs()
 {
-  return true;
+  for (unsigned i = app::config.num_early_init;
+       i < app::config.num_init;
+       ++i) {
+    init_root_table[i].id = find_static_ebb_id(app::config.init_ebbs[i].name);
+    init_root_table[i].root = app::config.init_ebbs[i].create_root();
+  }
 }
-
 
 void
 ebbrt::lrt::trans::init_cpu()

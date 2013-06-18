@@ -32,7 +32,9 @@ else
 if LRT_BARE
 src_app_HelloRemote_HelloRemote_ebbs += \
 	src/ebb/Ethernet/libVirtioNet.a \
-	src/ebb/PCI/libPCI.a
+	src/ebb/PCI/libPCI.a \
+	src/ebb/Syscall/libSyscall.a \
+	src/ebb/Gthread/libGthread.a
 endif
 endif
 

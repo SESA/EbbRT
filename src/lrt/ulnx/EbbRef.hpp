@@ -39,7 +39,7 @@ namespace ebbrt {
          * the NullEbb
          */
 
-        EbbRef() :
+        constexpr EbbRef() :
           id_{0}
         {}
 
@@ -48,7 +48,7 @@ namespace ebbrt {
          *
          * @param id Given ebb ID
          */
-        explicit EbbRef(EbbId id) :
+        constexpr explicit EbbRef(EbbId id) :
           /* construct the ref corresponding to the given id */
           id_{id}
         {}

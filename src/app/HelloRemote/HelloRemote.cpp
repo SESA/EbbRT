@@ -20,8 +20,10 @@
 #include "ebb/Console/Console.hpp"
 #include "ebb/EbbManager/PrimitiveEbbManager.hpp"
 #include "ebb/EventManager/SimpleEventManager.hpp"
+#include "ebb/Gthread/Gthread.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
+#include "ebb/Syscall/Syscall.hpp"
 #ifdef __linux__
 #include "ebbrt.hpp"
 #include "ebb/Ethernet/RawSocket.hpp"
@@ -30,40 +32,55 @@
 #include "ebb/Ethernet/VirtioNet.hpp"
 #endif
 
-const ebbrt::app::Config::InitEbb init_ebbs[] =
+constexpr ebbrt::app::Config::InitEbb init_ebbs[] =
 {
   {
     .create_root = ebbrt::SimpleMemoryAllocatorConstructRoot,
-    .id = ebbrt::memory_allocator
+    .name = "MemoryAllocator"
   },
   {
     .create_root = ebbrt::PrimitiveEbbManagerConstructRoot,
-    .id = ebbrt::ebb_manager
+    .name = "EbbManager"
+  },
+#ifdef __ebbrt__
+  {
+    .create_root = ebbrt::Gthread::ConstructRoot,
+    .name = "Gthread"
   },
   {
+    .create_root = ebbrt::Syscall::ConstructRoot,
+    .name = "Syscall"
+  },
+#endif
+  {
     .create_root = ebbrt::SimpleEventManager::ConstructRoot,
-    .id = ebbrt::event_manager
+    .name = "EventManager"
   },
   {
     .create_root = ebbrt::Console::ConstructRoot,
-    .id = ebbrt::console
+    .name = "Console"
   },
   {
     .create_root = ebbrt::MessageManager::ConstructRoot,
-    .id = ebbrt::message_manager
+    .name = "MessageManager"
   }
 };
 
-const ebbrt::app::Config::StaticEbbId static_ebbs[] = {
+constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
   {.name = "MemoryAllocator", .id = 1},
   {.name = "EbbManager", .id = 2},
-  {.name = "EventManager", .id = 3},
-  {.name = "Console", .id = 4},
-  {.name = "MessageManager", .id = 5}
+  {.name = "Gthread", .id = 3},
+  {.name = "Syscall", .id = 4},
+  {.name = "EventManager", .id = 5},
+  {.name = "Console", .id = 6},
+  {.name = "MessageManager", .id = 7}
 };
 
 const ebbrt::app::Config ebbrt::app::config = {
   .space_id = 1,
+#ifdef __ebbrt__
+  .num_early_init = 4,
+#endif
   .num_init = sizeof(init_ebbs) / sizeof(Config::InitEbb),
   .init_ebbs = init_ebbs,
   .num_statics = sizeof(static_ebbs) / sizeof(Config::StaticEbbId),

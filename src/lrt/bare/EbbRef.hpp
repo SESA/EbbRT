@@ -48,7 +48,7 @@ namespace ebbrt {
          */
         constexpr explicit EbbRef(EbbId id) :
           /* construct the ref corresponding to the given id */
-          ref_{reinterpret_cast<T**>(&(local_table[id].ref))}
+          ref_{reinterpret_cast<T**>(LOCAL_MEM_VIRT + sizeof(LocalEntry) * id)}
         {}
         /**
          * @brief Overload arrow operator

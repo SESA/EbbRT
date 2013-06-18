@@ -33,7 +33,8 @@ namespace ebbrt {
        * which, in turn, will act as the objects virtual function table and
        * call into the corresponding default function that initiates a  miss.
        *
-       * For configured entries, the ref is referenced (method is resolved using the objects own
+       * For configured entries, the ref is referenced (method is
+       * resolved using the objects own
        * v-table), and the `shadow` table is unused.
        */
       class LocalEntry {
@@ -46,18 +47,14 @@ namespace ebbrt {
                                //arguments and having no return
       };
 
-      /** virtual memory trikc ***/
+      /** virtual memory trick ***/
       LocalEntry* const local_table = reinterpret_cast<LocalEntry*>(LOCAL_MEM_VIRT);
 
-
       /**
-       * @brief Initial translation setup
-       *
-       * @param num_cores
-       *
-       * @return
+       * Construct early roots, before exceptions and global
+       * constructors.
        */
-      bool init(unsigned num_cores);
+      void early_init_ebbs();
       /**
        * @brief Construct roots for statically linked Ebbs
        */
