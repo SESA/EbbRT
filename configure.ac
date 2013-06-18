@@ -21,6 +21,8 @@ AM_INIT_AUTOMAKE([foreign subdir-objects -Wall -Werror -Wno-portability])
 AC_CONFIG_SRCDIR([src/ebbrt.hpp])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([Makefile])
+AM_PATH_PYTHON([2.6],, [:])
+AM_CONDITIONAL([HAVE_PYTHON], [test "$PYTHON" != ":"])
 
 m4_include([m4/doxy.m4])
 DX_HTML_FEATURE(ON)
