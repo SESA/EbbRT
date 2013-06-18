@@ -14,6 +14,18 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+if HAVE_PYTHON
+TESTS_ENVIRONMENT = python
+if LRT_ULNX
+check_SCRIPTS = test/helloworld.py
+TESTS = test/helloworld.py
+endif
+if LRT_BARE
+check_SCRIPTS = test/hello-bare.py
+TESTS = test/hello-bare.py
+endif
+endif
+
 AM_CXXFLAGS = -std=c++0x -Wall -Werror
 AM_CPPFLAGS = -iquote $(top_srcdir)/src \
 	--include $(top_builddir)/config.h
@@ -61,3 +73,4 @@ include src/app/Makefile.am
 include src/ebb/Makefile.am
 include src/lib/Makefile.am
 include src/lrt/Makefile.am
+include test/Makefile.am
