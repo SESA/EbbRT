@@ -22,7 +22,9 @@
 namespace ebbrt {
   namespace lrt {
     namespace trans {
-      void* const LOCAL_MEM_VIRT = reinterpret_cast<void*>(0xFFFFFFFF00000000);
+      constexpr uintptr_t LOCAL_MEM_VIRT = 0xFFFFFFFF00000000;
+      constexpr void* LOCAL_MEM_VIRT_PTR =
+        reinterpret_cast<void*>(LOCAL_MEM_VIRT);
     }
   }
 }

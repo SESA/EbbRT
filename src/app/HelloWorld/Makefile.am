@@ -22,6 +22,12 @@ src_app_HelloWorld_HelloWorld_ebbs = \
 	src/ebb/EbbManager/libPrimitiveEbbManager.a \
 	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a
 
+if LRT_BARE
+src_app_HelloWorld_HelloWorld_ebbs += \
+	src/ebb/Syscall/libSyscall.a \
+	src/ebb/Gthread/libGthread.a
+endif
+
 src_app_HelloWorld_HelloWorld_LDFLAGS = \
 	$(app_linkflags) \
 	-Wl,-whole-archive \

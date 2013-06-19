@@ -4,7 +4,7 @@
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as
-  published by the Free Software Foundation, either version 3 of the
+4  published by the Free Software Foundation, either version 3 of the
   License, or (at your option) any later version.
 
   This program is distributed in the hope that it will be useful,
@@ -15,12 +15,14 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <exception>
 #include "app/app.hpp"
 #include "lrt/bare/boot.hpp"
 #include "lrt/bare/console.hpp"
 #include "lrt/event.hpp"
 #include "lrt/bare/mem.hpp"
 #include "lrt/trans.hpp"
+#include "sync/spinlock.hpp"
 
 void
 ebbrt::lrt::boot::init()
@@ -32,7 +34,6 @@ ebbrt::lrt::boot::init()
   /* Set up initial system state */
   mem::init(num_cores);
   event::init(num_cores);
-  trans::init(num_cores);
 
   /* start secondary cores */
   init_smp(num_cores);
@@ -44,14 +45,33 @@ void* __dso_handle = nullptr;
 extern void (*start_ctors[])();
 extern void (*end_ctors[])();
 
+extern char __eh_frame_start[];
+extern "C" void __register_frame(void*);
+
 namespace {
   /** Once only construction */
   void construct()
   {
+    ebbrt::lrt::trans::early_init_ebbs();
+    __register_frame(__eh_frame_start);
     for (unsigned i = 0; i < (end_ctors - start_ctors); ++i) {
       start_ctors[i]();
     }
     ebbrt::lrt::trans::init_ebbs();
+  }
+
+  ebbrt::Spinlock lock;
+  void run_app()
+  {
+    try {
+      ebbrt::app::start();
+    } catch (std::exception& e) {
+      ebbrt::lrt::console::write("Exception caught: ");
+      ebbrt::lrt::console::write(e.what());
+      ebbrt::lrt::console::write("\n");
+    } catch (...) {
+      ebbrt::lrt::console::write("Exception caught\n");
+    }
   }
 }
 
@@ -74,9 +94,9 @@ ebbrt::lrt::boot::init_cpu()
       while (initialized == false)
         ;
     }
-    app::start();
+    run_app();
   } else if (event::get_location() == 0) {
-      construct();
-      app::start();
+    construct();
+    run_app();
   }
 }

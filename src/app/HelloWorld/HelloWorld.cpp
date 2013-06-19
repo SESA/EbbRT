@@ -20,22 +20,58 @@
 #include <mutex>
 
 #include "app/app.hpp"
+#include "ebb/EbbManager/PrimitiveEbbManager.hpp"
+#include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
 
 #ifdef __linux__
 #include <iostream>
 #include <thread>
 #include "ebbrt.hpp"
 #elif __ebbrt
+#include "ebb/Gthread/Gthread.hpp"
+#include "ebb/Syscall/Syscall.hpp"
 #include "lrt/bare/console.hpp"
 #include "sync/spinlock.hpp"
 #endif
 
+constexpr ebbrt::app::Config::InitEbb init_ebbs[] =
+{
+  {
+    .create_root = ebbrt::SimpleMemoryAllocatorConstructRoot,
+    .name = "MemoryAllocator"
+  },
+  {
+    .create_root = ebbrt::PrimitiveEbbManagerConstructRoot,
+    .name = "EbbManager"
+  },
+#ifdef __ebbrt__
+  {
+    .create_root = ebbrt::Gthread::ConstructRoot,
+    .name = "Gthread"
+  },
+  {
+    .create_root = ebbrt::Syscall::ConstructRoot,
+    .name = "Syscall"
+  }
+#endif
+};
+
+constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
+  {.name = "MemoryAllocator", .id = 1},
+  {.name = "EbbManager", .id = 2},
+  {.name = "Gthread", .id = 3},
+  {.name = "Syscall", .id = 4}
+};
+
 const ebbrt::app::Config ebbrt::app::config = {
   .space_id = 0,
-  .num_init = 0,
-  .init_ebbs = nullptr,
-  .num_statics = 0,
-  .static_ebb_ids = nullptr
+#ifdef __ebbrt__
+  .num_early_init = 4,
+#endif
+  .num_init = sizeof(init_ebbs) / sizeof(Config::InitEbb),
+  .init_ebbs = init_ebbs,
+  .num_statics = sizeof(static_ebbs) / sizeof(Config::StaticEbbId),
+  .static_ebb_ids = static_ebbs
 };
 
 #ifdef __ebbrt__

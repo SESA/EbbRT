@@ -26,154 +26,126 @@
 #include <errno.h>
 
 #include "ebb/MemoryAllocator/MemoryAllocator.hpp"
-#include "lrt/bare/assert.hpp"
-
-#define NYI \
-  LRT_ASSERT(0);
-
+#include "ebb/Syscall/Syscall.hpp"
 
 extern "C" int
 ebbrt_newlib_exit(int val)
 {
-  NYI;
-  return 0;
+  return ebbrt::syscall->Exit(val);
 }
 
 extern "C" int
 ebbrt_newlib_execve(char *name, char **argv, char **env)
 {
-  NYI;
-  return 0;
+  return ebbrt::syscall->Execve(name, argv, env);
 }
 
 extern "C" int
 ebbrt_newlib_getpid(void)
 {
-  NYI;
-  return 0;
+  return ebbrt::syscall->Getpid();
 }
 
 extern "C" int
 ebbrt_newlib_fork(void)
 {
-  NYI;
-  return 0;
+  return ebbrt::syscall->Fork();
 }
 
 extern "C" int
 ebbrt_newlib_kill(int pid, int sig)
 {
-  NYI;
-  return 0;
+  return ebbrt::syscall->Kill(pid, sig);
 }
 
 extern "C" int
 ebbrt_newlib_wait(int *status)
 {
-  NYI;
-  return 0;
+  return ebbrt::syscall->Wait(status);
 }
 
 extern "C" int
 ebbrt_newlib_isatty(int fd)
 {
-  NYI
-  return 0;
+  return ebbrt::syscall->Isatty(fd);
 }
 
 extern "C" int
 ebbrt_newlib_close(int file)
 {
-  NYI;
-  return 0;
+  return ebbrt::syscall->Close(file);
 }
 
 extern "C" int
 ebbrt_newlib_link(char *path1, char *path2)
 {
-  NYI;
-  return 0;
+  return ebbrt::syscall->Link(path1, path2);
 }
 
 extern "C" int
 ebbrt_newlib_lseek(int file, int ptr, int dir)
 {
-  NYI;
-  return 0;
+  return ebbrt::syscall->Lseek(file, ptr, dir);
 }
 
 extern "C" int
 ebbrt_newlib_open(const char *name, int flags, va_list list)
 {
-  NYI;
-  return 0;
+  return ebbrt::syscall->Open(name, flags, list);
 }
 
 extern "C" int
 ebbrt_newlib_read(int file, char *ptr, int len)
 {
-  NYI;
-  return 0;
+  return ebbrt::syscall->Read(file, ptr, len);
 }
 
 extern "C" int
 ebbrt_newlib_fstat(int file, struct stat *st)
 {
-  NYI;
-  return 0;
+  return ebbrt::syscall->Fstat(file, st);
 }
 
 extern "C" int
 ebbrt_newlib_stat(const char *file, struct stat *st)
 {
-  NYI;
-  return 0;
+  return ebbrt::syscall->Stat(file, st);
 }
 
 extern "C" int
 ebbrt_newlib_unlink(char *name)
 {
-  NYI;
-  return 0;
+  return ebbrt::syscall->Unlink(name);
 }
 
 extern "C" int
 ebbrt_newlib_write(int file, char *ptr, int len)
 {
-  NYI;
-  return 0;
-}
-
-extern "C" caddr_t
-ebbrt_newlib_sbrk(int incr)
-{
-  NYI;
-  return 0;
+  return ebbrt::syscall->Write(file, ptr, len);
 }
 
 extern "C" int
 ebbrt_newlib_gettimeofday(struct timeval *p, void *z)
 {
-  NYI;
-  return 0;
+  return ebbrt::syscall->Gettimeofday(p, z);
 }
 
 extern "C" void* ebbrt_newlib_malloc(size_t size)
 {
-  return ebbrt::memory_allocator->malloc(size);
+  return ebbrt::memory_allocator->Malloc(size);
 }
 
 extern "C" void ebbrt_newlib_free(void* ptr)
 {
-  ebbrt::memory_allocator->free(ptr);
+  return ebbrt::memory_allocator->Free(ptr);
 }
 
 extern "C" void* ebbrt_newlib_realloc(void* ptr, size_t size)
 {
-  return ebbrt::memory_allocator->realloc(ptr, size);
+  return ebbrt::memory_allocator->Realloc(ptr, size);
 }
 
 extern "C" void* ebbrt_newlib_calloc(size_t num, size_t size)
 {
-  return ebbrt::memory_allocator->calloc(num, size);
+  return ebbrt::memory_allocator->Calloc(num, size);
 }

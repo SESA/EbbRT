@@ -37,13 +37,13 @@ ebbrt::SimpleMemoryAllocator::SimpleMemoryAllocator(Location loc)
 }
 
 void*
-ebbrt::SimpleMemoryAllocator::malloc(size_t size)
+ebbrt::SimpleMemoryAllocator::Malloc(size_t size)
 {
-  return memalign(8, size);
+  return Memalign(8, size);
 }
 
 void*
-ebbrt::SimpleMemoryAllocator::memalign(size_t boundary, size_t size) {
+ebbrt::SimpleMemoryAllocator::Memalign(size_t boundary, size_t size) {
   char* p = current_;
   p = reinterpret_cast<char*>(((reinterpret_cast<uintptr_t>(p) +
                                 boundary - 1) / boundary) * boundary);
@@ -56,19 +56,19 @@ ebbrt::SimpleMemoryAllocator::memalign(size_t boundary, size_t size) {
 }
 
 void
-ebbrt::SimpleMemoryAllocator::free(void* p)
+ebbrt::SimpleMemoryAllocator::Free(void* p)
 {
 }
 
 void*
-ebbrt::SimpleMemoryAllocator::realloc(void* ptr, size_t size)
+ebbrt::SimpleMemoryAllocator::Realloc(void* ptr, size_t size)
 {
   free(ptr);
   return malloc(size);
 }
 
 void*
-ebbrt::SimpleMemoryAllocator::calloc(size_t num, size_t size)
+ebbrt::SimpleMemoryAllocator::Calloc(size_t num, size_t size)
 {
   size_t total = num * size;
   void* ptr = malloc(total);

@@ -23,15 +23,15 @@
 namespace ebbrt {
   class MemoryAllocator : public EbbRep {
   public:
-    virtual void* malloc(size_t size) = 0;
-    virtual void* memalign(size_t boundary, size_t size) = 0;
-    virtual void free(void* ptr) = 0;
-    virtual void* realloc(void* ptr, size_t size) = 0;
-    virtual void* calloc(size_t num, size_t size) = 0;
+    virtual void* Malloc(size_t size) = 0;
+    virtual void* Memalign(size_t boundary, size_t size) = 0;
+    virtual void Free(void* ptr) = 0;
+    virtual void* Realloc(void* ptr, size_t size) = 0;
+    virtual void* Calloc(size_t num, size_t size) = 0;
     virtual ~MemoryAllocator() {}
   };
-  const EbbRef<MemoryAllocator> memory_allocator =
-    EbbRef<MemoryAllocator>(lrt::trans::find_static_ebb_id("MemoryAllocator"));
+  constexpr EbbRef<MemoryAllocator> memory_allocator =
+    EbbRef<MemoryAllocator>(static_cast<EbbId>(1));
 }
 
 #endif

@@ -130,7 +130,7 @@ ebbrt::VirtioNet::VirtioNet() : next_free_{0}, next_available_{0},
   LRT_ASSERT(virtio::queue_vector(io_addr_) != 0xFFFF);
   send_max_ = virtio::queue_size(io_addr_);
   size_t send_size = virtio::qsz_bytes(send_max_);
-  void* send_queue = memory_allocator->memalign(4096, send_size);
+  void* send_queue = memory_allocator->Memalign(4096, send_size);
   std::memset(send_queue, 0, send_size);
   virtio::queue_address(io_addr_, static_cast<uint32_t>
                         (reinterpret_cast<uintptr_t>(send_queue) >> 12));
