@@ -27,9 +27,17 @@ namespace ebbrt {
   class EventManager : public EbbRep {
   public:
     virtual uint8_t AllocateInterrupt(std::function<void()> func) = 0;
+    virtual void Async(std::function<void()> func) = 0;
+#ifdef __linux__
+    virtual void RegisterFD(int fd, uint32_t events, uint8_t interrupt) = 0;
+#endif
   private:
     friend void lrt::event::_event_interrupt(uint8_t interrupt);
+    friend void lrt::event::process_event();
     virtual void HandleInterrupt(uint8_t interrupt) = 0;
+
+    /** Dispatch event. */
+    virtual void ProcessEvent() = 0;
   };
   const EbbRef<EventManager> event_manager =
     EbbRef<EventManager>(lrt::trans::find_static_ebb_id("EventManager"));

@@ -15,32 +15,30 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_EBB_ETHERNET_ETHERNET_HPP
-#define EBBRT_EBB_ETHERNET_ETHERNET_HPP
+#ifndef EBBRT_EBB_STREAM_STREAM_HPP
+#define EBBRT_EBB_STREAM_STREAM_HPP
 
 #include <functional>
 
 #include "ebb/ebb.hpp"
-#include "misc/buffer.hpp"
 
 namespace ebbrt {
-  class Ethernet : public EbbRep {
+  class StreamProcessor : public EbbRep {
   public:
-    class Header {
-    public:
-      uint8_t destination[6];
-      uint8_t source[6];
-      uint16_t ethertype;
-    } __attribute__((packed));
-    virtual void Send(BufferList buffers,
-                      std::function<void()> cb = nullptr) = 0;
-    virtual const uint8_t* MacAddress() = 0;
-    virtual void SendComplete() = 0;
-    virtual void Register(uint16_t ethertype,
-                          std::function<void(const char*, size_t)> func) = 0;
-    virtual void Receive() = 0;
+    virtual void Process(const char*, size_t) = 0;
   };
-  extern EbbRef<Ethernet> ethernet;
+
+  class Stream : public EbbRep {
+  public:
+    enum Split {
+      Duplicate,
+      Divide
+    };
+    virtual void Attach(std::function<void(const char*, size_t)> processor,
+                        Split how_to_split) = 0;
+    virtual void Attach(EbbRef<StreamProcessor> processor,
+                        Split how_to_split) = 0;
+  };
 }
 
 #endif

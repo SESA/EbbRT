@@ -34,8 +34,6 @@ namespace ebbrt {
       Location get_location();
 
       unsigned get_max_contexts();
-
-      void register_fd(int fd, uint32_t events, uint8_t interrupt);
     }
   }
 }

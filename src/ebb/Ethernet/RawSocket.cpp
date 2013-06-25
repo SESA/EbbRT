@@ -28,7 +28,7 @@
 #include "ebb/EventManager/EventManager.hpp"
 
 namespace {
-  char dev[] = "tap0";
+  char dev[] = "tap100";
 }
 
 ebbrt::EbbRoot*
@@ -78,14 +78,39 @@ ebbrt::RawSocket::RawSocket()
   uint8_t interrupt = event_manager->AllocateInterrupt([]() {
       ethernet->Receive();
     });
-  lrt::event::register_fd(fd, EPOLLIN, interrupt);
+  event_manager->RegisterFD(fd, EPOLLIN, interrupt);
 }
 
 void
 ebbrt::RawSocket::Send(BufferList buffers,
                        std::function<void()> cb)
 {
-  assert(0);
+  const void* buf;
+  size_t len;
+  char* aggregate;
+  if (buffers.size() == 1) {
+    buf = buffers.front().first;
+    len = buffers.front().second;
+  } else {
+    len = 0;
+    for (const auto& buffer : buffers) {
+      len += buffer.second;
+    }
+    aggregate = new char[len];
+    char* location = aggregate;
+    for (const auto& buffer : buffers) {
+      memcpy(location, buffer.first, buffer.second);
+      location += buffer.second;
+    }
+    buf = aggregate;
+  }
+  pcap_inject(pdev_, buf, len);
+  if (buffers.size() != 1) {
+    free(aggregate);
+  }
+  if (cb) {
+    event_manager->Async(std::move(cb));
+  }
 }
 
 const uint8_t*
@@ -102,7 +127,7 @@ ebbrt::RawSocket::SendComplete()
 
 void
 ebbrt::RawSocket::Register(uint16_t ethertype,
-                           std::function<void(const uint8_t*, size_t)> func)
+                           std::function<void(const char*, size_t)> func)
 {
   map_[ethertype] = func;
 }
@@ -117,7 +142,7 @@ ebbrt::RawSocket::Receive()
     uint16_t ethertype = ntohs(*reinterpret_cast<const uint16_t*>(&data[12]));
     auto it = map_.find(ethertype);
     if (it != map_.end()) {
-      it->second(data, header->caplen);
+      it->second(reinterpret_cast<const char*>(data), header->caplen);
     }
   }
 }

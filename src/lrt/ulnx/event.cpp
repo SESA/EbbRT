@@ -31,17 +31,6 @@ ebbrt::lrt::event::_event_interrupt(uint8_t interrupt)
 }
 
 void
-ebbrt::lrt::event::register_fd(int fd, uint32_t events, uint8_t interrupt)
-{
-  struct epoll_event event;
-  event.events = EPOLLIN;
-  event.data.u32 = interrupt;
-  if (epoll_ctl(active_context->epoll_fd_, EPOLL_CTL_ADD, fd, &event) == -1) {
-    throw std::runtime_error("epoll_ctl failed");
-  }
-}
-
-void
 ebbrt::lrt::event::_event_altstack_push(uintptr_t val)
 {
   active_context->altstack_.push(val);

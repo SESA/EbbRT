@@ -29,6 +29,13 @@ ebbrt::SimpleEventManager::ConstructRoot()
 
 ebbrt::SimpleEventManager::SimpleEventManager() : next_{32}
 {
+#if __linux__
+  //get the epoll fd for the event loop
+  epoll_fd_ = epoll_create(1);
+  if (epoll_fd_ == -1) {
+    throw std::runtime_error("epoll_create failed");
+  }
+#endif
 }
 
 uint8_t
@@ -56,3 +63,84 @@ ebbrt::SimpleEventManager::HandleInterrupt(uint8_t interrupt)
     f();
   }
 }
+
+void
+ebbrt::SimpleEventManager::ProcessEvent()
+{
+#ifdef __linux__
+  struct epoll_event epoll_event;
+
+  auto ret = epoll_wait(epoll_fd_, &epoll_event, 1, 0);
+  if (ret == -1) {
+    throw std::runtime_error("epoll_wait failed");
+  }
+  if (ret == 1) {
+    ebbrt::lrt::event::_event_interrupt(epoll_event.data.u32);
+    return;
+  }
+
+  if (!asyncs_.empty()) {
+    auto f = asyncs_.front();
+    asyncs_.pop_front();
+    f();
+    return;
+  }
+
+  //blocks until an event is ready
+  while (epoll_wait(epoll_fd_, &epoll_event, 1, -1) == -1) {
+    if (errno == EINTR) {
+      continue;
+    }
+    throw std::runtime_error("epoll_wait failed");
+  }
+  ebbrt::lrt::event::_event_interrupt(epoll_event.data.u32);
+#elif __ebbrt__
+  fired_interrupt_ = false;
+  asm volatile ("sti;"
+                "cli;"
+                :
+                :
+                : "rax", "rcx", "rdx", "rsi",
+                  "rdi", "r8", "r9", "r10", "r11");
+
+  if (fired_interrupt_) {
+    return;
+  }
+
+  if (!asyncs_.empty()) {
+    auto f = asyncs_.front();
+    asyncs_.pop_front();
+    f();
+    return;
+  }
+
+  asm volatile ("sti;"
+                "hlt;"
+                :
+                :
+                : "rax", "rcx", "rdx", "rsi",
+                  "rdi", "r8", "r9", "r10", "r11");
+#endif
+}
+
+void
+ebbrt::SimpleEventManager::Async(std::function<void()> func)
+{
+  //FIXME: sync
+  asyncs_.push_front(std::move(func));
+}
+
+#ifdef __linux__
+void
+ebbrt::SimpleEventManager::RegisterFD(int fd,
+                                      uint32_t events,
+                                      uint8_t interrupt)
+{
+  struct epoll_event event;
+  event.events = EPOLLIN;
+  event.data.u32 = interrupt;
+  if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &event) == -1) {
+    throw std::runtime_error("epoll_ctl failed");
+  }
+}
+#endif

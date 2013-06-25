@@ -13,23 +13,8 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-include src/lrt/arch/Makefile.am
-include src/lrt/bare/Makefile.am
-include src/lrt/ulnx/Makefile.am
+EXTRA_LIBRARIES += src/ebb/FileSystem/libFileSystem.a
 
-lrt_sources = \
-	$(lrt_arch_sources) \
-	src/lrt/event.cpp \
-	src/lrt/event.hpp \
-	src/lrt/event_impl.hpp \
-	src/lrt/trans.cpp \
-	src/lrt/trans.hpp \
-	src/lrt/trans_impl.hpp
-
-if LRT_ULNX
-lrt_sources += $(lrt_ulnx_sources)
-else
-if LRT_BARE
-lrt_sources += $(lrt_bare_sources)
-endif
-endif
+src_ebb_FileSystem_libFileSystem_a_SOURCES = \
+	src/ebb/FileSystem/FileSystem.cpp \
+	src/ebb/FileSystem/FileStream.cpp

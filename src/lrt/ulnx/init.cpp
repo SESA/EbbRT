@@ -40,12 +40,6 @@ ebbrt::Context::Context(EbbRT& instance) : instance_(instance)
 {
   active_context = this;
 
-  //get the epoll fd for the event loop
-  epoll_fd_ = epoll_create(1);
-  if (epoll_fd_ == -1) {
-    throw std::runtime_error("epoll_create failed");
-  }
-
   location_ = instance_.AllocateLocation();
 
   //do initialization only on location 0
@@ -81,15 +75,7 @@ ebbrt::Context::Loop(int count)
 
   int dispatched = 0;
   while (count == -1 || dispatched < count) {
-    struct epoll_event epoll_event;
-    //blocks until an event is ready
-    if (epoll_wait(epoll_fd_, &epoll_event, 1, -1) == -1) {
-      if (errno == EINTR) {
-        continue;
-      }
-      throw std::runtime_error("epoll_wait failed");
-    }
-    ebbrt::lrt::event::_event_interrupt(epoll_event.data.u32);
+    lrt::event::process_event();
     ++dispatched;
   }
 }

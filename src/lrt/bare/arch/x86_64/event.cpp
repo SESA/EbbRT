@@ -106,13 +106,7 @@ ebbrt::lrt::event::init_cpu_arch()
 
   /* Event loop goes here */
   while (1) {
-    asm volatile ("sti;"
-                  "hlt;"
-                  "cli;"
-                  :
-                  :
-                  : "rax", "rcx", "rdx", "rsi",
-                  "rdi", "r8", "r9", "r10", "r11");
+    lrt::event::process_event();
   }
 }
 

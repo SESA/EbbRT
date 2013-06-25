@@ -35,13 +35,13 @@ namespace ebbrt {
     const uint8_t* MacAddress() override;
     void SendComplete() override;
     void Register(uint16_t ethertype,
-                  std::function<void(const uint8_t*, size_t)> func) override;
+                  std::function<void(const char*, size_t)> func) override;
     void Receive() override;
   private:
     uint8_t mac_addr_[6];
     pcap_t* pdev_;
     std::unordered_map<uint16_t,
-                       std::function<void(const uint8_t*, size_t)> > map_;
+                       std::function<void(const char*, size_t)> > map_;
   };
 }
 

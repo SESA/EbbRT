@@ -18,5 +18,6 @@ app_sources = \
 
 EXTRA_PROGRAMS =
 
+include src/app/Grep/Makefile.am
 include src/app/HelloRemote/Makefile.am
 include src/app/HelloWorld/Makefile.am

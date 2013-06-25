@@ -150,7 +150,7 @@ namespace ebbrt {
           volatile uint32_t tpr_ __attribute__((aligned(16)));
           volatile uint32_t apr_ __attribute__((aligned(16)));
           volatile uint32_t ppr_ __attribute__((aligned(16)));
-          volatile uint32_t ler_ __attribute__((aligned(16)));
+          volatile uint32_t eoi __attribute__((aligned(16)));
           volatile uint32_t rrd_ __attribute__((aligned(16)));
           volatile uint32_t ldr_ __attribute__((aligned(16)));
           volatile uint32_t dfr_ __attribute__((aligned(16)));
@@ -184,8 +184,8 @@ namespace ebbrt {
           volatile uint32_t reserved7_ __attribute__((aligned(16)));
           volatile uint32_t reserved8_ __attribute__((aligned(16)));
           volatile uint32_t reserved9_ __attribute__((aligned(16)));
-          volatile uint32_t eoi __attribute__((aligned(16)));
           volatile uint32_t reserved11_ __attribute__((aligned(16)));
+          volatile uint32_t reserved12_ __attribute__((aligned(16)));
           volatile uint32_t lvt_cmci_ __attribute__((aligned(16)));
           volatile IcrLow lil_ __attribute__((aligned(16)));
           volatile IcrHigh lih_ __attribute__((aligned(16)));
@@ -197,12 +197,12 @@ namespace ebbrt {
           volatile uint32_t lvt_error_ __attribute__((aligned(16)));
           volatile uint32_t init_count_ __attribute__((aligned(16)));
           volatile uint32_t current_count_ __attribute__((aligned(16)));
-          volatile uint32_t reserved12_ __attribute__((aligned(16)));
           volatile uint32_t reserved13_ __attribute__((aligned(16)));
           volatile uint32_t reserved14_ __attribute__((aligned(16)));
           volatile uint32_t reserved15_ __attribute__((aligned(16)));
-          volatile uint32_t dcr_ __attribute__((aligned(16)));
           volatile uint32_t reserved16_ __attribute__((aligned(16)));
+          volatile uint32_t dcr_ __attribute__((aligned(16)));
+          volatile uint32_t reserved17_ __attribute__((aligned(16)));
         };
       };
     public:

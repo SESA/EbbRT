@@ -17,6 +17,7 @@
 */
 #include <algorithm>
 
+#include "arch/inet.hpp"
 #include "device/virtio.hpp"
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Ethernet/VirtioNet.hpp"
@@ -61,8 +62,30 @@ ebbrt::VirtioNet::ConstructRoot()
   return new SharedRoot<VirtioNet>();
 }
 
-ebbrt::VirtioNet::VirtioNet() : next_free_{0}, next_available_{0},
-  last_sent_used_{0}, msix_enabled_{false}
+void
+ebbrt::VirtioNet::InitRing(Ring& ring)
+{
+  ring.size = virtio::queue_size(io_addr_);
+  size_t bytes = virtio::qsz_bytes(ring.size);
+  void* queue = memory_allocator->Memalign(4096, bytes);
+  std::memset(queue, 0, bytes);
+  virtio::queue_address(io_addr_, static_cast<uint32_t>
+                        (reinterpret_cast<uintptr_t>(queue) >> 12));
+  ring.descs = static_cast<virtio::QueueDescriptor*>(queue);
+  for (unsigned i = 0; i < ring.size; ++i) {
+    ring.descs[i].next = i + 1;
+  }
+  ring.available = reinterpret_cast<virtio::Available*>
+    (&ring.descs[ring.size]);
+  ring.used = reinterpret_cast<virtio::Used*>
+    ((reinterpret_cast<uintptr_t>(&ring.available->ring[ring.size]) + 4095)
+     & ~4095);
+  ring.free_head = 0;
+  ring.num_free = ring.size;
+  ring.last_used = 0;
+}
+
+ebbrt::VirtioNet::VirtioNet()
 {
   auto it = std::find_if(pci->DevicesBegin(), pci->DevicesEnd(),
                          [] (const PCI::Device& d) {
@@ -77,7 +100,6 @@ ebbrt::VirtioNet::VirtioNet() : next_free_{0}, next_available_{0},
   uint8_t ptr = it->FindCapability(PCI::Device::CAP_MSIX);
   LRT_ASSERT(ptr != 0);
   it->EnableMsiX(ptr);
-  msix_enabled_ = true;
   uint8_t bar = it->MsiXTableBIR(ptr);
   uint32_t msix_addr = it->BAR(bar);
   uint32_t offset = it->MsiXTableOffset(ptr);
@@ -85,18 +107,23 @@ ebbrt::VirtioNet::VirtioNet() : next_free_{0}, next_available_{0},
   msix_addr += offset;
   auto msix_table = reinterpret_cast<volatile PCI::Device::MSIXTableEntry*>
     (msix_addr);
-  // msix_table[0].raw[0] = 0;
-  // msix_table[0].upper = 0xFEE;
-  // msix_table[0].raw[1] = 0;
-  // msix_table[0].raw[2] = 0;
-  // msix_table[0].vector = event_manager->AllocateInterrupt(nullptr);
-  // msix_table[0].raw[3] = 0;
-  msix_table->raw[0] = 0xFEE00000;
-  msix_table->raw[1] = 0;
-  msix_table->raw[2] = event_manager->AllocateInterrupt([]() {
+  bar = it->MsiXPBABIR(ptr);
+  uint32_t pba_addr = it->BAR(bar);
+  offset = it->MsiXPBAOffset(ptr);
+  LRT_ASSERT((pba_addr & 1) == 0);
+  pba_addr += offset;
+  msix_table[0].raw[0] = 0xFEE00000;
+  msix_table[0].raw[1] = 0;
+  msix_table[0].raw[2] = event_manager->AllocateInterrupt([]() {
+      ethernet->Receive();
+    });
+  msix_table[0].raw[3] = 0;
+  msix_table[1].raw[0] = 0xFEE00000;
+  msix_table[1].raw[1] = 0;
+  msix_table[1].raw[2] = event_manager->AllocateInterrupt([]() {
       ethernet->SendComplete();
     });
-  msix_table->raw[3] = 0;
+  msix_table[1].raw[3] = 0;
 
   memset(empty_header_, 0, VIRTIO_HEADER_LEN);
   io_addr_ = static_cast<uint16_t>(it->BAR(0) & ~0x3);
@@ -114,35 +141,41 @@ ebbrt::VirtioNet::VirtioNet() : next_free_{0}, next_available_{0},
   supported_features.mac = features.mac;
   virtio::guest_features(io_addr_, supported_features.raw);
 
+  // Read MAC address
   LRT_ASSERT(features.mac);
-  uint16_t addr = io_addr_ + 20;
-  if (msix_enabled_) {
-    addr += 4;
-  }
+  uint16_t addr = io_addr_ + 24; //from spec, this is where the header
+                                 //ends if msix is enabled
   for (unsigned i = 0; i < 6; ++i) {
     mac_address_[i] = in8(addr + i);
   }
-  //TODO: Initialize Receive
+
+  // Initialize Receive
+  virtio::queue_select(io_addr_, 0);
+  virtio::queue_vector(io_addr_, 0);
+  LRT_ASSERT(virtio::queue_vector(io_addr_) != 0xFFFF);
+  InitRing(receive_);
 
   // Initialize Send
   virtio::queue_select(io_addr_, 1);
-  virtio::queue_vector(io_addr_, 0);
+  virtio::queue_vector(io_addr_, 1);
   LRT_ASSERT(virtio::queue_vector(io_addr_) != 0xFFFF);
-  send_max_ = virtio::queue_size(io_addr_);
-  size_t send_size = virtio::qsz_bytes(send_max_);
-  void* send_queue = memory_allocator->Memalign(4096, send_size);
-  std::memset(send_queue, 0, send_size);
-  virtio::queue_address(io_addr_, static_cast<uint32_t>
-                        (reinterpret_cast<uintptr_t>(send_queue) >> 12));
-  send_descs_ = static_cast<virtio::QueueDescriptor*>(send_queue);
-  send_available_ = reinterpret_cast<virtio::Available*>
-    (&send_descs_[send_max_]);
-  send_used_ = reinterpret_cast<virtio::Used*>
-    ((reinterpret_cast<uintptr_t>(&send_available_->ring[send_max_]) + 4095)
-     & ~4095);
+  InitRing(send_);
 
   // Tell the device we are good to go
   virtio::driver_ok(io_addr_);
+
+  // Add buffers to the receive queue
+  for (uint16_t i = 0; i < receive_.size; ++i) {
+    receive_.descs[i].address =
+      reinterpret_cast<uintptr_t>(new char[1514]);
+    receive_.descs[i].length = 1514;
+    receive_.descs[i].flags.write = true;
+    receive_.available->ring[i] = i;
+  }
+  std::atomic_thread_fence(std::memory_order_release);
+  receive_.available->index = receive_.size - 1;
+  std::atomic_thread_fence(std::memory_order_release);
+  virtio::queue_notify(io_addr_, 0);
 }
 
 void
@@ -153,37 +186,46 @@ ebbrt::VirtioNet::Send(BufferList buffers,
   for (auto& buffer : buffers) {
     size += buffer.second;
   }
-  LRT_ASSERT(size <= 1512);
+  LRT_ASSERT(size <= 1514);
 
-  lock_.Lock();
-  LRT_ASSERT((next_free_ + buffers.size() + 1) < send_max_);
-  uint16_t desc_index = next_free_;
-  next_free_ += buffers.size();
-  lock_.Unlock();
+  send_.lock.Lock();
+  // Currently we don't handle the case when we have not enough free
+  // descriptors
+  LRT_ASSERT((buffers.size() + 1) < send_.num_free);
+  send_.num_free -= buffers.size() + 1;
+  uint16_t head = send_.free_head;
 
-  uint16_t index = desc_index;
-  send_descs_[index].address = reinterpret_cast<uint64_t>(empty_header_);
-  send_descs_[index].length = VIRTIO_HEADER_LEN;
-  send_descs_[index].flags.next = true;
-  send_descs_[index].next = index + 1;
-  ++index;
-  for (auto& buffer : buffers) {
-    send_descs_[index].address = reinterpret_cast<uint64_t>(buffer.first);
-    send_descs_[index].length = buffer.second;
-    send_descs_[index].flags.next = true;
-    send_descs_[index].next = index + 1;
-    ++index;
-  }
-  send_descs_[index - 1].flags.next = false;
-
-  lock_.Lock();
-  send_available_->ring[next_available_] = desc_index;
-  std::atomic_thread_fence(std::memory_order_release);
-  send_available_->index++;
   if (cb) {
-    cb_map_.insert(std::make_pair(desc_index, std::move(cb)));
+    cb_map_lock_.Lock();
+    cb_map_.insert(std::make_pair(head, std::move(cb)));
+    cb_map_lock_.Unlock();
   }
-  lock_.Unlock();
+
+  uint16_t prev;
+  uint16_t index = head;
+  send_.descs[index].address = reinterpret_cast<uint64_t>(empty_header_);
+  send_.descs[index].length = VIRTIO_HEADER_LEN;
+  send_.descs[index].flags.next = true;
+  index = send_.descs[index].next;
+  for (const auto& buffer : buffers) {
+    send_.descs[index].address = reinterpret_cast<uint64_t>(buffer.first);
+    send_.descs[index].length = buffer.second;
+    send_.descs[index].flags.next = true;
+    prev = index;
+    index = send_.descs[index].next;
+  }
+  send_.descs[prev].flags.next = false;
+  send_.free_head = index;
+
+  auto avail = send_.available->index % send_.size;
+  send_.available->ring[avail] = head;
+
+  //Make the descriptor and available array update visible before
+  //giving it to the device
+  std::atomic_thread_fence(std::memory_order_release);
+
+  send_.available->index++;
+  send_.lock.Unlock();
 
   std::atomic_thread_fence(std::memory_order_release);
   virtio::queue_notify(io_addr_, 1);
@@ -198,29 +240,66 @@ ebbrt::VirtioNet::MacAddress()
 void
 ebbrt::VirtioNet::SendComplete()
 {
-  //This is only ever invoked on core 0 so no synchronization needed
-  uint16_t index;
-  do {
-    index = send_used_->index;
-    while(last_sent_used_ != index) {
-      auto desc = send_used_->ring[last_sent_used_].index;
-      //TODO: actually free the descriptors
-      cb_map_[desc]();
-      cb_map_.erase(desc);
-      last_sent_used_ = (last_sent_used_ + 1) % send_max_;
+  auto index = send_.used->index;
+  while (send_.last_used != index) {
+    auto last_used = send_.last_used % send_.size;
+    auto desc = send_.used->ring[last_used].index;
+    int freed = 1;
+    auto i = desc;
+    while (send_.descs[i].flags.next) {
+      i = send_.descs[i].next;
+      freed++;
     }
-  } while (index != send_used_->index);
+    send_.lock.Lock();
+    send_.descs[i].next = send_.free_head;
+    send_.free_head = desc;
+    send_.num_free += freed;
+    send_.lock.Unlock();
+    cb_map_lock_.Lock();
+    auto it = cb_map_.find(desc);
+    if (it != cb_map_.end()) {
+      auto f = it->second;
+      cb_map_.erase(desc);
+      cb_map_lock_.Unlock();
+      f();
+    } else {
+      cb_map_lock_.Unlock();
+    }
+    send_.last_used++;
+  }
 }
 
 void
 ebbrt::VirtioNet::Register(uint16_t ethertype,
-                           std::function<void(const uint8_t*, size_t)> func)
+                           std::function<void(const char*, size_t)> func)
 {
-  LRT_ASSERT(0);
+  rcv_map_[ethertype] = func;
 }
 
 void
 ebbrt::VirtioNet::Receive()
 {
-  LRT_ASSERT(0);
+  //FIXME: temporarily disable interrupts as an optimization
+  int avail_index = receive_.available->index;
+  auto used_index = receive_.used->index;
+  while (receive_.last_used != used_index) {
+    auto last_used = receive_.last_used % receive_.size;
+    auto desc = receive_.used->ring[last_used].index;
+
+    auto buf = reinterpret_cast<const char*>(receive_.descs[desc].address);
+    uint16_t ethertype =
+      ntohs(*reinterpret_cast<const uint16_t*>(&buf[VIRTIO_HEADER_LEN + 12]));
+    auto it = rcv_map_.find(ethertype);
+    if (it != rcv_map_.end()) {
+      it->second(&buf[VIRTIO_HEADER_LEN],
+                 receive_.used->ring[last_used].length - VIRTIO_HEADER_LEN);
+    }
+    receive_.available->ring[avail_index % receive_.size] = desc;
+    avail_index++;
+    receive_.last_used++;
+  }
+  std::atomic_thread_fence(std::memory_order_release);
+  receive_.available->index = avail_index;
+  std::atomic_thread_fence(std::memory_order_release);
+  virtio::queue_notify(io_addr_, 0);
 }

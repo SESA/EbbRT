@@ -113,7 +113,6 @@ namespace ebbrt {
     friend void lrt::trans::install_miss_handler(EbbRoot*);
     friend void lrt::event::_event_altstack_push(uintptr_t);
     friend uintptr_t lrt::event::_event_altstack_pop();
-    friend void lrt::event::register_fd(int, uint32_t, uint8_t);
     friend bool lrt::trans::_trans_precall(Args*,
                                            ptrdiff_t,
                                            FuncRet*);
@@ -125,8 +124,6 @@ namespace ebbrt {
     EbbRT& instance_;
     /** The location of this context */
     lrt::event::Location location_;
-    /** The epoll file descriptor for event dispatch */
-    int epoll_fd_;
     /** The local table storing per location ebb reps */
     std::unordered_map<lrt::trans::EbbId, lrt::trans::EbbRep*> local_table_;
     /** In case of a miss, the called EbbID is stored here */

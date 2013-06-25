@@ -17,7 +17,6 @@ lrt_bare_arch_x86_64_sources = \
 	src/lrt/bare/arch/x86_64/boot.cpp \
 	src/lrt/bare/arch/x86_64/boot.hpp \
 	src/lrt/bare/arch/x86_64/bootasm.S \
-	src/lrt/bare/arch/x86_64/default_func.S \
 	src/lrt/bare/arch/x86_64/event.cpp \
 	src/lrt/bare/arch/x86_64/event.hpp \
 	src/lrt/bare/arch/x86_64/isr.S \

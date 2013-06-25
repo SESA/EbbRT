@@ -31,6 +31,11 @@ namespace ebbrt {
        * Handle interrupt from event loop.
        */
       extern "C" void _event_interrupt(uint8_t interrupt);
+
+      /**
+       * Dispatch one event.
+       */
+      extern "C" void process_event();
     }
   }
 }

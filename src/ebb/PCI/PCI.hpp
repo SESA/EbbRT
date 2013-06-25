@@ -195,6 +195,16 @@ namespace ebbrt {
         return read32(ptr + 4) & 0x7;
       }
 
+      inline uint32_t MsiXPBAOffset(uint8_t ptr) const
+      {
+        return read32(ptr + 8) & ~0x7;
+      }
+
+      inline uint8_t MsiXPBABIR(uint8_t ptr) const
+      {
+        return read32(ptr + 8) & 0x7;
+      }
+
       class MSIXTableEntry {
       public:
         union {

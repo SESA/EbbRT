@@ -15,32 +15,12 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_EBB_ETHERNET_ETHERNET_HPP
-#define EBBRT_EBB_ETHERNET_ETHERNET_HPP
 
-#include <functional>
+#include "ebb/EventManager/EventManager.hpp"
+#include "lrt/event_impl.hpp"
 
-#include "ebb/ebb.hpp"
-#include "misc/buffer.hpp"
-
-namespace ebbrt {
-  class Ethernet : public EbbRep {
-  public:
-    class Header {
-    public:
-      uint8_t destination[6];
-      uint8_t source[6];
-      uint16_t ethertype;
-    } __attribute__((packed));
-    virtual void Send(BufferList buffers,
-                      std::function<void()> cb = nullptr) = 0;
-    virtual const uint8_t* MacAddress() = 0;
-    virtual void SendComplete() = 0;
-    virtual void Register(uint16_t ethertype,
-                          std::function<void(const char*, size_t)> func) = 0;
-    virtual void Receive() = 0;
-  };
-  extern EbbRef<Ethernet> ethernet;
+void
+ebbrt::lrt::event::process_event()
+{
+  event_manager->ProcessEvent();
 }
-
-#endif

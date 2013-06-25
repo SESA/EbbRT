@@ -17,6 +17,7 @@
 */
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 
 #include "arch/inet.hpp"
 #include "ebb/SharedRoot.hpp"
@@ -66,15 +67,14 @@ ebbrt::MessageManager::Send(NetworkId to,
   MessageHeader* msg_header = reinterpret_cast<MessageHeader*>(eth_header + 1);
   msg_header->ebb = id;
 
-  buffers.emplace_front(eth_header, sizeof(MessageHeader) + sizeof(Ethernet::Header));
-#ifdef __linux__
-  assert(!cb);
-#elif __ebbrt__
-  LRT_ASSERT(!cb);
-#endif
+  buffers.emplace_front(eth_header,
+                        sizeof(MessageHeader) + sizeof(Ethernet::Header));
   ethernet->Send(std::move(buffers),
                  [=]() {
                    free(addr);
+                   if (cb) {
+                     cb();
+                   }
                  });
 }
 
@@ -82,11 +82,15 @@ void
 ebbrt::MessageManager::StartListening()
 {
   ethernet->Register(MESSAGE_MANAGER_ETHERTYPE,
-                     [](const uint8_t* buf, size_t len) {
-                       buf += 14; //sizeof ethernet header
+                     [](const char* buf, size_t len) {
+                       buf += 6; //points to mac source
+                       NetworkId id;
+                       std::memcpy(id.mac_addr, buf, 6);
+                       buf += 8; //points to end of eth header
                        auto mh = reinterpret_cast<const MessageHeader*>(buf);
                        EbbRef<EbbRep> ebb {mh->ebb};
-                       ebb->HandleMessage(buf + sizeof(MessageHeader),
+                       ebb->HandleMessage(id,
+                                          buf + sizeof(MessageHeader),
                                           len - sizeof(MessageHeader) -
                                           14);
     });

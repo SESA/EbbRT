@@ -20,8 +20,10 @@ include src/ebb/Console/Makefile.am
 include src/ebb/EbbManager/Makefile.am
 include src/ebb/Ethernet/Makefile.am
 include src/ebb/EventManager/Makefile.am
+include src/ebb/FileSystem/Makefile.am
 include src/ebb/Gthread/Makefile.am
 include src/ebb/MemoryAllocator/Makefile.am
 include src/ebb/MessageManager/Makefile.am
 include src/ebb/PCI/Makefile.am
 include src/ebb/Syscall/Makefile.am
+include src/ebb/WorkBag/Makefile.am

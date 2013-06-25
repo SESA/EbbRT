@@ -43,7 +43,7 @@ namespace ebbrt {
         uint16_t raw;
         struct {
           uint16_t no_interrupt :1;
-        uint16_t :15;
+          uint16_t :15;
         };
       };
       uint16_t index;
