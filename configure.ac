@@ -28,27 +28,26 @@ m4_include([m4/doxy.m4])
 DX_HTML_FEATURE(ON)
 DX_INIT_DOXYGEN($PACKAGE_NAME, docs/Doxyfile)
 
+# Confirm host architecture and platform
 AC_CANONICAL_HOST
+
 AS_CASE([$host_cpu], [x86_64],
                      [AC_DEFINE([ARCH_X86_64], [1], [x86_64 architecture])],
-                     [powerpc],
-                     [AC_DEFINE([ARCH_POWERPC], [1], [powerpc32 architecture])],
-                     [AC_MSG_ERROR([not on a supported architecture])])
+                     [powerpc64],
+                     [AC_DEFINE([ARCH_POWERPC], [1], [powerpc64 architecture])],
+                     [AC_MSG_ERROR([not on a supported architecture: $host_cpu])])
+
+AS_CASE([$host_os], [linux-gnu],
+                    [AC_DEFINE([LRT_ULNX], [1], [Linux Build])],
+                    [ebbrt],
+                    [AC_DEFINE([LRT_BARE], [1], [Baremetal Build])],
+                    [AC_MSG_ERROR([not on a supported platform: $host_os])])
+
 AM_CONDITIONAL([ARCH_X86_64], [test x$host_cpu == xx86_64])
-AM_CONDITIONAL([ARCH_POWERPC], [test x$host_cpu == xpowerpc])
+AM_CONDITIONAL([ARCH_POWERPC], [test x$host_cpu == xpowerpc64])
 
-# Baremetal or Linux build
-AC_ARG_ENABLE([baremetal],
-  AS_HELP_STRING([--enable-baremetal], [Enable baremetal build]),
-  [lrt=bare],
-  [lrt=ulnx])
-
-AS_CASE([$lrt],
-        [bare], [AC_DEFINE([LRT_BARE], [1], [Baremetal LRT])],
-                    [ulnx], [AC_DEFINE([LRT_ULNX], [1], [Baremetal ULNX])])
-
-AM_CONDITIONAL(LRT_BARE, test x$lrt = xbare)
-AM_CONDITIONAL(LRT_ULNX, test x$lrt = xulnx)
+AM_CONDITIONAL([LRT_BARE], [test x$host_os == xebbrt])
+AM_CONDITIONAL([LRT_ULNX], [test x$host_os == xlinux_gnu])
 
 # Checks for programs.
 AM_PROG_AS
