@@ -180,20 +180,20 @@ namespace ebbrt {
   const int PDPT_NUM_ENTS = PDPT_SIZE / sizeof(PdptEntry);
   const int PDIR_NUM_ENTS = PDIR_SIZE / sizeof(PdEntry);
   const int PTAB_NUM_ENTS = PTAB_SIZE / sizeof(PtabEntry);
-  inline int pml4_index(void* addr) {
-    return (reinterpret_cast<uintptr_t>(addr) >> PML4_INDEX_SHIFT) &
+  inline int pml4_index(uintptr_t addr) {
+    return (addr >> PML4_INDEX_SHIFT) &
       ((1 << PML4_INDEX_BITS) - 1);
   }
-  inline int pdpt_index(void* addr) {
-    return (reinterpret_cast<uintptr_t>(addr) >> PDPT_INDEX_SHIFT) &
+  inline int pdpt_index(uintptr_t addr) {
+    return (addr >> PDPT_INDEX_SHIFT) &
       ((1 << PDPT_INDEX_BITS) - 1);
   }
-  inline int pdir_index(void* addr) {
-    return (reinterpret_cast<uintptr_t>(addr) >> PDIR_INDEX_SHIFT) &
+  inline int pdir_index(uintptr_t addr) {
+    return (addr >> PDIR_INDEX_SHIFT) &
       ((1 << PDIR_INDEX_BITS) - 1);
   }
-  inline int ptab_index(void* addr) {
-    return (reinterpret_cast<uintptr_t>(addr) >> PTAB_INDEX_SHIFT) &
+  inline int ptab_index(uintptr_t addr) {
+    return (addr >> PTAB_INDEX_SHIFT) &
       ((1 << PTAB_INDEX_BITS) - 1);
   }
 }

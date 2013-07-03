@@ -28,7 +28,7 @@
 #include "ebb/EventManager/EventManager.hpp"
 
 namespace {
-  char dev[] = "tap0";
+  char dev[] = "tap100";
 }
 
 ebbrt::EbbRoot*

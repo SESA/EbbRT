@@ -119,6 +119,6 @@ ebbrt::lrt::event::init_cpu_arch()
 void
 ebbrt::lrt::event::_event_interrupt(uint8_t interrupt)
 {
-  apic::lapic->eoi = 0;
+  apic::lapic->Eoi();
   event_manager->HandleInterrupt(interrupt);
 }

@@ -91,6 +91,7 @@ namespace ebbrt {
     public:
       static void Enable();
       void SwEnable();
+      void Eoi();
       class IcrLow {
       public:
         union {

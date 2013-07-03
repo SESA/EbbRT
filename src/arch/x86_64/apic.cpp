@@ -136,3 +136,9 @@ ebbrt::apic::Lapic::SendIpi(IcrLow icr_low, IcrHigh icr_high)
   lapic->lih_.raw_ = icr_high.raw_;
   lapic->lil_.raw_ = icr_low.raw_;
 }
+
+void
+ebbrt::apic::Lapic::Eoi()
+{
+  eoi = 0;
+}

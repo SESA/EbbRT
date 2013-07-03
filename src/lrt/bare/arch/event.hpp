@@ -21,12 +21,6 @@
 
 #include "lrt/Location.hpp"
 
-#ifdef ARCH_X86_64
-#include "lrt/bare/arch/x86_64/event.hpp"
-#else
-#error "Unsupported Architecture"
-#endif
-
 namespace ebbrt {
   namespace lrt {
     namespace event {
@@ -37,3 +31,9 @@ namespace ebbrt {
     }
   }
 }
+
+#ifdef ARCH_X86_64
+#include "lrt/bare/arch/x86_64/event.hpp"
+#else
+#error "Unsupported Architecture"
+#endif

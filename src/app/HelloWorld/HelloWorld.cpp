@@ -16,8 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <array>
 #include <mutex>
+#include <vector>
 
 #include "app/app.hpp"
 #include "ebb/EbbManager/PrimitiveEbbManager.hpp"
@@ -27,7 +27,7 @@
 #include <iostream>
 #include <thread>
 #include "ebbrt.hpp"
-#elif __ebbrt
+#elif __ebbrt__
 #include "ebb/Gthread/Gthread.hpp"
 #include "ebb/Syscall/Syscall.hpp"
 #include "lrt/bare/console.hpp"
@@ -98,7 +98,7 @@ int main()
 {
   ebbrt::EbbRT instance;
 
-  std::thread threads[std::thread::hardware_concurrency()];
+  std::vector<std::thread> threads(std::thread::hardware_concurrency());
   for (auto& thread : threads) {
     thread = std::thread([&]{ebbrt::Context context{instance};});
   }
