@@ -26,7 +26,7 @@ TESTS = test/hello-bare.py
 endif
 endif
 
-AM_CXXFLAGS = -std=c++0x -Wall -Werror
+AM_CXXFLAGS = -std=c++11 -Wall -Werror -Wno-unused-private-field
 AM_CPPFLAGS = -iquote $(top_srcdir)/src \
 	--include $(top_builddir)/config.h
 
@@ -51,8 +51,8 @@ app_deps =
 if LRT_BARE
 
 if ARCH_X86_64
-app_linkflags += -n -z max-page-size=0x1000 \
-	-T $(top_srcdir)/src/lrt/bare/arch/x86_64/link.ld
+app_linkflags += -Wl,-n,-z,max-page-size=0x1000 \
+	-Wl,-T,$(top_srcdir)/src/lrt/bare/arch/x86_64/link.ld
 
 %.iso: % util/grub.cfg
 	strip -s $< -o $<.stripped

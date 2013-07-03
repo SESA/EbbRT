@@ -59,27 +59,27 @@ ebbrt::lrt::trans::init_cpu_arch()
   /* grab and copy existing vm state into new structure */
   Pml4Entry* pml4 = getPml4();
   PdptEntry* existing_pdpt = reinterpret_cast<PdptEntry*>
-    (pml4[pml4_index(LOCAL_MEM_VIRT_PTR)].base << 12);
+    (pml4[pml4_index(LOCAL_MEM_VIRT)].base << 12);
   std::copy(pml4, pml4 + PML4_NUM_ENTS, my_pml4);
   std::copy(existing_pdpt, existing_pdpt + PDPT_NUM_ENTS, trans_pdpt);
   /* mark all pages as invalid */
   std::memset(trans_pdir, 0, PDIR_SIZE);
 
   /* set the entries we want as present*/
-  trans_pdir[pdir_index(LOCAL_MEM_VIRT_PTR)].present = 1;
-  trans_pdir[pdir_index(LOCAL_MEM_VIRT_PTR)].rw = 1;
-  trans_pdir[pdir_index(LOCAL_MEM_VIRT_PTR)].ps = 1;
-  trans_pdir[pdir_index(LOCAL_MEM_VIRT_PTR)].base =
+  trans_pdir[pdir_index(LOCAL_MEM_VIRT)].present = 1;
+  trans_pdir[pdir_index(LOCAL_MEM_VIRT)].rw = 1;
+  trans_pdir[pdir_index(LOCAL_MEM_VIRT)].ps = 1;
+  trans_pdir[pdir_index(LOCAL_MEM_VIRT)].base =
     reinterpret_cast<uint64_t>(local_mem_phys) >> 21;
 
-  trans_pdpt[pdpt_index(LOCAL_MEM_VIRT_PTR)].present = 1;
-  trans_pdpt[pdpt_index(LOCAL_MEM_VIRT_PTR)].rw = 1;
-  trans_pdpt[pdpt_index(LOCAL_MEM_VIRT_PTR)].base =
+  trans_pdpt[pdpt_index(LOCAL_MEM_VIRT)].present = 1;
+  trans_pdpt[pdpt_index(LOCAL_MEM_VIRT)].rw = 1;
+  trans_pdpt[pdpt_index(LOCAL_MEM_VIRT)].base =
     reinterpret_cast<uint64_t>(trans_pdir) >> 12;
 
-  my_pml4[pml4_index(LOCAL_MEM_VIRT_PTR)].present = 1;
-  my_pml4[pml4_index(LOCAL_MEM_VIRT_PTR)].rw = 1;
-  my_pml4[pml4_index(LOCAL_MEM_VIRT_PTR)].base =
+  my_pml4[pml4_index(LOCAL_MEM_VIRT)].present = 1;
+  my_pml4[pml4_index(LOCAL_MEM_VIRT)].rw = 1;
+  my_pml4[pml4_index(LOCAL_MEM_VIRT)].base =
     reinterpret_cast<uint64_t>(trans_pdpt) >> 12;
 
   /* update cores pointer to new paging structures */
