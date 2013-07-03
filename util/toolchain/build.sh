@@ -9,7 +9,7 @@ mkdir build-mpc
 
 PREFIX=${PREFIX:=/usr/local}
 NCPU=${NCPU:=1}
-TARGET=x86_64-pc-ebbrt
+TARGET=${TARGET:=x86_64-pc-ebbrt}
 
 cd build-gmp
 ../gmp/configure --prefix=$PREFIX --enable-cxx --disable-shared || exit
