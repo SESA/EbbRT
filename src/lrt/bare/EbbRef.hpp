@@ -38,7 +38,7 @@ namespace ebbrt {
          */
 
         constexpr EbbRef() :
-          ref_{reinterpret_cast<T**>(&(local_table[0].ref))}
+          ref_{LOCAL_MEM_VIRT}
         {}
 
         /**
@@ -48,7 +48,7 @@ namespace ebbrt {
          */
         constexpr explicit EbbRef(EbbId id) :
           /* construct the ref corresponding to the given id */
-          ref_{reinterpret_cast<T**>(LOCAL_MEM_VIRT + sizeof(LocalEntry) * id)}
+          ref_{LOCAL_MEM_VIRT + sizeof(LocalEntry) * id}
         {}
         /**
          * @brief Overload arrow operator
@@ -57,7 +57,7 @@ namespace ebbrt {
          */
         T* operator->() const
         {
-          return *ref_;
+          return *reinterpret_cast<T**>(ref_);
         }
         /**
          * @brief Conversion operator between EbbRef and EbbID
@@ -71,9 +71,11 @@ namespace ebbrt {
         }
       private:
         /**
-         * @brief And in the end, the ebb you take is equal to the ebb you make.
+         * Ref holds the pointer to the local table entry.
+         * It is stored as a uintptr_t to allow us to have constexpr
+         * constructors
          */
-        T** ref_;
+        uintptr_t ref_;
       };
     }
   }
