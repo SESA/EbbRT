@@ -181,9 +181,15 @@ ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
   if (!lock_.TryLock()) {
     if (fnum == vtable_index<PrimitiveEbbManager>
         (&PrimitiveEbbManager::CacheRep)) {
-      //FIXME: not portable
+#ifdef ARCH_X86_64
       EbbId target_id = args->rsi;
       EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->rdx);
+#elif ARCH_POWERPC64
+      EbbId target_id = args->r3;
+      EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->r4);
+#else
+#error "Unsupported Architecture"
+#endif
       local_cache_rep(target_id, target_rep);
       return false;
     } else {
@@ -203,8 +209,15 @@ ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
     if (fnum == vtable_index<PrimitiveEbbManager>
         (&PrimitiveEbbManager::CacheRep)) {
       //FIXME: not portable
+#ifdef ARCH_X86_64
       EbbId target_id = args->rsi;
       EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->rdx);
+#elif ARCH_POWERPC64
+      EbbId target_id = args->r3;
+      EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->r4);
+#else
+#error "Unsupported Architecture"
+#endif
       local_cache_rep(target_id, target_rep);
       ret = false;
     }

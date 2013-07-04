@@ -34,8 +34,11 @@ AC_CANONICAL_HOST
 AS_CASE([$host_cpu], [x86_64],
                      [AC_DEFINE([ARCH_X86_64], [1], [x86_64 architecture])],
                      [powerpc64],
-                     [AC_DEFINE([ARCH_POWERPC], [1], [powerpc64 architecture])],
+                     [AC_DEFINE([ARCH_POWERPC64], [1], [powerpc64 architecture])],
                      [AC_MSG_ERROR([not on a supported architecture: $host_cpu])])
+
+AM_CONDITIONAL([ARCH_X86_64], [test x$host_cpu == xx86_64])
+AM_CONDITIONAL([ARCH_POWERPC64], [test x$host_cpu == xpowerpc64])
 
 AS_CASE([$host_os], [linux-gnu],
                     [AC_DEFINE([LRT_ULNX], [1], [Linux Build])],
@@ -43,11 +46,8 @@ AS_CASE([$host_os], [linux-gnu],
                     [AC_DEFINE([LRT_BARE], [1], [Baremetal Build])],
                     [AC_MSG_ERROR([not on a supported platform: $host_os])])
 
-AM_CONDITIONAL([ARCH_X86_64], [test x$host_cpu == xx86_64])
-AM_CONDITIONAL([ARCH_POWERPC], [test x$host_cpu == xpowerpc64])
-
 AM_CONDITIONAL([LRT_BARE], [test x$host_os == xebbrt])
-AM_CONDITIONAL([LRT_ULNX], [test x$host_os == xlinux_gnu])
+AM_CONDITIONAL([LRT_ULNX], [test x$host_os == xlinux-gnu])
 
 # Checks for programs.
 AM_PROG_AS
