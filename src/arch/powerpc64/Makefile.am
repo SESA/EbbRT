@@ -13,15 +13,6 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-include src/lrt/arch/x86_64/Makefile.am
-include src/lrt/arch/powerpc64/Makefile.am
-
-lrt_arch_sources =
-
-if ARCH_X86_64
-lrt_arch_sources += $(lrt_arch_x86_64_sources)
-endif
-
-if ARCH_POWERPC64
-lrt_arch_sources += $(lrt_arch_powerpc64_sources)
-endif
+arch_powerpc64_sources = \
+	src/arch/powerpc64/args.hpp \
+	src/arch/powerpc64/io.hpp
