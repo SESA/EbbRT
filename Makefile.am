@@ -60,10 +60,6 @@ app_linkflags += -Wl,-n,-z,max-page-size=0x1000 \
 	boot/grub/grub.cfg=$(top_srcdir)/util/grub.cfg
 endif
 
-if ARCH_POWERPC
-#powerpc build specifics
-endif
-
 #end of LRT_BARE
 endif
 

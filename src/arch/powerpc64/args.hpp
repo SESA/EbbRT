@@ -16,13 +16,23 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #ifndef EBBRT_ARCH_ARGS_HPP
-#define EBBRT_ARCH_ARGS_HPP
+#error "Don't include this file directly"
+#endif
 
-#ifdef ARCH_X86_64
-#include "arch/x86_64/args.hpp"
-#elif ARCH_POWERPC64
-#include "arch/powerpc64/args.hpp"
-#else
-#error "Unsupported Architecture"
-#endif
-#endif
+#include <cstdint>
+
+namespace ebbrt {
+  class Args {
+  public:
+    uint64_t r3;
+    uint64_t r4;
+    uint64_t r5;
+    uint64_t r6;
+    uint64_t r7;
+    uint64_t r8;
+    uint64_t r9;
+    uint64_t r10;
+    uint64_t fx[14]; //FIXME: vector parameters?
+    uint64_t stack_args[0];
+  };
+}

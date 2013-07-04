@@ -31,6 +31,8 @@ namespace ebbrt {
 
 #ifdef ARCH_X86_64
 #include "arch/x86_64/io.hpp"
+#elif ARCH_POWERPC64
+#include "arch/powerpc64/io.hpp"
 #else
 #error "Unsupported Architecture"
 #endif

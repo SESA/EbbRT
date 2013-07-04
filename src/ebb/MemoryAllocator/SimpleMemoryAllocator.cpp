@@ -20,8 +20,11 @@
 
 #include "ebb/DistributedRoot.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
-#include "lrt/bare/mem_impl.hpp"
 #include "lrt/trans_impl.hpp"
+
+#ifdef __ebbrt__
+#include "lrt/bare/mem_impl.hpp"
+#endif
 
 using namespace ebbrt;
 
@@ -43,7 +46,12 @@ ebbrt::SimpleMemoryAllocator::Malloc(size_t size)
 }
 
 void*
-ebbrt::SimpleMemoryAllocator::Memalign(size_t boundary, size_t size) {
+ebbrt::SimpleMemoryAllocator::Memalign(size_t boundary, size_t size) 
+{
+#if __linux__
+  assert(0);
+  return nullptr;
+#elif __ebbrt__
   char* p = current_;
   p = reinterpret_cast<char*>(((reinterpret_cast<uintptr_t>(p) +
                                 boundary - 1) / boundary) * boundary);
@@ -53,18 +61,23 @@ ebbrt::SimpleMemoryAllocator::Memalign(size_t boundary, size_t size) {
   }
   current_ = p + size;
   return p;
+#endif
 }
 
 void
 ebbrt::SimpleMemoryAllocator::Free(void* p)
 {
+#if __linux__
+  assert(0);
+#elif __ebbrt__
+#endif
 }
 
 void*
 ebbrt::SimpleMemoryAllocator::Realloc(void* ptr, size_t size)
 {
-  free(ptr);
-  return malloc(size);
+  Free(ptr);
+  return Malloc(size);
 }
 
 void*
