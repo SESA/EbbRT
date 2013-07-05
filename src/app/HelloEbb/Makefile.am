@@ -13,16 +13,39 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LIBRARIES += \
-	src/ebb/Console/libRemoteConsole.a \
+EXTRA_PROGRAMS += src/app/HelloEbb/HelloEbb
+
+src_app_HelloEbb_HelloEbb_SOURCES = \
+	src/app/HelloEbb/HelloEbb.cpp
+
+src_app_HelloEbb_HelloEbb_ebbs = \
+	src/ebb/EbbManager/libPrimitiveEbbManager.a \
+	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a \
 	src/ebb/Console/libLocalConsole.a
 
-src_ebb_Console_libRemoteConsole_a_SOURCES = \
-	src/ebb/Console/Console.hpp \
-	src/ebb/Console/RemoteConsole.cpp \
-	src/ebb/Console/RemoteConsole.hpp
+if LRT_BARE
+src_app_HelloEbb_HelloEbb_ebbs += \
+	src/ebb/Syscall/libSyscall.a \
+	src/ebb/Gthread/libGthread.a
+endif
 
-src_ebb_Console_libLocalConsole_a_SOURCES = \
-	src/ebb/Console/Console.hpp \
-	src/ebb/Console/LocalConsole.cpp \
-	src/ebb/Console/LocalConsole.hpp
+src_app_HelloEbb_HelloEbb_LDFLAGS = \
+	$(app_linkflags) \
+	-Wl,-whole-archive \
+	$(ebbrt_libs) \
+	$(src_app_HelloEbb_HelloEbb_ebbs) \
+	-Wl,-no-whole-archive
+
+src_app_HelloEbb_HelloEbb_LDADD = \
+	libebbrt.a
+
+src_app_HelloEbb_HelloEbb_DEPENDENCIES = \
+	libebbrt.a \
+	$(app_deps) \
+	$(ebbrt_libs) \
+	$(src_app_HelloEbb_HelloEbb_ebbs)
+
+if LRT_ULNX
+src_app_HelloEbb_HelloEbb_LDFLAGS += \
+	-pthread
+endif
