@@ -15,20 +15,32 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_EBB_CONSOLE_CONSOLE_HPP
-#define EBBRT_EBB_CONSOLE_CONSOLE_HPP
+#include "ebb/SharedRoot.hpp"
+#include "ebb/Console/LocalConsole.hpp"
+#include "ebb/MessageManager/MessageManager.hpp"
 
-#include <functional>
-
-#include "ebb/ebb.hpp"
-
-namespace ebbrt {
-  class Console : public EbbRep {
-  public:
-    virtual void Write(const char* str,
-                       std::function<void()> cb = nullptr) = 0;
-  };
-  const EbbRef<Console> console =
-    EbbRef<Console>(lrt::trans::find_static_ebb_id("Console"));
-}
+#ifdef __ebbrt__
+#include "lrt/bare/assert.hpp"
 #endif
+
+#ifdef __linux__
+#include <iostream>
+#endif
+ebbrt::EbbRoot*
+ebbrt::LocalConsole::ConstructRoot()
+{
+  return new SharedRoot<LocalConsole>;
+}
+
+void
+ebbrt::LocalConsole::Write(const char* str,
+                            std::function<void()> cb)
+{
+#ifdef __linux__
+  assert(!cb);
+  std::cout << str;
+#elif __ebbrt__
+  LRT_ASSERT(!cb);
+  lrt::console::write(str);
+#endif
+}

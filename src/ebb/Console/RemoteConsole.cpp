@@ -16,7 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "ebb/SharedRoot.hpp"
-#include "ebb/Console/Console.hpp"
+#include "ebb/Console/RemoteConsole.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
 
 #ifdef __ebbrt__
@@ -27,14 +27,14 @@
 #include <iostream>
 #endif
 ebbrt::EbbRoot*
-ebbrt::Console::ConstructRoot()
+ebbrt::RemoteConsole::ConstructRoot()
 {
-  return new SharedRoot<Console>;
+  return new SharedRoot<RemoteConsole>;
 }
 
 void
-ebbrt::Console::Write(const char* str,
-                      std::function<void()> cb)
+ebbrt::RemoteConsole::Write(const char* str,
+                            std::function<void()> cb)
 {
 #ifdef __linux__
   std::cout << str;
@@ -56,8 +56,8 @@ ebbrt::Console::Write(const char* str,
 }
 
 void
-ebbrt::Console::HandleMessage(const uint8_t* msg,
-                              size_t len)
+ebbrt::RemoteConsole::HandleMessage(const uint8_t* msg,
+                                    size_t len)
 {
 #ifdef __linux__
   std::cout << msg;

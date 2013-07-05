@@ -13,49 +13,39 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_PROGRAMS += src/app/HelloRemote/HelloRemote
+EXTRA_PROGRAMS += src/app/HelloEbb/HelloEbb
 
-src_app_HelloRemote_HelloRemote_SOURCES = \
-	src/app/HelloRemote/HelloRemote.cpp
+src_app_HelloEbb_HelloEbb_SOURCES = \
+	src/app/HelloEbb/HelloEbb.cpp
 
-src_app_HelloRemote_HelloRemote_ebbs = \
+src_app_HelloEbb_HelloEbb_ebbs = \
 	src/ebb/EbbManager/libPrimitiveEbbManager.a \
 	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a \
-	src/ebb/EventManager/libSimpleEventManager.a \
-	src/ebb/Console/libRemoteConsole.a \
-	src/ebb/MessageManager/libMessageManager.a
+	src/ebb/Console/libLocalConsole.a
 
-if LRT_ULNX
-src_app_HelloRemote_HelloRemote_ebbs += \
-	src/ebb/Ethernet/libRawSocket.a
-else
 if LRT_BARE
-src_app_HelloRemote_HelloRemote_ebbs += \
-	src/ebb/Ethernet/libVirtioNet.a \
-	src/ebb/PCI/libPCI.a \
+src_app_HelloEbb_HelloEbb_ebbs += \
 	src/ebb/Syscall/libSyscall.a \
 	src/ebb/Gthread/libGthread.a
 endif
-endif
 
-
-src_app_HelloRemote_HelloRemote_LDFLAGS = \
+src_app_HelloEbb_HelloEbb_LDFLAGS = \
 	$(app_linkflags) \
 	-Wl,-whole-archive \
 	$(ebbrt_libs) \
-	$(src_app_HelloRemote_HelloRemote_ebbs) \
+	$(src_app_HelloEbb_HelloEbb_ebbs) \
 	-Wl,-no-whole-archive
 
-src_app_HelloRemote_HelloRemote_LDADD = \
+src_app_HelloEbb_HelloEbb_LDADD = \
 	libebbrt.a
 
-if LRT_ULNX
-src_app_HelloRemote_HelloRemote_LDADD += \
-	-lpcap
-endif
-
-src_app_HelloRemote_HelloRemote_DEPENDENCIES = \
+src_app_HelloEbb_HelloEbb_DEPENDENCIES = \
 	libebbrt.a \
 	$(app_deps) \
 	$(ebbrt_libs) \
-	$(src_app_HelloRemote_HelloRemote_ebbs)
+	$(src_app_HelloEbb_HelloEbb_ebbs)
+
+if LRT_ULNX
+src_app_HelloEbb_HelloEbb_LDFLAGS += \
+	-pthread
+endif
