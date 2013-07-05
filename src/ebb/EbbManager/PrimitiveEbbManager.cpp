@@ -185,8 +185,8 @@ ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
       EbbId target_id = args->rsi;
       EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->rdx);
 #elif ARCH_POWERPC64
-      EbbId target_id = args->r3;
-      EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->r4);
+      EbbId target_id = args->r4;
+      EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->r5);
 #else
 #error "Unsupported Architecture"
 #endif
@@ -213,8 +213,8 @@ ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
       EbbId target_id = args->rsi;
       EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->rdx);
 #elif ARCH_POWERPC64
-      EbbId target_id = args->r3;
-      EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->r4);
+      EbbId target_id = args->r4;
+      EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->r5);
 #else
 #error "Unsupported Architecture"
 #endif
