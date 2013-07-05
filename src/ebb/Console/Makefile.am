@@ -13,7 +13,16 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LIBRARIES += src/ebb/Console/libConsole.a
+EXTRA_LIBRARIES += \
+	src/ebb/Console/libRemoteConsole.a \
+	src/ebb/Console/libLocalConsole.a
 
-src_ebb_Console_libConsole_a_SOURCES = \
-	src/ebb/Console/Console.cpp
+src_ebb_Console_libRemoteConsole_a_SOURCES = \
+	src/ebb/Console/Console.hpp \
+	src/ebb/Console/RemoteConsole.cpp \
+	src/ebb/Console/RemoteConsole.hpp
+
+src_ebb_Console_libLocalConsole_a_SOURCES = \
+	src/ebb/Console/Console.hpp \
+	src/ebb/Console/LocalConsole.cpp \
+	src/ebb/Console/LocalConsole.hpp

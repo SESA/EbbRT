@@ -15,20 +15,20 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_EBB_CONSOLE_CONSOLE_HPP
-#define EBBRT_EBB_CONSOLE_CONSOLE_HPP
+#ifndef EBBRT_EBB_LOCALCONSOLE_LOCALCONSOLE_HPP
+#define EBBRT_EBB_LOCALCONSOLE_LOCALCONSOLE_HPP
 
 #include <functional>
 
 #include "ebb/ebb.hpp"
+#include "ebb/Console/Console.hpp"
 
 namespace ebbrt {
-  class Console : public EbbRep {
+  class LocalConsole : public Console {
   public:
+    static EbbRoot* ConstructRoot();
     virtual void Write(const char* str,
-                       std::function<void()> cb = nullptr) = 0;
+                       std::function<void()> cb = nullptr) override;
   };
-  const EbbRef<Console> console =
-    EbbRef<Console>(lrt::trans::find_static_ebb_id("Console"));
 }
 #endif

@@ -16,20 +16,23 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <mutex>
+#include <vector>
+
 #include "app/app.hpp"
-#include "ebb/Console/RemoteConsole.hpp"
+#include "ebb/Console/LocalConsole.hpp"
 #include "ebb/EbbManager/PrimitiveEbbManager.hpp"
-#include "ebb/EventManager/SimpleEventManager.hpp"
-#include "ebb/Gthread/Gthread.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
-#include "ebb/MessageManager/MessageManager.hpp"
-#include "ebb/Syscall/Syscall.hpp"
+
 #ifdef __linux__
+#include <iostream>
+#include <thread>
 #include "ebbrt.hpp"
-#include "ebb/Ethernet/RawSocket.hpp"
 #elif __ebbrt__
-#include "ebb/PCI/PCI.hpp"
-#include "ebb/Ethernet/VirtioNet.hpp"
+#include "ebb/Gthread/Gthread.hpp"
+#include "ebb/Syscall/Syscall.hpp"
+#include "lrt/bare/console.hpp"
+#include "sync/spinlock.hpp"
 #endif
 
 constexpr ebbrt::app::Config::InitEbb init_ebbs[] =
@@ -53,17 +56,9 @@ constexpr ebbrt::app::Config::InitEbb init_ebbs[] =
   },
 #endif
   {
-    .create_root = ebbrt::SimpleEventManager::ConstructRoot,
-    .name = "EventManager"
-  },
-  {
-    .create_root = ebbrt::RemoteConsole::ConstructRoot,
+    .create_root = ebbrt::LocalConsole::ConstructRoot,
     .name = "Console"
   },
-  {
-    .create_root = ebbrt::MessageManager::ConstructRoot,
-    .name = "MessageManager"
-  }
 };
 
 constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
@@ -71,13 +66,11 @@ constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
   {.name = "EbbManager", .id = 2},
   {.name = "Gthread", .id = 3},
   {.name = "Syscall", .id = 4},
-  {.name = "EventManager", .id = 5},
-  {.name = "Console", .id = 6},
-  {.name = "MessageManager", .id = 7}
+  {.name = "Console", .id = 5}
 };
 
 const ebbrt::app::Config ebbrt::app::config = {
-  .space_id = 1,
+  .space_id = 0,
 #ifdef __ebbrt__
   .num_early_init = 4,
 #endif
@@ -87,20 +80,23 @@ const ebbrt::app::Config ebbrt::app::config = {
   .static_ebb_ids = static_ebbs
 };
 
+#ifdef __ebbrt__
+bool ebbrt::app::multi = true;
+#endif
+
 void
 ebbrt::app::start()
 {
-#ifdef __ebbrt__
-  pci = EbbRef<PCI>(ebb_manager->AllocateId());
-  ebb_manager->Bind(PCI::ConstructRoot, pci);
-  ethernet = EbbRef<Ethernet>(ebb_manager->AllocateId());
-  ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
-#elif __linux__
-  ethernet = EbbRef<Ethernet>(ebb_manager->AllocateId());
-  ebb_manager->Bind(RawSocket::ConstructRoot, ethernet);
-  message_manager->StartListening();
-#endif
+#ifdef __linux__
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lock(mutex);
   console->Write("Hello World\n");
+#elif __ebbrt__
+  static Spinlock lock;
+  lock.Lock();
+  console->Write("Hello World\n");
+  lock.Unlock();
+#endif
 }
 
 #ifdef __linux__
@@ -108,9 +104,13 @@ int main()
 {
   ebbrt::EbbRT instance;
 
-  ebbrt::Context context{instance};
-  context.Loop(-1);
-
+  std::vector<std::thread> threads(std::thread::hardware_concurrency());
+  for (auto& thread : threads) {
+    thread = std::thread([&]{ebbrt::Context context{instance};});
+  }
+  for (auto& thread : threads) {
+    thread.join();
+  }
   return 0;
 }
 #endif
