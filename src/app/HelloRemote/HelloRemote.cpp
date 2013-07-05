@@ -17,7 +17,7 @@
 */
 
 #include "app/app.hpp"
-#include "ebb/Console/Console.hpp"
+#include "ebb/Console/RemoteConsole.hpp"
 #include "ebb/EbbManager/PrimitiveEbbManager.hpp"
 #include "ebb/EventManager/SimpleEventManager.hpp"
 #include "ebb/Gthread/Gthread.hpp"
@@ -57,7 +57,7 @@ constexpr ebbrt::app::Config::InitEbb init_ebbs[] =
     .name = "EventManager"
   },
   {
-    .create_root = ebbrt::Console::ConstructRoot,
+    .create_root = ebbrt::RemoteConsole::ConstructRoot,
     .name = "Console"
   },
   {

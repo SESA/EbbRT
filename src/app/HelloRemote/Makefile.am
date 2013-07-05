@@ -22,7 +22,7 @@ src_app_HelloRemote_HelloRemote_ebbs = \
 	src/ebb/EbbManager/libPrimitiveEbbManager.a \
 	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a \
 	src/ebb/EventManager/libSimpleEventManager.a \
-	src/ebb/Console/libConsole.a \
+	src/ebb/Console/libRemoteConsole.a \
 	src/ebb/MessageManager/libMessageManager.a
 
 if LRT_ULNX
