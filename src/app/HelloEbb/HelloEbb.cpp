@@ -37,10 +37,12 @@
 
 constexpr ebbrt::app::Config::InitEbb init_ebbs[] =
 {
+#ifdef __ebbrt__
   {
     .create_root = ebbrt::SimpleMemoryAllocatorConstructRoot,
     .name = "MemoryAllocator"
   },
+#endif
   {
     .create_root = ebbrt::PrimitiveEbbManagerConstructRoot,
     .name = "EbbManager"

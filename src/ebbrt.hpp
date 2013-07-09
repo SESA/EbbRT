@@ -18,6 +18,11 @@
 #ifndef EBBRT_EBBRT_HPP
 #define EBBRT_EBBRT_HPP
 
+#ifdef __bg__
+#include <poll.h>
+#include <vector>
+#endif
+
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
@@ -125,8 +130,15 @@ namespace ebbrt {
     EbbRT& instance_;
     /** The location of this context */
     lrt::event::Location location_;
+#ifndef __bg__
     /** The epoll file descriptor for event dispatch */
     int epoll_fd_;
+#else
+    /** The vector of fds to poll */
+    std::vector<struct pollfd> fds_;
+    /** The vector of corresponding "interrupts" */
+    std::vector<uint8_t> interrupts_;
+#endif
     /** The local table storing per location ebb reps */
     std::unordered_map<lrt::trans::EbbId, lrt::trans::EbbRep*> local_table_;
     /** In case of a miss, the called EbbID is stored here */
