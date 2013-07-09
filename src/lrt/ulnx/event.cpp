@@ -33,12 +33,30 @@ ebbrt::lrt::event::_event_interrupt(uint8_t interrupt)
 void
 ebbrt::lrt::event::register_fd(int fd, uint32_t events, uint8_t interrupt)
 {
+#ifndef __bg__
   struct epoll_event event;
-  event.events = EPOLLIN;
+  event.events = events;
   event.data.u32 = interrupt;
   if (epoll_ctl(active_context->epoll_fd_, EPOLL_CTL_ADD, fd, &event) == -1) {
     throw std::runtime_error("epoll_ctl failed");
   }
+#else
+  assert((events | EPOLLIN) || (events | EPOLLOUT));
+  short poll_events = 0;
+  if (events | EPOLLIN) {
+    poll_events |= POLLIN;
+  }
+  if (events | EPOLLOUT) {
+    poll_events |= POLLOUT;
+  }
+
+  struct pollfd pfd;
+  pfd.fd = fd;
+  pfd.events = poll_events;
+
+  active_context->fds_.push_back(pfd);
+  active_context->interrupts_.push_back(interrupt);
+#endif
 }
 
 void

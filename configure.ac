@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 AC_PREREQ(2.61)
 AC_INIT([EbbRT],[0.3],[sesa-developers@googlegroups.com])
+AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign subdir-objects -Wall -Werror -Wno-portability])
 #some random file which we assert exists in source tree
@@ -24,7 +25,6 @@ AC_CONFIG_FILES([Makefile])
 AM_PATH_PYTHON([2.6],, [:])
 AM_CONDITIONAL([HAVE_PYTHON], [test "$PYTHON" != ":"])
 
-m4_include([m4/doxy.m4])
 DX_HTML_FEATURE(ON)
 DX_INIT_DOXYGEN($PACKAGE_NAME, docs/Doxyfile)
 
@@ -48,6 +48,14 @@ AS_CASE([$host_os], [linux-gnu],
 
 AM_CONDITIONAL([LRT_BARE], [test x$host_os == xebbrt])
 AM_CONDITIONAL([LRT_ULNX], [test x$host_os == xlinux-gnu])
+
+AX_HAVE_EPOLL(
+        [AX_CONFIG_FEATURE_ENABLE(epoll)],
+        [AX_CONFIG_FEATURE_DISABLE(epoll)])
+
+AX_CONFIG_FEATURE(
+        [epoll], [This platform supports epoll(7)],
+        [HAVE_EPOLL], [This platform supports epoll(7).])
 
 # Checks for programs.
 AM_PROG_AS

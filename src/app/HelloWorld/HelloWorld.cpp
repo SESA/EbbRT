@@ -25,6 +25,7 @@
 
 #ifdef __linux__
 #include <iostream>
+#include <sstream>
 #include <thread>
 #include "ebbrt.hpp"
 #elif __ebbrt__
@@ -36,10 +37,12 @@
 
 constexpr ebbrt::app::Config::InitEbb init_ebbs[] =
 {
+#ifdef __ebbrt__
   {
     .create_root = ebbrt::SimpleMemoryAllocatorConstructRoot,
     .name = "MemoryAllocator"
   },
+#endif
   {
     .create_root = ebbrt::PrimitiveEbbManagerConstructRoot,
     .name = "EbbManager"
@@ -100,7 +103,17 @@ int main()
 
   std::vector<std::thread> threads(std::thread::hardware_concurrency());
   for (auto& thread : threads) {
-    thread = std::thread([&]{ebbrt::Context context{instance};});
+    thread = std::thread([&]{
+        try {
+          ebbrt::Context context{instance};
+        } catch (std::exception& e) {
+          std::ostringstream str;
+          str << "Exception caught: " << e.what() << std::endl;
+          std::cerr << str.str() << std::endl;
+        } catch (...) {
+          std::cerr << "Unkown Exception caught" << std::endl;
+        }
+      });
   }
   for (auto& thread : threads) {
     thread.join();
