@@ -71,16 +71,16 @@ default_func_common:
 .Lpost_precall:
         nop //According to ABI this has to follow a bl
               
-        la r1, 0xf0(r1) // restore stack pointer
         cmpdi r3, 0 //If return is false we should just return
         beq .Lfail
 
         //Otherwise, make the call
               
-        ld r3, 0x10(r1) //load link register
+        ld r3, 0x100(r1) //load link register (NOTE: before stack pointer restored)
         bl _event_altstack_push //store it on the altstack
-        nop      
+        nop
 
+        la r1, 0xf0(r1) // restore stack pointer
         ld r3, -0xb8(r1) //load function descriptor to call
         std r2, 0x28(r1) //store toc pointer
         ld r2, 0x8(r3) //load new toc pointer
@@ -130,6 +130,7 @@ default_func_common:
         b _trans_postcall // this should return to the original caller
 
 .Lfail:
+        la r1, 0xf0(r1) // restore stack pointer
         ld r3, 0x10(r1) //load link register
         mtlr r3 //restore link register
               
