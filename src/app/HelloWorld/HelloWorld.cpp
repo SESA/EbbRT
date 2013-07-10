@@ -79,22 +79,16 @@ const ebbrt::app::Config ebbrt::app::config = {
 
 #ifdef __ebbrt__
 bool ebbrt::app::multi = true;
-#endif
 
 void
 ebbrt::app::start()
 {
-#ifdef __linux__
-  static std::mutex mutex;
-  std::lock_guard<std::mutex> lock(mutex);
-  std::cout << "Hello World" << std::endl;
-#elif __ebbrt__
   static Spinlock lock;
   lock.Lock();
   lrt::console::write("Hello World\n");
   lock.Unlock();
-#endif
 }
+#endif
 
 #ifdef __linux__
 int main()
@@ -114,6 +108,9 @@ int main()
           std::cerr << "Unkown Exception caught" << std::endl;
         }
       });
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lock(mutex);
+    std::cout << "Hello World" << std::endl;
   }
   for (auto& thread : threads) {
     thread.join();

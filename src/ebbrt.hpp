@@ -106,6 +106,12 @@ namespace ebbrt {
         @param[in] instance The EbbRT this context will belong to
      */
     Context(EbbRT& instance);
+    /** Activate Context - Ebb calls can only be made on an active context
+     */
+    void Activate();
+    /** Deactivate Context
+     */
+    void Deactivate();
     /** Dispatch events
         @param[in] count the number of events to dispatch until
         returning. If -1, then do not return */

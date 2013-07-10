@@ -84,22 +84,16 @@ const ebbrt::app::Config ebbrt::app::config = {
 
 #ifdef __ebbrt__
 bool ebbrt::app::multi = true;
-#endif
 
 void
 ebbrt::app::start()
 {
-#ifdef __linux__
-  static std::mutex mutex;
-  std::lock_guard<std::mutex> lock(mutex);
-  console->Write("Hello World\n");
-#elif __ebbrt__
   static Spinlock lock;
   lock.Lock();
-  console->Write("Hello World\n");
+  console->Write("Hello Ebb\n");
   lock.Unlock();
-#endif
 }
+#endif
 
 #ifdef __linux__
 int main()
@@ -108,7 +102,12 @@ int main()
 
   std::vector<std::thread> threads(std::thread::hardware_concurrency());
   for (auto& thread : threads) {
-    thread = std::thread([&]{ebbrt::Context context{instance};});
+    thread = std::thread([&]{
+      ebbrt::Context context{instance};
+      context.Activate();
+      ebbrt::console->Write("Hello Ebb\n");
+      context.Deactivate();
+      });
   }
   for (auto& thread : threads) {
     thread.join();

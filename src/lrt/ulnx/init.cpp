@@ -38,7 +38,7 @@ ebbrt::EbbRT::AllocateLocation()
 
 ebbrt::Context::Context(EbbRT& instance) : instance_(instance)
 {
-  active_context = this;
+  active_context = nullptr;
 
 #ifndef __bg__
   //get the epoll fd for the event loop
@@ -72,15 +72,20 @@ ebbrt::Context::Context(EbbRT& instance) : instance_(instance)
                               [&]{return instance_.initialized_;});
     }
   }
-
-  app::start();
 }
+
+void 
+ebbrt::Context::Activate(){
+  active_context = this;
+};
+void 
+ebbrt::Context::Deactivate(){
+  active_context = nullptr;
+};
 
 void
 ebbrt::Context::Loop(int count)
 {
-  active_context = this;
-
   int dispatched = 0;
   while (count == -1 || dispatched < count) {
 #ifndef __bg__

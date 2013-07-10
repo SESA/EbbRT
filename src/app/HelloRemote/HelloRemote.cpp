@@ -87,21 +87,17 @@ const ebbrt::app::Config ebbrt::app::config = {
   .static_ebb_ids = static_ebbs
 };
 
+#ifdef __ebbrt__
 void
 ebbrt::app::start()
 {
-#ifdef __ebbrt__
   pci = EbbRef<PCI>(ebb_manager->AllocateId());
   ebb_manager->Bind(PCI::ConstructRoot, pci);
   ethernet = EbbRef<Ethernet>(ebb_manager->AllocateId());
   ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
-#elif __linux__
-  ethernet = EbbRef<Ethernet>(ebb_manager->AllocateId());
-  ebb_manager->Bind(RawSocket::ConstructRoot, ethernet);
-  message_manager->StartListening();
-#endif
-  console->Write("Hello World\n");
+  console->Write("Hello World (remote)\n");
 }
+#endif
 
 #ifdef __linux__
 int main()
@@ -109,6 +105,11 @@ int main()
   ebbrt::EbbRT instance;
 
   ebbrt::Context context{instance};
+  context.Activate();
+  ethernet = EbbRef<Ethernet>(ebb_manager->AllocateId());
+  ebb_manager->Bind(RawSocket::ConstructRoot, ethernet);
+  message_manager->StartListening();
+  console->Write("Hello World (frontend)\n");
   context.Loop(-1);
 
   return 0;
