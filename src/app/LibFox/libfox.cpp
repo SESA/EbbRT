@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -31,7 +32,7 @@ extern "C" {
 struct fox_st {
   fox_st(int nprocs_, int procid_) : nprocs{nprocs_}, procid{procid_} {}
   std::vector<std::string> hosts;
-  std::unordered_multimap<std::string, std::string> queue;
+  std::multimap<std::string, std::string> queue;
   std::unordered_map<std::string, std::string> table;
   int nprocs;
   int procid;
@@ -84,6 +85,7 @@ fox_set(fox_ptr fhand,
   fhand->table.emplace(std::piecewise_construct,
                         std::forward_as_tuple(key, key_sz),
                         std::forward_as_tuple(value, value_sz));
+
   return 0;
 }
 
@@ -99,7 +101,10 @@ fox_get(fox_ptr fhand,
   }
 
   char* buf = static_cast<char*>(malloc(it->second.length()));
-  std::strncpy(buf, it->second.c_str(), it->second.length());
+  if (buf == 0) {
+    return -1;
+  }
+  std::memcpy(buf, it->second.c_str(), it->second.length());
   *pvalue_sz = it->second.length();
   *pvalue = buf;
 

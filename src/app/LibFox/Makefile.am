@@ -20,7 +20,7 @@ EXTRA_PROGRAMS += \
 src_app_LibFox_mcphoton_SOURCES = \
 	src/app/LibFox/app.cpp \
 	src/app/LibFox/libfox.cpp \
-	src/app/LibFox/photon.cpp
+	src/app/LibFox/photon.c
 
 src_app_LibFox_tfox_SOURCES = \
 	src/app/LibFox/app.cpp \
@@ -30,7 +30,7 @@ src_app_LibFox_tfox_SOURCES = \
 EXTRA_LIBRARIES += src/app/LibFox/libmcphoton.a
 
 src_app_LibFox_libmcphoton_a_SOURCES = \
-src/app/LibFox/mcphoton.c
+	src/app/LibFox/mcphoton.c
 
 src_app_LibFox_libmcphoton_a_CFLAGS = -DUSE_MPI
 
