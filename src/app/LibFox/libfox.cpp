@@ -121,8 +121,7 @@ fox_sync_set(fox_ptr fhand, unsigned delta,
              const char* value, size_t value_sz)
 {
   //FIXME: no semaphore stuff
-  fox_set(fhand, key, key_sz, value, value_sz);
-  return 0;
+  return fox_set(fhand, key, key_sz, value, value_sz);
 }
 
 extern "C"
@@ -132,8 +131,7 @@ fox_sync_get(fox_ptr fhand, unsigned delta,
              char **pvalue, size_t *pvalue_sz)
 {
   //FIXME: no semaphore stuff
-  fox_get(fhand, key, key_sz, pvalue, pvalue_sz);
-  return 0;
+  return fox_get(fhand, key, key_sz, pvalue, pvalue_sz);
 }
 
 extern "C"
@@ -143,8 +141,7 @@ fox_broad_set(fox_ptr fhand,
               const char *value, size_t value_sz)
 {
   //FIXME: no broadcast stuff
-  fox_set(fhand, key, key_sz, value, value_sz);
-  return 0;
+  return fox_set(fhand, key, key_sz, value, value_sz);
 }
 
 extern "C"
@@ -154,8 +151,7 @@ fox_broad_get(fox_ptr fhand,
               char **pvalue, size_t *pvalue_sz)
 {
   //FIXME: no broadcast stuff
-  fox_get(fhand, key, key_sz, pvalue, pvalue_sz);
-  return 0;
+  return fox_get(fhand, key, key_sz, pvalue, pvalue_sz);
 }
 
 extern "C"
@@ -197,7 +193,7 @@ fox_broad_queue_set(fox_ptr fhand,
                     const char *key, size_t key_sz,
                     const char *value, size_t value_sz)
 {
-  return 0;
+  return fox_queue_set(fhand, key, key_sz, value, value_sz);
 }
 
 extern "C"
@@ -206,7 +202,7 @@ fox_dist_queue_set(fox_ptr fhand,
                    const char *key, size_t key_sz,
                    const char *value, size_t value_sz)
 {
-  return 0;
+  return fox_queue_set(fhand, key, key_sz, value, value_sz);
 }
 
 extern "C"
@@ -215,7 +211,7 @@ fox_dist_queue_get(fox_ptr fhand,
                    const char *key, size_t key_sz,
                    char **pvalue, size_t *pvalue_sz)
 {
-  return 0;
+  return fox_queue_get(fhand, key, key_sz, pvalue, pvalue_sz);
 }
 
 extern "C"
@@ -224,7 +220,7 @@ fox_reduce_set(fox_ptr fhand,
                const char *key, size_t key_sz,
                const char *value, size_t value_sz)
 {
-  return 0;
+  return fox_set(fhand, key, key_sz, value, value_sz);
 }
 
 extern "C"
@@ -234,6 +230,16 @@ fox_reduce_get(fox_ptr fhand,
                char *pvalue, size_t pvalue_sz,
                void (*reduce)(void *out, void *in))
 {
+  char* tmpvalue;
+  size_t tmpvalue_sz;
+  int ret = fox_get(fhand, key, key_sz, &tmpvalue, &tmpvalue_sz);
+  if (ret != 0) {
+    return ret;
+  }
+
+  (*reduce)(pvalue, tmpvalue);
+  free(tmpvalue);
+
   return 0;
 }
 
