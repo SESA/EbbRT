@@ -37,8 +37,3 @@ const ebbrt::app::Config ebbrt::app::config = {
   .num_statics = sizeof(static_ebbs) / sizeof(Config::StaticEbbId),
   .static_ebb_ids = static_ebbs
 };
-
-void
-ebbrt::app::start()
-{
-}
