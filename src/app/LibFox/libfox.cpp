@@ -27,7 +27,6 @@ extern "C" {
 #include "src/app/LibFox/libfox.h"
 }
 
-#include "src/ebb/HashTable/LocalHashTable.hpp"
 
 struct fox_st {
   fox_st(int nprocs_, int procid_) : nprocs{nprocs_}, procid{procid_} {}
