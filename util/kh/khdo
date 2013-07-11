@@ -1,0 +1,346 @@
+#!/bin/bash
+set -x
+#####################################
+#
+#  IBM Coporation 
+#  Project kittyhawk
+#  
+# khpipe a simple tool to mainpulate
+# set of nodes acquired from khctl
+# 
+#  
+#####################################
+
+if [[ $BASH_VERSION != 3.1.* ]]; then shopt -s compat31; fi
+
+declare -r KHPIPEFILEPREFIX=${KHPIPE_FILEPREFIX:-/tmp/$USER}
+
+declare pipestagedatafile
+declare -a pipedatalines
+declare lines
+declare line
+
+declare -i i=0
+declare -i initialstage=0
+
+declare console
+declare -a nodes
+declare -a netids
+declare -a interfaces
+declare -a nodeinfo
+declare -a coms
+
+usage()
+{
+  local func=$1
+  if [[ -z $func ]]
+  then
+     echo "USAGE:  ${0##*/} func args" >&2
+     grep '^function' $0
+  else
+     case "$func" in 
+         'load')
+            ;;
+          *)
+            usage
+            ;;
+     esac
+  fi
+}
+
+processargs()
+{
+  if [[ $# == 0 ]]
+  then
+    usage
+    exit -1
+  fi
+
+  dofunc=$1
+}
+
+# deprecated for backwards compatibility
+write()
+{
+  writecon $*
+}
+
+function writecon
+{
+  data="$*"
+
+  if [[ -n "$data" ]]
+  then
+     echo "$data" | ssh -T -q $console
+  fi
+}
+
+function readcon
+{
+  TERM=KHREAD exec ssh -ttt -q $console < /dev/null 2> /dev/null
+}
+
+function writefile
+{
+    file=$1
+
+    if [[ -z "$file" ]]
+    then
+      echo "USAGE: $FUNCNAME: <file to send>"
+      return -1
+    fi
+    
+    if [[ -r $file ]]
+    then
+#      dd if=$file bs=240 | ssh -T -q $console
+      (dd if=$file bs=240 && sleep 1) | ssh -T -q $console
+    fi
+
+    return 0
+}
+
+filesize()
+{
+   if [[ -z "$1" ]]
+   then
+     echo "USAGE: FUNCNAME: <file>"
+     return -1
+   fi
+
+   stat -L -c "%s" $1
+   return $?
+}
+
+function loadfile
+{
+   local addr="$1"
+   local file=$2
+   local -i size
+
+   if [[ -r $file ]]
+   then
+     size=$(filesize $file)
+     write  "mrw $addr $size"
+     sleep 1
+     writefile $file
+     return 0
+   else
+     return -1
+   fi
+}
+
+function loadkernel
+{
+   loadfile "\$loadaddr" $1
+   return 0
+}
+
+function loadramdisk
+{
+   loadfile "\$ramfsaddr" $1
+   return 0
+}
+
+function cmd
+{
+   # take care of stdout dispositiion
+   eval $1 \"$console\"  \"${nodes[@]}\" \"${netids[@]}\" $outdirective
+   return 0
+}
+
+function concmd 
+{
+#  set -x
+  local cmd="$1"
+
+  if [[ -n "$cmd" ]]
+  then
+    cmd="${cmd//\%con\%/\$console}"
+    eval $cmd
+    return $?
+  fi
+  return 0
+} 
+
+function peripcmd
+{
+#  set -x
+  local cmd=$1
+  local ip
+  local n
+
+  cmd=${cmd//\%ip\%/\$ip}
+  for n in ${nodes[@]}
+  do
+    [[ ${nodeinfo[$n]} =~ "^([0-9]+) ([0-9]+) ([0-9.]+)" ]]
+    ip=${BASH_REMATCH[3]}
+    eval $cmd
+  done
+}
+
+function nodescmd 
+{ 
+  return 0
+} 
+
+function netscmd 
+{ 
+  return 0
+} 
+
+function interfacescmd 
+{ 
+  return 0
+} 
+
+function percomcmd 
+{
+  local cmd="$1"
+  local n
+
+  cmd="${cmd//\%com\%/\$n}"
+  for n in ${coms[@]}
+  do
+    eval $cmd
+  done 
+  return 0
+} 
+
+function pernodecmd 
+{
+  local cmd="$1"
+  local n
+
+  cmd="${cmd//\%node\%/\$n}"
+  for n in ${nodes[@]}
+  do
+    eval $cmd
+  done 
+  return 0
+} 
+
+function pernetcmd 
+{
+  local cmd="$1"
+  local n
+  local i
+  local -i j=0
+
+  cmd="${cmd//\%net\%/\$n}"
+  cmd="${cmd//\%if\%/\$i}"
+ 
+  while (( $j < ${#netids[@]} ))
+  do
+    i=${interfaces[$j]}
+    n=${netids[$j]}
+    eval $cmd
+    ((j++))
+  done
+
+  return 0
+} 
+
+function null
+{
+  return 0
+}
+
+addpipeinfo()
+{
+  if [[ -z $KHPIPEINFO ]]
+  then
+    KHPIPEINFO="$1:"
+  else 
+    KHPIPEINFO="$KHPIPEINFO $*:"
+  fi
+}
+
+function parsepipeinfo
+{
+  return 0
+}
+
+processargs "$@" 
+shift 
+
+(( i = -1 ))
+while read line
+do 
+  (( i++ ))
+
+  if (( $i == 0 )) && [[ $line =~ "^KHPIPEINFO: .*" ]]
+  then
+     KHPIPEINFO="$line"
+     continue
+  fi
+
+  if (( $i == 0 )) && [[ ! $line =~ "^KHPIPEINFO: .*" ]]
+  then
+    (( initialstage++ ))
+  fi
+
+  pipedatalines[$i]="$line"
+  lines="$lines$line
+"
+
+  if [[ "$line" =~ "^con.*" ]]
+  then
+    console="$line"
+    continue
+  fi
+   
+  if [[ "$line" =~ "^network.*" ]]
+  then
+    interface=${line##*: }
+    interfaces=( ${interfaces[@]} $interface )
+    netid=${line%% :*}
+    netid=${netid#* }
+#    if [[ "$netid" = "External" ]]; then netid=1; fi
+#    if [[ "$netid" = "Internal" ]]; then netid=2; fi 
+    netids=( ${netids[@]} $netid )
+    continue
+  fi
+  if [[ "$line" =~ "^nodeinfo: .*" ]]
+  then
+     n=${line##*: }
+     n=${n%% *}
+     nodeinfo[$n]=${line##*: }
+  fi
+    
+  if [[ "$line" =~ "^nodes:.*" ]]
+  then
+    nodes=( ${nodes[@]} ${line#nodes: } )
+    break;
+  fi
+  if [[ "$line" =~ "^node.*: serial:.*" ]]
+  then
+    echo ${line#.*: }
+    coms=( ${coms[@]} ${line##.*: } )
+    break;
+  fi
+done
+
+# abort if passed parameter is not a valid control block
+if [[ -z $nodes ]]; then exit -1; fi
+
+if (( $initialstage == 1 )) 
+then 
+  addpipeinfo "KHPIPEINFO"
+else 
+#  set -x
+   true
+fi
+
+parsepipeinfo "$KHPIPEINFO"
+
+$dofunc "$@"
+
+if (( $# == 0 ))
+then
+  addpipeinfo "$dofunc"
+else
+  addpipeinfo "$dofunc $@"
+fi
+
+#echo $KHPIPEINFO
+#echo "$lines"
