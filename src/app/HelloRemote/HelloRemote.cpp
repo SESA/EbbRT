@@ -106,10 +106,10 @@ int main()
 
   ebbrt::Context context{instance};
   context.Activate();
-  ethernet = EbbRef<Ethernet>(ebb_manager->AllocateId());
-  ebb_manager->Bind(RawSocket::ConstructRoot, ethernet);
-  message_manager->StartListening();
-  console->Write("Hello World (frontend)\n");
+  ebbrt::ethernet = ebbrt::EbbRef<ebbrt::Ethernet>(ebbrt::ebb_manager->AllocateId());
+  ebbrt::ebb_manager->Bind(ebbrt::RawSocket::ConstructRoot, ebbrt::ethernet);
+  ebbrt::message_manager->StartListening();
+  ebbrt::console->Write("Hello World (frontend)\n");
   context.Loop(-1);
 
   return 0;
