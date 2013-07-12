@@ -59,6 +59,14 @@ ebbrt::lrt::event::register_fd(int fd, uint32_t events, uint8_t interrupt)
 #endif
 }
 
+#ifdef __bg__
+void
+ebbrt::lrt::event::register_function(std::function<int()> func)
+{
+  active_context->funcs_.push_back(func);
+}
+#endif
+
 void
 ebbrt::lrt::event::_event_altstack_push(uintptr_t val)
 {

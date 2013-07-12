@@ -31,6 +31,8 @@ ebbrt::SimpleEventManager::SimpleEventManager() : next_{32}
 {
 }
 
+#include <iostream>
+
 uint8_t
 ebbrt::SimpleEventManager::AllocateInterrupt(std::function<void()> func)
 {

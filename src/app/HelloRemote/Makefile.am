@@ -20,17 +20,27 @@ src_app_HelloRemote_HelloRemote_SOURCES = \
 
 src_app_HelloRemote_HelloRemote_ebbs = \
 	src/ebb/EbbManager/libPrimitiveEbbManager.a \
-	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a \
 	src/ebb/EventManager/libSimpleEventManager.a \
-	src/ebb/Console/libRemoteConsole.a \
-	src/ebb/MessageManager/libMessageManager.a
+	src/ebb/Console/libRemoteConsole.a
+
+if !BG
+src_app_HelloRemote_HelloRemote_ebbs += \
+	src/ebb/MessageManager/libEthernetMessageManager.a
+else
+src_app_HelloRemote_HelloRemote_ebbs += \
+	src/ebb/MessageManager/libMPIMessageManager.a
+endif
 
 if LRT_ULNX
+if BG
+else
 src_app_HelloRemote_HelloRemote_ebbs += \
 	src/ebb/Ethernet/libRawSocket.a
+endif
 else
 if LRT_BARE
 src_app_HelloRemote_HelloRemote_ebbs += \
+	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a \
 	src/ebb/Ethernet/libVirtioNet.a \
 	src/ebb/PCI/libPCI.a \
 	src/ebb/Syscall/libSyscall.a \
@@ -50,8 +60,10 @@ src_app_HelloRemote_HelloRemote_LDADD = \
 	libebbrt.a
 
 if LRT_ULNX
+if !BG
 src_app_HelloRemote_HelloRemote_LDADD += \
 	-lpcap
+endif
 endif
 
 src_app_HelloRemote_HelloRemote_DEPENDENCIES = \

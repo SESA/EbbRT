@@ -74,14 +74,16 @@ ebbrt::Context::Context(EbbRT& instance) : instance_(instance)
   }
 }
 
-void 
+void
 ebbrt::Context::Activate(){
   active_context = this;
 };
-void 
+void
 ebbrt::Context::Deactivate(){
   active_context = nullptr;
 };
+
+#include <iostream>
 
 void
 ebbrt::Context::Loop(int count)
@@ -99,15 +101,35 @@ ebbrt::Context::Loop(int count)
     }
     ebbrt::lrt::event::_event_interrupt(epoll_event.data.u32);
 #else
-    if (poll(fds_.data(), fds_.size(), -1) == -1) {
-      if (errno == EINTR) {
-        continue;
+    while (1) {
+      // Workaround for CNK bug
+      if (fds_.size() != 0) {
+        int ret = poll(fds_.data(), fds_.size(), 0);
+        if (ret == -1) {
+          if (errno == EINTR) {
+            continue;
+          }
+          throw std::runtime_error("poll failed");
+        }
+        for (unsigned i = 0; i < fds_.size(); ++i) {
+          if (fds_[i].revents) {
+            ebbrt::lrt::event::_event_interrupt(interrupts_[i]);
+            break;
+          }
+        }
       }
-      throw std::runtime_error("poll failed");
-    }
-    for (unsigned i = 0; i < fds_.size(); ++i) {
-      if (fds_[i].revents) {
-        ebbrt::lrt::event::_event_interrupt(interrupts_[i]);
+      //call functions
+      std::vector<std::function<int()> > funcs_copy{funcs_};
+      bool didevent = false;
+      for (const auto& func: funcs_copy) {
+        int interrupt = func();
+        if (interrupt >= 0) {
+          didevent = true;
+          ebbrt::lrt::event::_event_interrupt(interrupt);
+          break;
+        }
+      }
+      if (didevent) {
         break;
       }
     }

@@ -15,21 +15,23 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_MISC_NETWORK_HPP
-#define EBBRT_MISC_NETWORK_HPP
+#ifndef EBBRT_EBB_MESSAGEMANAGER_ETHERNETMESSAGEMANAGER_HPP
+#define EBBRT_EBB_MESSAGEMANAGER_ETHERNETMESSAGEMANAGER_HPP
+
+#include "ebb/MessageManager/MessageManager.hpp"
 
 namespace ebbrt {
-#ifndef __bg__
-  class NetworkId {
+  class EthernetMessageManager : public MessageManager {
   public:
-    char mac_addr[6];
+    static EbbRoot* ConstructRoot();
+    EthernetMessageManager();
+    virtual void Send(NetworkId to,
+                      EbbId ebb,
+                      BufferList buffers,
+                      std::function<void()> cb = nullptr) = override;
+    virtual void StartListening() = override;
+  private:
+    uint8_t mac_addr_[6];
   };
-#else
-  class NetworkId {
-  public:
-    int rank;
-  };
-#endif
 }
-
 #endif

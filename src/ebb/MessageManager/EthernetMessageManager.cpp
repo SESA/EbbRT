@@ -21,7 +21,7 @@
 #include "arch/inet.hpp"
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Ethernet/Ethernet.hpp"
-#include "ebb/MessageManager/MessageManager.hpp"
+#include "ebb/MessageManager/EthernetMessageManager.hpp"
 
 #ifdef __ebbrt__
 #include "lrt/bare/assert.hpp"
@@ -32,9 +32,9 @@ namespace {
 }
 
 ebbrt::EbbRoot*
-ebbrt::MessageManager::ConstructRoot()
+ebbrt::EthernetMessageManager::ConstructRoot()
 {
-  return new SharedRoot<MessageManager>;
+  return new SharedRoot<EthernetMessageManager>;
 }
 
 namespace {
@@ -44,14 +44,14 @@ namespace {
   };
 };
 
-ebbrt::MessageManager::MessageManager()
+ebbrt::EthernetMessageManager::EthernetMessageManager()
 {
   const uint8_t* addr = ethernet->MacAddress();
   std::copy(&addr[0], &addr[6], mac_addr_);
 }
 
 void
-ebbrt::MessageManager::Send(NetworkId to,
+ebbrt::EthernetMessageManager::Send(NetworkId to,
                             EbbId id,
                             BufferList buffers,
                             std::function<void()> cb)
@@ -79,7 +79,7 @@ ebbrt::MessageManager::Send(NetworkId to,
 }
 
 void
-ebbrt::MessageManager::StartListening()
+ebbrt::EthernetMessageManager::StartListening()
 {
   ethernet->Register(MESSAGE_MANAGER_ETHERTYPE,
                      [](const uint8_t* buf, size_t len) {
