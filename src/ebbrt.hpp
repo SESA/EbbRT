@@ -125,6 +125,9 @@ namespace ebbrt {
     friend void lrt::event::_event_altstack_push(uintptr_t);
     friend uintptr_t lrt::event::_event_altstack_pop();
     friend void lrt::event::register_fd(int, uint32_t, uint8_t);
+#ifdef __bg__
+    friend void lrt::event::register_function(std::function<int()>);
+#endif
     friend bool lrt::trans::_trans_precall(Args*,
                                            ptrdiff_t,
                                            lrt::trans::FuncRet*);
@@ -144,6 +147,8 @@ namespace ebbrt {
     std::vector<struct pollfd> fds_;
     /** The vector of corresponding "interrupts" */
     std::vector<uint8_t> interrupts_;
+    /** The vector of functions to call during the event loop */
+    std::vector<std::function<int()> > funcs_;
 #endif
     /** The local table storing per location ebb reps */
     std::unordered_map<lrt::trans::EbbId, lrt::trans::EbbRep*> local_table_;

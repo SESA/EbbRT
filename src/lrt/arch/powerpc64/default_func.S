@@ -123,8 +123,10 @@ default_func_common:
         // stfd f3, -0x28(r1)      
         // stfd f4, -0x28(r1)      
 
+        stdu r1, -0x40(r1) // push stack frame
         bl _event_altstack_pop //pop the original link register off the altstack
         nop
+        la r1, 0x40(r1) // restore stack pointer
         mtlr r3 // load the link register with the original value
         ld r3, -0x8(r1) // first param: return value 
         b _trans_postcall // this should return to the original caller
