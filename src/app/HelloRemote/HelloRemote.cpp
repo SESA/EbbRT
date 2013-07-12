@@ -22,11 +22,22 @@
 #include "ebb/EventManager/SimpleEventManager.hpp"
 #include "ebb/Gthread/Gthread.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
-#include "ebb/MessageManager/MessageManager.hpp"
 #include "ebb/Syscall/Syscall.hpp"
+
+#ifndef __bg__
+#include "ebb/MessageManager/EthernetMessageManager.hpp"
+#else
+#include "ebb/MessageManager/MPIMessageManager.hpp"
+#endif
+
 #ifdef __linux__
 #include "ebbrt.hpp"
+#ifndef __bg__
 #include "ebb/Ethernet/RawSocket.hpp"
+#else
+#include <iostream>
+#include <mpi.h>
+#endif
 #elif __ebbrt__
 #include "ebb/PCI/PCI.hpp"
 #include "ebb/Ethernet/VirtioNet.hpp"
@@ -34,10 +45,12 @@
 
 constexpr ebbrt::app::Config::InitEbb init_ebbs[] =
 {
+#ifdef __ebbrt__
   {
     .create_root = ebbrt::SimpleMemoryAllocatorConstructRoot,
     .name = "MemoryAllocator"
   },
+#endif
   {
     .create_root = ebbrt::PrimitiveEbbManagerConstructRoot,
     .name = "EbbManager"
@@ -61,7 +74,11 @@ constexpr ebbrt::app::Config::InitEbb init_ebbs[] =
     .name = "Console"
   },
   {
-    .create_root = ebbrt::MessageManager::ConstructRoot,
+#ifndef __bg__
+    .create_root = ebbrt::EthernetMessageManager::ConstructRoot,
+#else
+    .create_root = ebbrt::MPIMessageManager::ConstructRoot,
+#endif
     .name = "MessageManager"
   }
 };
@@ -100,16 +117,39 @@ ebbrt::app::start()
 #endif
 
 #ifdef __linux__
-int main()
+int main(int argc, char** argv)
 {
+#ifdef __bg__
+  if (MPI_Init(&argc, &argv) != MPI_SUCCESS) {
+    std::cerr << "MPI_Init failed" << std::endl;
+    return -1;
+  }
+#endif
   ebbrt::EbbRT instance;
 
   ebbrt::Context context{instance};
   context.Activate();
+#ifndef __bg__
   ebbrt::ethernet = ebbrt::EbbRef<ebbrt::Ethernet>(ebbrt::ebb_manager->AllocateId());
   ebbrt::ebb_manager->Bind(ebbrt::RawSocket::ConstructRoot, ebbrt::ethernet);
   ebbrt::message_manager->StartListening();
   ebbrt::console->Write("Hello World (frontend)\n");
+#else
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  if (rank == 0) {
+    ebbrt::message_manager->StartListening();
+  }
+  if (MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
+    std::cerr << "MPI_Barrier failed" << std::endl;
+    return -1;
+  }
+  if (rank == 0) {
+    ebbrt::console->Write("Hello World (frontend)\n");
+  } else {
+    ebbrt::console->Write("Hello World (remote)\n");
+  }
+#endif
   context.Loop(-1);
 
   return 0;

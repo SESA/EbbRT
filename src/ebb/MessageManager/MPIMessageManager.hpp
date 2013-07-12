@@ -15,39 +15,29 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_LRT_EVENT_HPP
-#error "Don't include this file directly"
-#endif
+#ifndef EBBRT_EBB_MESSAGEMANAGER_MPIMESSAGEMANAGER_HPP
+#define EBBRT_EBB_MESSAGEMANAGER_MPIMESSAGEMANAGER_HPP
 
-#ifdef __bg__
-#include <functional>
-#endif
+#include "ebb/MessageManager/MessageManager.hpp"
 
-#include <sys/epoll.h>
-
-#include "lrt/Location.hpp"
+#include <mpi.h>
 
 namespace ebbrt {
-  namespace lrt {
-    namespace event {
-      /**
-       * @brief Get cores location
-       *
-       * @return
-       */
-      Location get_location();
+  class MPIMessageManager : public MessageManager {
+  public:
+    static EbbRoot* ConstructRoot();
+    MPIMessageManager();
+    virtual void Send(NetworkId to,
+                      EbbId ebb,
+                      BufferList buffers,
+                      std::function<void()> cb = nullptr) override;
+    virtual void StartListening() override;
+  private:
+    virtual int CheckForInterrupt();
+    virtual void DispatchMessage();
 
-      unsigned get_max_contexts();
-
-      void register_fd(int fd, uint32_t events, uint8_t interrupt);
-
-#ifdef __bg__
-      /** Register a function to cause an event to be invoked.
-          This is a workaround for lack of facilities to interrupt the
-          event loop on CNK. The return value of the function is the
-          interrupt to be invoked or -1 if none. */
-      void register_function(std::function<int()> func);
-#endif
-    }
-  }
+    uint8_t interrupt_;
+    MPI_Status status_;
+  };
 }
+#endif

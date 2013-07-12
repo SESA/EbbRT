@@ -49,6 +49,14 @@ AS_CASE([$host_os], [linux-gnu],
 AM_CONDITIONAL([LRT_BARE], [test x$host_os == xebbrt])
 AM_CONDITIONAL([LRT_ULNX], [test x$host_os == xlinux-gnu])
 
+AC_EGREP_CPP(yes,
+[#ifdef __bg__
+  yes
+#endif
+], is_bg=yes, is_bg=no)
+
+AM_CONDITIONAL([BG], [test x$is_bg == xyes])
+
 AX_HAVE_EPOLL(
         [AX_CONFIG_FEATURE_ENABLE(epoll)],
         [AX_CONFIG_FEATURE_DISABLE(epoll)])

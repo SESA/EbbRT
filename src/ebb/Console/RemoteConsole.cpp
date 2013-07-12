@@ -15,6 +15,10 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifdef __bg__
+#include <mpi.h>
+#endif
+
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Console/RemoteConsole.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
@@ -37,10 +41,23 @@ ebbrt::RemoteConsole::Write(const char* str,
                             std::function<void()> cb)
 {
 #ifdef __linux__
+#ifndef __bg__
   std::cout << str;
   if (cb) {
     cb();
   }
+#else
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  if (rank == 0) {
+    std::cout << str;
+  } else {
+    BufferList list = BufferList(1, std::make_pair(str, strlen(str) + 1));
+    NetworkId id;
+    id.rank = 0;
+    message_manager->Send(id, console, std::move(list));
+  }
+#endif
 #elif __ebbrt__
   BufferList list = BufferList(1, std::make_pair(str, strlen(str) + 1));
   LRT_ASSERT(!cb);
@@ -60,7 +77,17 @@ ebbrt::RemoteConsole::HandleMessage(const uint8_t* msg,
                                     size_t len)
 {
 #ifdef __linux__
+#ifndef __bg__
   std::cout << msg;
+#else
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  if (rank == 0) {
+    std::cout << msg;
+  } else {
+    assert(0);
+  }
+#endif
 #elif __ebbrt__
   LRT_ASSERT(0);
 #endif
