@@ -18,6 +18,7 @@
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Console/LocalConsole.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
+#include "src/lrt/bare/config.hpp"
 
 #ifdef __ebbrt__
 #include "lrt/bare/assert.hpp"
@@ -26,11 +27,27 @@
 #ifdef __linux__
 #include <iostream>
 #endif
+
 ebbrt::EbbRoot*
 ebbrt::LocalConsole::ConstructRoot()
 {
   return new SharedRoot<LocalConsole>;
 }
+
+ADD_EARLY_CONFIG_SYMBOL(local_console_symbol,"LocalConsolConfig",
+			&ebbrt::LocalConsole::ConstructRoot)
+
+#if 0
+char local_console_symbol[] __attribute__((section("ebbstrtab")))
+  = "LocalConsoleConfig";
+
+ebbrt::lrt::SymTabEntry 
+local_console_symbol_entry __attribute__((section("ebbsymtab"))) 
+= {
+  .config_func = &ebbrt::LocalConsole::ConstructRoot,
+  .str_offset = local_console_symbol - ebbstrtab_start
+};
+#endif
 
 void
 ebbrt::LocalConsole::Write(const char* str,
