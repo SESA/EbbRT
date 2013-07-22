@@ -185,8 +185,8 @@ ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
       EbbId target_id = args->rsi;
       EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->rdx);
 #elif ARCH_POWERPC64
-      EbbId target_id = args->r4;
-      EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->r5);
+      EbbId target_id = args->gprs[1];
+      EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->gprs[2]);
 #else
 #error "Unsupported Architecture"
 #endif
@@ -213,8 +213,8 @@ ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
       EbbId target_id = args->rsi;
       EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->rdx);
 #elif ARCH_POWERPC64
-      EbbId target_id = args->r4;
-      EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->r5);
+      EbbId target_id = args->gprs[1];
+      EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->gprs[2]);
 #else
 #error "Unsupported Architecture"
 #endif
@@ -246,7 +246,11 @@ ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
     local_cache_rep(id, it->second);
     ref = it->second;
   }
-  *reinterpret_cast<EbbRep**>(args) = ref;
+#ifdef ARCH_X86_64
+  reinterpret_cast<EbbRep*&>(args->rdi) = ref;
+#elif ARCH_POWERPC64
+  reinterpret_cast<EbbRep*&>(args->gprs[0]) = ref;
+#endif
   // rep is a pointer to pointer to array 256 of pointer to
   // function returning void
   void (*(**rep)[256])() = reinterpret_cast<void (*(**)[256])()>(ref);
