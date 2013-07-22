@@ -18,6 +18,7 @@
 #ifndef EBBRT_EBB_SHAREDROOT_HPP
 #define EBBRT_EBB_SHAREDROOT_HPP
 
+#include "arch/args.hpp"
 #include "ebb/ebb.hpp"
 #include "ebb/EbbManager/EbbManager.hpp"
 #include "sync/spinlock.hpp"
@@ -55,7 +56,11 @@ namespace ebbrt {
         lock_.Unlock();
       }
       ebb_manager->CacheRep(id, rep_);
-      *reinterpret_cast<EbbRep**>(args) = rep_;
+#ifdef ARCH_X86_64
+      *reinterpret_cast<EbbRep**>(&(args->rdi)) = rep_;
+#elif ARCH_POWERPC64
+      *reinterpret_cast<EbbRep**>(&(args->gprs[0])) = rep_;
+#endif
       // rep is a pointer to pointer to array 256 of pointer to
       // function returning void
       void (*(**rep)[256])() = reinterpret_cast<void (*(**)[256])()>(rep_);
