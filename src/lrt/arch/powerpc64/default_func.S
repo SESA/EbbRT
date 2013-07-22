@@ -22,7 +22,7 @@
 	.align 3
         .globl default_func\num
 default_func\num:
-         // Three word function descriptor                        
+         // Three word function descriptor
 	.quad .L.default_func\num //address of entry point
         .quad .TOC.@tocbase //TOC base
         .quad 0 //environment pointer
@@ -31,114 +31,226 @@ default_func\num:
         b default_func_common
 .endm
 
+      	.section ".text"
+
 default_func_common:
-        mflr r0
-        std r0, 0x10(r1) //save link register
+        .cfi_startproc
+        .cfi_personality 0x94,DW.ref.__gxx_personality_v0
+        .cfi_lsda 0x14,.LLSDA0
+        mflr 0
+        std 0, 0x10(1) //save link register
+        stdu 1,-(0x70+(18*8))(1) //push frame
+        .cfi_def_cfa_offset (0x70+(18*8))
+        .cfi_offset 65, 16 //where LR can be found
 
-        la r0, 0x30(r1) //save pointer to parameter save area
-        std r0, -0x8(r1)
-              
-        stfd f13, -0x10(r1) //save parameter fprs
-        stfd f12, -0x18(r1)
-        stfd f11, -0x20(r1)
-        stfd f10, -0x28(r1)
-        stfd f9, -0x30(r1)
-        stfd f8, -0x38(r1)
-        stfd f7, -0x40(r1)
-        stfd f6, -0x48(r1)
-        stfd f5, -0x50(r1)
-        stfd f4, -0x58(r1)
-        stfd f3, -0x60(r1)
-        stfd f2, -0x68(r1)
-        stfd f1, -0x70(r1) 
+        //save parameter gprs
+	std 10, ((0x70+(18*8))+0x68)(1)
+        std 9, ((0x70+(18*8))+0x60)(1)
+        std 8, ((0x70+(18*8))+0x58)(1)
+        std 7, ((0x70+(18*8))+0x50)(1)
+        std 6, ((0x70+(18*8))+0x48)(1)
+        std 5, ((0x70+(18*8))+0x40)(1)
+        std 4, ((0x70+(18*8))+0x38)(1)
+        std 3, ((0x70+(18*8))+0x30)(1)
 
-        std r10, -0x78(r1) //save parameter gprs 
-        std r9, -0x80(r1) 
-        std r8, -0x88(r1) 
-        std r7, -0x90(r1) 
-        std r6, -0x98(r1) 
-        std r5, -0xa0(r1) 
-        std r4, -0xa8(r1)
-        std r3, -0xb0(r1) 
+	//save parameter fprs
+        stfd 13, ((0x70+(18*8)) + ((-1)*8))(1)
+        stfd 12, ((0x70+(18*8)) + ((-2)*8))(1)
+        stfd 11, ((0x70+(18*8)) + ((-3)*8))(1)
+        stfd 10, ((0x70+(18*8)) + ((-4)*8))(1)
+        stfd 9, ((0x70+(18*8)) + ((-5)*8))(1)
+        stfd 8, ((0x70+(18*8)) + ((-6)*8))(1)
+        stfd 7, ((0x70+(18*8)) + ((-7)*8))(1)
+        stfd 6, ((0x70+(18*8)) + ((-8)*8))(1)
+        stfd 5, ((0x70+(18*8)) + ((-9)*8))(1)
+        stfd 4, ((0x70+(18*8)) + ((-10)*8))(1)
+        stfd 3, ((0x70+(18*8)) + ((-11)*8))(1)
+        stfd 2, ((0x70+(18*8)) + ((-12)*8))(1)
+        stfd 1, ((0x70+(18*8)) + ((-13)*8))(1)
 
-        la r3, -0xb0(r1) //first param: args pointer
-        mr r4, r11 //second param: method number
-        la r5, -0xb8(r1) //third param: address to FuncRet
+        //store pointer to stack args
+        la 3, ((0x70+(18*8)) + 0x70)(1)
+	std 3, ((0x70+(18*8)) + ((-14)*8))(1)
 
-        stdu r1,-0xf0(r1) //push frame
-.Lpre_precall: 
+        //store pointer to fprs
+        la 3, ((-13)*8)(1)
+	std 3, ((0x70+(18*8)) + ((-15)*8))(1)
+
+        //store pointer to gprs
+        la 3, ((0x70+(18*8))+0x30)(1)
+	std 3, ((0x70+(18*8)) + ((-16)*8))(1)
+
+        la 3, ((0x70+(18*8)) + ((-16)*8))(1) //first param: args pointer
+        mr 4, 11 //second param: method number
+	la 5, ((0x70+(18*8)) + ((-17)*8))(1) 	//third param: address to FuncRet
+.Lpre_precall:
         bl _trans_precall
+        nop
 .Lpost_precall:
-        nop //According to ABI this has to follow a bl
-              
-        cmpdi r3, 0 //If return is false we should just return
-        beq .Lfail
 
-        //Otherwise, make the call
-              
-        ld r3, 0x100(r1) //load link register (NOTE: before stack pointer restored)
-        bl _event_altstack_push //store it on the altstack
+        cmpdi 3, 0
+        bne .Ldocall
+        ld 3, ((0x70+18*8) + ((-17*8)))(1)
+        addi 1, 1, (0x70 + (18*8)) //restore stack pointer
+        .cfi_def_cfa_offset 0
+        ld  0, 16(1)
+        mtlr 0
+        .cfi_restore 65
+        blr
+        .p2align 4,,15
+.Ldocall:
+        .cfi_def_cfa_offset (0x70+(18*8))
+        .cfi_offset 65, 16 //where LR can be found
+        ld 3, ((0x70+(18*8)) + 0x10)(1) //load link register
+        bl _event_altstack_push
         nop
 
-        la r1, 0xf0(r1) // restore stack pointer
-        ld r3, -0xb8(r1) //load function descriptor to call
-        std r2, 0x28(r1) //store toc pointer
-        ld r2, 0x8(r3) //load new toc pointer
-        ld r3, 0(r3) //load function address
-        mtctr r3
+        mr 3, 2
+        bl _event_altstack_push //store toc pointer
+        nop 
+        ld 3, ((0x70+(18*8)) + ((-17)*8))(1)
+        ld 2, 0x8(3) //load new toc pointer
+        ld 3, 0(3) //load function address
+        mtctr 3
 
-        ld r3, -0xb0(r1) //restore parameter gprs
-        ld r4, -0xa8(r1) 
-        ld r5, -0xa0(r1) 
-        ld r6, -0x98(r1) 
-        ld r7, -0x90(r1) 
-        ld r8, -0x88(r1) 
-        ld r9, -0x80(r1) 
-        ld r10, -0x78(r1) 
+        //restore parameter gprs
+	ld 10, ((0x70+(18*8))+0x68)(1)
+        ld 9, ((0x70+(18*8))+0x60)(1)
+        ld 8, ((0x70+(18*8))+0x58)(1)
+        ld 7, ((0x70+(18*8))+0x50)(1)
+        ld 6, ((0x70+(18*8))+0x48)(1)
+        ld 5, ((0x70+(18*8))+0x40)(1)
+        ld 4, ((0x70+(18*8))+0x38)(1)
+        ld 3, ((0x70+(18*8))+0x30)(1)
 
-        lfd f1, -0x70(r1) //restore parameter fprs
-        lfd f2, -0x68(r1)
-        lfd f3, -0x60(r1)
-        lfd f4, -0x58(r1)
-        lfd f5, -0x50(r1)
-        lfd f6, -0x48(r1)
-        lfd f7, -0x40(r1)
-        lfd f8, -0x38(r1)
-        lfd f9, -0x30(r1)
-        lfd f10, -0x28(r1)
-        lfd f11, -0x20(r1)
-        lfd f12, -0x18(r1)
-        lfd f13, -0x10(r1)
+	//save parameter fprs
+        lfd 13, ((0x70+(18*8)) + ((-1)*8))(1)
+        lfd 12, ((0x70+(18*8)) + ((-2)*8))(1)
+        lfd 11, ((0x70+(18*8)) + ((-3)*8))(1)
+        lfd 10, ((0x70+(18*8)) + ((-4)*8))(1)
+        lfd 9, ((0x70+(18*8)) + ((-5)*8))(1)
+        lfd 8, ((0x70+(18*8)) + ((-6)*8))(1)
+        lfd 7, ((0x70+(18*8)) + ((-7)*8))(1)
+        lfd 6, ((0x70+(18*8)) + ((-8)*8))(1)
+        lfd 5, ((0x70+(18*8)) + ((-9)*8))(1)
+        lfd 4, ((0x70+(18*8)) + ((-10)*8))(1)
+        lfd 3, ((0x70+(18*8)) + ((-11)*8))(1)
+        lfd 2, ((0x70+(18*8)) + ((-12)*8))(1)
+        lfd 1, ((0x70+(18*8)) + ((-13)*8))(1)
 
-.Lpre_foo_call: 
-        bctrl //branch and link to the function
+        //restore stack pointer
+        la 1, (0x70+(18*8))(1)
+        .cfi_def_cfa_offset 0
+.Lpre_foo_call:
+        bctrl
 .Lpost_foo_call:
-        ld r2, 0x28(r1) //restore toc pointer
-              
-        std r3, -0x8(r1) //store return value
+        //move stack pointer back
+        la 1, -(0x70+(18*8))(1)
+        .cfi_def_cfa_offset (0x70 + (18*8))
+        std 3, ((0x70+(18*8)) + (-0x8))(1) //store return value
 
-        //FIXME: We currently don't support floating point return values
-        // stfd f1, -0x10(r1) //store potential floating point return values
-        // stfd f2, -0x18(r1)      
-        // stfd f3, -0x28(r1)      
-        // stfd f4, -0x28(r1)      
-
-        stdu r1, -0x40(r1) // push stack frame
-        bl _event_altstack_pop //pop the original link register off the altstack
+        bl _event_altstack_pop
         nop
-        la r1, 0x40(r1) // restore stack pointer
-        mtlr r3 // load the link register with the original value
-        ld r3, -0x8(r1) // first param: return value 
-        b _trans_postcall // this should return to the original caller
 
-.Lfail:
-        la r1, 0xf0(r1) // restore stack pointer
-        ld r3, 0x10(r1) //load link register
-        mtlr r3 //restore link register
+        mr 2, 3 //restore toc pointer
               
-        ld r3, -0xb8(r1) //load return value
-        blr //return
+        bl _event_altstack_pop
+        nop
+
+   	mtlr 3 // load the link register with the original value
+	.cfi_restore 65 //we restored the link register
+        ld 3, ((0x70+(18*8)) + (-0x8))(1) //load return value
+        la 1, (0x70+(18*8))(1) //restore stack pointer
+        .cfi_def_cfa_offset 0
+        b _trans_postcall // this should return to the original caller
+.Llp0:
+        stdu 1, -0x70(1)
+        .cfi_def_cfa_offset 0x70
+        bl __cxa_begin_catch
+        nop
+        bl _event_altstack_pop
+        nop
+        mr 2,3 //restore toc pointer
+        bl _event_altstack_pop
+        nop
+        std 3, (0x70 + 0x10)(1) //store link register
+        .cfi_offset 65, 16 //where LR can be found
+.Lpre_rethrow:
+        bl __cxa_rethrow
+        nop
+.Lpost_rethrow:
+        std 3, (0x70 - 0x8)(1)
+        bl __cxa_end_catch
+        nop
+        ld 3, (0x70 - 0x8)(1)
+.Lpre_unwind:
+        bl _Unwind_Resume
+        nop
+.Lpost_unwind:
+        //PPC64 Traceback table
+	.long 0 //Marks beginning of traceback table
+	.byte 0 //version
+        .byte 12 //language: assembly
+        .byte 0
+        .byte 1 //saves_lr (LR is saved in LR save area)
+        .byte 128 //stores_bc (back chain is saved in stack frame)
+        .byte 0
+        .byte 0
+        .byte 0
+        .cfi_endproc
+.LFE0:
+        .globl __gxx_personality_v0
+        .section        .gcc_except_table,"a",@progbits
+        .align 3
+.LLSDA0: //Language specific data area for exception handling
+        .byte 0xff //DW_EH_PE_omit (no encoding of landing pad base)
+        .byte 0x04 //DW_EH_PE_udata8 encoding of entries in type
+        //table
+        .uleb128 (.LLSDATT0 - . ) //types table distance from here
+        .byte 0x01 //DW_EH_PE_uleb128 (encoding of call-site table)
+        .uleb128 (.LLSDACSE0 - .LLSDACSB0) //length of call-site table
+.LLSDACSB0:
+        .uleb128 (.Lpre_precall - default_func_common)
+        .uleb128 (.Lpost_precall - .Lpre_precall)
+        .uleb128 0x00
+        .uleb128 0x00
+
+        .uleb128 (.Lpre_foo_call - default_func_common) //offset to call site
+        .uleb128 (.Lpost_foo_call - .Lpre_foo_call) //length
+        .uleb128 (.Llp0 - default_func_common) //offset to landing pad
+        .uleb128 (1) //1 plus byte offset into action table
+
+        .uleb128 (.Lpre_rethrow - default_func_common)
+        .uleb128 (.Lpost_rethrow - .Lpre_rethrow)
+        .uleb128 (.Lpost_rethrow - default_func_common)
+        .uleb128 0x00 //no action
+
+        .uleb128 (.Lpre_unwind - default_func_common)
+        .uleb128 (.Lpost_unwind - .Lpre_unwind)
+        .uleb128 0x00 //no landing pad, just resume
+        .uleb128 0x00
+.LLSDACSE0:
+        //action table
+        .byte 0x1 //offset into types table
+        .byte 0x0 //no further actions
+
+
+       .quad 0x0
+.LLSDATT0:
               
+	.section	".text"
+	.hidden	DW.ref.__gxx_personality_v0
+	.weak	DW.ref.__gxx_personality_v0
+	.section	.data.DW.ref.__gxx_personality_v0,"awG",@progbits,DW.ref.__gxx_personality_v0,comdat
+	.align 3
+	.type	DW.ref.__gxx_personality_v0, @object
+	.size	DW.ref.__gxx_personality_v0, 8
+	DW.ref.__gxx_personality_v0:
+	.quad	__gxx_personality_v0
+	.ident	"GCC: (GNU) 4.8.1"
+
+        .section ".text"
+
 default_func 0
 default_func 1
 default_func 2
@@ -420,4 +532,3 @@ default_func 252
 default_func 253
 default_func 254
 default_func 255
-	

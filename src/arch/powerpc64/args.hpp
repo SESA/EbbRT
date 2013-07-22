@@ -24,15 +24,8 @@
 namespace ebbrt {
   class Args {
   public:
-    uint64_t r3;
-    uint64_t r4;
-    uint64_t r5;
-    uint64_t r6;
-    uint64_t r7;
-    uint64_t r8;
-    uint64_t r9;
-    uint64_t r10;
-    uint64_t fx[14]; //FIXME: vector parameters?
-    uint64_t stack_args[0];
+    uint64_t* gprs;
+    uint64_t* fprs;
+    uint64_t* stack_args;
   };
 }
