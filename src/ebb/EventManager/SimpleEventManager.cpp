@@ -43,11 +43,15 @@ ebbrt::SimpleEventManager::SimpleEventManager() : next_{32}
 uint8_t
 ebbrt::SimpleEventManager::AllocateInterrupt(std::function<void()> func)
 {
-  lock_.Lock();
   uint8_t ret = next_++;
   map_.insert(std::make_pair(ret, std::move(func)));
-  lock_.Unlock();
   return ret;
+}
+
+void
+ebbrt::SimpleEventManager::Async(std::function<void()> func)
+{
+  asyncs_.push(std::move(func));
 }
 
 #ifdef __linux__
@@ -94,14 +98,12 @@ ebbrt::SimpleEventManager::RegisterFunction(std::function<int()> func)
 void
 ebbrt::SimpleEventManager::HandleInterrupt(uint8_t interrupt)
 {
-  lock_.Lock();
 #ifdef __linux__
   assert(map_.find(interrupt) != map_.end());
 #elif __ebbrt__
   LRT_ASSERT(map_.find(interrupt) != map_.end());
 #endif
   const auto& f = map_[interrupt];
-  lock_.Unlock();
   if (f) {
     f();
   }
@@ -110,57 +112,65 @@ ebbrt::SimpleEventManager::HandleInterrupt(uint8_t interrupt)
 void
 ebbrt::SimpleEventManager::ProcessEvent()
 {
+  //Check if we have a function to asynchronously call
+  if (!asyncs_.empty()) {
+    auto f = std::move(asyncs_.top());
+    asyncs_.pop();
+    f();
+    return;
+  }
+
 #ifdef __linux__
 #ifndef __bg__
-    struct epoll_event epoll_event;
-    //blocks until an event is ready
-    while (epoll_wait(epoll_fd_, &epoll_event, 1, -1) == -1) {
-      if (errno != EINTR) {
-        throw std::runtime_error("epoll_wait failed");
-      }
+  struct epoll_event epoll_event;
+  //blocks until an event is ready
+  while (epoll_wait(epoll_fd_, &epoll_event, 1, -1) == -1) {
+    if (errno != EINTR) {
+      throw std::runtime_error("epoll_wait failed");
     }
-    ebbrt::lrt::event::_event_interrupt(epoll_event.data.u32);
+  }
+  ebbrt::lrt::event::_event_interrupt(epoll_event.data.u32);
 #else
-    while (1) {
-      // Workaround for CNK bug
-      if (fds_.size() != 0) {
-        int ret = poll(fds_.data(), fds_.size(), 0);
-        if (ret == -1) {
-          if (errno == EINTR) {
-            continue;
-          }
-          throw std::runtime_error("poll failed");
+  while (1) {
+    // Workaround for CNK bug
+    if (fds_.size() != 0) {
+      int ret = poll(fds_.data(), fds_.size(), 0);
+      if (ret == -1) {
+        if (errno == EINTR) {
+          continue;
         }
-        for (unsigned i = 0; i < fds_.size(); ++i) {
-          if (fds_[i].revents) {
-            ebbrt::lrt::event::_event_interrupt(interrupts_[i]);
-            break;
-          }
-        }
+        throw std::runtime_error("poll failed");
       }
-      //call functions
-      std::vector<std::function<int()> > funcs_copy{funcs_};
-      bool didevent = false;
-      for (const auto& func: funcs_copy) {
-        int interrupt = func();
-        if (interrupt >= 0) {
-          didevent = true;
-          ebbrt::lrt::event::_event_interrupt(interrupt);
+      for (unsigned i = 0; i < fds_.size(); ++i) {
+        if (fds_[i].revents) {
+          ebbrt::lrt::event::_event_interrupt(interrupts_[i]);
           break;
         }
       }
-      if (didevent) {
+    }
+    //call functions
+    std::vector<std::function<int()> > funcs_copy{funcs_};
+    bool didevent = false;
+    for (const auto& func: funcs_copy) {
+      int interrupt = func();
+      if (interrupt >= 0) {
+        didevent = true;
+        ebbrt::lrt::event::_event_interrupt(interrupt);
         break;
       }
     }
+    if (didevent) {
+      break;
+    }
+  }
 #endif
 #else
-    asm volatile ("sti;"
-                  "hlt;"
-                  "cli;"
-                  :
-                  :
-                  : "rax", "rcx", "rdx", "rsi",
-                    "rdi", "r8", "r9", "r10", "r11");
+  asm volatile ("sti;"
+                "hlt;"
+                "cli;"
+                :
+                :
+                : "rax", "rcx", "rdx", "rsi",
+                  "rdi", "r8", "r9", "r10", "r11");
 #endif
 }

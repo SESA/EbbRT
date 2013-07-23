@@ -33,10 +33,11 @@ namespace ebbrt {
     virtual uint8_t AllocateInterrupt(std::function<void()> func) = 0;
     /**
      * Asynchronously call a function.
-     * This will occur at a lower priority than any interrupts.
+     * Do not use this to continuously generate work as it may starve
+     * out events
      * @param [in] func The function to be invoked
      */
-    //virtual void Async(std::function<void()> func) = 0;
+    virtual void Async(std::function<void()> func) = 0;
 
 #ifdef __linux__
     virtual void RegisterFD(int fd, uint32_t events, uint8_t interrupt) = 0;
