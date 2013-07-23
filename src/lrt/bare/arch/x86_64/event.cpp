@@ -101,18 +101,12 @@ ebbrt::lrt::event::init_cpu_arch()
                 : "memory");
   /* when the smp_lock is incremented the next core gets woken up.  */
 
-  /* End of our sequential execution -- here be dragons. */
+  /* End of our sequential execution */
   boot::init_cpu();
 
-  /* Event loop goes here */
+  /* Event loop */
   while (1) {
-    asm volatile ("sti;"
-                  "hlt;"
-                  "cli;"
-                  :
-                  :
-                  : "rax", "rcx", "rdx", "rsi",
-                  "rdi", "r8", "r9", "r10", "r11");
+    lrt::event::process_event();
   }
 }
 

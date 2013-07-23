@@ -26,10 +26,37 @@
 namespace ebbrt {
   class EventManager : public EbbRep {
   public:
+    /**
+     * Allocate an interrupt which when triggered will call a function.
+     * @param [in] func The function to be invoked when the interrupt fires
+    */
     virtual uint8_t AllocateInterrupt(std::function<void()> func) = 0;
+    /**
+     * Asynchronously call a function.
+     * Do not use this to continuously generate work as it may starve
+     * out events
+     * @param [in] func The function to be invoked
+     */
+    virtual void Async(std::function<void()> func) = 0;
+
+#ifdef __linux__
+    virtual void RegisterFD(int fd, uint32_t events, uint8_t interrupt) = 0;
+#ifdef __bg__
+    /**
+     * Register a function to be called during the event loop to check
+     * for an interrupt condition.
+     * @param [in] The function to be called.
+     *    The return value shall be the interrupt to be invoked or -1
+     * if no interrupt.
+     */
+    virtual void RegisterFunction(std::function<int()> func) = 0;
+#endif
+#endif
   private:
     friend void lrt::event::_event_interrupt(uint8_t interrupt);
+    friend void lrt::event::process_event();
     virtual void HandleInterrupt(uint8_t interrupt) = 0;
+    virtual void ProcessEvent() = 0;
   };
   const EbbRef<EventManager> event_manager =
     EbbRef<EventManager>(lrt::trans::find_static_ebb_id("EventManager"));
