@@ -28,8 +28,8 @@ namespace ebbrt {
     virtual void Send(NetworkId to,
                       EbbId ebb,
                       BufferList buffers,
-                      std::function<void()> cb = nullptr) = override;
-    virtual void StartListening() = override;
+                      std::function<void()> cb = nullptr) override;
+    virtual void StartListening() override;
   private:
     uint8_t mac_addr_[6];
   };

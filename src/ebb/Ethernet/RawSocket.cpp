@@ -78,7 +78,7 @@ ebbrt::RawSocket::RawSocket()
   uint8_t interrupt = event_manager->AllocateInterrupt([]() {
       ethernet->Receive();
     });
-  lrt::event::register_fd(fd, EPOLLIN, interrupt);
+  event_manager->RegisterFD(fd, EPOLLIN, interrupt);
 }
 
 void

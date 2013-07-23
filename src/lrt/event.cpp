@@ -15,37 +15,12 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_LRT_EVENT_HPP
-#error "Don't include this file directly"
-#endif
 
-#ifdef __bg__
-#include <functional>
-#endif
+#include "ebb/EventManager/EventManager.hpp"
+#include "lrt/event_impl.hpp"
 
-#include <sys/epoll.h>
-
-#include "lrt/Location.hpp"
-
-namespace ebbrt {
-  namespace lrt {
-    namespace event {
-      /**
-       * @brief Get cores location
-       *
-       * @return
-       */
-      Location get_location();
-
-      unsigned get_max_contexts();
-
-#ifdef __bg__
-      /** Register a function to cause an event to be invoked.
-          This is a workaround for lack of facilities to interrupt the
-          event loop on CNK. The return value of the function is the
-          interrupt to be invoked or -1 if none. */
-      void register_function(std::function<int()> func);
-#endif
-    }
-  }
+void
+ebbrt::lrt::event::process_event()
+{
+  event_manager->ProcessEvent();
 }

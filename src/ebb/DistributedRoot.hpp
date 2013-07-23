@@ -20,6 +20,7 @@
 
 #include <map>
 
+#include "arch/args.hpp"
 #include "ebb/ebb.hpp"
 #include "ebb/EbbManager/EbbManager.hpp"
 #include "sync/spinlock.hpp"
@@ -68,9 +69,9 @@ namespace ebbrt {
           lock_.Unlock();
           //
 #ifdef ARCH_X86_64
-          *reinterpret_cast<EbbRep**>(&(args->rdi)) = ref;
+          reinterpret_cast<EbbRep*&>(args->rdi) = ref;
 #elif ARCH_POWERPC64
-          *reinterpret_cast<EbbRep**>(&(args->gprs[0])) = ref;
+          reinterpret_cast<EbbRep*&>(args->gprs[0]) = ref;
 #endif
           // rep is a pointer to pointer to array 256 of pointer to
           // function returning void

@@ -77,7 +77,7 @@ ebbrt::MPIMessageManager::StartListening()
       me->DispatchMessage();
     });
 
-  lrt::event::register_function([]() {
+  event_manager->RegisterFunction([]() {
       auto me = static_cast<EbbRef<MPIMessageManager> >(message_manager);
       return me->CheckForInterrupt();
     });
