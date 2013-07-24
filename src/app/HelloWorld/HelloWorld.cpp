@@ -21,6 +21,7 @@
 
 #include "app/app.hpp"
 #include "ebb/EbbManager/PrimitiveEbbManager.hpp"
+#include "ebb/EventManager/SimpleEventManager.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
 
 #ifdef __linux__
@@ -55,15 +56,20 @@ constexpr ebbrt::app::Config::InitEbb init_ebbs[] =
   {
     .create_root = ebbrt::Syscall::ConstructRoot,
     .name = "Syscall"
-  }
+  },
 #endif
+  {
+    .create_root = ebbrt::SimpleEventManager::ConstructRoot,
+    .name = "EventManager"
+  }
 };
 
 constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
   {.name = "MemoryAllocator", .id = 1},
   {.name = "EbbManager", .id = 2},
   {.name = "Gthread", .id = 3},
-  {.name = "Syscall", .id = 4}
+  {.name = "Syscall", .id = 4},
+  {.name = "EventManager", .id = 5}
 };
 
 const ebbrt::app::Config ebbrt::app::config = {

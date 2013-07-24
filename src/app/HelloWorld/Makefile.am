@@ -19,7 +19,8 @@ src_app_HelloWorld_HelloWorld_SOURCES = \
 	src/app/HelloWorld/HelloWorld.cpp
 
 src_app_HelloWorld_HelloWorld_ebbs = \
-	src/ebb/EbbManager/libPrimitiveEbbManager.a
+	src/ebb/EbbManager/libPrimitiveEbbManager.a \
+	src/ebb/EventManager/libSimpleEventManager.a
 
 if LRT_BARE
 src_app_HelloWorld_HelloWorld_ebbs += \
