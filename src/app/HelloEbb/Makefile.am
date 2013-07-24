@@ -20,7 +20,8 @@ src_app_HelloEbb_HelloEbb_SOURCES = \
 
 src_app_HelloEbb_HelloEbb_ebbs = \
 	src/ebb/EbbManager/libPrimitiveEbbManager.a \
-	src/ebb/Console/libLocalConsole.a
+	src/ebb/Console/libLocalConsole.a \
+	src/ebb/EventManager/libSimpleEventManager.a
 
 if LRT_BARE
 src_app_HelloEbb_HelloEbb_ebbs += \
