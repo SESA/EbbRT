@@ -16,6 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <cassert>
 #include <cstdlib>
 #include <cstring>
 
@@ -27,7 +28,6 @@
 extern "C" {
 #include "src/app/LibFox/libfox.h"
 }
-
 
 struct fox_st {
   fox_st(int nprocs_, int procid_) : nprocs{nprocs_}, procid{procid_} {}
@@ -82,9 +82,8 @@ fox_set(fox_ptr fhand,
         const char *key, size_t key_sz,
         const char *value, size_t value_sz)
 {
-  fhand->table.emplace(std::piecewise_construct,
-                        std::forward_as_tuple(key, key_sz),
-                        std::forward_as_tuple(value, value_sz));
+  fhand->table.emplace(std::make_pair(std::string(key, key_sz),
+                                      std::string(value, value_sz)));
 
   return 0;
 }
@@ -165,9 +164,8 @@ fox_queue_set(fox_ptr fhand,
               const char *key, size_t key_sz,
               const char *value, size_t value_sz)
 {
-  fhand->queue.emplace(std::piecewise_construct,
-                       std::forward_as_tuple(key, key_sz),
-                       std::forward_as_tuple(value, value_sz));
+  fhand->queue.insert(std::make_pair(std::string(key, key_sz),
+                                     std::string(value, value_sz)));
   return 0;
 }
 

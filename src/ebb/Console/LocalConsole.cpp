@@ -42,19 +42,6 @@ static void _reg_symbol()
   ebbrt::app::AddSymbol ("Console", ebbrt::LocalConsole::ConstructRoot);
 }
 
-
-#if 0
-char local_console_symbol[] __attribute__((section("ebbstrtab")))
-  = "LocalConsoleConfig";
-
-ebbrt::lrt::SymTabEntry 
-local_console_symbol_entry __attribute__((section("ebbsymtab"))) 
-= {
-  .config_func = &ebbrt::LocalConsole::ConstructRoot,
-  .str_offset = local_console_symbol - ebbstrtab_start
-};
-#endif
-
 void
 ebbrt::LocalConsole::Write(const char* str,
                             std::function<void()> cb)

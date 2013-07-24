@@ -19,6 +19,7 @@
 #include <mpi.h>
 #endif
 
+#include "app/app.hpp"
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Console/RemoteConsole.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
@@ -34,6 +35,13 @@ ebbrt::EbbRoot*
 ebbrt::RemoteConsole::ConstructRoot()
 {
   return new SharedRoot<RemoteConsole>;
+}
+
+// registers symbol for configuration
+__attribute__((constructor(65535)))
+static void _reg_symbol()
+{
+  ebbrt::app::AddSymbol ("Console", ebbrt::RemoteConsole::ConstructRoot);
 }
 
 void

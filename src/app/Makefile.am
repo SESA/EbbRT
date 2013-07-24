@@ -24,4 +24,4 @@ include src/app/Futures/Makefile.am
 include src/app/HelloEbb/Makefile.am
 include src/app/HelloRemote/Makefile.am
 include src/app/HelloWorld/Makefile.am
-#include src/app/LibFox/Makefile.am
+include src/app/LibFox/Makefile.am

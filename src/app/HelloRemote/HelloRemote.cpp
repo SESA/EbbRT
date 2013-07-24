@@ -43,60 +43,25 @@
 #include "ebb/Ethernet/VirtioNet.hpp"
 #endif
 
-// constexpr ebbrt::app::Config::InitEbb init_ebbs[] =
-// {
-// #ifdef __ebbrt__
-//   {
-//     .create_root = ebbrt::SimpleMemoryAllocatorConstructRoot,
-//     .name = "MemoryAllocator"
-//   },
-// #endif
-//   {
-//     .create_root = ebbrt::PrimitiveEbbManagerConstructRoot,
-//     .name = "EbbManager"
-//   },
-// #ifdef __ebbrt__
-//   {
-//     .create_root = ebbrt::Gthread::ConstructRoot,
-//     .name = "Gthread"
-//   },
-//   {
-//     .create_root = ebbrt::Syscall::ConstructRoot,
-//     .name = "Syscall"
-//   },
-// #endif
-//   {
-//     .create_root = ebbrt::SimpleEventManager::ConstructRoot,
-//     .name = "EventManager"
-//   },
-//   {
-//     .create_root = ebbrt::RemoteConsole::ConstructRoot,
-//     .name = "Console"
-//   },
-//   {
-// #ifndef __bg__
-//     .create_root = ebbrt::EthernetMessageManager::ConstructRoot,
-// #else
-//     .create_root = ebbrt::MPIMessageManager::ConstructRoot,
-// #endif
-//     .name = "MessageManager"
-//   }
-// };
-
 constexpr ebbrt::app::Config::InitEbb late_init_ebbs[] =
 {
+#ifdef __linux__
   { .name = "EbbManager" },
+#endif
   { .name = "EventManager" },
   { .name = "Console" },
   { .name = "MessageManager" }
 };
 
+#ifdef __ebbrt__
 constexpr ebbrt::app::Config::InitEbb early_init_ebbs[] =
 {
   { .name = "MemoryAllocator" },
+  { .name = "EbbManager" },
   { .name = "Gthread" },
   { .name = "Syscall" }
 };
+#endif
 
 constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
   {.name = "MemoryAllocator", .id = 1},
