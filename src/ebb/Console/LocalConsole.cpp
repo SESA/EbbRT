@@ -19,6 +19,7 @@
 #include "ebb/Console/LocalConsole.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
 #include "src/lrt/bare/config.hpp"
+#include "src/app/app.hpp"
 
 #ifdef __ebbrt__
 #include "lrt/bare/assert.hpp"
@@ -34,8 +35,13 @@ ebbrt::LocalConsole::ConstructRoot()
   return new SharedRoot<LocalConsole>;
 }
 
-ADD_EARLY_CONFIG_SYMBOL(local_console_symbol,"LocalConsolConfig",
-			&ebbrt::LocalConsole::ConstructRoot)
+// registers symbol for configuration
+__attribute__((constructor(65535)))
+static void _reg_symbol()
+{
+  ebbrt::app::AddSymbol ("Console", ebbrt::LocalConsole::ConstructRoot);
+}
+
 
 #if 0
 char local_console_symbol[] __attribute__((section("ebbstrtab")))

@@ -18,6 +18,7 @@
 #ifndef LRT_BARE_CONFIG_HPP
 #define LRT_BARE_CONFIG_HPP
 
+#include "app/app.hpp"
 
 namespace ebbrt {
   namespace lrt {
@@ -28,36 +29,30 @@ namespace ebbrt {
 	 flattened device tree, and should return void
       */
       ebbrt::EbbRoot* (*config_func)(); 
-      /* offset into the string table for each string*/
-      ptrdiff_t str_offset;
+      char *str;
     };
 
     void dump_config_info();
+    /// lookup return function poitner
+    app::ConfigFuncPtr LookupSymbol(const char *str);
   }
 }
 
 
 /* 
- * Table of strings for symbols needed by configuration
- * at very early boot time
- */
-extern char ebbstrtab_start[];
-extern char ebbstrtab_end[];
-extern struct ebbrt::lrt::SymTabEntry ebbsymtab_start[];
-/* 
  * Symbol table for functions needed early in boot.
  */
+extern struct ebbrt::lrt::SymTabEntry ebbsymtab_start[];
 extern struct ebbrt::lrt::SymTabEntry ebbsymtab_end[];
 
-#define ADD_EARLY_CONFIG_SYMBOL(name,symbol,func)	\
-char name[] __attribute__((section("ebbstrtab")))	\
-    = symbol;						\
+#define ADD_EARLY_CONFIG_SYMBOL(symbol,func)		\
+char __table ## symbol[] = #symbol;					\
 							\
 ebbrt::lrt::SymTabEntry					\
-name ## _entry __attribute__((section("ebbsymtab")))	\
+__table ## symbol ## _entry __attribute__((section("ebbsymtab")))	\
 = {							\
   .config_func = func,					\
-  .str_offset = name - ebbstrtab_start			\
+  .str = __table ## symbol					\
 };
 
 #endif /*LRT_BARE_CONFIG_HPP*/

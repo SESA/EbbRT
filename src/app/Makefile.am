@@ -14,7 +14,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 app_sources = \
-	src/app/app.hpp
+	src/app/app.hpp \
+	src/app/app.cpp
+
 
 EXTRA_PROGRAMS =
 
@@ -22,4 +24,4 @@ include src/app/Futures/Makefile.am
 include src/app/HelloEbb/Makefile.am
 include src/app/HelloRemote/Makefile.am
 include src/app/HelloWorld/Makefile.am
-include src/app/LibFox/Makefile.am
+#include src/app/LibFox/Makefile.am

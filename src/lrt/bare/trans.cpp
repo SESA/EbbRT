@@ -23,6 +23,7 @@
 #include "lrt/bare/boot.hpp"
 #include "lrt/event.hpp"
 #include "lrt/bare/mem.hpp"
+#include "lrt/bare/config.hpp"
 #include "lrt/trans_impl.hpp"
 
 namespace {
@@ -43,25 +44,31 @@ ebbrt::lrt::trans::initial_root_table(unsigned i)
 void
 ebbrt::lrt::trans::early_init_ebbs()
 {
-  int num_roots = app::config.num_init;
+  int num_roots = app::config.num_early_init + app::config.num_late_init;
   init_root_table = new (mem::malloc(sizeof(RootBinding) *
                                      num_roots, 0))
     RootBinding[num_roots];
 
   for (unsigned i = 0; i < app::config.num_early_init; ++i) {
-    init_root_table[i].id = find_static_ebb_id(app::config.init_ebbs[i].name);
-    init_root_table[i].root = app::config.init_ebbs[i].create_root();
+    init_root_table[i].id = 
+      find_static_ebb_id(app::config.early_init_ebbs[i].name);
+    ebbrt::app::ConfigFuncPtr func = 
+      LookupSymbol(app::config.early_init_ebbs[i].name);
+    LRT_ASSERT( func != nullptr );// lookup failed
+    init_root_table[i].root = func();
   }
 }
 
 void
 ebbrt::lrt::trans::init_ebbs()
 {
-  for (unsigned i = app::config.num_early_init;
-       i < app::config.num_init;
-       ++i) {
-    init_root_table[i].id = find_static_ebb_id(app::config.init_ebbs[i].name);
-    init_root_table[i].root = app::config.init_ebbs[i].create_root();
+  for (unsigned i = 0; i < app::config.num_late_init; ++i) {
+    init_root_table[i].id =
+      lrt::trans::find_static_ebb_id(app::config.late_init_ebbs[i].name);
+    ebbrt::app::ConfigFuncPtr func = 
+      ebbrt::app::LookupSymbol(app::config.late_init_ebbs[i].name);
+    LRT_ASSERT( func != nullptr );// lookup failed
+    init_root_table[i].root = func();
   }
 }
 
@@ -115,7 +122,8 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
 {
   EbbRoot* root = nullptr;
   /* look up root in initial global translation table */
-  for (unsigned i = 0; i < app::config.num_init; ++i) {
+  for (unsigned i = 0; i < 
+	 (app::config.num_early_init + app::config.num_late_init); ++i) {
     if (init_root_table[i].id == id) {
       root = init_root_table[i].root;
       break;

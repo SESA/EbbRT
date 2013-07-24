@@ -20,6 +20,16 @@
 #include "ebb/EbbManager/PrimitiveEbbManager.hpp"
 #include "lrt/trans_impl.hpp"
 #include "misc/vtable.hpp"
+#include "src/lrt/bare/config.hpp"
+
+ADD_EARLY_CONFIG_SYMBOL(EbbManager, &ebbrt::PrimitiveEbbManagerConstructRoot)
+
+// registers symbol for configuration
+__attribute__((constructor(65535)))
+static void _reg_symbol()
+{
+  ebbrt::app::AddSymbol ("EbbManager", ebbrt::PrimitiveEbbManagerConstructRoot);
+}
 
 #ifdef __ebbrt__
 #include "lrt/bare/assert.hpp"
@@ -152,8 +162,12 @@ ebbrt::PrimitiveEbbManager::Install()
   if (root_table_.empty()) {
     // We need to copy the initial table in, install our new miss
     // handler
+    size_t num_init = app::config.num_late_init;
+#ifdef __ebbrt__
+    num_init += app::config.num_early_init;
+#endif    
     auto it = root_table_.begin();
-    for (unsigned i = 0; i < app::config.num_init; ++i) {
+    for (unsigned i = 0; i < num_init ; ++i) {
       auto binding = lrt::trans::initial_root_table(i);
       it = root_table_.insert(it, std::make_pair(binding.id,
                                                  binding.root));
@@ -257,6 +271,7 @@ ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
   fret->func = (**rep)[fnum];
   return ret;
 }
+
 
 void*
 ebbrt::PrimitiveEbbManagerRoot::PostCall(void* ret)

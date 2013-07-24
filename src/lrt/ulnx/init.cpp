@@ -25,7 +25,7 @@ __thread ebbrt::Context* ebbrt::active_context;
 ebbrt::EbbRT::EbbRT() : initialized_{false}, next_id_{0},
   miss_handler_(&lrt::trans::init_root)
 {
-  initial_root_table_ = new lrt::trans::RootBinding[app::config.num_init];
+  initial_root_table_ = new lrt::trans::RootBinding[app::config.num_late_init];
 }
 
 ebbrt::lrt::event::Location
@@ -48,11 +48,13 @@ ebbrt::Context::Context(EbbRT& instance) : instance_(instance)
     // note: these create root calls may make ebb calls which is why
     // this is done from within a context and not when we construct
     // the EbbRT
-    for (unsigned i = 0; i < app::config.num_init; ++i) {
+    for (unsigned i = 0; i < app::config.num_late_init; ++i) {
       instance_.initial_root_table_[i].id =
-        lrt::trans::find_static_ebb_id(app::config.init_ebbs[i].name);
-      instance_.initial_root_table_[i].root =
-        app::config.init_ebbs[i].create_root();
+        lrt::trans::find_static_ebb_id(app::config.late_init_ebbs[i].name);
+      ebbrt::app::ConfigFuncPtr func = 
+	ebbrt::app::LookupSymbol(app::config.late_init_ebbs[i].name);
+      assert( func != nullptr );// lookup failed
+      instance_.initial_root_table_[i].root = func();
     }
     std::lock_guard<std::mutex> lock(instance_.init_lock_);
     instance_.initialized_ = true;

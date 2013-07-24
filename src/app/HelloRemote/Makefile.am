@@ -13,6 +13,8 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# FIXME removed since doesn't compile
 EXTRA_PROGRAMS += src/app/HelloRemote/HelloRemote
 
 src_app_HelloRemote_HelloRemote_SOURCES = \

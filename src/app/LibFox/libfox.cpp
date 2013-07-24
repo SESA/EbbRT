@@ -22,6 +22,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 extern "C" {
 #include "src/app/LibFox/libfox.h"

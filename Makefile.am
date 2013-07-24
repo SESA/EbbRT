@@ -65,6 +65,8 @@ endif
 #end of LRT_BARE
 endif
 
+all_apps: $(EXTRA_PROGRAMS)
+
 include docs/Makefile.am
 include src/arch/Makefile.am
 include src/app/Makefile.am
