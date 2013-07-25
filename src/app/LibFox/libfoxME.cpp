@@ -86,7 +86,7 @@ fox_set(fox_ptr fhand,
   o = static_cast<ebbrt::EbbRef<ebbrt::fox::Object>>(ebbrt::fox::RDData::Create());
   // JA NOTE: THIS IS NATURAL C++ BUT DANGEROUS CO code as  value() is a deref and could fail
   // I guess in our model this should be an exception so this should be a try block?
-  o->value().set(value, value_sz);
+  o->setValue(value, value_sz);
   ebbrt::fox::theHash->set(key, o);
   return 0;
 }
@@ -101,7 +101,7 @@ fox_get(fox_ptr fhand,
   ebbrt::EbbRef<ebbrt::fox::Object> o;
   ebbrt::fox::theHash->get(key, &o);
   if (o != ebbrt::EbbRef<ebbrt::fox::Object>(ebbrt::NULLID)) {
-    o->value().get(pvalue, pvalue_sz);
+    o->getValue(pvalue, pvalue_sz);
   } else {
     *pvalue = NULL;
     *pvalue_sz = 0;

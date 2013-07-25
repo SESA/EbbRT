@@ -19,19 +19,12 @@ static void _reg_symbol()
   ebbrt::app::AddSymbol (STR_HASH, ebbrt::fox::Hash::ConstructRoot);
 }
 
-
-
-
-
-
-
 ebbrt::EbbRoot*
 ebbrt::fox::Hash::ConstructRoot()
 {
   TRACE;
   return new SharedRoot<Hash>;
 }
-
 
 ebbrt::fox::Hash::Hash()
 {
@@ -40,7 +33,6 @@ ebbrt::fox::Hash::Hash()
 
   // for completelness we put ourselves in the dictionary
   TRACE;
-  printf("Hash::Hash(): rep=%p\n", this);
 
   set(STR_HASH, static_cast<EbbRef<Object>>(theHash));
 
@@ -50,16 +42,17 @@ ebbrt::fox::Hash::Hash()
   set(STR_TASK_SYNC, static_cast<EbbRef<Object>>(theTaskSync));
   set(STR_RWDATA, static_cast<EbbRef<Object>>(theRWData)); 
 
+#if 0
   std::cout << "Hash::Hash(): map contains:";
   for ( auto it = map.begin(); it != map.end(); ++it )
     std::cout << " " << it->first << ":" << it->second;
   std::cout << std::endl;
+#endif
 }
 
 void 
 ebbrt::fox::Hash::set(const char *key, EbbRef<ebbrt::fox::Object> o)
 {
-  printf("Hash::set(): rep=%p\n", this);
   map[key] = o;
   TRACE;
 }
@@ -68,11 +61,13 @@ void
 ebbrt::fox::Hash::get(const char * key, EbbRef<ebbrt::fox::Object> *o)
 {
   TRACE;
+#if 0
   printf("Hash::get(): rep=%p\n", this);
   std::cout << "Hash::get(): map contains:";
   for ( auto it = map.begin(); it != map.end(); ++it )
     std::cout << " " << it->first << ":" << it->second;
   std::cout << std::endl;
+#endif
 
   std::unordered_map<std::string,EbbRef<Object>>::const_iterator got = map.find(key);
   if ( got == map.end() )
@@ -99,18 +94,19 @@ ebbrt::fox::RDData::Create()
 void
 ebbrt::fox::RDData::set(const void * data, size_t len) 
 { 
-  assert(val_.bytes_ == 0 && val_.len_ == 0);
-  val_.bytes_ = new char[len];
-  memcpy(val_.bytes_, data, len);
-  val_.len_ = len;
+  assert(val_.unset());
+  char * b = new char[len];
+  memcpy(b, data, len);
+  val_.set(b, len);
 }
 
 
 void *
 ebbrt::fox::RDData::get(size_t *len)
 { 
-  *len = val_.len_;
-  return val_.bytes_;
+  char * b;
+  val_.get(&b, len);
+  return b;
 }
 
 

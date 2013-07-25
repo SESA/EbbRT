@@ -25,11 +25,11 @@ namespace ebbrt {
     class  Value {
       void * bytes_;
       size_t len_;
-      friend RDData; // FIXME: I am sure there is a better way ... do it ;-)
     public:
       Value() : bytes_(NULL), len_(0) {}
       void get(char **b, size_t *l) { *b = (char *)bytes_; *l = len_; }
       void set(const char *b, size_t l) { bytes_ = (char *)b; len_ = l; }
+      int unset() { return (bytes_ == 0 && len_ == 0); }
     };
 
     class Object : public EbbRep {
@@ -37,7 +37,8 @@ namespace ebbrt {
       Value val_;
     public:
       //      Object(const char *str);
-      virtual Value value() { return val_; }
+      virtual void getValue(char **b, size_t *s) { val_.get(b, s); }
+      virtual void setValue(const char *b, size_t s) { val_.set(b, s); }
     };
 
     class Dictionary : public Object {
