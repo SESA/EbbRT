@@ -48,7 +48,7 @@ ebbrt::fox::Hash::Hash()
   set(STR_RDDATA, static_cast<EbbRef<Object>>(theRDData));
   set(STR_TASKS, static_cast<EbbRef<Object>>(theTaskQ));
   set(STR_TASK_SYNC, static_cast<EbbRef<Object>>(theTaskSync));
-  set(STR_RWDATA, static_cast<EbbRef<Object>>(theRDData)); 
+  set(STR_RWDATA, static_cast<EbbRef<Object>>(theRWData)); 
 
   std::cout << "Hash::Hash(): map contains:";
   for ( auto it = map.begin(); it != map.end(); ++it )
@@ -64,8 +64,8 @@ ebbrt::fox::Hash::set(const char *key, EbbRef<ebbrt::fox::Object> o)
   TRACE;
 }
 
-ebbrt::lrt::trans::EbbRef<ebbrt::fox::Object> 
-ebbrt::fox::Hash::get(const char * key)
+void
+ebbrt::fox::Hash::get(const char * key, EbbRef<ebbrt::fox::Object> *o)
 {
   TRACE;
   printf("Hash::get(): rep=%p\n", this);
@@ -76,9 +76,9 @@ ebbrt::fox::Hash::get(const char * key)
 
   std::unordered_map<std::string,EbbRef<Object>>::const_iterator got = map.find(key);
   if ( got == map.end() )
-    return EbbRef<Object>(NULLID);
+    *o = EbbRef<Object>(NULLID);
   else
-    return got->second;
+    *o = got->second;
 }
 
 ebbrt::EbbRoot*

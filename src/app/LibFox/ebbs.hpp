@@ -42,7 +42,7 @@ namespace ebbrt {
 
     class Dictionary : public Object {
     public:
-      virtual EbbRef<Object> get(const char *key) = 0;
+      virtual void get(const char *key, EbbRef<Object> *obj) = 0;
       virtual void set(const char *key, EbbRef<Object> obj) = 0;
     };
 
@@ -97,7 +97,7 @@ namespace ebbrt {
     public:
       static EbbRoot * ConstructRoot();
       Hash();
-      virtual EbbRef<Object> get(const char *key) override;
+      virtual void get(const char *key, EbbRef<Object> *obj) override;
       virtual void set(const char *key, EbbRef<Object> obj) override;
     };
 

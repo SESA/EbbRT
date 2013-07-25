@@ -78,7 +78,8 @@ fox_set(fox_ptr fhand,
         const char *value, size_t value_sz)
 {
   TRACE;
-  ebbrt::EbbRef<ebbrt::fox::Object> o= ebbrt::fox::theHash->get(key);
+  ebbrt::EbbRef<ebbrt::fox::Object> o;
+  ebbrt::fox::theHash->get(key, &o);
 
   if (o != ebbrt::EbbRef<ebbrt::fox::Object>(ebbrt::NULLID)) assert(0); // should not exist yet
   
@@ -97,7 +98,8 @@ fox_get(fox_ptr fhand,
         char **pvalue, size_t *pvalue_sz)
 {
   TRACE;
-  ebbrt::EbbRef<ebbrt::fox::Object> o= ebbrt::fox::theHash->get(key);
+  ebbrt::EbbRef<ebbrt::fox::Object> o;
+  ebbrt::fox::theHash->get(key, &o);
   if (o != ebbrt::EbbRef<ebbrt::fox::Object>(ebbrt::NULLID)) {
     o->value().get(pvalue, pvalue_sz);
   } else {
@@ -126,7 +128,7 @@ fox_sync_set(fox_ptr fhand, unsigned delta,
   //FIXME: no semaphore stuff
   TRACE;
   assert(strcmp(key,STR_TASK_SYNC)==0);
-  assert(ebbrt::fox::theTaskSync == static_cast<ebbrt::EbbRef<ebbrt::fox::Sync>>(ebbrt::fox::theHash->get(key)));
+  //  assert(ebbrt::fox::theTaskSync == static_cast<ebbrt::EbbRef<ebbrt::fox::Sync>>(ebbrt::fox::theHash->get(key)));
   ebbrt::fox::theTaskSync->enter((void *)__func__);
   return 0;
 }
@@ -140,7 +142,7 @@ fox_sync_get(fox_ptr fhand, unsigned delta,
   //FIXME: no semaphore stuff
   TRACE;
   assert(strcmp(key,STR_TASK_SYNC)==0);
-  assert(ebbrt::fox::theTaskSync == static_cast<ebbrt::EbbRef<ebbrt::fox::Sync>>(ebbrt::fox::theHash->get(key)));
+  //  assert(ebbrt::fox::theTaskSync == static_cast<ebbrt::EbbRef<ebbrt::fox::Sync>>(ebbrt::fox::theHash->get(key)));
   ebbrt::fox::theTaskSync->enter((void *)__func__);
   return 0;
 }
@@ -157,8 +159,11 @@ fox_broad_set(fox_ptr fhand,
   TRACE;
   assert(dic != rw);
   assert(strcmp(key,STR_RDDATA)==0);
-  ebbrt::fox::theHash->get(key);
-  assert(ebbrt::fox::theRDData == static_cast<ebbrt::EbbRef<ebbrt::fox::RDData>>(ebbrt::fox::theHash->get(key)));
+  {
+    ebbrt::lrt::trans::EbbRef<ebbrt::fox::Object> o;
+    ebbrt::fox::theHash->get(key, &o);
+  }
+  //  assert(ebbrt::fox::theRDData == static_cast<ebbrt::EbbRef<ebbrt::fox::RDData>>(ebbrt::fox::theHash->get(key)));
   ebbrt::fox::theRDData->set(value, value_sz);
   return 0;
 }
