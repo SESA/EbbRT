@@ -1,3 +1,4 @@
+#include "app/app.hpp"
 #include "src/ebb/ebb.hpp"
 #include "ebbs.hpp"
 #include "ebb/SharedRoot.hpp"
@@ -5,6 +6,23 @@
 #include <iostream>
 
 #define TRACE   printf("> %s:%d:%s\n", __FILE__, __LINE__, __PRETTY_FUNCTION__)
+
+
+// registers symbol for configuration
+__attribute__((constructor(65535)))
+static void _reg_symbol()
+{
+  ebbrt::app::AddSymbol (STR_RDDATA, ebbrt::fox::RDData::ConstructRoot);
+  ebbrt::app::AddSymbol (STR_TASKS, ebbrt::fox::TaskQ::ConstructRoot);
+  ebbrt::app::AddSymbol (STR_TASK_SYNC, ebbrt::fox::TaskSync::ConstructRoot);
+  ebbrt::app::AddSymbol (STR_RWDATA, ebbrt::fox::RWData::ConstructRoot);
+  ebbrt::app::AddSymbol (STR_HASH, ebbrt::fox::Hash::ConstructRoot);
+}
+
+
+
+
+
 
 
 ebbrt::EbbRoot*

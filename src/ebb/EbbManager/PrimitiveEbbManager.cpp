@@ -249,6 +249,7 @@ ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
     local_cache_rep(id, it->second);
     ref = it->second;
   }
+
   args->this_pointer() = reinterpret_cast<uintptr_t>(ref);
   // rep is a pointer to pointer to array 256 of pointer to
   // function returning void

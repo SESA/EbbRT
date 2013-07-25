@@ -20,30 +20,16 @@
 #include "ebb/EbbManager/PrimitiveEbbManager.hpp"
 #include "ebbs.hpp"
 
-constexpr ebbrt::app::Config::InitEbb init_ebbs[] = {
-  {
-    .create_root = ebbrt::PrimitiveEbbManagerConstructRoot,
-    .name = "EbbManager"
+constexpr ebbrt::app::Config::InitEbb late_init_ebbs[] = {
+  { .name = "EbbManager"   },
+  { .name = STR_RDDATA  },
+  {    .name = STR_TASKS
   },
-  {
-    .create_root = ebbrt::fox::RDData::ConstructRoot,
-    .name = STR_RDDATA
+  {    .name = STR_TASK_SYNC
   },
-  {
-    .create_root = ebbrt::fox::TaskQ::ConstructRoot,
-    .name = STR_TASKS
+  {    .name = STR_RWDATA
   },
-  {
-    .create_root = ebbrt::fox::TaskSync::ConstructRoot,
-    .name = STR_TASK_SYNC
-  },
-  {
-    .create_root = ebbrt::fox::RWData::ConstructRoot,
-    .name = STR_RWDATA
-  },
-  {
-    .create_root = ebbrt::fox::Hash::ConstructRoot,
-    .name = STR_HASH
+  {    .name = STR_HASH
   }
 };
 
@@ -58,8 +44,8 @@ constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
 
 const ebbrt::app::Config ebbrt::app::config = {
   .space_id = 0,
-  .num_init = sizeof(init_ebbs) / sizeof(Config::InitEbb),
-  .init_ebbs = init_ebbs,
+  .num_late_init = sizeof(late_init_ebbs) / sizeof(Config::InitEbb),
+  .late_init_ebbs = late_init_ebbs,
   .num_statics = sizeof(static_ebbs) / sizeof(Config::StaticEbbId),
   .static_ebb_ids = static_ebbs
 };
