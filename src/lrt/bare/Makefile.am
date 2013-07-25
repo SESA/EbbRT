@@ -27,4 +27,6 @@ lrt_bare_sources = \
 	src/lrt/bare/trans.cpp \
 	src/lrt/bare/trans.hpp \
 	src/lrt/bare/trans_impl.hpp \
-	src/lrt/bare/uart.cpp
+	src/lrt/bare/uart.cpp \
+	src/lrt/bare/config.cpp \
+	src/lrt/bare/config.hpp

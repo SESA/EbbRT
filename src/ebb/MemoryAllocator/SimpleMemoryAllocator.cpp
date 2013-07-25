@@ -21,12 +21,16 @@
 #include "ebb/DistributedRoot.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
 #include "lrt/trans_impl.hpp"
+#include "src/lrt/bare/config.hpp"
 
 #ifdef __ebbrt__
 #include "lrt/bare/mem_impl.hpp"
 #endif
 
 using namespace ebbrt;
+
+ADD_EARLY_CONFIG_SYMBOL(MemoryAllocator,
+			&ebbrt::SimpleMemoryAllocatorConstructRoot)
 
 ebbrt::SimpleMemoryAllocator::SimpleMemoryAllocator(Location loc)
 {

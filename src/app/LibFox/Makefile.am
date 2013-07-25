@@ -32,7 +32,7 @@ EXTRA_LIBRARIES += src/app/LibFox/libmcphoton.a
 src_app_LibFox_libmcphoton_a_SOURCES = \
 	src/app/LibFox/mcphoton.c
 
-src_app_LibFox_libmcphoton_a_CFLAGS = -DUSE_MPI
+src_app_LibFox_libmcphoton_a_CFLAGS = #-DUSE_MPI
 
 #to allow us to pass specific cflags
 EXTRA_LIBRARIES += src/app/LibFox/libtfox.a
@@ -40,7 +40,7 @@ EXTRA_LIBRARIES += src/app/LibFox/libtfox.a
 src_app_LibFox_libtfox_a_SOURCES = \
 	src/app/LibFox/tfox.c
 
-src_app_LibFox_libtfox_a_CFLAGS = -DUSE_MPI
+src_app_LibFox_libtfox_a_CFLAGS = #-DUSE_MPI
 
 src_app_LibFox_mcphoton_ebbs = \
 	src/ebb/EbbManager/libPrimitiveEbbManager.a

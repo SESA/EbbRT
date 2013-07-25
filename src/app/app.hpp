@@ -20,6 +20,9 @@
 #define EBBRT_APP_APP_HPP
 
 #include <cstring>
+#include <string>
+#include <functional>
+#include <unordered_map>
 
 #include "lrt/EbbId.hpp"
 
@@ -30,14 +33,19 @@ namespace ebbrt {
     }
   }
   namespace app {
+    /* symbol table for configuration */
+    // fixme, don't return root, for now needed to fill initial root table
+    typedef lrt::trans::EbbRoot* (*ConfigFuncPtr)();
+    void AddSymbol (std::string str, ConfigFuncPtr);
+    /// lookup return function poitner
+    ConfigFuncPtr LookupSymbol (std::string str);
     /**
      * Application configuration.
      * The configuration defines which
      * ebbrt::lrt::trans::EbbRoot%s should be constructed
      * and which ebbrt::lrt::trans::EbbId%s are statically known.
      */
-    class Config {
-    public:
+    struct Config {
       /** The space this node should allocate
           ebbrt::lrt::trans::EbbId%s out of */
       uint16_t space_id;
@@ -47,22 +55,20 @@ namespace ebbrt {
        */
       class InitEbb {
       public:
-        /** The function to construct the root */
-        lrt::trans::EbbRoot* (*create_root)();
         /** The id to install the root on */
         const char* name;
       };
 
-#ifdef __ebbrt__
       /** Number of Ebbs to statically construct early
           These Ebbs cannot rely on globally constructed objects or
           exceptions at construction time */
+#ifdef __ebbrt__
       size_t num_early_init;
+      const InitEbb* early_init_ebbs; // ebbs pre-memory allocator
 #endif
-      /** Size of ebbrt::app::Config::init_ebbs */
-      size_t num_init;
+      size_t num_late_init;
       /** Array describing which Ebbs to statically construct */
-      const InitEbb* init_ebbs;
+      const InitEbb* late_init_ebbs;
       /** Size of ebbrt::app::Config::static_ebb_ids */
       size_t num_statics;
       /**
