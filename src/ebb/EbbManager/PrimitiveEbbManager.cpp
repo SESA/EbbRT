@@ -165,7 +165,7 @@ ebbrt::PrimitiveEbbManager::Install()
     size_t num_init = app::config.num_late_init;
 #ifdef __ebbrt__
     num_init += app::config.num_early_init;
-#endif    
+#endif
     auto it = root_table_.begin();
     for (unsigned i = 0; i < num_init ; ++i) {
       auto binding = lrt::trans::initial_root_table(i);
@@ -195,15 +195,10 @@ ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
   if (!lock_.TryLock()) {
     if (fnum == vtable_index<PrimitiveEbbManager>
         (&PrimitiveEbbManager::CacheRep)) {
-#ifdef ARCH_X86_64
-      EbbId target_id = args->rsi;
-      EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->rdx);
-#elif ARCH_POWERPC64
-      EbbId target_id = args->gprs[1];
-      EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->gprs[2]);
-#else
-#error "Unsupported Architecture"
-#endif
+      //fetch parameters off from this_pointer location
+      EbbId target_id = *((&args->this_pointer()) + 1);
+      EbbRep* target_rep =
+        *reinterpret_cast<EbbRep**>(((&args->this_pointer()) + 2));
       local_cache_rep(target_id, target_rep);
       return false;
     } else {
@@ -222,16 +217,10 @@ ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
     // need be
     if (fnum == vtable_index<PrimitiveEbbManager>
         (&PrimitiveEbbManager::CacheRep)) {
-      //FIXME: not portable
-#ifdef ARCH_X86_64
-      EbbId target_id = args->rsi;
-      EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->rdx);
-#elif ARCH_POWERPC64
-      EbbId target_id = args->gprs[1];
-      EbbRep* target_rep = reinterpret_cast<EbbRep*>(args->gprs[2]);
-#else
-#error "Unsupported Architecture"
-#endif
+      //fetch parameters off from this_pointer location
+      EbbId target_id = *((&args->this_pointer()) + 1);
+      EbbRep* target_rep =
+        *reinterpret_cast<EbbRep**>(((&args->this_pointer()) + 2));
       local_cache_rep(target_id, target_rep);
       ret = false;
     }
@@ -260,11 +249,7 @@ ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
     local_cache_rep(id, it->second);
     ref = it->second;
   }
-#ifdef ARCH_X86_64
-  reinterpret_cast<EbbRep*&>(args->rdi) = ref;
-#elif ARCH_POWERPC64
-  reinterpret_cast<EbbRep*&>(args->gprs[0]) = ref;
-#endif
+  args->this_pointer() = reinterpret_cast<uintptr_t>(ref);
   // rep is a pointer to pointer to array 256 of pointer to
   // function returning void
   void (*(**rep)[256])() = reinterpret_cast<void (*(**)[256])()>(ref);

@@ -67,12 +67,7 @@ namespace ebbrt {
             ebb_manager->CacheRep(id, ref);
           }
           lock_.Unlock();
-          //
-#ifdef ARCH_X86_64
-          reinterpret_cast<EbbRep*&>(args->rdi) = ref;
-#elif ARCH_POWERPC64
-          reinterpret_cast<EbbRep*&>(args->gprs[0]) = ref;
-#endif
+          args->this_pointer() = reinterpret_cast<uintptr_t>(ref);
           // rep is a pointer to pointer to array 256 of pointer to
           // function returning void
           void (*(**rep)[256])() = reinterpret_cast<void (*(**)[256])()>(ref);

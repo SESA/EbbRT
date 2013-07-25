@@ -15,43 +15,31 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_ARCH_ARGS_HPP
-#error "Don't include this file directly"
-#endif
+#ifndef EBBRT_APP_HIDDENREGISTER__HIDDEN_HPP
+#define EBBRT_APP_HIDDENREGISTER__HIDDEN_HPP
 
-#include <cstdint>
-
-#include "lrt/trans.hpp"
+#include "ebb/ebb.hpp"
 
 namespace ebbrt {
-  class Args {
+  class Hidden : public EbbRep {
   public:
-    inline uint64_t& this_pointer() {
-#ifdef __linux__
-      if (rdi == reinterpret_cast<uintptr_t>(lrt::trans::default_rep)) {
-        return rdi;
-      }
-      return rsi;
-#elif __ebbrt__
-      if (rdi > lrt::trans::LOCAL_MEM_VIRT_BEGIN &&
-          rdi < lrt::trans::LOCAL_MEM_VIRT_END) {
-        return rdi;
-      }
-      return rsi;
-#else
-#error "Unsupported Platform"
-#endif
-    }
-    uint64_t rdi;
-    uint64_t rsi;
-    uint64_t rdx;
-    uint64_t rcx;
-    uint64_t r8;
-    uint64_t r9;
-    uint64_t r10;
-    uint64_t rax;
-    uint64_t fx[64];
-    uint64_t ret;
-    uint64_t stack_args[0];
+    static EbbRoot* ConstructRoot();
+    Hidden();
+
+    virtual void NoReturn();
+
+    struct SmallStruct {
+      uint64_t v0;
+      uint64_t v1;
+    };
+
+    virtual SmallStruct SmallPODReturn();
+
+    struct BigStruct {
+      uint64_t vals[16];
+    };
+
+    virtual BigStruct BigPODReturn();
   };
 }
+#endif
