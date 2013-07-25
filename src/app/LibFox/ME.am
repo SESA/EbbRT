@@ -1,0 +1,92 @@
+# EbbRT: Distributed, Elastic, Runtime
+# Copyright (C) 2013 SESA Group, Boston University
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+EXTRA_PROGRAMS += \
+	src/app/LibFox/mcphotonME \
+	src/app/LibFox/tfoxME
+
+src_app_LibFox_mcphotonME_SOURCES = \
+	src/app/LibFox/appME.cpp \
+	src/app/LibFox/libfoxME.cpp \
+	src/app/LibFox/ebbs.cpp \
+	src/app/LibFox/photon.c
+
+src_app_LibFox_tfoxME_SOURCES = \
+	src/app/LibFox/appME.cpp \
+	src/app/LibFox/libfoxME.cpp
+
+#to allow us to pass specific cflags
+EXTRA_LIBRARIES += src/app/LibFox/libmcphotonME.a
+
+src_app_LibFox_libmcphotonME_a_SOURCES = \
+	src/app/LibFox/mcphoton.c
+
+#src_app_LibFox_libmcphoton_a_CFLAGS = -DUSE_MPI
+
+#to allow us to pass specific cflags
+EXTRA_LIBRARIES += src/app/LibFox/libtfoxME.a
+
+src_app_LibFox_libtfoxME_a_SOURCES = \
+	src/app/LibFox/tfox.c
+
+#src_app_LibFox_libtfox_a_CFLAGS = -DUSE_MPI
+
+src_app_LibFox_mcphotonME_ebbs = \
+	src/ebb/EbbManager/libPrimitiveEbbManager.a
+
+src_app_LibFox_mcphotonME_LDFLAGS = \
+	$(app_linkflags) \
+	-Wl,-whole-archive \
+	$(ebbrt_libs) \
+	$(src_app_LibFox_mcphotonME_ebbs) \
+	-Wl,-no-whole-archive
+
+src_app_LibFox_mcphotonME_LDADD = \
+	libebbrt.a \
+	src/app/LibFox/libmcphotonME.a
+
+src_app_LibFox_mcphotonME_DEPENDENCIES = \
+	libebbrt.a \
+	src/app/LibFox/libmcphotonME.a \
+	$(app_deps) \
+	$(ebbrt_libs) \
+	$(src_app_LibFox_mcphotonME_ebbs)
+
+src_app_LibFox_mcphotonME_LDFLAGS += \
+	-pthread
+
+src_app_LibFox_tfoxME_ebbs = \
+	src/ebb/EbbManager/libPrimitiveEbbManager.a
+
+src_app_LibFox_tfoxME_LDFLAGS = \
+	$(app_linkflags) \
+	-Wl,-whole-archive \
+	$(ebbrt_libs) \
+	$(src_app_LibFox_tfoxME_ebbs) \
+	-Wl,-no-whole-archive
+
+src_app_LibFox_tfoxME_LDADD = \
+	libebbrt.a \
+	src/app/LibFox/libtfoxME.a
+
+src_app_LibFox_tfoxME_DEPENDENCIES = \
+	libebbrt.a \
+	src/app/LibFox/libtfoxME.a \
+	$(app_deps) \
+	$(ebbrt_libs) \
+	$(src_app_LibFox_tfoxME_ebbs)
+
+src_app_LibFox_tfoxME_LDFLAGS += \
+	-pthread

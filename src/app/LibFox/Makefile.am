@@ -15,3 +15,5 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 include src/app/LibFox/Hash.am
+include src/app/LibFox/ME.am
+
