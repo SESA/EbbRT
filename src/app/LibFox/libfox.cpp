@@ -21,9 +21,12 @@
 #include <cstring>
 
 #include <map>
+#include <unordered_map>
 #include <string>
 #include <vector>
 #include <unordered_map>
+
+#include <assert.h>
 
 extern "C" {
 #include "src/app/LibFox/libfox.h"
