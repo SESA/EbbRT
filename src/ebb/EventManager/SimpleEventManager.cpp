@@ -20,6 +20,15 @@
 #ifdef __ebbrt__
 #include "lrt/bare/assert.hpp"
 #endif
+#include "app/app.hpp"
+
+// registers symbol for configuration
+__attribute__((constructor(65535)))
+static void _reg_symbol()
+{
+  ebbrt::app::AddSymbol ("EventManager", 
+			 ebbrt::SimpleEventManager::ConstructRoot);
+}
 
 ebbrt::EbbRoot*
 ebbrt::SimpleEventManager::ConstructRoot()

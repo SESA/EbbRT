@@ -15,22 +15,24 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <unordered_map>
+#include "app.hpp"
 
-#include "app/app.hpp"
-#include "ebb/EbbManager/PrimitiveEbbManager.hpp"
-
-constexpr ebbrt::app::Config::InitEbb late_init_ebbs[] = {
-  { .name = "EbbManager" }
-};
-
-constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
-  {.name = "EbbManager", .id = 2},
-};
-
-const ebbrt::app::Config ebbrt::app::config = {
-  .space_id = 0,
-  .num_late_init = sizeof(late_init_ebbs) / sizeof(Config::InitEbb),
-  .late_init_ebbs = late_init_ebbs,
-  .num_statics = sizeof(static_ebbs) / sizeof(Config::StaticEbbId),
-  .static_ebb_ids = static_ebbs
-};
+namespace ebbrt {
+  namespace app {
+    // Only for use after dynamic memory allocation
+    std::unordered_map<std::string, ConfigFuncPtr> map_ __attribute__((init_priority(101)));
+  
+    void AddSymbol (std::string str, ConfigFuncPtr func) {
+      map_[str] = func;
+    };
+    ConfigFuncPtr LookupSymbol (std::string str) {
+      auto it =  map_.find(str);
+      if (it != map_.end()) {
+	//it->second(data, header->caplen);
+	return it->second;
+      }
+      return nullptr;
+    }
+  }
+}

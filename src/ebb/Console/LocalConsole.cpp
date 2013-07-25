@@ -18,6 +18,8 @@
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Console/LocalConsole.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
+#include "src/lrt/bare/config.hpp"
+#include "src/app/app.hpp"
 
 #ifdef __ebbrt__
 #include "lrt/bare/assert.hpp"
@@ -26,10 +28,18 @@
 #ifdef __linux__
 #include <iostream>
 #endif
+
 ebbrt::EbbRoot*
 ebbrt::LocalConsole::ConstructRoot()
 {
   return new SharedRoot<LocalConsole>;
+}
+
+// registers symbol for configuration
+__attribute__((constructor(65535)))
+static void _reg_symbol()
+{
+  ebbrt::app::AddSymbol ("Console", ebbrt::LocalConsole::ConstructRoot);
 }
 
 void

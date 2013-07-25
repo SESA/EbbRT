@@ -36,33 +36,47 @@
 #include "sync/spinlock.hpp"
 #endif
 
-constexpr ebbrt::app::Config::InitEbb init_ebbs[] =
+// constexpr ebbrt::app::Config::InitEbb init_ebbs[] =
+// {
+// #ifdef __ebbrt__
+//   {
+//     .create_root = ebbrt::SimpleMemoryAllocatorConstructRoot,
+//     .name = "MemoryAllocator"
+//   },
+// #endif
+//   {
+//     .create_root = ebbrt::PrimitiveEbbManagerConstructRoot,
+//     .name = "EbbManager"
+//   },
+// #ifdef __ebbrt__
+//   {
+//     .create_root = ebbrt::Gthread::ConstructRoot,
+//     .name = "Gthread"
+//   },
+//   {
+//     .create_root = ebbrt::Syscall::ConstructRoot,
+//     .name = "Syscall"
+//   }
+// #endif
+// };
+
+constexpr ebbrt::app::Config::InitEbb late_init_ebbs[] =
 {
-#ifdef __ebbrt__
-  {
-    .create_root = ebbrt::SimpleMemoryAllocatorConstructRoot,
-    .name = "MemoryAllocator"
-  },
+#ifdef __linux__
+  { .name = "EbbManager" },
 #endif
-  {
-    .create_root = ebbrt::PrimitiveEbbManagerConstructRoot,
-    .name = "EbbManager"
-  },
-#ifdef __ebbrt__
-  {
-    .create_root = ebbrt::Gthread::ConstructRoot,
-    .name = "Gthread"
-  },
-  {
-    .create_root = ebbrt::Syscall::ConstructRoot,
-    .name = "Syscall"
-  },
-#endif
-  {
-    .create_root = ebbrt::SimpleEventManager::ConstructRoot,
-    .name = "EventManager"
-  }
+  { .name = "EventManager" }
 };
+
+#ifdef __ebbrt__
+constexpr ebbrt::app::Config::InitEbb early_init_ebbs[] =
+{
+  { .name = "MemoryAllocator" },
+  { .name = "EbbManager" },
+  { .name = "Gthread" },
+  { .name = "Syscall" }
+};
+#endif
 
 constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
   {.name = "MemoryAllocator", .id = 1},
@@ -75,10 +89,11 @@ constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
 const ebbrt::app::Config ebbrt::app::config = {
   .space_id = 0,
 #ifdef __ebbrt__
-  .num_early_init = 4,
+  .num_early_init = sizeof(early_init_ebbs) / sizeof(Config::InitEbb),
+  .early_init_ebbs = early_init_ebbs,
 #endif
-  .num_init = sizeof(init_ebbs) / sizeof(Config::InitEbb),
-  .init_ebbs = init_ebbs,
+  .num_late_init = sizeof(late_init_ebbs) / sizeof(Config::InitEbb),
+  .late_init_ebbs = late_init_ebbs,
   .num_statics = sizeof(static_ebbs) / sizeof(Config::StaticEbbId),
   .static_ebb_ids = static_ebbs
 };
@@ -102,6 +117,7 @@ int main()
   ebbrt::EbbRT instance;
 
   std::vector<std::thread> threads(std::thread::hardware_concurrency());
+  std::mutex mutex;
   for (auto& thread : threads) {
     thread = std::thread([&]{
         try {
@@ -113,10 +129,9 @@ int main()
         } catch (...) {
           std::cerr << "Unkown Exception caught" << std::endl;
         }
+	std::lock_guard<std::mutex> lock(mutex);
+	std::cout << "Hello World" << std::endl;
       });
-    static std::mutex mutex;
-    std::lock_guard<std::mutex> lock(mutex);
-    std::cout << "Hello World" << std::endl;
   }
   for (auto& thread : threads) {
     thread.join();

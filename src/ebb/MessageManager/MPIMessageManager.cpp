@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include "app/app.hpp"
 #include "ebb/SharedRoot.hpp"
 #include "ebb/EventManager/EventManager.hpp"
 #include "ebb/MessageManager/MPIMessageManager.hpp"
@@ -26,6 +27,14 @@ ebbrt::EbbRoot*
 ebbrt::MPIMessageManager::ConstructRoot()
 {
   return new SharedRoot<MPIMessageManager>;
+}
+
+// registers symbol for configuration
+__attribute__((constructor(65535)))
+static void _reg_symbol()
+{
+  ebbrt::app::AddSymbol("MessageManager",
+                        ebbrt::MPIMessageManager::ConstructRoot);
 }
 
 namespace {

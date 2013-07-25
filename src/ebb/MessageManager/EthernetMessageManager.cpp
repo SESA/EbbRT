@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include "app/app.hpp"
 #include "arch/inet.hpp"
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Ethernet/Ethernet.hpp"
@@ -35,6 +36,14 @@ ebbrt::EbbRoot*
 ebbrt::EthernetMessageManager::ConstructRoot()
 {
   return new SharedRoot<EthernetMessageManager>;
+}
+
+// registers symbol for configuration
+__attribute__((constructor(65535)))
+static void _reg_symbol()
+{
+  ebbrt::app::AddSymbol("MessageManager",
+                        ebbrt::EthernetMessageManager::ConstructRoot);
 }
 
 namespace {
