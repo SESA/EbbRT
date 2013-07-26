@@ -19,12 +19,10 @@
 #error "Don't include this file directly"
 #endif
 
-#include "lrt/EbbRep.hpp"
-#include "lrt/InitRoot.hpp"
-
 namespace ebbrt {
   namespace lrt {
     namespace trans {
+      class EbbRep;
       /** The default rep which captures the called arguments in the
           event that we were not able to find a rep installed */
       extern EbbRep* default_rep;

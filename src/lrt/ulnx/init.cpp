@@ -15,6 +15,8 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <cassert>
+
 #include "ebbrt.hpp"
 #include "app/app.hpp"
 #include "lrt/event_impl.hpp"
@@ -51,7 +53,7 @@ ebbrt::Context::Context(EbbRT& instance) : instance_(instance)
     for (unsigned i = 0; i < app::config.num_late_init; ++i) {
       instance_.initial_root_table_[i].id =
         lrt::trans::find_static_ebb_id(app::config.late_init_ebbs[i].name);
-      ebbrt::app::ConfigFuncPtr func = 
+      ebbrt::app::ConfigFuncPtr func =
 	ebbrt::app::LookupSymbol(app::config.late_init_ebbs[i].name);
       assert( func != nullptr );// lookup failed
       instance_.initial_root_table_[i].root = func();

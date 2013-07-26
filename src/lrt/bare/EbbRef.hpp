@@ -38,7 +38,7 @@ namespace ebbrt {
          */
 
         constexpr EbbRef() :
-          ref_{LOCAL_MEM_VIRT}
+          ref_{LOCAL_MEM_VIRT_BEGIN}
         {}
 
         /**
@@ -48,7 +48,7 @@ namespace ebbrt {
          */
         constexpr explicit EbbRef(EbbId id) :
           /* construct the ref corresponding to the given id */
-          ref_{LOCAL_MEM_VIRT + sizeof(LocalEntry) * id}
+          ref_{LOCAL_MEM_VIRT_BEGIN + sizeof(LocalEntry) * id}
         {}
         /**
          * @brief Overload arrow operator
