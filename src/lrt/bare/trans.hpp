@@ -48,7 +48,8 @@ namespace ebbrt {
       };
 
       /** virtual memory trick ***/
-      LocalEntry* const local_table = reinterpret_cast<LocalEntry*>(LOCAL_MEM_VIRT);
+      LocalEntry* const local_table =
+        reinterpret_cast<LocalEntry*>(LOCAL_MEM_VIRT_BEGIN);
 
       /**
        * Construct early roots, before exceptions and global

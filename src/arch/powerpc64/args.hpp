@@ -21,9 +21,27 @@
 
 #include <cstdint>
 
+#include "lrt/trans.hpp"
+
 namespace ebbrt {
   class Args {
   public:
+    inline uint64_t& this_pointer() {
+#ifdef __linux__
+      if (gprs[0] == reinterpret_cast<uintptr_t>(lrt::trans::default_rep)) {
+        return gprs[0];
+      }
+      return gprs[1];
+#elif __ebbrt__
+      if (gprs[0] > lrt::trans::LOCAL_MEM_VIRT_BEGIN &&
+          gprs[0] < lrt::trans::LOCAL_MEM_VIRT_END) {
+        return gprs[0];
+      }
+      return gprs[1];
+#else
+#error "Unsupported Platform"
+#endif
+    }
     uint64_t* gprs;
     uint64_t* fprs;
     uint64_t* stack_args;

@@ -50,9 +50,9 @@ ebbrt::lrt::trans::early_init_ebbs()
     RootBinding[num_roots];
 
   for (unsigned i = 0; i < app::config.num_early_init; ++i) {
-    init_root_table[i].id = 
+    init_root_table[i].id =
       find_static_ebb_id(app::config.early_init_ebbs[i].name);
-    ebbrt::app::ConfigFuncPtr func = 
+    ebbrt::app::ConfigFuncPtr func =
       LookupSymbol(app::config.early_init_ebbs[i].name);
     LRT_ASSERT( func != nullptr );// lookup failed
     init_root_table[i].root = func();
@@ -65,7 +65,7 @@ ebbrt::lrt::trans::init_ebbs()
   for (unsigned i = 0; i < app::config.num_late_init; ++i) {
     init_root_table[i].id =
       lrt::trans::find_static_ebb_id(app::config.late_init_ebbs[i].name);
-    ebbrt::app::ConfigFuncPtr func = 
+    ebbrt::app::ConfigFuncPtr func =
       ebbrt::app::LookupSymbol(app::config.late_init_ebbs[i].name);
     LRT_ASSERT( func != nullptr );// lookup failed
     init_root_table[i].root = func();
@@ -94,14 +94,14 @@ ebbrt::lrt::trans::_trans_precall(ebbrt::Args* args,
                                   ptrdiff_t fnum,
                                   FuncRet* fret)
 {
-  void* rep = *reinterpret_cast<void**>(args);
+  void* rep = reinterpret_cast<void*>(args->this_pointer());
   LocalEntry* le =
     reinterpret_cast<LocalEntry*>
     (static_cast<uintptr_t*>(rep) - 1);
   uintptr_t loc = reinterpret_cast<uintptr_t>(le);
   /* resolve EbbId and call global miss handler */
   EbbId id =
-    (loc - reinterpret_cast<uintptr_t>(LOCAL_MEM_VIRT)) /
+    (loc - reinterpret_cast<uintptr_t>(LOCAL_MEM_VIRT_BEGIN)) /
     sizeof(LocalEntry);
   /* the default miss handler is configured to trans::InitRoot*/
   return miss_handler->PreCall(args, fnum, fret, id);
@@ -122,7 +122,7 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
 {
   EbbRoot* root = nullptr;
   /* look up root in initial global translation table */
-  for (unsigned i = 0; i < 
+  for (unsigned i = 0; i <
 	 (app::config.num_early_init + app::config.num_late_init); ++i) {
     if (init_root_table[i].id == id) {
       root = init_root_table[i].root;
@@ -159,7 +159,7 @@ ebbrt::lrt::trans::cache_rep(EbbId id, EbbRep* rep)
  /* @brief Add rep entry to this core's local translation table.
   * note that the cache location is based on ebb id
   * */
-  reinterpret_cast<LocalEntry*>(LOCAL_MEM_VIRT)[id].ref = rep;
+  reinterpret_cast<LocalEntry*>(LOCAL_MEM_VIRT_BEGIN)[id].ref = rep;
 }
 
 void
