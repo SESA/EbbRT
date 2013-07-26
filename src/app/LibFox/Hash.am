@@ -13,6 +13,9 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+EXTRA_PROGRAMS += \
+	src/app/LibFox/mcphoton \
+	src/app/LibFox/tfox
 
 src_app_LibFox_mcphoton_SOURCES = \
 	src/app/LibFox/app.cpp \
