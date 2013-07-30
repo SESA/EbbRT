@@ -44,6 +44,15 @@ echo "$src/configure 'CXXFLAGS=$flags' " >> $ulnx/doconfig
 echo "$src/configure 'CXXFLAGS=$flags' --host=x86_64-pc-ebbrt " >> $bare/doconfig
 (cd $bare; . doconfig && make)
 
+#################################################
+# envoirnment variables
+#################################################
+cat > $base/loadenv << EOF
+export SESA=1
+export SESA_SRC=$src
+export KHCTL_BASEDIR=$(readlink -f ${base}/khdb)
+EOF
+echo 'export PATH=$PATH:$SESA_SRC/util/kh' >> $base/loadenv
 
 #################################################
 # makefile
@@ -101,9 +110,7 @@ base=$base
 ulnx=$ulnx
 bare=$bare
 imgtype=$imgtype
-export SESA_GET=$src/util/kh/khget
-export SESA_UTIL=$src/util/kh/khctl
-export SESA_BASEDIR=$(readlink -f ${base}/khdb)
+export SESA_GET=khget
 EOF
 
 echo '
