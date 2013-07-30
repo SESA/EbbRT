@@ -1,5 +1,4 @@
 #!/bin/bash
-#set -x
 
 #####################################
 #
@@ -22,7 +21,6 @@ declare -r KHCONSDIR=${KHCTL_CONSDIR:-$KHBASEDIR/Consoles}
 declare -r KHCTLDIR=${KHCTL_CTLDIR:-$KHBASEDIR/Ctl}
 declare -r KHTUPLEDIR=${KH_TUPLEDIR:-$KHBASEDIR/KHTuples}
 declare -r KHTUPLECTRLDIR=${KH_TUPLECTRLDIR:-$KHCTLDIR}
-
 declare -r KHCONIDFILE=${KHCTL_CONIDFILE:-$KHCTLDIR/ConID}
 declare -r KHCONIDSTART=${KHCTL_CONIDSTART:-2}
 declare -r KHCONIDEND=${KHCTL_CONIDEND:-$(printf "%d" 0xffffffff)}
@@ -43,13 +41,11 @@ declare -r KHCTRLID=${KHCTL_CTRLID:-0}
 declare -r KHTTYMAJOR=${KHCTL_TTYMAJOR:-230}
 declare -r KHXIPFILE=${KHCTL_XIPFILE:-/proc/device-tree/u-boot-env/xip}
 declare -r KHNATIPFILE=${KHCTL_NATFILE:-/proc/device-tree/u-boot-env/natip}
-
 declare -r FREEOWNER='_FREE_'
 declare -r FREEPNET=$KHFREENETID
 declare -r FREEINETFLG=0
 declare -r FREEXNETFLG=0
 declare -r FREECONID=$KHCTRLID
-
 declare BUFFERVAR
 declare -i BUFFERTTY=1
 
@@ -393,7 +389,7 @@ isquish()
 
 SESAcreateNet()
 {
-  set -x
+#  set -x
   local nid=$1
   local tapcmd=""
   local dir=$SESANETDIR/$nid
@@ -411,12 +407,12 @@ SESAcreateNet()
   fi
 
   # optional tap interface
-  if [[ $( ifconfig | grep -o $tap) ]]; then
-    tapcmd="-t $tap" 
-  else
-      if [[ -n $tap ]]; then
-         echo "Error: unable to locate $tap"
-      fi
+  if [[ -n $tap ]]; then
+    if [[ $( ifconfig | grep -o $tap) ]]; then
+      tapcmd="-t $tap" 
+    else
+      echo "Error: unable to locate $tap"
+    fi
   fi
 
   vde_switch $tapcmd -d -s $dir/sock -M $dir/mgmt -p $dir/pid 
@@ -446,21 +442,71 @@ function SESAcleanAll
   rm -rf $SESANETDIR/* 
 }
 
-
-function SESAdeleteNode
+function SESAcleanApp
 {
-  local dir=$KHCONDIR/$cid
+  app=$1
+  if [[ -z $app ]]; then
+      echo "Error: No app name"
+      exit 1
+  fi
+
+  local nodes=()
+  local consoles=( $(tupleCmd echo Node "*:$app:*:*:*") )
+  if [[ $consoles == "*:$app:*:*:*" ]];then
+    echo "Error: App not found. Use khls to list active apps"
+    exit 1
+  fi
+  local network=( $(tupleCmd echo Pnet "*:$app") )
+  local files=( ${consoles[@]/*:/$KHCONSDIR/} )
+  local net=$( echo $network | cut -d ':' -f 1 )
+
+  if [[ ! (${#consoles[@]} > 0) ]]; then
+    echo "ERROR: $app not found"
+    exit 1
+  fi
+    
+  for i in ${consoles[@]}
+  do
+    nodes+=($( echo $i | cut -d ':' -f 1 ))
+  done
+  
+  # delete processes 
+  kill $( cat ${files[@]/%//nodes/\*/pid} | sort -u )
+  kill $( cat $SESANETDIR/$net/pid )
+
+  # remove tuples
+  lock tuples
+    locked_rm_users "$1" "*"
+    locked_rm_pnets "$net" "$1"
+    locked_rm_nodes "*" "$1" "*" "*" "*" "*"
+    for j in ${nodes[@]}
+    do
+      echo $j
+      locked_touch_nodes "$j" "$FREEOWNER" "$FREEPNET"\
+        "$FREEINETFLG" "$FREEXNETFLG" "$FREECONID"
+    done
+  unlock tuples
+  
+  # clean up files
+  rm -rf $SESANETDIR/$net
+  rm -rf $( echo ${files[@]} | sort -u )
+
 }
 
-function SESAdeleteNet
+function SESAlistApp
 {
-  local nid=$1
-  local dir=$SESANETDIR/$nid
+  local consoles=( $(tupleCmd echo Node "!(*:_FREE_:*:*:*)") )
+  local files=()
 
-  if [[ -a $dir/pid ]]; then
-    kill $(cat $dir/pid)
-  fi
-  return $?
+  for i in ${consoles[@]}
+  do
+    files+=($( echo $i | cut -d ':' -f 2 ))
+  done
+
+  for i in $( echo ${files[@]} | tr ' ' '\n' | sort -u | tr '\n' ' ' )
+  do
+    echo $i $( grep -o $i <<< ${files[*]} | wc -l )
+  done
 }
 
 function SESAgenerateMac()
@@ -1165,7 +1211,7 @@ locked_unchecked_tupleCmd()
   then 
     rc=0
   else
-#    eval echo "ERROR: $FUNCNAME: $cmd $typedir/$tuplepattern: FAILED"  >&2
+    #eval echo "ERROR: $FUNCNAME: $cmd $typedir/$tuplepattern: FAILED"  >&2
     rc=255
   fi
 
@@ -1184,7 +1230,6 @@ function tupleCmd
     echo "USAGE: $FUNCNAME <cmd> <type> <tuplepattern>" >&2
     return 255
   fi
-
 
   type -a $cmd >/dev/null 2>&1
 

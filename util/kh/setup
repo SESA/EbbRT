@@ -74,7 +74,6 @@ chmod 755 $base/makeapp
 
 cat > $base/makeapp << EOF
 #!/bin/bash
-set -x
 base=$base
 ulnx=$ulnx
 bare=$bare
@@ -84,13 +83,11 @@ EOF
 echo 'app=$1
 if [[ -z $app ]]
 then
-  echo "ERROR: include application name"
+  echo "USAGE: $0 <appName>"
   exit -1
 fi
 
-echo " building linux app"
 make -C $ulnx src/app/$app/$app
-echo " building baremetal app"
 make -C $bare src/app/$app/$app.$imgtype
   
 '>> $base/makeapp 
@@ -114,60 +111,94 @@ export SESA_GET=khget
 EOF
 
 echo '
+src=/home/jmcadden/work/sesa/EbbRT
+base=.
+ulnx=./ulnx
+bare=./bare
+imgtype=iso
+export SESA_GET=/home/jmcadden/work/sesa/EbbRT/util/kh/khget
+export SESA_UTIL=/home/jmcadden/work/sesa/EbbRT/util/kh/khctl
+export SESA_BASEDIR=/scratch/build/khdb
+
+declare app
+declare count
+declare name
+declare tap
+declare fcnt
+declare -i lp=0
+declare -i optcount=0
+
+while getopts "n:t:f:" OPT
+do 
+  case $OPT in
+      ("n") name="$OPTARG"; (( optcount=optcount + 2));;
+      ("t") tap="$OPTARG"; (( optcount=optcount + 2));;
+      ("f") fcnt="$OPTARG"; (( optcount=optcount + 2));;
+      ("P") lp=1; (( optcount=optcount + 1));;
+  esac
+done
+
+shift $optcount
 app=$1
-option=$2
-if [[ -n $3 ]]; then count=$3; else count=1; fi
-if [[ -n $4 ]]; then 
+count=$2
+if [[ -z $count ]]; then count=1; fi
+
+
+if [[ -z $app  || -z $count ]]
+then
+  echo "USAGE: $0 [-n name] [-t tap] [-f fcnt] <app> <count>"
+  echo "     -n  name : specify name of the job " 
+  echo "     -t  tap  : tap interface (sudo required)" 
+  echo "     -f  fcnt : load "fcnt"-many linux front-end processes" 
+  #echo "     -P       : run front-end as a local process" 
+  echo "     app      : EbbRT application to run (e.g., HelloWorld)"
+  echo "     count    : num of baremetal nodes to boot"
+  exit 1;
+fi
+
+if [[ -n $tap ]]; then 
     if [[ $UID != 0 ]]; then
       echo "Error: sudo required for TAP interfaces"
       exit 1
     else
-      export SESA_TAP=$4
+      export SESA_TAP=$tap
     fi
 fi
 
-if [[ -z $app  || ! ($option > 0) ]]
-then
-  echo "USAGE: $0 <appName> <runType> [bareCount] [tap] " 
-  echo "     appName  : application/boot img to run"
-  echo "     runType  : execution arrangement"
-  echo "                  1)  baremetal-only (qemu)"
-  echo "                  2)  front-end process, many baremetal (qemu)"
-echo "                  3)  linux front-end. Treats appName as boot image (qemu)" 
-  echo "   bareCount  : number of backend nodes, default is 1" 
-  echo "         tap  : tap interface (sudo required)" 
-  exit 1;
-fi
-
-APPNAME="$app$RANDOM"
+if [[ -z $name ]]; then name=$app$RANDOM; fi
+APPNAME="$name"
 BARE_IMG=$(readlink -f ${base}/bare/src/app/$app/$app.$imgtype)
 FNT_IMG=$(readlink -f ${base}/ulnx/src/app/$app/$app)
 
-case $option in
-    1)
-    bkcmd="$($SESA_GET $APPNAME $BARE_IMG $count)"
-    echo $bkcmd
-    ;;
-    ########################
-    2)
-    xterm -hold -e $FNT_IMG &
-    sleep 5
-    bkcmd="$($SESA_GET $APPNAME $BARE_IMG $count)"
-    ;;
-    ########################
-    3)
-    if [[ ! (-a $app) ]]; then
-      echo "Error: boot image not found $app"
-      exit 1
+if [[ ! -a $BARE_IMG ]]; then
+  echo "ERROR: binaries not found for $app. Try running ./makeapp $app"
+  exit 1
+fi
+
+echo "Loading nodes for $name"
+
+# frontend 
+if [[ -n $fcnt && $fcnt > 0 ]]; then
+    if [[ $lp > 0 ]]; then
+      # local process
+      for i in {1..$fcnt}; do
+        xterm -hold -e $FNT_IMG &
+      done
+    else
+      # linux vm front-ends
+      echo "#!/bin/bash" > $ulnx/run
+      echo "/root/ebbrt/src/app/$app/$app" >> $ulnx/run
+      mnt=$(readlink -f ${base}/ulnx)
+      ftcmd="$($SESA_GET -f -m $mnt $APPNAME $sesalnx $fcnt)"
+      serials=$(echo "$ftcmd" | grep serial | while read node nn junk path; do echo $path; done)
+
+      for sock in $serials; do
+        xterm -e socat - UNIX-CONNECT:$sock &
+      done
     fi
-    ftcmd="$($SESA_GET -m $base -i "linux"$RANDOM $app )" 
-    serials=$(echo "$ftcmd" | grep serial | while read node nn junk path; do echo $path; done)
-    for sock in $serials; do
-      xterm -e socat - UNIX-CONNECT:$sock &
-    done
-    exit
-    ;;
-    ########################
-    *) echo "Error: invalid execution choice";;
-esac
+  sleep 3
+fi
+
+bkcmd="$($SESA_GET $APPNAME $BARE_IMG $count)"
+echo $bkcmd
 ' >> $base/runapp 
