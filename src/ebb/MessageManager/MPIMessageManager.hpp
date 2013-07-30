@@ -38,6 +38,8 @@ namespace ebbrt {
 
     uint8_t interrupt_;
     MPI_Status status_;
+    std::vector<MPI_Request> reqs_;
+    std::vector<std::vector<char> > bufs_;
   };
 }
 #endif

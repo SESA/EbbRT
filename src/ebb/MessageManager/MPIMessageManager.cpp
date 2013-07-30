@@ -50,32 +50,40 @@ ebbrt::MPIMessageManager::MPIMessageManager()
 {
 }
 
-
 void
 ebbrt::MPIMessageManager::Send(NetworkId to,
-                            EbbId id,
-                            BufferList buffers,
-                            std::function<void()> cb)
+                               EbbId id,
+                               BufferList buffers,
+                               std::function<void()> cb)
 {
   size_t len = sizeof(MessageHeader);
   for (const auto& buffer : buffers) {
     len += buffer.second;
   }
-  char* aggregate = new char[len];
 
-  reinterpret_cast<MessageHeader*>(aggregate)->ebb = id;
-  char* location = aggregate + sizeof(MessageHeader);
+  std::vector<char> buf(len);
+
+  auto mh = reinterpret_cast<MessageHeader*>(buf.data());
+  mh->ebb = id;
+
+  char* location = buf.data() + sizeof(MessageHeader);
   for (const auto& buffer : buffers) {
     memcpy(location, buffer.first, buffer.second);
     location += buffer.second;
   }
 
-  if (MPI_Send(aggregate, len, MPI_CHAR, to.rank, MESSAGE_MANAGER_TAG,
-               MPI_COMM_WORLD) != MPI_SUCCESS) {
-    throw std::runtime_error("MPI_Send failed");
+  bufs_.push_back(std::move(buf));
+  MPI_Request req;
+  if (MPI_Isend(bufs_.back().data(), len, MPI_CHAR,
+                to.rank, MESSAGE_MANAGER_TAG, MPI_COMM_WORLD,
+                &req) != MPI_SUCCESS) {
+    throw std::runtime_error("MPI_Isend failed");
   }
+  reqs_.push_back(std::move(req));
 
-  assert(!cb);
+  if (cb) {
+    event_manager->Async(cb);
+  }
 }
 
 void
@@ -95,6 +103,22 @@ ebbrt::MPIMessageManager::StartListening()
 int
 ebbrt::MPIMessageManager::CheckForInterrupt()
 {
+  if (!reqs_.empty()) {
+    int index;
+    int flag;
+    MPI_Status status;
+    do {
+      if (MPI_Testany(reqs_.size(), reqs_.data(), &index,
+                      &flag, &status) != MPI_SUCCESS) {
+        throw std::runtime_error("Testany failed");
+      }
+      if (flag) {
+        reqs_.erase(reqs_.begin() + index);
+        bufs_.erase(bufs_.begin() + index);
+      }
+    } while (flag && !reqs_.empty());
+  }
+
   int flag;
   if (MPI_Iprobe(MPI_ANY_SOURCE, MESSAGE_MANAGER_TAG, MPI_COMM_WORLD,
                  &flag, &status_) != MPI_SUCCESS) {
