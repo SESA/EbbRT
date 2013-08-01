@@ -46,7 +46,7 @@ namespace {
   constexpr int MESSAGE_MANAGER_TAG = 0x8812;
 }
 
-ebbrt::MPIMessageManager::MPIMessageManager()
+ebbrt::MPIMessageManager::MPIMessageManager(EbbId id) : MessageManager{id}
 {
 }
 
@@ -139,7 +139,7 @@ ebbrt::MPIMessageManager::DispatchMessage()
   if (MPI_Get_count(&status_, MPI_CHAR, &len) != MPI_SUCCESS) {
     throw std::runtime_error("MPI_Get_count failed");
   }
-  uint8_t* buf = new uint8_t[len];
+  char* buf = new char[len];
   MPI_Status status;
   if (MPI_Recv(buf, len, MPI_CHAR, MPI_ANY_SOURCE, MESSAGE_MANAGER_TAG,
                MPI_COMM_WORLD, &status) != MPI_SUCCESS) {
@@ -148,7 +148,12 @@ ebbrt::MPIMessageManager::DispatchMessage()
 
   auto mh = reinterpret_cast<const MessageHeader*>(buf);
   EbbRef<EbbRep> ebb {mh->ebb};
-  ebb->HandleMessage(buf + sizeof(MessageHeader),
+
+  NetworkId from;
+  from.rank = status.MPI_SOURCE;
+
+  ebb->HandleMessage(from,
+                     buf + sizeof(MessageHeader),
                      len - sizeof(MessageHeader));
-  delete buf;
+  delete[] buf;
 }

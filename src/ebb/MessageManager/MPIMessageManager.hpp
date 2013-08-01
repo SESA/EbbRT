@@ -26,7 +26,7 @@ namespace ebbrt {
   class MPIMessageManager : public MessageManager {
   public:
     static EbbRoot* ConstructRoot();
-    MPIMessageManager();
+    MPIMessageManager(EbbId id);
     virtual void Send(NetworkId to,
                       EbbId ebb,
                       BufferList buffers,

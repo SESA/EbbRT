@@ -28,13 +28,13 @@ namespace ebbrt {
   class VirtioNet : public Ethernet {
   public:
     static EbbRoot* ConstructRoot();
-    VirtioNet();
+    VirtioNet(EbbId id);
     void Send(BufferList buffers,
               std::function<void()> cb = nullptr) override;
     const uint8_t* MacAddress() override;
     void SendComplete() override;
     void Register(uint16_t ethertype,
-                  std::function<void(const uint8_t*, size_t)> func) override;
+                  std::function<void(const char*, size_t)> func) override;
     void Receive() override;
   private:
     uint16_t io_addr_;

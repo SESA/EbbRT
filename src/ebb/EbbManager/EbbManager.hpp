@@ -29,6 +29,8 @@ namespace ebbrt {
     virtual EbbId AllocateId() = 0;
     virtual void Bind(EbbRoot* (*factory)(), EbbId id) = 0;
     virtual ~EbbManager() {}
+  protected:
+    EbbManager(EbbId id) : EbbRep{id} {}
   private:
     friend lrt::trans::InitRoot;
     virtual void Install() = 0;

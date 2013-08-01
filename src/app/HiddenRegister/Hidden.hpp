@@ -24,7 +24,7 @@ namespace ebbrt {
   class Hidden : public EbbRep {
   public:
     static EbbRoot* ConstructRoot();
-    Hidden();
+    Hidden(EbbId id);
 
     virtual void NoReturn();
 

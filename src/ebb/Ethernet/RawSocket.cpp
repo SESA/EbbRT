@@ -37,7 +37,7 @@ ebbrt::RawSocket::ConstructRoot()
   return new SharedRoot<RawSocket>();
 }
 
-ebbrt::RawSocket::RawSocket()
+ebbrt::RawSocket::RawSocket(EbbId id) : Ethernet{id}
 {
   char errbuf[PCAP_ERRBUF_SIZE];
   pcap_if_t* alldevs;
@@ -102,7 +102,7 @@ ebbrt::RawSocket::SendComplete()
 
 void
 ebbrt::RawSocket::Register(uint16_t ethertype,
-                           std::function<void(const uint8_t*, size_t)> func)
+                           std::function<void(const char*, size_t)> func)
 {
   map_[ethertype] = func;
 }
@@ -117,7 +117,7 @@ ebbrt::RawSocket::Receive()
     uint16_t ethertype = ntohs(*reinterpret_cast<const uint16_t*>(&data[12]));
     auto it = map_.find(ethertype);
     if (it != map_.end()) {
-      it->second(data, header->caplen);
+      it->second(reinterpret_cast<const char*>(data), header->caplen);
     }
   }
 }
