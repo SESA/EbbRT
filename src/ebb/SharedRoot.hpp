@@ -51,7 +51,7 @@ namespace ebbrt {
       if (rep_ == nullptr) {
         lock_.Lock();
         if (rep_ == nullptr) {
-          rep_ = new T;
+          rep_ = new T(id);
         }
         lock_.Unlock();
       }

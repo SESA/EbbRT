@@ -26,7 +26,7 @@ namespace ebbrt {
   class MPIMessageManager : public MessageManager {
   public:
     static EbbRoot* ConstructRoot();
-    MPIMessageManager();
+    MPIMessageManager(EbbId id);
     virtual void Send(NetworkId to,
                       EbbId ebb,
                       BufferList buffers,
@@ -38,6 +38,8 @@ namespace ebbrt {
 
     uint8_t interrupt_;
     MPI_Status status_;
+    std::vector<MPI_Request> reqs_;
+    std::vector<std::vector<char> > bufs_;
   };
 }
 #endif

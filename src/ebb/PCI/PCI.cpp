@@ -26,7 +26,7 @@ ebbrt::PCI::ConstructRoot()
   return new SharedRoot<PCI>;
 }
 
-ebbrt::PCI::PCI()
+ebbrt::PCI::PCI(EbbId id) : EbbRep{id}
 {
   Device bus(0, 0, 0);
 

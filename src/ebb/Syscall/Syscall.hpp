@@ -27,6 +27,8 @@ namespace ebbrt {
   public:
     static EbbRoot* ConstructRoot();
 
+    Syscall(EbbId id) : EbbRep{id} {}
+
     virtual int Exit(int val);
     virtual int Execve(char* name, char** argv, char** env);
     virtual int Getpid();

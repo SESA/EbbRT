@@ -27,7 +27,8 @@
 namespace ebbrt {
   class PrimitiveEbbManager : public EbbManager {
   public:
-    PrimitiveEbbManager(std::unordered_map<EbbId, EbbRoot*>& root_table,
+    PrimitiveEbbManager(EbbId id,
+                        std::unordered_map<EbbId, EbbRoot*>& root_table,
                         Spinlock& root_table_lock,
                         std::unordered_map<EbbId, EbbRoot* (*)()>& factory_table,
                         Spinlock& factory_table_lock);

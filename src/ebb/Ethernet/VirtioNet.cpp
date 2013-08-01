@@ -61,8 +61,8 @@ ebbrt::VirtioNet::ConstructRoot()
   return new SharedRoot<VirtioNet>();
 }
 
-ebbrt::VirtioNet::VirtioNet() : next_free_{0}, next_available_{0},
-  last_sent_used_{0}, msix_enabled_{false}
+ebbrt::VirtioNet::VirtioNet(EbbId id) : Ethernet{id}, next_free_{0},
+  next_available_{0}, last_sent_used_{0}, msix_enabled_{false}
 {
   auto it = std::find_if(pci->DevicesBegin(), pci->DevicesEnd(),
                          [] (const PCI::Device& d) {
@@ -214,7 +214,7 @@ ebbrt::VirtioNet::SendComplete()
 
 void
 ebbrt::VirtioNet::Register(uint16_t ethertype,
-                           std::function<void(const uint8_t*, size_t)> func)
+                           std::function<void(const char*, size_t)> func)
 {
   LRT_ASSERT(0);
 }

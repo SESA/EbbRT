@@ -25,6 +25,8 @@ namespace ebbrt {
   public:
     static EbbRoot* ConstructRoot();
 
+    Gthread(EbbId id) : EbbRep{id} {}
+
     //DO NOT CHANGE: these are defined in the gcc and newlib trees to match
     typedef void* Key;
     typedef void* Once;

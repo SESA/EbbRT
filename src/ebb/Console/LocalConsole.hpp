@@ -27,6 +27,8 @@ namespace ebbrt {
   class LocalConsole : public Console {
   public:
     static EbbRoot* ConstructRoot();
+
+    LocalConsole(EbbId id);
     virtual void Write(const char* str,
                        std::function<void()> cb = nullptr) override;
   };

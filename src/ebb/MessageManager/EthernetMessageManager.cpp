@@ -53,7 +53,8 @@ namespace {
   };
 };
 
-ebbrt::EthernetMessageManager::EthernetMessageManager()
+ebbrt::EthernetMessageManager::EthernetMessageManager(EbbId id) :
+  MessageManager{id}
 {
   const uint8_t* addr = ethernet->MacAddress();
   std::copy(&addr[0], &addr[6], mac_addr_);
@@ -91,11 +92,14 @@ void
 ebbrt::EthernetMessageManager::StartListening()
 {
   ethernet->Register(MESSAGE_MANAGER_ETHERTYPE,
-                     [](const uint8_t* buf, size_t len) {
-                       buf += 14; //sizeof ethernet header
+                     [](const char* buf, size_t len) {
+                       buf += 6; //points to mac source
+                       NetworkId id;
+                       std::memcpy(id.mac_addr, buf, 6);
+                       buf += 8; //points to end of eth header
                        auto mh = reinterpret_cast<const MessageHeader*>(buf);
                        EbbRef<EbbRep> ebb {mh->ebb};
-                       ebb->HandleMessage(buf + sizeof(MessageHeader),
+                       ebb->HandleMessage(id, buf + sizeof(MessageHeader),
                                           len - sizeof(MessageHeader) -
                                           14);
     });

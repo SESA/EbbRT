@@ -31,6 +31,8 @@ namespace ebbrt {
                       BufferList buffers,
                       std::function<void()> cb = nullptr) = 0;
     virtual void StartListening() = 0;
+  protected:
+    MessageManager(EbbId id) : EbbRep{id} {}
   };
   const EbbRef<MessageManager> message_manager =
     EbbRef<MessageManager>(lrt::trans::find_static_ebb_id("MessageManager"));

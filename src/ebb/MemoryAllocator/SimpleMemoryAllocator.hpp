@@ -26,7 +26,7 @@
 namespace ebbrt {
   class SimpleMemoryAllocator : public MemoryAllocator {
   public:
-    SimpleMemoryAllocator(Location loc = get_location());
+    SimpleMemoryAllocator(EbbId id, Location loc = get_location());
     void* Malloc(size_t size) override;
     void* Memalign(size_t boundary, size_t size) override;
     void Free(void* ptr) override;

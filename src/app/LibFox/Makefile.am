@@ -14,6 +14,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+include src/app/LibFox/DHT.am
 include src/app/LibFox/Hash.am
 include src/app/LibFox/ME.am
-

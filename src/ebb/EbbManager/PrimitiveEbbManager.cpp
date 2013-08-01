@@ -42,13 +42,14 @@ namespace {
   }
 }
 
-ebbrt::PrimitiveEbbManager::PrimitiveEbbManager(std::unordered_map
+ebbrt::PrimitiveEbbManager::PrimitiveEbbManager(EbbId id,
+                                                std::unordered_map
                                                 <EbbId, EbbRoot*>& root_table,
                                                 Spinlock& root_table_lock,
                                                 std::unordered_map
                                                 <EbbId, EbbRoot* (*)()>& factory_table,
                                                 Spinlock& factory_table_lock)
-  : root_table_(root_table), root_table_lock_(root_table_lock),
+  : EbbManager{id}, root_table_(root_table), root_table_lock_(root_table_lock),
     factory_table_(factory_table), factory_table_lock_(factory_table_lock)
 {
   next_free_ = app::config.space_id << 16 |
@@ -183,9 +184,9 @@ ebbrt::PrimitiveEbbManager::Install()
 
 bool
 ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
-                                          ptrdiff_t fnum,
-                                          lrt::trans::FuncRet* fret,
-                                          EbbId id)
+                                        ptrdiff_t fnum,
+                                        lrt::trans::FuncRet* fret,
+                                        EbbId id)
 {
   // We depend on the memory allocator to construct our reps but the
   // memory allocator can call CacheRep. To prevent deadlock, in the
@@ -240,7 +241,7 @@ ebbrt::PrimitiveEbbManagerRoot::PreCall(Args* args,
       factory_table = &reps_.begin()->second->factory_table_;
       factory_table_lock = &reps_.begin()->second->factory_table_lock_;
     }
-    ref = new PrimitiveEbbManager(*root_table, *root_table_lock,
+    ref = new PrimitiveEbbManager(id, *root_table, *root_table_lock,
                                   *factory_table, *factory_table_lock);
     local_cache_rep(id, ref);
     reps_[get_location()] = ref;

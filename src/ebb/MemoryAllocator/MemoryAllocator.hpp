@@ -29,6 +29,8 @@ namespace ebbrt {
     virtual void* Realloc(void* ptr, size_t size) = 0;
     virtual void* Calloc(size_t num, size_t size) = 0;
     virtual ~MemoryAllocator() {}
+  protected:
+    MemoryAllocator(EbbId id) : EbbRep{id} {}
   };
   constexpr EbbRef<MemoryAllocator> memory_allocator =
     EbbRef<MemoryAllocator>(static_cast<EbbId>(1));

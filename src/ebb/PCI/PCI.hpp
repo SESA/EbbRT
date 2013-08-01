@@ -28,7 +28,7 @@ namespace ebbrt {
   class PCI : public EbbRep {
   public:
     static EbbRoot* ConstructRoot();
-    PCI();
+    PCI(EbbId id);
     class Device {
     public:
       Device(uint8_t bus, uint8_t device, uint8_t function)

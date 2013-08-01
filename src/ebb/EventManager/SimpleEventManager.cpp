@@ -26,7 +26,7 @@
 __attribute__((constructor(65535)))
 static void _reg_symbol()
 {
-  ebbrt::app::AddSymbol ("EventManager", 
+  ebbrt::app::AddSymbol ("EventManager",
 			 ebbrt::SimpleEventManager::ConstructRoot);
 }
 
@@ -36,7 +36,8 @@ ebbrt::SimpleEventManager::ConstructRoot()
   return new DistributedRoot<SimpleEventManager>();
 }
 
-ebbrt::SimpleEventManager::SimpleEventManager() : next_{32}
+ebbrt::SimpleEventManager::SimpleEventManager(EbbId id) :
+  EventManager{id}, next_{32}
 {
 #ifdef __linux
 #ifndef __bg__
@@ -140,38 +141,31 @@ ebbrt::SimpleEventManager::ProcessEvent()
   }
   ebbrt::lrt::event::_event_interrupt(epoll_event.data.u32);
 #else
-  while (1) {
     // Workaround for CNK bug
     if (fds_.size() != 0) {
       int ret = poll(fds_.data(), fds_.size(), 0);
       if (ret == -1) {
         if (errno == EINTR) {
-          continue;
+          return;
         }
         throw std::runtime_error("poll failed");
       }
       for (unsigned i = 0; i < fds_.size(); ++i) {
         if (fds_[i].revents) {
           ebbrt::lrt::event::_event_interrupt(interrupts_[i]);
-          break;
+          return;
         }
       }
     }
     //call functions
     std::vector<std::function<int()> > funcs_copy{funcs_};
-    bool didevent = false;
     for (const auto& func: funcs_copy) {
       int interrupt = func();
       if (interrupt >= 0) {
-        didevent = true;
         ebbrt::lrt::event::_event_interrupt(interrupt);
-        break;
+        return;
       }
     }
-    if (didevent) {
-      break;
-    }
-  }
 #endif
 #else
   asm volatile ("sti;"

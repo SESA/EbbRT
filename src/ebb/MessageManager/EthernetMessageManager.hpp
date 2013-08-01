@@ -24,7 +24,7 @@ namespace ebbrt {
   class EthernetMessageManager : public MessageManager {
   public:
     static EbbRoot* ConstructRoot();
-    EthernetMessageManager();
+    EthernetMessageManager(EbbId id);
     virtual void Send(NetworkId to,
                       EbbId ebb,
                       BufferList buffers,

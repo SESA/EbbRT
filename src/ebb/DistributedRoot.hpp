@@ -57,7 +57,7 @@ namespace ebbrt {
             /* no rep for this location */
             /** the following ordering is nessessary due to the fact that the
              * new call may trigger a miss on the memory manager */
-            ref = new T();
+            ref = new T(id);
             /* cache representative in translation system */
             ebb_manager->CacheRep(id, ref);
             reps_[get_location()] = ref;
