@@ -27,6 +27,8 @@ namespace ebbrt {
   public:
     virtual void Write(const char* str,
                        std::function<void()> cb = nullptr) = 0;
+  protected:
+    Console(EbbId id) : EbbRep{id} {}
   };
   const EbbRef<Console> console =
     EbbRef<Console>(lrt::trans::find_static_ebb_id("Console"));

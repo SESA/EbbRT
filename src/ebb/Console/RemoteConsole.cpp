@@ -44,6 +44,8 @@ static void _reg_symbol()
   ebbrt::app::AddSymbol ("Console", ebbrt::RemoteConsole::ConstructRoot);
 }
 
+ebbrt::RemoteConsole::RemoteConsole(EbbId id) : Console(id) {}
+
 void
 ebbrt::RemoteConsole::Write(const char* str,
                             std::function<void()> cb)
@@ -81,7 +83,8 @@ ebbrt::RemoteConsole::Write(const char* str,
 }
 
 void
-ebbrt::RemoteConsole::HandleMessage(const uint8_t* msg,
+ebbrt::RemoteConsole::HandleMessage(NetworkId from,
+                                    const char* msg,
                                     size_t len)
 {
 #ifdef __linux__

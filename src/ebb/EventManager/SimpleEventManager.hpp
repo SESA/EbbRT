@@ -29,7 +29,7 @@ namespace ebbrt {
   public:
     static EbbRoot* ConstructRoot();
 
-    SimpleEventManager();
+    SimpleEventManager(EbbId id);
     virtual uint8_t AllocateInterrupt(std::function<void()> func) override;
     virtual void Async(std::function<void()> func) override;
 #ifdef __linux__

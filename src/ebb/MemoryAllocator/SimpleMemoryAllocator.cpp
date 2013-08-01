@@ -32,7 +32,8 @@ using namespace ebbrt;
 ADD_EARLY_CONFIG_SYMBOL(MemoryAllocator,
 			&ebbrt::SimpleMemoryAllocatorConstructRoot)
 
-ebbrt::SimpleMemoryAllocator::SimpleMemoryAllocator(Location loc)
+ebbrt::SimpleMemoryAllocator::SimpleMemoryAllocator(EbbId id, Location loc) :
+MemoryAllocator{id}
 {
 #ifdef LRT_BARE
   lrt::mem::Region* r = &lrt::mem::regions[loc];
@@ -50,7 +51,7 @@ ebbrt::SimpleMemoryAllocator::Malloc(size_t size)
 }
 
 void*
-ebbrt::SimpleMemoryAllocator::Memalign(size_t boundary, size_t size) 
+ebbrt::SimpleMemoryAllocator::Memalign(size_t boundary, size_t size)
 {
 #if __linux__
   assert(0);

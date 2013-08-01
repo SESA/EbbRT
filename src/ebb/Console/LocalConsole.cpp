@@ -42,6 +42,8 @@ static void _reg_symbol()
   ebbrt::app::AddSymbol ("Console", ebbrt::LocalConsole::ConstructRoot);
 }
 
+ebbrt::LocalConsole::LocalConsole(EbbId id) : Console(id) {}
+
 void
 ebbrt::LocalConsole::Write(const char* str,
                             std::function<void()> cb)

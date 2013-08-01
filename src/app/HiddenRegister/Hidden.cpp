@@ -27,7 +27,7 @@ ebbrt::Hidden::ConstructRoot()
   return new SharedRoot<Hidden>;
 }
 
-ebbrt::Hidden::Hidden()
+ebbrt::Hidden::Hidden(EbbId id) : EbbRep{id}
 {
   std::ostringstream stream;
   stream << "In " << __PRETTY_FUNCTION__ << " this pointer = " << this <<

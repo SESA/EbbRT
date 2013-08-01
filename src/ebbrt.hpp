@@ -116,6 +116,10 @@ namespace ebbrt {
         @param[in] count the number of events to dispatch until
         returning. If -1, then do not return */
     void Loop(int count);
+    /** Breaks a running event loop.
+        Any currently executing events will run before the loop breaks
+    */
+    void Break();
   private:
     template<class U> friend class lrt::trans::EbbRef;
     friend void lrt::trans::cache_rep(lrt::trans::EbbId, lrt::trans::EbbRep*);
@@ -144,6 +148,8 @@ namespace ebbrt {
     lrt::trans::EbbId last_ebbcall_id_;
     /** The stack used to store miss information */
     std::stack<uintptr_t> altstack_;
+    /** Whether or not to break */
+    std::atomic<bool> break_loop_;
   };
 }
 

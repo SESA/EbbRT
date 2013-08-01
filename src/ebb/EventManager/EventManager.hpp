@@ -52,6 +52,8 @@ namespace ebbrt {
     virtual void RegisterFunction(std::function<int()> func) = 0;
 #endif
 #endif
+  protected:
+    EventManager(EbbId id) : EbbRep{id} {}
   private:
     friend void lrt::event::_event_interrupt(uint8_t interrupt);
     friend void lrt::event::process_event();

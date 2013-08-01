@@ -82,9 +82,16 @@ ebbrt::Context::Deactivate(){
 void
 ebbrt::Context::Loop(int count)
 {
+  break_loop_ = false;
   int dispatched = 0;
-  while (count == -1 || dispatched < count) {
+  while (!break_loop_ && (count == -1 || dispatched < count)) {
     lrt::event::process_event();
     ++dispatched;
   }
+}
+
+void
+ebbrt::Context::Break()
+{
+  break_loop_ = true;
 }

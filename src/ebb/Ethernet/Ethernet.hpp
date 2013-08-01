@@ -37,8 +37,10 @@ namespace ebbrt {
     virtual const uint8_t* MacAddress() = 0;
     virtual void SendComplete() = 0;
     virtual void Register(uint16_t ethertype,
-                          std::function<void(const uint8_t*, size_t)> func) = 0;
+                          std::function<void(const char*, size_t)> func) = 0;
     virtual void Receive() = 0;
+  protected:
+    Ethernet(EbbId id) : EbbRep{id} {}
   };
   extern EbbRef<Ethernet> ethernet;
 }

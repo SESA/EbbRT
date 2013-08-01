@@ -27,9 +27,12 @@ namespace ebbrt {
   class RemoteConsole : public Console {
   public:
     static EbbRoot* ConstructRoot();
+
+    RemoteConsole(EbbId id);
     virtual void Write(const char* str,
                        std::function<void()> cb = nullptr) override;
-    virtual void HandleMessage(const uint8_t* message,
+    virtual void HandleMessage(NetworkId from,
+                               const char* message,
                                size_t len) override;
   };
 }
