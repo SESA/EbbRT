@@ -95,7 +95,17 @@ int main(int argc, char *argv[])
 	char *section[S_COUNT];
 
 #ifdef USE_MPI
-	MPI_Init(&argc, &argv);
+	//MPI_Init(&argc, &argv);
+        int provided;
+        if (MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided) !=
+            MPI_SUCCESS) {
+          fprintf(stderr, "MPI_Init_thread failed");
+          exit(-1);
+        }
+        if (provided != MPI_THREAD_MULTIPLE) {
+          fprintf(stderr, "MPI does not provide proper thread support");
+          exit(-1);
+        }
 	MPI_Comm_rank(MPI_COMM_WORLD, &procid);
 	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 #else /* USE_MPI */
