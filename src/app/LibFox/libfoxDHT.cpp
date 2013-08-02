@@ -125,6 +125,9 @@ extern "C"
 int
 fox_free(fox_ptr fhand)
 {
+  if (MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
+    throw std::runtime_error("MPI_Barrier failed");
+  }
   kill_listener(fhand);
   delete fhand;
   return 0;
