@@ -3,10 +3,10 @@ import multiprocessing
 import sys
 
 cores = multiprocessing.cpu_count()
-for z in range(1, cores+1):
+for z in range(1, cores):
     sys.stdout.write( "HelloWorld bare metal on " + str(z) + " cores [")
     sys.stdout.flush()
-    child = pexpect.spawn ('qemu-system-x86_64 -nographic -smp ' + str(z) + ' src/app/HelloWorld/HelloWorld.iso')
+    child = pexpect.spawn ('qemu-system-x86_64 -enable-kvm -m 1024 -nographic -smp ' + str(z) + ' src/app/HelloWorld/HelloWorld.iso')
     # uncomment following line to see results of experiment
     #   child.logfile = sys.stdout
     for j in range(z):
