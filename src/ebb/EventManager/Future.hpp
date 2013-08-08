@@ -134,8 +134,7 @@ namespace ebbrt {
     template <>
     class Future<void> {
     public:
-      template <typename ...Args>
-      explicit Future(Args&&... args);
+      Future();
 
       template <typename F> //FIXME: flatten return
       Future<typename std::result_of<F()>::type>
@@ -646,13 +645,6 @@ namespace ebbrt {
     Future<T>::Failed() const
     {
       return s_->state_ == SharedData<T>::FAILED;
-    }
-
-    template <typename ...Args>
-    Future<void>::Future(Args&&... args) :
-      s_{std::make_shared<SharedData<void> >
-        (std::forward<Args>(args)...)}
-    {
     }
 
     template <typename F> //FIXME: flatten return

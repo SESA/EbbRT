@@ -18,18 +18,53 @@
 #ifndef EBBRT_MISC_NETWORK_HPP
 #define EBBRT_MISC_NETWORK_HPP
 
+#include <cstring>
+
+#include <functional>
+#include <string>
+
 namespace ebbrt {
 #ifndef __bg__
   class NetworkId {
   public:
     char mac_addr[6];
   };
+  inline bool operator==(const NetworkId& lhs, const NetworkId& rhs)
+  {
+    return std::strncmp(lhs.mac_addr, rhs.mac_addr, 6);
+  }
 #else
   class NetworkId {
   public:
     int rank;
   };
+  inline bool operator==(const NetworkId& lhs, const NetworkId& rhs)
+  {
+    return lhs.rank == rhs.rank;
+  }
 #endif
 }
+
+#ifndef __bg__
+namespace std {
+  template <> struct hash<ebbrt::NetworkId>
+  {
+    size_t operator()(const ebbrt::NetworkId& x) const
+    {
+      return hash<std::string>()(std::string(x.mac_addr, 6));
+    }
+  };
+}
+#else
+namespace std {
+  template <> struct hash<ebbrt::NetworkId>
+  {
+    size_t operator()(const ebbrt::NetworkId& x) const
+    {
+      return hash<int>()(x.rank);
+    }
+  };
+}
+#endif
 
 #endif

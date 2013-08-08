@@ -48,6 +48,12 @@ namespace ebbrt {
       }
     }
 
+    Future<void>::Future() :
+      s_{std::make_shared<SharedData<void> >()}
+    {
+      s_->Set();
+    }
+
     std::exception_ptr
     Future<void>::GetException() const
     {
