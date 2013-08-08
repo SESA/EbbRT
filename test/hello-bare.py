@@ -3,7 +3,7 @@ import multiprocessing
 import sys
 
 cores = multiprocessing.cpu_count()
-for z in range(1, cores):
+for z in range(1, cores+1):
     sys.stdout.write( "HelloWorld bare metal on " + str(z) + " cores [")
     sys.stdout.flush()
     child = pexpect.spawn ('qemu-system-x86_64 -enable-kvm -m 1024 -nographic -smp ' + str(z) + ' src/app/HelloWorld/HelloWorld.iso')
