@@ -19,6 +19,8 @@
 #include <mpi.h>
 #endif
 
+#include <memory>
+
 #include "app/app.hpp"
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Console/RemoteConsole.hpp"
@@ -46,31 +48,52 @@ static void _reg_symbol()
 
 ebbrt::RemoteConsole::RemoteConsole(EbbId id) : Console(id) {}
 
-void
-ebbrt::RemoteConsole::Write(const char* str,
-                            std::function<void()> cb)
+ebbrt::Buffer
+ebbrt::RemoteConsole::Alloc(size_t size)
 {
 #ifdef __linux__
 #ifndef __bg__
-  std::cout << str;
-  if (cb) {
-    cb();
+  auto mem = std::malloc(size);
+  if (mem == nullptr) {
+    throw std::bad_alloc();
   }
+  return Buffer{mem, size};
 #else
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   if (rank == 0) {
-    std::cout << str;
+    auto mem = std::malloc(size);
+    if (mem == nullptr) {
+      throw std::bad_alloc();
+    }
+    return Buffer{mem, size};
   } else {
-    BufferList list = BufferList(1, std::make_pair(str, strlen(str) + 1));
-    NetworkId id;
-    id.rank = 0;
-    message_manager->Send(id, console, std::move(list));
+    return message_manager->Alloc(size);
   }
 #endif
 #elif __ebbrt__
-  BufferList list = BufferList(1, std::make_pair(str, strlen(str) + 1));
-  LRT_ASSERT(!cb);
+  return message_manager->Alloc(size);
+#endif
+}
+
+void
+ebbrt::RemoteConsole::Write(Buffer buffer)
+{
+#ifdef __linux__
+#ifndef __bg__
+  std::cout << buffer.data();
+#else
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  if (rank == 0) {
+    std::cout << buffer.data();
+  } else {
+    NetworkId id;
+    id.rank = 0;
+    message_manager->Send(id, ebbid_, std::move(buffer));
+  }
+#endif
+#elif __ebbrt__
   NetworkId id;
   id.mac_addr[0] = 0xff;
   id.mac_addr[1] = 0xff;
@@ -78,23 +101,22 @@ ebbrt::RemoteConsole::Write(const char* str,
   id.mac_addr[3] = 0xff;
   id.mac_addr[4] = 0xff;
   id.mac_addr[5] = 0xff;
-  message_manager->Send(id, console, std::move(list));
+  message_manager->Send(id, ebbid_, std::move(buffer));
 #endif
 }
 
 void
 ebbrt::RemoteConsole::HandleMessage(NetworkId from,
-                                    const char* msg,
-                                    size_t len)
+                                    Buffer buffer)
 {
 #ifdef __linux__
 #ifndef __bg__
-  std::cout << msg;
+  std::cout << buffer.data();
 #else
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   if (rank == 0) {
-    std::cout << msg;
+    std::cout << buffer.data();
   } else {
     assert(0);
   }

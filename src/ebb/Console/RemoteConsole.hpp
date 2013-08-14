@@ -29,11 +29,10 @@ namespace ebbrt {
     static EbbRoot* ConstructRoot();
 
     RemoteConsole(EbbId id);
-    virtual void Write(const char* str,
-                       std::function<void()> cb = nullptr) override;
+    virtual Buffer Alloc(size_t size) override;
+    virtual void Write(Buffer buffer) override;
     virtual void HandleMessage(NetworkId from,
-                               const char* message,
-                               size_t len) override;
+                               Buffer buffer) override;
   };
 }
 #endif

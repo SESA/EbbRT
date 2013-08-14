@@ -26,10 +26,10 @@
 namespace ebbrt {
   class MessageManager : public EbbRep {
   public:
+    virtual Buffer Alloc(size_t size) = 0;
     virtual void Send(NetworkId to,
                       EbbId ebb,
-                      BufferList buffers,
-                      std::function<void()> cb = nullptr) = 0;
+                      Buffer buffer) = 0;
     virtual void StartListening() = 0;
   protected:
     MessageManager(EbbId id) : EbbRep{id} {}

@@ -50,40 +50,34 @@ ebbrt::MPIMessageManager::MPIMessageManager(EbbId id) : MessageManager{id}
 {
 }
 
+ebbrt::Buffer
+ebbrt::MPIMessageManager::Alloc(size_t size)
+{
+  size += sizeof(MessageHeader);
+  auto mem = std::malloc(size);
+  if (mem == nullptr) {
+    throw std::bad_alloc();
+  }
+  return (Buffer(mem, size) + sizeof(MessageHeader));
+}
+
 void
 ebbrt::MPIMessageManager::Send(NetworkId to,
                                EbbId id,
-                               BufferList buffers,
-                               std::function<void()> cb)
+                               Buffer buffer)
 {
-  size_t len = sizeof(MessageHeader);
-  for (const auto& buffer : buffers) {
-    len += buffer.second;
-  }
+  auto buf = buffer - sizeof(MessageHeader);
+  auto header = reinterpret_cast<MessageHeader*>(buf.data());
+  header->ebb = id;
 
-  std::vector<char> buf(len);
-
-  auto mh = reinterpret_cast<MessageHeader*>(buf.data());
-  mh->ebb = id;
-
-  char* location = buf.data() + sizeof(MessageHeader);
-  for (const auto& buffer : buffers) {
-    memcpy(location, buffer.first, buffer.second);
-    location += buffer.second;
-  }
-
-  bufs_.push_back(std::move(buf));
   MPI_Request req;
-  if (MPI_Isend(bufs_.back().data(), len, MPI_CHAR,
+  if (MPI_Isend(buf.data(), buf.length(), MPI_CHAR,
                 to.rank, MESSAGE_MANAGER_TAG, MPI_COMM_WORLD,
                 &req) != MPI_SUCCESS) {
     throw std::runtime_error("MPI_Isend failed");
   }
   reqs_.push_back(std::move(req));
-
-  if (cb) {
-    event_manager->Async(cb);
-  }
+  bufs_.push_back(std::move(buf));
 }
 
 void
@@ -139,21 +133,26 @@ ebbrt::MPIMessageManager::DispatchMessage()
   if (MPI_Get_count(&status_, MPI_CHAR, &len) != MPI_SUCCESS) {
     throw std::runtime_error("MPI_Get_count failed");
   }
-  char* buf = new char[len];
+
+  auto mem = std::malloc(len);
+  if (mem == nullptr) {
+    throw std::bad_alloc();
+  }
+
   MPI_Status status;
-  if (MPI_Recv(buf, len, MPI_CHAR, MPI_ANY_SOURCE, MESSAGE_MANAGER_TAG,
+  if (MPI_Recv(mem, len, MPI_CHAR, MPI_ANY_SOURCE, MESSAGE_MANAGER_TAG,
                MPI_COMM_WORLD, &status) != MPI_SUCCESS) {
     throw std::runtime_error("MPI_Recv failed");
   }
 
-  auto mh = reinterpret_cast<const MessageHeader*>(buf);
+  auto buf = Buffer{mem, static_cast<size_t>(len)};
+
+  auto mh = reinterpret_cast<const MessageHeader*>(buf.data());
   EbbRef<EbbRep> ebb {mh->ebb};
 
   NetworkId from;
   from.rank = status.MPI_SOURCE;
 
   ebb->HandleMessage(from,
-                     buf + sizeof(MessageHeader),
-                     len - sizeof(MessageHeader));
-  delete[] buf;
+                     buf + sizeof(MessageHeader));
 }

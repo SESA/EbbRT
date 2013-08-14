@@ -114,7 +114,10 @@ int main(int argc, char** argv)
   ebbrt::ethernet = ebbrt::EbbRef<ebbrt::Ethernet>(ebbrt::ebb_manager->AllocateId());
   ebbrt::ebb_manager->Bind(ebbrt::RawSocket::ConstructRoot, ebbrt::ethernet);
   ebbrt::message_manager->StartListening();
-  ebbrt::console->Write("Hello World (frontend)\n");
+  const char str[] = "Hello World (frontend)\n";
+  auto buf = ebbrt::console->Alloc(sizeof(str));
+  std::memcpy(buf.data(), str, sizeof(str));
+  ebbrt::console->Write(std::move(buf));
 #else
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -126,9 +129,15 @@ int main(int argc, char** argv)
     return -1;
   }
   if (rank == 0) {
-    ebbrt::console->Write("Hello World (frontend)\n");
+    const char str[] = "Hello World (frontend)\n";
+    auto buf = ebbrt::console->Alloc(sizeof(str));
+    std::memcpy(buf.data(), str, sizeof(str));
+    ebbrt::console->Write(std::move(buf));
   } else {
-    ebbrt::console->Write("Hello World (remote)\n");
+    const char str[] = "Hello World (remote)\n";
+    auto buf = ebbrt::console->Alloc(sizeof(str));
+    std::memcpy(buf.data(), str, sizeof(str));
+    ebbrt::console->Write(std::move(buf));
   }
 #endif
   context.Loop(-1);
