@@ -1,0 +1,1763 @@
+#!/bin/bash
+
+#####################################
+#
+#  IBM Coporation 
+#  Project kittyhawk
+#  
+# khctl simple inteface for managing 
+# nodes and networks 
+# main interface function is acquireNodes
+#  
+#####################################
+if [[ $BASH_VERSION != 3.1.* ]]; then shopt -s compat31; fi
+
+shopt -s extglob
+
+PATH=$PATH:/sbin
+
+declare -r KHBASEDIR=${KHCTL_BASEDIR:-/home/kh}
+declare -r KHCONSDIR=${KHCTL_CONSDIR:-$KHBASEDIR/Consoles}
+declare -r KHCTLDIR=${KHCTL_CTLDIR:-$KHBASEDIR/Ctl}
+declare -r KHTUPLEDIR=${KH_TUPLEDIR:-$KHBASEDIR/KHTuples}
+declare -r KHTUPLECTRLDIR=${KH_TUPLECTRLDIR:-$KHCTLDIR}
+declare -r KHCONIDFILE=${KHCTL_CONIDFILE:-$KHCTLDIR/ConID}
+declare -r KHCONIDSTART=${KHCTL_CONIDSTART:-2}
+declare -r KHCONIDEND=${KHCTL_CONIDEND:-$(printf "%d" 0xffffffff)}
+declare -r KHPNETIDFILE=${KHCTL_PNETIDFILE:-$KHCTLDIR/PNetID}
+declare -r KHINETID=${KHCTL_INETID:-0}
+declare -r KHXNETID=${KHCTL_XNETID:255}
+declare -r KHFREENETID=${KHCTL_FREENETID:-2}
+declare -r KHPNETSRESERVED=${KHCTL_PNETSRESERVED:-3}
+declare -r KHPNETIDSTART=${KHCTL_PNETIDSTART:-$KHPNETSRESERVED}
+declare -r KHPNETIDEND=${KHCTL_PNETIDEND:-$(printf "%d" 0xffffffff)}
+declare -r KHXNETMTUFILE=${KHCTL_XNETMTU:-/proc/device-tree/u-boot-env/sitemtu}
+declare -r KHTTYPROCDIR=${KHCTL_TTYPROCDIR:-/proc/sys/dev/bgtty}
+declare -r KHUSERPREFIX=${KHCTL_USERPREFIX:-con}
+declare -r KHTOTALSIZEFILE=${KHCTL_TOTALSIZEFILE:-/proc/device-tree/u-boot-env/bgp_totalnodes}
+declare -r KHRANKFILE=${KHCTL_RANKFILE:-/proc/device-tree/u-boot-env/bgp_rank}
+declare -r KHCTRLTTY=${KHCTL_CTRLTTY:-/dev/bgtty0}
+declare -r KHCTRLID=${KHCTL_CTRLID:-0}
+declare -r KHTTYMAJOR=${KHCTL_TTYMAJOR:-230}
+declare -r KHXIPFILE=${KHCTL_XIPFILE:-/proc/device-tree/u-boot-env/xip}
+declare -r KHNATIPFILE=${KHCTL_NATFILE:-/proc/device-tree/u-boot-env/natip}
+declare -r FREEOWNER='_FREE_'
+declare -r FREEPNET=$KHFREENETID
+declare -r FREEINETFLG=0
+declare -r FREEXNETFLG=0
+declare -r FREECONID=$KHCTRLID
+declare BUFFERVAR
+declare -i BUFFERTTY=1
+
+typeset dofunc
+
+# configurable functions
+declare  configNodes=KHconfigNodes
+declare  createCon=KHcreateCon
+declare  createConUser=KHcreateConUser
+
+
+if [[ -n SESA ]]; then
+  # SESA General
+  declare -r SESAMAXNODES=${SESA_MAX_NODES:-256}
+  declare -r SESANETDIR=${SESA_NETDIR:-$KHBASEDIR/Networks}
+  declare -r SESAEMUCMD=${SESA_EMUCMD:-"qemu-system-x86_64"}
+  declare -r SESAMNTDIR=${SESA_MNTDIR:=""}
+  declare -r SESABIOS=${SESA_BIOS:=""}
+  declare -r SESATAP=${SESA_TAP:=""}
+  declare  configNodes=SESAconfigNodes
+  declare  createCon=SESAcreateCon
+  declare  createConUser=SESAcreateConUser
+fi
+
+function getNatIP
+{
+    if [[ -a $KHNATIPFILE ]]; then
+	cat $KHNATIPFILE
+    fi
+}
+
+function myIPAddrs
+{
+   local net
+   local ip
+   local rest
+   local rc
+
+   # If no argument all configured ip address are returned
+   # otherwise only for the speccified interface
+   ifconfig $1 2> /dev/null | grep 'inet addr' | while read net ip rest
+   do
+     ip=${ip##addr:}
+     if [[ $ip != 127.0.0.1 ]]
+     then
+        echo $ip
+     fi
+   done
+}
+
+function myInterfaces
+{
+   local iface
+   local rest
+
+   ifconfig | grep Link | while read iface rest
+   do
+      echo $iface
+   done
+}
+
+function interfaceAddr
+{
+  local iface
+  local ip
+
+  if [[ -z $1 ]]
+  then
+    echo "USAGE: internfaceAddr <ip>" >&2
+    return 255
+  fi
+
+  for iface in $(myInterfaces) 
+  do
+      ip=$(ifconfig $iface | grep 'inet addr')
+      ip=${ip#*:}
+      ip=${ip%% *}
+      if [[ $ip = "$1"* ]]
+      then
+        echo $iface
+        return 0
+      fi
+  done
+
+  return 255
+}
+
+ttyRawWrite()
+{
+  local data="$1"
+  local tty="$2"
+
+  echo "$data" > $tty
+  sleep 0.05
+}
+
+writeTTY()
+{
+  local data="$1"
+  local tty="$2"
+
+  if (( $BUFFERTTY == 0 )) 
+  then 
+    ttyRawWrite "$data" $tty
+  else
+    TTYBUFFERVAR="${TTYBUFFERVAR}$data
+"
+  fi
+}
+
+getRespfile()
+{
+    echo /tmp/$$.respfile.$RANDOM
+}
+
+readUbootResponse()
+{
+#   set -x
+   local tty=$1
+   local num=$2
+   local respfile=$3
+   local -i c=0
+   local response
+
+   if [[ ! -c $tty || -z $num || -z $respfile ]]
+   then
+      echo "USAGE: $FUNCNAME <tty> <num> <respfile>"
+      exit 255 
+   fi 
+
+   if [[ -e $respfile ]]
+   then
+      if ! rm $respfile
+      then
+        echo "ERROR: $FUNCNAME: could not remove $respfile"
+        return 255
+      fi
+   fi
+   touch ${respfile}.running
+   while read line
+   do
+     if [[ "$line" =~ "^nodeinfo: .*" ]]
+     then
+       response="$response$line\n"
+       (( c++ ))
+       if (( $c == $num ))
+       then
+         break
+       fi
+     fi
+   done < $tty
+   printf "$response" > $respfile
+   rm ${respfile}.running
+   return 0
+}
+
+gatherUbootResponse()
+{
+#   set -x
+   local tty=$1
+   local num=$2
+   local respfile=$3
+   local readpid
+
+   if [[ ! -c $tty || -z $num || -z $respfile ]]
+   then
+      echo "USAGE: $FUNCNAME <tty> <num> <respfile>" >&2
+      return 255
+   fi
+   
+   if [[ -a ${respfile}.running ]] 
+   then
+      rm ${respfile}.running
+   fi
+   readUbootResponse $tty $num $respfile &
+   # give the child some time to start and get the tty open
+   # before we do any writes so that we capture all responses
+   while [[ ! -a ${respfile}.running ]]
+   do
+      sleep 0.5  
+   done
+   readpid=$(jobs -p %%)
+   disown %%
+   echo $readpid > $respfile.pid
+   return 0
+}
+
+waitForUbootResponse()
+{
+    local respfile=$1
+    local pollcnt=$2
+    local workerpid
+    local -i i
+
+    if [[ -z $respfile || -z $pollcnt ]]
+    then
+      echo "USAGE: $FUNCNAME <respfile> <pollcnt>"
+      return 255
+    fi
+    if [[ ! -e $respfile.pid ]]
+    then
+      echo "ERROR: could not fie $respfile.pid"
+      return 255
+    fi
+
+    workerpid=$(cat $respfile.pid)
+    rm $respfile.pid
+
+    if [[ -e $respfile ]]
+    then
+      return 0
+    fi
+    (( i=0 ))
+    while (( $i < $pollcnt )) 
+    do
+      if [[ -e $respfile ]]
+      then
+        return 0
+      fi
+      (( i++ ))
+      sleep 0.05
+    done
+
+    if [[ -n $workerpid ]]
+    then
+      kill $workerpid >& /dev/null
+    fi
+    return 255
+}
+
+function getUbootNodeInfo
+{
+    local tty=$1
+    local num=$2
+    local extra=$3
+    local respfile
+    local i
+
+    if [[ ! -c $tty || -z $num  ]]
+    then
+       echo "USAGE: $FUNCNAME <tty> <num> [extra info to get]"
+       exit 255
+    fi
+    
+    respfile=$(getRespfile)
+
+    (( i=0 ))
+    while (( $i<10 ))
+    do   
+      gatherUbootResponse $tty $num $respfile
+      # bypass buffering and write directly to the tty
+      ttyRawWrite "echo nodeinfo: \$bgp_rank \$uni $extra" $tty
+      if waitForUbootResponse $respfile 1000
+      then
+         cat $respfile | grep '^nodeinfo'
+         rm $respfile
+         return 0
+      fi
+      (( i++ ))
+    done
+    if [[ -e $respfile ]]
+    then
+       rm $respfile
+    fi
+    return 255
+}
+
+clearTTYBuffer()
+{
+    TTYBUFFERVAR=""
+}
+
+flushTTY()
+{
+   local tty=$1
+
+   if (( $BUFFERTTY == 1 ))
+   then
+      ttyRawWrite "$TTYBUFFERVAR" $tty
+#      echo "$TTYBUFFERVAR" >> /tmp/TTYFlushBuffer
+      sleep 0.05
+   fi
+}
+
+isquish()
+{
+    #set -x 
+    local -i val
+    local -i min
+    local -i max
+    local -i started=0
+    local valuefmtstring="%d\n"
+    local rangefmtstring="%d %d\n"
+
+    if [[ -n "$1" ]]
+    then
+      valuefmtstring="$1"
+    fi
+    
+    if [[ -n "$2" ]]
+    then
+      rangefmtstring="$2"
+    fi
+ 
+    while read val
+    do
+      if (( $started == 0 ))
+      then
+        ((min=$val))
+        ((max=$val))
+        ((started=1))
+      else
+        if (( $val == ($max + 1) ))
+        then
+           ((max=$val))
+        else 
+           if (( $min == $max ))
+           then
+             printf "$valuefmtstring" "$min"
+           else
+             printf "$rangefmtstring" "$min" "$max"
+           fi
+           (( min=$val ))
+           (( max=$val ))
+        fi
+      fi
+   done
+
+   if (( $started == 1 ))
+   then
+     if (( $min == $max ))
+     then
+       printf "$valuefmtstring" "$min"
+     else
+       printf "$rangefmtstring" "$min" "$max"
+     fi
+   fi
+   return 0
+}
+
+
+SESAcreateNet()
+{
+#  set -x
+  local nid=$1
+  local tapcmd=""
+  local dir=$SESANETDIR/$nid
+  [[ -n 2 ]] && tap=$2
+
+  # check if network exists
+  if [[ -a $dir/pid ]]
+  then
+      return 0
+  fi
+
+  if [[ ! -d $dir ]] && ! mkdir -p $dir; then
+    echo "YIKES mkdir of $dir failed" > /dev/stderr
+    return 255
+  fi
+
+  # optional tap interface
+  if [[ -n $tap ]]; then
+    if [[ $( ifconfig | grep -o $tap) ]]; then
+      tapcmd="-t $tap" 
+    else
+      echo "Error: unable to locate $tap"
+    fi
+  fi
+
+  vde_switch $tapcmd -d -s $dir/sock -M $dir/mgmt -p $dir/pid 
+}
+
+
+function SESAcleanAll
+{
+  local consoles=( $(tupleCmd echo Node '!(*:_FREE_:*:*:*)') )
+  local files=( ${consoles[@]/*:/$KHCONSDIR/} )
+  kill $( cat ${files[@]/%//nodes/\*/pid} | sort -u )
+  #verify 
+  sleep 3
+  local rem=$( ps --no-heading -o pid $( cat ${files[@]/%//nodes/\*/pid} ))
+  if [[ ${#rem[@]} > 1 ]]
+  then
+    echo "ERROR: These processes escaped death"
+    echo ${rem[@]}
+  fi
+  #clean networks
+  kill $( cat $SESANETDIR/*/pid   )
+
+  #clear db
+  rm -rf $KHCTLDIR/*
+  rm -rf $KHTUPLEDIR/* 
+  rm -rf $KHCONSDIR/* 
+  rm -rf $SESANETDIR/* 
+}
+
+function SESAcleanApp
+{
+  app=$1
+  if [[ -z $app ]]; then
+      echo "Error: No app name"
+      exit 1
+  fi
+
+  local nodes=()
+  local consoles=( $(tupleCmd echo Node "*:$app:*:*:*") )
+  if [[ $consoles == "*:$app:*:*:*" ]];then
+    echo "Error: App not found. Use khls to list active apps"
+    exit 1
+  fi
+  local network=( $(tupleCmd echo Pnet "*:$app") )
+  local files=( ${consoles[@]/*:/$KHCONSDIR/} )
+  local net=$( echo $network | cut -d ':' -f 1 )
+
+  if [[ ! (${#consoles[@]} > 0) ]]; then
+    echo "ERROR: $app not found"
+    exit 1
+  fi
+    
+  for i in ${consoles[@]}
+  do
+    nodes+=($( echo $i | cut -d ':' -f 1 ))
+  done
+  
+  # delete processes 
+  kill $( cat ${files[@]/%//nodes/\*/pid} | sort -u )
+  kill $( cat $SESANETDIR/$net/pid )
+
+  # remove tuples
+  lock tuples
+    locked_rm_users "$1" "*"
+    locked_rm_pnets "$net" "$1"
+    locked_rm_nodes "*" "$1" "*" "*" "*" "*"
+    for j in ${nodes[@]}
+    do
+      echo $j
+      locked_touch_nodes "$j" "$FREEOWNER" "$FREEPNET"\
+        "$FREEINETFLG" "$FREEXNETFLG" "$FREECONID"
+    done
+  unlock tuples
+  
+  # clean up files
+  rm -rf $SESANETDIR/$net
+  rm -rf $( echo ${files[@]} | sort -u )
+
+}
+
+function SESAlistApp
+{
+  local consoles=( $(tupleCmd echo Node "!(*:_FREE_:*:*:*)") )
+  local files=()
+
+  for i in ${consoles[@]}
+  do
+    files+=($( echo $i | cut -d ':' -f 2 ))
+  done
+
+  for i in $( echo ${files[@]} | tr ' ' '\n' | sort -u | tr '\n' ' ' )
+  do
+    echo $i $( grep -o $i <<< ${files[*]} | wc -l )
+  done
+}
+
+function SESAgenerateMac()
+{
+  local mac
+  printf -v mac 'DE:AD:BE:EF:%02X:%02X' $((RANDOM%256)) $((RANDOM%256))
+  echo $mac
+}
+
+SESAconfigNodes()
+{
+  #set -x
+  local khuser=$1
+  local pnetids=$2
+  local inet=$3
+  local xnet=$4
+  local conid=$5
+  local num=$6
+  local nodes="$7"
+  local basedir=$KHCONSDIR/$conid
+  local dir
+  local mac
+  local n
+  local -i p
+  local -i j
+  local -i i
+  local -i ethoffset
+  local inetdesc
+  local tmp
+  local netcmd=""
+  local srlcmd=""
+  local concmd=""
+  local mntcmd=""
+  local bioscmd=""
+
+  #echo "SESAconfigNodes: khuser=$khuser pnetids=$pnetids  inet=$inet xnet=$xnet conid=$conid num=$num, nodes=$nodes dir=$dir"
+
+  # Private network construction 
+  for p in ${pnetids//,/ }
+  do
+    if [[ ! -a $SESANETDIR/$p/sock ]]
+    then
+      SESAcreateNet $p $SESATAP 
+    fi
+  done
+
+  # Shared networks
+  ethoffset=0
+  if (( $xnet == 1 )) 
+  then
+    (( ethoffset++ ))
+  fi
+  if (( $inet == 1 ))
+  then
+    (( ethoffset++ ))
+  fi
+
+  # node construction 
+  for n in ${nodes[@]}; do
+    netcmd=""
+    dir=$basedir/nodes/$n
+    j=$ethoffset
+    # external network
+    if (( $xnet == 1 ))
+    then
+      mac=$(SESAgenerateMac)
+      netcmd="$netcmd -net nic,vlan=1,macaddr=$mac -net bridge,vlan=1,br=brX"
+      echo "node $n: network External : eth0 : $mac"
+    fi
+    # internal network
+    if (( $inet == 1 ))
+    then
+      mac=$(SESAgenerateMac)
+      netcmd="$netcmd -net nic,vlan=2,macaddr=$mac -net bridge,vlan=2,br=brI"
+      echo "node $n: network Internal : eth1 : $mac"
+    fi
+    # private network(s)
+    for p in ${pnetids//,/ }; do
+      mac=$(SESAgenerateMac)
+      netcmd="$netcmd -net nic,vlan=$p,model=virtio,macaddr=$mac -net vde,vlan=$p,sock=$SESANETDIR/${p}/sock"
+      echo "node $n: network Private $p : eth${j} : $mac"
+      (( j++ ))
+    done
+
+    # serial
+    echo "node $n: serial: $dir/com1"
+    srlcmd="-serial unix:$dir/com1,server,nowait"
+
+    # vde 
+    echo "node $n: console: $dir/vnc"
+    concmd="-vnc unix:$dir/vnc -name $khuser:$conid:$n"
+
+    # mount
+    if [[ -d $SESAMNTDIR ]]
+    then
+      mntcmd="-drive file=fat:rw:$SESAMNTDIR"
+    fi
+
+    # bios rom
+    if [[ -a $SESABIOS ]]
+    then
+      bioscmd="-bios $SESABIOS"
+    fi
+
+    # instantiate node!
+    $SESAEMUCMD $netcmd $srlcmd $concmd -enable-kvm -daemonize -pidfile $dir/pid $SESA_ROM $SESA_IMG $mntcmd > $dir/vnclog 2>&1
+  done
+
+  return 0
+}
+
+KHconfigNodes()
+{
+  local khuser=$1
+  local pnetids=$2
+  local inet=$3
+  local xnet=$4
+  local conid=$5
+  local num=$6
+  local nodes="$7"
+  local dir=$KHCONSDIR/$conid
+  local tty=$dir/tty
+  local n
+  local -i p
+  local -i j
+  local -i i
+  local -i ethoffset
+  local inetdesc
+  local tmp
+  local ubootnodeinfo
+  local tmpnodes
+  local itestlines
+  local itestline
+  local myiip
+  local xmtu
+
+  if [[ ! -c $KHCTRLTTY ]]
+  then
+    if [[ -a $KHCTRLTTY ]]; then rm -rf $KHCTRLTTY; fi
+    mknod $KHCTRLTTY c $KHTTYMAJOR $KHCTRLID
+    stty raw -clocal cread -echo -echok -echoe < $KHCTRLTTY
+  fi 
+
+  clearTTYBuffer
+
+  tmpnodes="$(for n in $nodes; do echo $n; done)"
+  itestlines="$(echo "$tmpnodes" | isquish "itest \$bgp_rank == %d && setenv bgtty_sendid $conid && setenv bgtty_rcvid $conid" "itest \$bgp_rank >= %d && itest \$bgp_rank <= %d && setenv bgtty_sendid $conid && setenv bgtty_rcvid $conid")"
+
+  for itestline in "$itestlines"
+  do
+    writeTTY "$itestline" $KHCTRLTTY 
+  done
+
+  flushTTY $KHCTRLTTY
+
+  clearTTYBuffer  
+  # make sure all nodes have swung over to $tty
+  ubootnodeinfo=$(getUbootNodeInfo $tty $num)
+  if (( $? != 0 ))
+  then 
+     echo "ERROR: $FUNCNAME: getUbootNodeInfo failed to confirm nodes allocated\n" >&2 
+  fi
+
+  ethoffset=0
+  if (( $xnet == 1 )) 
+  then
+    (( ethoffset++ ))
+  fi
+
+  if (( $inet == 1 ))
+  then
+    (( ethoffset++ ))
+  fi
+
+  j=2
+  tmp=( ${pnetids//,/ } )
+  i=${#tmp[@]}
+  (( i-- ))
+  while (( $i >= 0 ))
+  do
+    p=${tmp[$i]}
+    writeTTY "mketh $p $j"  $tty
+    (( j++ ))
+    (( i-- ))
+  done  
+
+  writeTTY "fdt rm /plb/ethernet@1" $tty
+  if (( $inet == 1 ))
+  then
+    writeTTY "mketh 2 1" $tty
+    if (( $ethoffset == 1 ))
+    then
+      inetdesc="network Internal : eth0"
+      writeTTY "setenv bg_eth0_netid 2" $tty
+    else
+      inetdesc="network Internal : eth1"
+      writeTTY "setenv bg_eth1_netid 2" $tty
+    fi
+  fi
+    
+  writeTTY "fdt rm /plb/ethernet@0" $tty
+  if (( $xnet == 1 ))
+  then
+    if [[ -a $KHXNETMTUFILE ]]
+    then
+      xmtu=$(cat $KHXNETMTUFILE)
+    fi
+    writeTTY "mketh 1 0 $xmtu" $tty
+    writeTTY "setenv bg_eth0_netid 1" $tty
+    echo "network External : eth0"
+  fi
+
+  if (( $inet == 1 ))
+  then
+     echo "$inetdesc"
+  fi
+
+  j=$ethoffset
+  for p in ${pnetids//,/ }
+  do
+    writeTTY "setenv bg_eth${j}_netid $p" $tty
+    echo "network $p : eth${j}"
+    (( j++ ))
+  done
+  writeTTY "setenv bg_num_netids $j" $tty
+
+  myiip=$(myIPAddrs eth1)
+  if [[ -n "$myiip" ]]
+  then
+    writeTTY "setenv khctlserver $myiip" $tty
+  fi
+  writeTTY "setenv khctluser $khuser" $tty
+  #kludge for demo
+  writeTTY "itest \$demoenv == 1 && run dosettmpboot" $tty
+
+  flushTTY $tty
+
+  #added eth0ip as a kludge to make demo easier
+  if [[ -n $(getNatIP) ]]; then
+      ubootnodeinfo=$(getUbootNodeInfo $tty $num "\$eth0ip \$ionode_uni \$ionode_siteip \$bgp_rankinpset")
+  else
+      ubootnodeinfo=$(getUbootNodeInfo $tty $num "\$eth0ip")
+  fi
+  if (( $? != 0 ))
+  then 
+     echo "ERROR: $FUNCNAME: getUbootNodeInfo failed to confirm nodes configured\n" >&2 
+  fi
+  echo "$ubootnodeinfo"
+  return 0
+}
+
+SESAcreateCon()
+{ 
+  local khuser=$1
+  local conid=$2
+  local nodes="$3"
+
+  local dir=$KHCONSDIR/$conid
+
+  if [[ -d $dir ]]
+  then
+      echo "ERROR: $dir already exists?!?" >&2
+      return 255
+  fi
+  
+  mkdir -p $dir
+  mkdir -p $dir/nodes
+
+  for n in ${nodes[@]}; do
+    mkdir -p $dir/nodes/$n
+  done
+
+  echo "$nodes" > $dir/nodes/list
+  echo "$khuser" > $dir/owner
+
+  return 0
+}
+
+KHcreateCon()
+{ 
+  local khuser=$1
+  local conid=$2
+  local nodes="$3"
+
+  local dir=$KHCONSDIR/$conid
+  local tty=$dir/tty
+  local procfile=$KHTTYPROCDIR/$conid
+
+  if [[ -d $dir ]]
+  then
+      echo "ERROR: $dir already exists?!?" >&2
+      return 255
+  fi
+  
+  mkdir -p $dir
+
+  echo "$nodes" > $dir/nodes
+  echo "$khuser" > $dir/owner
+
+  mknod $tty c $KHTTYMAJOR $conid
+  stty raw -clocal cread -echo -echok -echoe < $tty
+  if (( $num == 1 ))
+  then
+    echo "FIXME: using broadcast just for one node :-(" >&2
+    echo "$conid $conid b" > $procfile
+  else
+    echo "$conid $conid b" > $procfile
+  fi
+
+  return 0
+}
+
+SESAcreateConUser()
+{
+  local khuser=$1
+  local pnetid=$2
+  local conid=$3
+  local num=$4
+  local nodes="$5"
+
+  local dir=$KHCONSDIR/$conid
+  local conuser=$KHUSERPREFIX${conid}
+  local home=$dir/$conuser
+  local shell=$dir/conshell
+  local tty=$dir/tty
+
+  if [[ ! -d $dir ]]
+  then
+    echo "ERROR: createConUser: $dir does not exist?!?" >&2
+    return 255
+  fi
+  if ! mkdir $home
+  then
+    echo "ERROR: createConUser: could not make $home?!?" >&2
+    return 255
+  fi
+
+  return 0
+}
+
+KHcreateConUser()
+{
+  local khuser=$1
+  local pnetid=$2
+  local conid=$3
+  local num=$4
+  local nodes="$5"
+
+  local dir=$KHCONSDIR/$conid
+  local conuser=$KHUSERPREFIX${conid}
+  local home=$dir/$conuser
+  local shell=$dir/conshell
+  local tty=$dir/tty
+
+  if [[ ! -d $dir ]]
+  then
+    echo "ERROR: createConUser: $dir does not exist?!?" >&2
+    return 255
+  fi
+  if ! mkdir $home
+  then
+    echo "ERROR: createConUser: could not make $home?!?" >&2
+    return 255
+  fi
+
+  if grep "^$conuser:" /etc/passwd
+  then
+    echo "ERROR: $conuser already in /etc/passwd" >&2
+    return 255
+  fi
+
+  # FIXME:  Enable this when ready to try credentials
+  # cred=$(locked_ls_users "$khuser" "*")
+  # cred=${cred##*:}
+  # mkdir -p $home/.ssh
+  # echo "$cred" > $home/.ssh/authorizedkeys
+
+  cat >$shell <<EOF
+#!/bin/bash
+stty raw -clocal cread -echo -echok -echoe < $tty
+
+if [[ \$TERM = KHREAD ]]
+then
+  exec cat $tty
+fi
+
+if tty > /dev/null
+then
+# getting closer but still needs more
+#  stty raw -clocal cread -echo -echok -echoe
+  echo "$conuser: Console"
+  cat $tty > /dev/tty & 
+fi
+cat > $tty
+EOF
+
+  echo "$conuser::65534:65534:nobody:$home:$shell" >> /etc/passwd
+  
+  chown $conuser $tty
+  chmod u+x $shell
+  chown $conuser $shell
+}
+
+assignNodes()
+{
+  local khuser=$1
+  local pnetid=$2
+  local inet=$3
+  local xnet=$4
+  local conid=$5
+  local numNodes=$6
+  local nodes=( $7 )
+  local conuser=$KHUSERPREFIX${conid}
+  local conip
+  local i
+  local ip
+  local configdesc
+  local natip
+
+  if $createCon $khuser $conid "${nodes[*]}"
+  then
+    if $createConUser $khuser $pnetid $conid $num "${nodes[*]}"
+    then
+       configdesc=$($configNodes $khuser $pnetid $inet $xnet $conid $num "${nodes[*]}")
+       if (( $? == 0 ))
+       then
+          if [[ -n $SESA ]]; then
+               echo "protocol: openfirmware"
+          else 
+             if [[ -n $SSH_CONNECTION ]]
+             then
+                conip=${SSH_CONNECTION% *}
+                conip=${conip##* }
+                natip=$(getNatIP)
+	        if [[ -n $natip ]]; then
+	  	  if [[ $conip = $(cat $KHXIPFILE) ]]; then
+		      conip=$natip
+		  fi
+	        fi
+	        echo $conuser@$conip
+             else
+		 for i in $(myInterfaces)
+		 do
+                     ip=$(myIPAddrs $i)
+                     if [[ -n $ip ]]
+		     then
+			 echo $conuser@$ip
+                     fi
+		 done
+             fi
+	     echo "protocol: uboot"
+         fi
+          echo "$configdesc"
+          echo "nodes: ${nodes[*]}"
+          return 0
+       fi
+    fi
+  fi
+  return 255
+}
+
+function getTotalNodes
+{
+  local rc
+
+  if [[ -a $KHTOTALSIZEFILE ]]
+  then 
+     rc=$(cat $KHTOTALSIZEFILE)
+  else
+     rc=$SESAMAXNODES
+  fi
+
+  echo $rc
+}
+
+function getMyRank
+{
+  local rc
+
+  if [[ -a $KHRANKFILE ]]
+  then 
+     rc=$(cat $KHRANKFILE)
+  fi
+  echo $rc   
+}
+
+#
+# FIXME: This does not handle roleover and not sure it behaves well
+#        with really big allocs
+#
+locked_getNewPNetIDs()
+{
+  local num=$1
+  local rc
+
+  if [[ -z $num ]]
+  then
+    num=1
+  fi
+
+  if [[ ! -e $KHPNETIDFILE ]]
+  then
+     echo $KHPNETIDSTART > $KHPNETIDFILE
+  fi
+
+  rc=$(cat $KHPNETIDFILE)
+
+  if (( ($rc + ($num - 1)) > $KHPNETIDEND ))
+  then
+     echo "ERROR: locked_getNewPNetIDs: not enough id : NYI" >&2
+     return 255
+  fi
+  echo $(( $rc + $num )) > $KHPNETIDFILE
+
+  if (( $num > 1 ))
+  then
+    eval echo {${rc}..$(( $rc + ($num - 1) ))}
+  else
+    echo $rc
+  fi
+
+  return 0
+}
+
+locked_undoPnetIDs()
+{
+  local num=$1
+  local rc
+  local cur
+
+  if [[ -z $num ]]
+  then
+    echo "USAGE: $FUNCNAME: <num>" >&2
+    return 255
+  fi
+
+  if [[ -e $KHPNETIDFILE ]]
+  then
+    cur=$(cat $KHPNETIDFILE)
+    echo $(( $cur - $num )) > $KHPNETIDFILE
+    return 0
+  fi
+  return 255
+} 
+
+
+locked_getNewConID()
+{
+  local rc
+
+  if [[ ! -e $KHCONIDFILE ]]
+  then
+     echo $KHCONIDSTART > $KHCONIDFILE
+  fi
+  rc=$(cat $KHCONIDFILE)
+  if (( $rc == $KHCONIDEND )) 
+  then
+     echo "ERROR: locked_getNewConID: last id reached: NYI" >&2
+     return 255
+  fi
+  echo $(( $rc + 1 )) > $KHCONIDFILE
+  echo $rc
+  return 0
+}
+
+locked_undoConID()
+{
+  local conid=$1
+  local rc
+  local cur
+
+  if [[ -e $KHCONIDFILE ]]
+  then
+    cur=$(cat $KHCONIDFILE)
+  
+    # sanity check 
+    if (( ($conid + 1) == $cur ))
+    then
+      echo $conid > $KHCONIDFILE
+      return 0
+    fi
+  fi
+  return 255
+} 
+
+
+function lock
+{
+    local lockname=$1
+    local lockfile=$KHTUPLECTRLDIR/${lockname}.lock
+
+    if [[ -z $lockname ]]
+    then
+      echo "USAGE: $FUNCNAME <lock>"  >&2
+      return 255
+    fi
+
+    if [[ ! -d $KHTUPLECTRLDIR ]]
+    then
+      if ! mkdir -p $KHTUPLECTRLDIR
+      then
+         echo "ERROR: $FUNCNAME: $KHTUPLECTRLDIR does not exist "\
+              "and cannot be created" >&2
+         exit 255
+      fi
+    fi
+
+    # Acquire lock
+    lockfile -s1 $lockfile
+}
+
+function unlock
+{
+    local lockname=$1
+    local lockfile=$KHTUPLECTRLDIR/${lockname}.lock
+
+    if [[ -z $lockname ]]
+    then
+      echo "USAGE: $FUNCNAME <lock>"  >&2
+      return 255
+    fi
+    # Release lock
+    rm -f $lockfile
+}
+
+function locked_unchecked_tupleCreateType
+{
+     local type=$1
+     local typedir=$KHTUPLEDIR/$type
+
+     if [[ -d $typedir ]]
+     then
+         echo "ERROR: $FUNCNAME: $typedir already exists" >&2
+         return 255
+     fi
+
+     if  ! mkdir -p $typedir
+     then
+        echo "ERROR: $FUNCNAME: could not create typedir" >&2
+        return 255
+     fi
+
+}
+
+function tupleCreateType
+{
+   local type=$1
+ 
+   if [[ -z $type ]]
+   then
+     echo "USAGE: $FUNCNAME <type>"  >&2
+     return 255
+   fi
+   
+   lock tuples
+      locked_unchecked_tupleCreateType $type
+   unlock tuples
+   return 0
+}
+
+locked_unchecked_tupleTypeExists()
+{
+  local type=$1
+  local typedir=$KHTUPLEDIR/$type
+  if [[ -d $typedir ]]
+  then
+    return 0
+  else
+    return 255
+  fi
+}
+
+function tupleTypeExists
+{
+  local type=$1
+  local rc=0
+
+  if [[ -z $type ]]
+  then
+    echo "USAGE: $FUNCNAME <type>"  >&2
+    return 255
+  fi
+
+  lock tuples
+      locked_unchecked_tupleTypeExists $type
+      rc=$?
+  unlock tuples
+
+  return $rc
+}
+
+locked_unchecked_tupleCmd()
+{
+  local cmd=$1
+  local type=$2
+  local tuplepattern=$3
+  local rc=0
+
+  cd $KHTUPLEDIR/$type
+
+  if eval $cmd $tuplepattern 2>/dev/null
+  then 
+    rc=0
+  else
+    #eval echo "ERROR: $FUNCNAME: $cmd $typedir/$tuplepattern: FAILED"  >&2
+    rc=255
+  fi
+
+  return $rc
+}
+
+function tupleCmd
+{
+  local cmd=$1
+  local type=$2
+  local tuplepattern=$3
+  local rc=0
+
+  if [[ -z $cmd || -z $type || -z $tuplepattern ]]
+  then
+    echo "USAGE: $FUNCNAME <cmd> <type> <tuplepattern>" >&2
+    return 255
+  fi
+
+  type -a $cmd >/dev/null 2>&1
+
+  if (( $? != 0 ))
+  then
+    echo "ERROR: $FUNCNAME: $cmd is not a executable command"  >&2
+    return 255
+  fi
+
+  lock tuples 
+     if locked_unchecked_tupleTypeExists $type
+     then
+       locked_unchecked_tupleCmd $cmd $type "$tuplepattern"
+       rc=$?
+     else 
+       echo "ERROR: $FUNCNAME: Tuple type $type does not exist"
+       rc=255
+      fi
+  unlock tuples 
+  return $rc
+}
+
+
+#
+# FIXME:  This is stupid and expensive on big lists
+#         fix this to improve performance
+#
+function commalisttopat
+{
+  local cl="$1"
+  local a
+
+  if [[ -n $cl ]]
+  then
+    a=( ${cl//,/ } )
+    if (( ${#a[@]} == 1 ))
+    then
+      echo "$cl"
+    else
+      echo "{$cl}"
+    fi
+  fi
+}
+
+function validkhuser
+{
+   local khuser=$1
+   if [[ "$khuser" =~ "^[a-zA-Z]+[a-zA-Z0-9]*$" ]]
+   then
+     return 0
+   else
+     return 255
+   fi
+}
+
+###  Node nodeid:owner:pnetids:inet:xnet:consid  ###
+function locked_touch_nodes
+{
+  local nodeidpat="$1"
+  local ownerpat="$2"
+  local pnetidpat="$3"
+  local inetflgpat="$4"
+  local xnetflgpat="$5"
+  local considpat="$6"
+
+  if [[ -z $nodeidpat || -z $ownerpat || -z $pnetidpat || -z $inetflgpat ||
+       -z $xnetflgpat || -z $considpat ]]
+  then
+     echo "USAGE: $FUNCNAME <nodeidpat> <ownerpat> <pnetidpat> <inetflgpat>"\
+         " <xnetflgpat> <considpat>"
+     return 255
+  fi
+  
+  locked_unchecked_tupleCmd touch Node \
+      "$nodeidpat:$ownerpat:$pnetidpat:$inetflgpat:$xnetflgpat:$considpat" 
+  return $?
+}
+
+###  Node nodeid:owner:pnetids:inet:xnet:consid  ###
+function locked_ls_nodes
+{
+  local nodeidpat="$1"
+  local ownerpat="$2"
+  local pnetidpat="$3"
+  local inetflgpat="$4"
+  local xnetflgpat="$5"
+  local considpat="$6"
+
+  if [[ -z $nodeidpat || -z $ownerpat || -z $pnetidpat || -z $inetflgpat ||
+       -z $xnetflgpat || -z $considpat ]]
+  then
+     echo "USAGE: $FUNCNAME <nodeidpat> <ownerpat> <pnetidpat> <inetflgpat>"\
+         " <xnetflg> <consid>"
+     return 255
+  fi
+  
+  locked_unchecked_tupleCmd ls Node \
+      "$nodeidpat:$ownerpat:$pnetidpat:$inetflgpat:$xnetflgpat:$considpat" 
+  return $?
+}
+
+###  Node nodeid:owner:pnetids:inet:xnet:consid  ###
+function locked_rm_nodes
+{
+  local nodeidpat="$1"
+  local ownerpat="$2"
+  local pnetidpat="$3"
+  local inetflgpat="$4"
+  local xnetflgpat="$5"
+  local considpat="$6"
+
+  if [[ -z $nodeidpat || -z $ownerpat || -z $pnetidpat || -z $inetflgpat ||
+       -z $xnetflgpat || -z $considpat ]]
+  then
+     echo "USAGE: $FUNCNAME <nodeidpat> <ownerpat> <pnetidpat> <inetflgpat>"\
+         " <xnetflgpat> <considpat>"
+     return 255
+  fi
+  
+  locked_unchecked_tupleCmd rm Node \
+      "$nodeidpat:$ownerpat:$pnetidpat:$inetflgpat:$xnetflgpat:$considpat" 
+  return $?
+}
+
+###   User name:cred  ####
+function locked_touch_users
+{
+  local userpat="$1"
+  local credpat="$2"
+
+  if [[ -z $userpat || -z $credpat ]]
+  then
+    echo "USAGE: $FUNCNAME <userpat> <credpat>"
+    return 255
+  fi
+  locked_unchecked_tupleCmd touch User "${userpat}:$credpat" 
+  return $?
+}
+
+###   User name:cred  ####
+function locked_ls_users
+{
+  local userpat="$1"
+  local credpat="$2"
+
+  if [[ -z $userpat || -z $credpat ]]
+  then
+    echo "USAGE: $FUNCNAME <userpat> <credpat>"
+    return 255
+  fi
+  locked_unchecked_tupleCmd ls User "${userpat}:$credpat" 
+  return $?
+}
+
+###   User name:cred  ####
+function locked_rm_users
+{
+  local userpat="$1"
+  local credpat="$2"
+
+  if [[ -z $userpat || -z $credpat ]]
+  then
+    echo "USAGE: $FUNCNAME <userpat> <credpat>"
+    return 255
+  fi
+  locked_unchecked_tupleCmd rm User "${userpat}:$credpat" 
+  return $?
+}
+
+###  Pnet pnetid:owner  ###
+function locked_touch_pnets
+{
+  local pnetidpat="$1"
+  local ownerpat="$2"
+
+  if [[ -z $pnetidpat || -z $ownerpat ]]
+  then
+    echo "USAGE: $FUNCNAME <pnetidpat> <ownerpat>"
+    return 255
+  fi
+  locked_unchecked_tupleCmd touch Pnet "${pnetidpat}:$ownerpat" 
+  return $?
+}
+
+###  Pnet pnetid:owner  ###
+function locked_ls_pnets
+{
+  local pnetidpat="$1"
+  local ownerpat="$2"
+
+  if [[ -z $pnetidpat || -z $ownerpat ]]
+  then
+    echo "USAGE: $FUNCNAME <pnetidpat> <ownerpat>"
+    return 255
+  fi
+  locked_unchecked_tupleCmd ls Pnet "${pnetidpat}:$ownerpat" 
+  return $?
+}
+
+###  Pnet pnetid:owner  ###
+function locked_rm_pnets
+{
+  local pnetidpat="$1"
+  local ownerpat="$2"
+
+  if [[ -z $pnetidpat || -z $ownerpat ]]
+  then
+    echo "USAGE: $FUNCNAME <pnetidpat> <ownerpat>"
+    return 255
+  fi
+  locked_unchecked_tupleCmd rm Pnet "${pnetidpat}:$ownerpat" 
+  return $?
+}
+
+locked_dealloc_pnetids()
+{
+   local users="$1"
+   local pnetids="$2"
+   local num="$3"
+   local pnetpat
+   local userpat
+
+   if [[ -z $users || -z $pnetids || -z $num ]]
+   then
+      echo "ERROR:  locked_dealloc_pnetids <user> <comma list of pnetids> <num in list>"
+      return 255
+   fi
+
+   pnetpat="$(commalisttopat $pnetids)"
+   userpat="$(commalisttopat $users)"
+   locked_rm_pnets "$pnetpat" "$userpat"
+
+   locked_undoPnetIDs $num
+   return 0   
+}
+
+# accepts a comma seperated list of users
+function locked_allocate_pnetids
+{
+   local users="$1"
+   local -i num=$2
+   local userpat
+   local u
+   local pnetids
+   local pnetpat
+   local rc
+
+   if [[ -z $users ]] || (( $num <= 0 ))
+   then
+      echo "USAGE: $FUNCNAME <comma seperated list of users> <num>"
+      return 255
+   fi
+
+   userpat="$(commalisttopat $users)"
+
+   if ! locked_ls_users "${userpat}" "*" >/dev/null 2>&1
+   then
+      echo "ERROR: $FUNCNAME some of the users specified do not exist."
+      return 255
+   fi
+
+   pnetids="$(locked_getNewPNetIDs $num)"
+   pnetids=${pnetids// /,}
+   pnetpat="$(commalisttopat $pnetids)"
+
+   if (( $? != 0 ))
+   then
+     return 255
+   fi
+
+   locked_touch_pnets "$pnetpat" "$userpat"
+   rc=$?
+   echo "$pnetids"
+   return $rc
+}
+
+locked_initFreeNodes()
+{
+   local maxnoderank
+   local nodepat
+   local myrank
+
+   # nodes are zero indexed so we start from zero and go to number of nodes - 1 
+   maxnoderank=$(($(getTotalNodes) - 1))
+   nodepat="{0..$maxnoderank}"
+   locked_touch_nodes "$nodepat" "$FREEOWNER" "$FREEPNET"\
+                      "$FREEINETFLG" "$FREEXNETFLG" "$FREECONID"
+
+   myrank=$(getMyRank)
+   if [[ -n $myrank ]] && (( $myrank <= $maxnoderank ))
+   then
+     locked_rm_nodes "$myrank" "*" "*" "*" "*" "*"
+   fi    
+
+   return 0
+}
+
+function locked_checkAndSetupTypes 
+{
+    # check to see that all the Tuple types we use
+    # exist and if not create them 
+    # User name:cred
+    if ! locked_unchecked_tupleTypeExists User 
+    then
+       locked_unchecked_tupleCreateType User
+    fi
+    
+    # Pnet pnetid:owner
+    if ! locked_unchecked_tupleTypeExists Pnet
+    then
+       locked_unchecked_tupleCreateType Pnet
+    fi
+
+    # Node nodeid:owner:pnetids:inet:xnet:consid
+    if ! locked_unchecked_tupleTypeExists Node
+    then
+       locked_unchecked_tupleCreateType Node
+       locked_initFreeNodes
+    fi
+}
+
+function acquireNodes
+{
+  local num=$1
+  local freelist
+  local nodes
+  local khuser
+  local conid
+  local -i createpnets=-1
+  local pnetids
+  local pnetidspat
+  local curpnetids
+  local crepnetids
+  local -i inet=0
+  local -i xnet=0
+  local cred=nocredentials
+  local -i newuser=0
+  
+  local    origargs="$@"
+  local -i optcount=0
+  
+  while getopts "n:p:ixc:h" OPT
+  do 
+    case $OPT in
+      ("n") pnetids="$OPTARG"; (( optcount=optcount + 2));;
+      ("p") createpnets="$OPTARG"; (( optcount=optcount + 2));;
+      ("i") inet=1; (( optcount=optcount + 1));;
+      ("x") xnet=1; (( optcount=optcount + 1));;
+      ("c") cred="$OPTARG"; (( optcount=optcount + 2));;
+      ("h") usage  acquireNodes; exit 255;;
+    esac
+  done
+ 
+  shift $optcount
+
+  khuser=$1 
+  if [[ -z $khuser ]]
+  then
+     echo "ERROR:  must specify user" >&2
+     usage acquireNodes
+     exit 255
+  fi
+      
+  if ! validkhuser $khuser
+  then
+    echo "ERROR: invalid user $khuser" >&2
+    usage acquireNodes
+    exit 255
+  fi
+
+  num=$2
+  if [[ -z $num ]]
+  then
+    num=1
+  fi 
+
+  if (( $num == 0 ))
+  then
+    echo "ERROR: allocation of 0 nodes not supported" >&2
+    usage acquireNodes
+    exit 255
+  fi
+
+  lock tuples
+
+    locked_checkAndSetupTypes    
+
+    if ! locked_ls_users "$khuser" "*" >/dev/null
+    then
+      locked_touch_users "$khuser" "$cred"
+      newuser=1
+    fi
+
+    pnetidspat="$(commalisttopat $pnetids)"
+    curpnetids=( $(locked_ls_pnets "*" "$khuser") )
+  
+    if [[ -n $pnetids ]]
+    then
+      if ! locked_ls_pnets "$pnetidspat" "$khuser" > /dev/null
+      then 
+        echo "ERROR: $FUNCNAME:  $khuser does not own all the network ids"\
+             " specified ($pnetids). The current set of network ids"\
+             " $khuser owns is: " ${curpnetids[@]}
+        if (( newuser == 1 )); then locked_rm_users "$khuser" "$cred"; fi
+        unlock tuples
+        return 255
+      fi
+    fi 
+
+    if (( $newuser == 1 && $createpnets == -1 )) 
+    then
+      createpnets=1
+    fi
+
+    if (( $createpnets == -1 )) && [[ -z $pnetids ]]
+    then 
+      if (( ${#curpnetids[@]} == 1 )) 
+      then
+        pnetids=${curpnetids[0]%%:*}
+      else
+        echo "ERROR:$FUNCNAME: must either specify one or more of the existing"\
+           " private networks (${curpnetids[@]}) for $khuser with the -n flage"\
+           " or use -c to specify the number of new network ids to create."
+        unlock tuples
+        return 255
+      fi
+    fi
+
+    if  (( $createpnets >= 0 )) 
+    then
+      crepnetids="$(locked_allocate_pnetids "$khuser" $createpnets)"
+      if [[ -n $pnetids ]]
+      then
+        pnetids="$pnetids,$crepnetids"
+      else
+        pnetids="$crepnetids"
+      fi
+    fi
+    pnetidspat="$(commalisttopat $pnetids)"
+
+    conid=$(locked_getNewConID)
+    if (( $? != 0 )) 
+    then
+      echo "ERROR: acquireNodes: unable to create a new console channel for"\
+           " you :-(" >&2
+      if (( $newuser == 1 )); then locked_rm_users "$khuser" "$cred"; fi
+      if (( $createpnets > 0 )); then locked_dealloc_pnetids "$khuser" "$crepnetids" "$createpnets"; fi
+      unlock tuples
+      return 255
+    fi
+   
+    # to keep things fast we cheat :-( and do direct commands on Node tuple dir
+    cd $KHTUPLEDIR/Node
+    freelist=( $(ls *:$FREEOWNER:* 2>/dev/null | sort -n) )
+    if (( ${#freelist[@]} >= $num ))
+    then
+        nodes=( ${freelist[@]:0:$num} )
+        rm ${nodes[@]}
+        touch ${nodes[@]//:*/:$khuser:$pnetids:$inet:$xnet:$conid}
+    fi
+
+    if [[ -z $nodes ]]
+    then
+      if (( $newuser == 1 )); then locked_rm_users "$khuser" "$cred"; fi
+      if (( $createpnets > 0 )); then locked_dealloc_pnetids "$khuser" "$crepnetids" "$createpnets"; fi
+      locked_undoConID $conid
+      echo "not enough nodes available"
+      unlock tuples
+      return 255;
+    fi
+    
+  unlock tuples 
+  
+ 
+  assignNodes "$khuser" "$pnetids" $inet $xnet $conid $num "${nodes[*]//:*/}"
+  if [[ -e /tmp/khmonpipe ]]
+  then 
+    echo "acquireNodes" > /tmp/khmonpipe
+    echo "acquireNodes" > /tmp/khmonpipe
+    echo "acquireNodes" > /tmp/khmonpipe
+  fi
+  return 0;
+}
+
+usage()
+{
+  local func=$1
+  if [[ -z $func ]]
+  then
+     echo "USAGE:  ${0##*/} func args" >&2
+     grep '^function' $0
+  else
+     case "$func" in 
+         'acquireNodes')
+            echo "USAGE: ${0##*/} acquireNodes [-n netid[,netid,...]]"\
+" [-p num] [-i] [-x] [-c credentials] user [num of nodes]" >&2
+            echo "     -n netid[,netid,...] : add the nodes to the existing"\
+" Private networks identified" >&2
+            echo "                by netid" >&2
+            echo "     -p num   : create num new Private networks for the"\
+" nodes">&2
+            echo "     -i       : add nodes to the Internal public network" >&2
+            echo "     -x       : add nodes to the External network" >&2
+            echo "     -c cred  : associated credentials with user" >&2
+            echo "     user     : user to get the nodes for" >&2
+            echo "  num of nodes: number of nodes to get default is 1" >&2
+            ;;
+          *)
+            usage
+            ;;
+     esac
+  fi
+}
+
+processargs()
+{
+  if [[ $# == 0 ]]
+  then
+    usage
+    exit 255
+  fi
+
+  dofunc=$1
+}
+
+processargs "$@"
+shift
+
+$dofunc "$@"
+
+exit $?

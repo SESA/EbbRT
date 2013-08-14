@@ -1,0 +1,13 @@
+#!/bin/bash
+#set -x
+
+if [[ $(type -p khctl ) ]]; then
+   declare SESA_UTIL=khctl
+fi
+
+if [[ ! -d $KHCTL_BASEDIR ]]; then
+  echo "ERROR: $KHCTL_BASEDIR not found"
+  exit 1
+fi
+
+$SESA_UTIL SESAlistApp
