@@ -19,6 +19,7 @@
 #define EBBRT_EBB_DATAFLOWCOORDINATOR_SINGLEDATAFLOWCOORDINATOR_HPP
 
 #include "ebb/DataflowCoordinator/DataflowCoordinator.hpp"
+#include "ebb/DataflowCoordinator/SingleDataflowCoordinator.pb.h"
 
 namespace ebbrt {
   class SingleDataflowCoordinator : public DataflowCoordinator {
@@ -26,8 +27,32 @@ namespace ebbrt {
     static EbbRoot* ConstructRoot();
 
     SingleDataflowCoordinator(EbbId id);
-    Future<void> Execute(TaskTable task_table,
-                         DataTable data_table) override;
+
+    virtual Future<void>
+    Execute(TaskTable task_table, DataTable data_table,
+            EbbRef<Executor> executor,
+            EbbRef<RemoteHashTable> hash_table) override;
+
+    virtual void
+    HandleMessage(NetworkId from, Buffer buf) override;
+
+  private:
+    bool TaskRunnable(const TaskDescriptor& task);
+    void Schedule(const std::string& task, NetworkId worker);
+
+    void HandleStartWork(NetworkId from,
+                         const SingleDataflowCoordinatorStartWork& message);
+    void HandleCompleteWork(NetworkId from,
+                            const SingleDataflowCoordinatorCompleteWork& message);
+
+    TaskTable task_table_;
+    DataTable data_table_;
+    std::stack<std::string> runnable_tasks_;
+    std::stack<NetworkId> idle_workers_;
+    std::unordered_map<NetworkId, std::string> running_workers_;
+
+    EbbRef<Executor> executor_;
+    EbbRef<RemoteHashTable> hash_table_;
   };
 };
 

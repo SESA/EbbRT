@@ -18,35 +18,48 @@
 #ifndef EBBRT_EBB_DATAFLOWCOORDINATOR_DATAFLOWCOORDINATOR_HPP
 #define EBBRT_EBB_DATAFLOWCOORDINATOR_DATAFLOWCOORDINATOR_HPP
 
+#include <list>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 
 #include "ebb/ebb.hpp"
 #include "ebb/EventManager/Future.hpp"
+#include "ebb/HashTable/RemoteHashTable.hpp"
 #include "misc/network.hpp"
 
 namespace ebbrt {
   class DataflowCoordinator : public EbbRep {
   public:
+    class Executor : public EbbRep {
+    public:
+      virtual Future<std::vector<Buffer> >
+      Execute(const std::string& task, std::vector<Buffer> inputs) = 0;
+    protected:
+      Executor(EbbId id) : EbbRep{id} {}
+    };
     struct TaskDescriptor {
-      std::unordered_set<std::string> inputs;
-      std::unordered_set<std::string> outputs;
+      std::string task;
+      std::vector<std::string> inputs;
+      std::vector<std::string> outputs;
     };
 
     struct DataDescriptor {
-      DataDescriptor() = default;
+      DataDescriptor() : exists{false} {}
       DataDescriptor(std::string prod) : producer{prod} {}
       std::string producer;
       std::unordered_set<std::string> consumers;
-      std::unordered_set<NetworkId> locations;
+      bool exists;
+      NetworkId location;
     };
 
     typedef std::unordered_map<std::string, TaskDescriptor> TaskTable;
     typedef std::unordered_map<std::string, DataDescriptor> DataTable;
 
     virtual Future<void> Execute(TaskTable task_table,
-                                 DataTable data_table)= 0;
+                                 DataTable data_table,
+                                 EbbRef<Executor> executor,
+                                 EbbRef<RemoteHashTable> hash_table)= 0;
   protected:
     DataflowCoordinator(EbbId id) : EbbRep{id} {}
   };

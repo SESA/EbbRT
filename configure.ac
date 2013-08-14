@@ -65,6 +65,36 @@ AX_CONFIG_FEATURE(
         [epoll], [This platform supports epoll(7)],
         [HAVE_EPOLL], [This platform supports epoll(7).])
 
+AC_ARG_WITH([protobuf-includedir],
+        [AS_HELP_STRING([--with-protobuf-includedir=INCLUDE_DIR],
+                [location of the protocol buffers headers, defaults to /usr/include])],
+        [PROTOBUF_INCLUDEDIR="$withval"],
+        [PROTOBUF_INCLUDEDIR='/usr/include'])
+AC_SUBST([PROTOBUF_INCLUDEDIR])
+
+AS_ECHO($PROTOBUF_INCLUDEDIR)
+
+CPPFLAGS="$CPPFLAGS -I$PROTOBUF_INCLUDEDIR"
+#AC_CHECK_HEADER([google/protobuf/stubs/common.h], [], [AC_MSG_ERROR([cannot find protobuf headers])])
+
+AC_ARG_WITH([protobuf-libdir],
+        [AS_HELP_STRING([--with-protobuf-libdir=LIB_DIR],
+                [location of the protocol buffers libraries, defaults to /usr/lib])],
+        [PROTOBUF_LIBDIR="$withval"],
+        [PROTOBUF_LIBDIR='/usr/lib'])
+AC_SUBST([PROTOBUF_LIBDIR])
+
+LDFLAGS="$LDFLAGS -L$PROTOBUF_LIBDIR"
+
+AC_CHECK_LIB([protobuf-lite], [main], [], [AC_MSG_ERROR([cannot find protobuf library])])
+
+AC_ARG_WITH([protoc],
+        [AS_HELP_STRING([--with-protoc=PATH],
+                [location of the protoc protocol buffer compiler binary, defaults to protoc])],
+        [PROTOC="$withval"],
+        [PROTOC='protoc'])
+AC_SUBST([PROTOC])
+
 # Checks for programs.
 AM_PROG_AS
 AC_PROG_CC

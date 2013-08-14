@@ -18,12 +18,15 @@ EXTRA_PROGRAMS += src/app/LibFox/mcphoton-dataflow
 src_app_LibFox_mcphoton_dataflow_SOURCES = \
 	src/app/LibFox/app-dataflow.cpp \
 	src/app/LibFox/mcphoton-dataflow.cpp \
+	src/app/LibFox/MCPhotonExecutor.cpp \
 	src/app/LibFox/photon.c
 
 src_app_LibFox_mcphoton_dataflow_ebbs = \
 	src/ebb/EbbManager/libPrimitiveEbbManager.a \
 	src/ebb/EventManager/libSimpleEventManager.a \
-	src/ebb/DataflowCoordinator/libSingleDataflowCoordinator.a
+	src/ebb/MessageManager/libMPIMessageManager.a \
+	src/ebb/DataflowCoordinator/libSingleDataflowCoordinator.a \
+	src/ebb/HashTable/libSimpleRemoteHashTable.a
 
 src_app_LibFox_mcphoton_dataflow_LDFLAGS = \
 	$(app_linkflags) \

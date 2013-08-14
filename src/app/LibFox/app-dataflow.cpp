@@ -17,22 +17,23 @@
 */
 
 #include "app/app.hpp"
-#include "ebb/EbbManager/EbbManager.hpp"
-#include "ebb/EventManager/EventManager.hpp"
-//#include "ebb/MessageManager/MessageManager.hpp"
 
 constexpr ebbrt::app::Config::InitEbb late_init_ebbs[] = {
   { .name = "EbbManager" },
   { .name = "EventManager" },
-  //{ .name = "MessageManager" },
-  { .name = "DataflowCoordinator" }
+  { .name = "MessageManager" },
+  { .name = "DataflowCoordinator" },
+  { .name = "MCPhotonExecutor" },
+  { .name = "RemoteHashTable" }
 };
 
 constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
   {.name = "EbbManager", .id = 2},
   {.name = "EventManager", .id = 5},
-  //  {.name = "MessageManager", .id = 7},
-  {.name = "DataflowCoordinator", .id = 8}
+  {.name = "MessageManager", .id = 7},
+  {.name = "DataflowCoordinator", .id = 8},
+  {.name = "MCPhotonExecutor", .id = 9},
+  {.name = "RemoteHashTAble", .id = 10}
 };
 
 const ebbrt::app::Config ebbrt::app::config = {

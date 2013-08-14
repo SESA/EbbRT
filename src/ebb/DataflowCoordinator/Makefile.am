@@ -18,3 +18,14 @@ EXTRA_LIBRARIES += \
 
 src_ebb_DataflowCoordinator_libSingleDataflowCoordinator_a_SOURCES = \
 	src/ebb/DataflowCoordinator/SingleDataflowCoordinator.cpp
+
+src/ebb/DataflowCoordinator/SingleDataflowCoordinator.$(OBJEXT): \
+	src/ebb/DataflowCoordinator/SingleDataflowCoordinator.pb.h
+
+nodist_src_ebb_DataflowCoordinator_libSingleDataflowCoordinator_a_SOURCES = \
+	src/ebb/DataflowCoordinator/SingleDataflowCoordinator.pb.cc \
+	src/ebb/DataflowCoordinator/SingleDataflowCoordinator.pb.h
+
+CLEANFILES += \
+	src/ebb/DataflowCoordinator/SingleDataflowCoordinator.pb.cc \
+	src/ebb/DataflowCoordinator/SingleDataflowCoordinator.pb.h

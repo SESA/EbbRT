@@ -1,0 +1,29 @@
+package ebbrt;
+
+option optimize_for = LITE_RUNTIME;
+
+message SingleDataflowCoordinatorMessage {
+  enum Type { STARTWORK = 1; COMPLETEWORK = 2; }
+
+  required Type type = 1;
+
+  optional SingleDataflowCoordinatorStartWork start_work = 2;
+  optional SingleDataflowCoordinatorCompleteWork complete_work = 3;
+}
+
+message SingleDataflowCoordinatorStartWork {
+  required uint32 executor = 1;
+  required uint32 hash_table = 2;
+  required bytes task_id = 3;
+  required bytes task_name = 4;
+  message Input {
+    required uint32 location = 1;
+    required bytes name = 2;
+  }
+  repeated Input inputs = 5;
+  repeated bytes outputs = 6;
+}
+
+message SingleDataflowCoordinatorCompleteWork {
+  required bytes task_id = 1;
+}

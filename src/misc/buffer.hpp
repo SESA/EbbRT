@@ -22,6 +22,7 @@
 
 #include <list>
 #include <memory>
+#include <string>
 
 namespace ebbrt {
   typedef std::list<std::pair<const void*, size_t> > BufferList;
@@ -30,6 +31,7 @@ namespace ebbrt {
     std::shared_ptr<char> ptr_;
     size_t length_;
   public:
+    Buffer() = default;
     Buffer(void* buffer, size_t length)
       : ptr_{static_cast<char*>(buffer), std::free},
       length_{length}
@@ -41,6 +43,16 @@ namespace ebbrt {
       : ptr_{static_cast<char*>(buffer), deleter},
       length_{length}
     {
+    }
+
+    Buffer(const std::string& str) {
+      auto buf = std::malloc(str.length());
+      if (buf == nullptr) {
+        throw std::bad_alloc();
+      }
+      std::strncpy(static_cast<char*>(buf), str.c_str(), str.length());
+      ptr_ = std::shared_ptr<char>(static_cast<char*>(buf), std::free);
+      length_ = str.length();
     }
 
     Buffer operator+(size_t offset) {

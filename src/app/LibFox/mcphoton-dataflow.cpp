@@ -18,10 +18,12 @@
 
 #include <cstdlib>
 
-//#include <mpi.h>
+#include <mpi.h>
 
 #include "ebbrt.hpp"
+#include "app/LibFox/MCPhotonExecutor.hpp"
 #include "ebb/DataflowCoordinator/DataflowCoordinator.hpp"
+#include "ebb/MessageManager/MessageManager.hpp"
 
 namespace {
   constexpr int DEFAULT_NPROC = 0;
@@ -69,22 +71,30 @@ int main(int argc, char* argv[])
     exit(EXIT_FAILURE);
   }
 
-  // int provided;
-  // if (MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided) !=
-  //     MPI_SUCCESS) {
-  //   fprintf(stderr, "MPI_Init_thread failed");
-  //   exit(-1);
-  // }
-  // if (provided != MPI_THREAD_MULTIPLE) {
-  //   fprintf(stderr, "MPI does not provide proper thread support");
-  //   exit(-1);
-  // }
+  int provided;
+  if (MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided) !=
+      MPI_SUCCESS) {
+    fprintf(stderr, "MPI_Init_thread failed");
+    exit(-1);
+  }
+  if (provided != MPI_THREAD_MULTIPLE) {
+    fprintf(stderr, "MPI does not provide proper thread support");
+    exit(-1);
+  }
 
-  int rank = 0;
-  //MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   ebbrt::EbbRT instance;
   ebbrt::Context context{instance};
+  context.Activate();
+
+  ebbrt::message_manager->StartListening();
+
+  if (MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
+    fprintf(stderr, "MPI_Barrier failed");
+    exit(-1);
+  }
 
   if (rank == 0) {
     //TODO: this should be replicated for fault tolerance
@@ -94,39 +104,39 @@ int main(int argc, char* argv[])
     ebbrt::DataflowCoordinator::DataTable::iterator data_it;
     ebbrt::DataflowCoordinator::TaskTable::iterator task_it;
 
-    std::tie(data_it, std::ignore) =
-      data_table.emplace("data0", ebbrt::DataflowCoordinator::DataDescriptor());
-    data_it->second.consumers.insert("photon0");
-    std::tie(data_it, std::ignore) =
-      data_table.emplace("data1", ebbrt::DataflowCoordinator::DataDescriptor());
-    data_it->second.consumers.insert("photon1");
-    std::tie(data_it, std::ignore) =
-      data_table.emplace("data2", ebbrt::DataflowCoordinator::DataDescriptor());
-    data_it->second.consumers.insert("photon2");
-    std::tie(data_it, std::ignore) =
-      data_table.emplace("data3", ebbrt::DataflowCoordinator::DataDescriptor());
-    data_it->second.consumers.insert("photon3");
+    // std::tie(data_it, std::ignore) =
+    //   data_table.emplace("data0", ebbrt::DataflowCoordinator::DataDescriptor());
+    // data_it->second.consumers.insert("photon0");
+    // std::tie(data_it, std::ignore) =
+    //   data_table.emplace("data1", ebbrt::DataflowCoordinator::DataDescriptor());
+    // data_it->second.consumers.insert("photon1");
+    // std::tie(data_it, std::ignore) =
+    //   data_table.emplace("data2", ebbrt::DataflowCoordinator::DataDescriptor());
+    // data_it->second.consumers.insert("photon2");
+    // std::tie(data_it, std::ignore) =
+    //   data_table.emplace("data3", ebbrt::DataflowCoordinator::DataDescriptor());
+    // data_it->second.consumers.insert("photon3");
 
     std::tie(task_it, std::ignore) =
       task_table.emplace("photon0",
                          ebbrt::DataflowCoordinator::TaskDescriptor());
-    task_it->second.inputs.insert("data0");
-    task_it->second.outputs.insert("photon_out0");
+    task_it->second.task = "photon0";
+    task_it->second.outputs.emplace_back("photon_out0");
     std::tie(task_it, std::ignore) =
       task_table.emplace("photon1",
                          ebbrt::DataflowCoordinator::TaskDescriptor());
-    task_it->second.inputs.insert("data1");
-    task_it->second.outputs.insert("photon_out1");
+    task_it->second.task = "photon1";
+    task_it->second.outputs.emplace_back("photon_out1");
     std::tie(task_it, std::ignore) =
       task_table.emplace("photon2",
                          ebbrt::DataflowCoordinator::TaskDescriptor());
-    task_it->second.inputs.insert("data2");
-    task_it->second.outputs.insert("photon_out2");
+    task_it->second.task = "photon2";
+    task_it->second.outputs.emplace_back("photon_out2");
     std::tie(task_it, std::ignore) =
       task_table.emplace("photon3",
                          ebbrt::DataflowCoordinator::TaskDescriptor());
-    task_it->second.inputs.insert("data3");
-    task_it->second.outputs.insert("photon_out3");
+    task_it->second.task = "photon3";
+    task_it->second.outputs.emplace_back("photon_out3");
 
     std::tie(data_it, std::ignore) =
       data_table.emplace("photon_out0",
@@ -148,15 +158,17 @@ int main(int argc, char* argv[])
     std::tie(task_it, std::ignore) =
       task_table.emplace("reduce0_0",
                          ebbrt::DataflowCoordinator::TaskDescriptor());
-    task_it->second.inputs.insert("photon_out0");
-    task_it->second.inputs.insert("photon_out1");
-    task_it->second.outputs.insert("reduce_out0_0");
+    task_it->second.task = "reduce";
+    task_it->second.inputs.emplace_back("photon_out0");
+    task_it->second.inputs.emplace_back("photon_out1");
+    task_it->second.outputs.emplace_back("reduce_out0_0");
     std::tie(task_it, std::ignore) =
       task_table.emplace("reduce0_1",
                          ebbrt::DataflowCoordinator::TaskDescriptor());
-    task_it->second.inputs.insert("photon_out2");
-    task_it->second.inputs.insert("photon_out3");
-    task_it->second.outputs.insert("reduce_out0_1");
+    task_it->second.task = "reduce";
+    task_it->second.inputs.emplace_back("photon_out2");
+    task_it->second.inputs.emplace_back("photon_out3");
+    task_it->second.outputs.emplace_back("reduce_out0_1");
 
     std::tie(data_it, std::ignore) =
       data_table.emplace("reduce_out0_0",
@@ -170,45 +182,33 @@ int main(int argc, char* argv[])
     std::tie(task_it, std::ignore) =
       task_table.emplace("reduce1_0",
                          ebbrt::DataflowCoordinator::TaskDescriptor());
-    task_it->second.inputs.insert("reduce_out0_0");
-    task_it->second.inputs.insert("reduce_out0_1");
-    task_it->second.outputs.insert("reduce_out1_0");
-
+    task_it->second.task = "reduce";
+    task_it->second.inputs.emplace_back("reduce_out0_0");
+    task_it->second.inputs.emplace_back("reduce_out0_1");
+    task_it->second.outputs.emplace_back("reduce_out1_0");
     std::tie(data_it, std::ignore) =
       data_table.emplace("reduce_out1_0",
                          ebbrt::DataflowCoordinator::DataDescriptor("reduce1_0"));
+    data_it->second.consumers.insert("print_results");
+
+    std::tie(task_it, std::ignore) =
+      task_table.emplace("print_results",
+                         ebbrt::DataflowCoordinator::TaskDescriptor());
+    task_it->second.task = "print";
+    task_it->second.inputs.emplace_back("reduce_out1_0");
 
     ebbrt::EbbRef<ebbrt::DataflowCoordinator>
       dfcoord{ebbrt::lrt::trans::find_static_ebb_id("DataflowCoordinator")};
 
-    dfcoord->Execute(std::move(task_table), std::move(data_table));
-    // std::unordered_set<std::string> runnable_tasks;
-    // std::unordered_set<int> idle_workers;
+    ebbrt::EbbRef<ebbrt::MCPhotonExecutor>
+      executor{ebbrt::lrt::trans::find_static_ebb_id("MCPhotonExecutor")};
 
-    // idle_workers.insert(0);
-    // for (const auto& kv : task_table) {
-    //   if (task_runnable(kv.second)) {
-    //     runnable_tasks.insert(kv.first);
-    //   }
-    // }
+    ebbrt::EbbRef<ebbrt::RemoteHashTable>
+      hash_table{ebbrt::lrt::trans::find_static_ebb_id("RemoteHashTable")};
 
-    // for (auto& task : runnable_tasks) {
-    //   std::cout << task << std::endl;
-    // }
-
-    // for (auto& worker : idle_workers) {
-    //   std::cout << worker << std::endl;
-    // }
+    dfcoord->Execute(std::move(task_table), std::move(data_table), executor,
+                     hash_table);
   }
-}
 
-  // bool
-  //   task_runnable(const TaskDescriptor& task) {
-  //   for (const auto& data_id : task.inputs) {
-  //     const auto& data = data_table[data_id];
-  //     if (!data.producer.empty() && data.locations.empty()) {
-  //       return false;
-  //     }
-  //   }
-  //   return true;
-  // }
+  context.Loop(-1);
+}

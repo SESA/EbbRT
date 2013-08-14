@@ -84,12 +84,12 @@ void
 ebbrt::MPIMessageManager::StartListening()
 {
   interrupt_ = event_manager->AllocateInterrupt([]() {
-      auto me = static_cast<EbbRef<MPIMessageManager> >(message_manager);
+      EbbRef<MPIMessageManager> me = message_manager;
       me->DispatchMessage();
     });
 
   event_manager->RegisterFunction([]() {
-      auto me = static_cast<EbbRef<MPIMessageManager> >(message_manager);
+      EbbRef<MPIMessageManager> me = message_manager;
       return me->CheckForInterrupt();
     });
 }

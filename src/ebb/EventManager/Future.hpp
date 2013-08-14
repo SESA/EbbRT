@@ -35,16 +35,21 @@ namespace ebbrt {
     template <typename T>
     class Future;
 
+    struct make_future_tag{};
+
+    template<class T, class... Args>
+    Future<T> make_future(Args&&... args);
+
     template <typename T>
     class SharedData {
     public:
       SharedData();
+
+      template<class... Args>
+      SharedData(make_future_tag tag, Args&&... args);
+
       // no copy
       SharedData(const SharedData&) = delete;
-
-      //perfect construct T
-      template <typename ...Args>
-      SharedData(Args&&... args);
 
       // no copy
       SharedData& operator=(const SharedData&) = delete;
@@ -70,6 +75,7 @@ namespace ebbrt {
 
       std::forward_list<std::function<void(T)> > success_funcs_;
       std::forward_list<std::function<void(std::exception_ptr)> > failure_funcs_;
+    private:
     };
 
     template <>
@@ -105,8 +111,7 @@ namespace ebbrt {
     template <typename T>
     class Future {
     public:
-      template <typename ...Args>
-      explicit Future(Args&&... args);
+      Future() = default;
 
       template <typename F> //FIXME: flatten return
       Future<typename std::result_of<F(T)>::type>
@@ -128,8 +133,20 @@ namespace ebbrt {
       explicit Future(std::shared_ptr<SharedData<T> >& s) :
         s_{s} {}
 
+      template<typename T1, typename... Args>
+      friend Future<T1> make_future(Args&&... args);
+
+      template<class... Args>
+      Future(make_future_tag tag, Args&&... args);
+
       std::shared_ptr<SharedData<T> > s_;
     };
+
+    template<class T, class... Args>
+    Future<T> make_future(Args&&... args)
+    {
+      return Future<T>(make_future_tag(), std::forward<Args>(args)...);
+    }
 
     template <>
     class Future<void> {
@@ -277,13 +294,42 @@ namespace ebbrt {
     }
 
     template <typename T>
+    Future<std::vector<T> >
+    when_all(std::vector<Future<T> >& vec)
+    {
+      static_assert(std::is_default_constructible<T>::value,
+                    "Future type is not default constructible");
+      if (vec.empty()) {
+        return make_future<std::vector<T> >();
+      }
+      auto retvec = new std::vector<T>(vec.size());
+      auto count = new std::atomic_size_t{vec.size()};
+      auto promise = new Promise<std::vector<T> >();
+      for (int i = 0; i < vec.size(); ++i) {
+        vec[i].OnSuccess([=](T val){
+            (*retvec)[i] = std::move(val);
+            if (count->fetch_sub(1) == 1) {
+              //we are the last one to fulfill it
+              promise->Set(std::move(*retvec));
+              delete retvec;
+              delete count;
+              delete promise;
+            }
+          });
+      }
+      return promise->GetFuture();
+    }
+
+    template <typename T>
     SharedData<T>::SharedData() : state_{PENDING} {}
 
     //perfect construct T
     template <typename T>
     template <typename ...Args>
-    SharedData<T>::SharedData(Args&&... args) : state_{FULFILLED},
-      val_{std::forward<Args>(args)...} {}
+    SharedData<T>::SharedData(make_future_tag tag, Args&&... args)
+      : state_{FULFILLED}, val_(std::forward<Args>(args)...)
+    {
+    }
 
     template <typename T>
     void
@@ -309,7 +355,7 @@ namespace ebbrt {
       assert(state_ == PENDING);
       {
         mutables_.Lock();
-        val_ = val;
+        val_ = std::move(val);
         std::atomic_thread_fence(std::memory_order_release);
         state_ = FULFILLED;
         mutables_.Unlock();
@@ -409,7 +455,7 @@ namespace ebbrt {
       auto ret = promise->GetFuture();
       list.emplace_front([=](T val) {
           try {
-            promise->Set(f(val));
+            promise->Set(f(std::move(val)));
           } catch (...) {
             promise->SetException(std::current_exception());
           }
@@ -542,9 +588,9 @@ namespace ebbrt {
 
     template <typename T>
     template <typename ...Args>
-    Future<T>::Future(Args&&... args) :
+    Future<T>::Future(make_future_tag tag, Args&&... args) :
       s_{std::make_shared<SharedData<T> >
-        (std::forward<Args>(args)...)}
+        (tag, std::forward<Args>(args)...)}
     {
     }
 
@@ -712,7 +758,7 @@ namespace ebbrt {
     void
     Promise<T>::Set(T&& val)
     {
-      i_->Set(val);
+      i_->Set(std::move(val));
     }
 
     template <typename T>
@@ -757,5 +803,7 @@ namespace ebbrt {
   using future_internal::UnfulfilledFuture;
   using future_internal::UnfailedFuture;
   using future_internal::async;
+  using future_internal::make_future;
+  using future_internal::when_all;
 }
 #endif
