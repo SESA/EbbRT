@@ -1,0 +1,11 @@
+Kittyhawk for SESA acts as a utility layer for the management of virtual
+nodes. The scripts within contain the logic to allocate and deallocate virtual
+machines (qemu+kvm) and store thier information in a local database.
+
+khclean - end active applications / delete entire utility database
+khctl - interfaces for managing kh
+khdo - issue commands to a console
+khget - allocate a node to an application
+khls - list active applications
+khrm - remove an active application
+setup - set up an EbbRT build testbed, a new khdb and some helper scripts
