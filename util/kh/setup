@@ -1,0 +1,204 @@
+#!/bin/bash
+# setup a build tree conducive to sesa/kittyhawk utility layer usage 
+# 
+# Instructions: The setup the EbbRT x84_64 utility build run this script from
+# the desires build direction, passing in the EbbRT source directory as the
+# only argument.
+src=$1
+imgtype=iso
+
+# By default we assume the script is run from EbbRt/../build
+if [[ -z $src ]]
+then
+    src=../EbbRT
+fi
+
+# check if we've discovered the EbbRT source
+if [[ ! -a $src/configure.ac ]]; then
+  echo "ERROR: $src does not seem to be a known src directory"
+  exit -1
+fi
+
+echo "Source directory found: $src"
+echo "Running autoconfig..."
+
+autoreconf -i $src
+if [[ ! -a $src/configure ]]
+then
+  echo "ERROR: $src/configure not found"
+  exit -1
+fi
+
+base=.
+ulnx=$base/ulnx
+bare=$base/bare
+#TODO: debug flags & optimisations
+flags='-g -O0'
+
+# Run configuration and make for both platforms
+mkdir -p $bare $ulnx
+
+echo "$src/configure 'CXXFLAGS=$flags' " >> $ulnx/doconfig
+(cd $ulnx; . doconfig && make)
+
+echo "$src/configure 'CXXFLAGS=$flags' --host=x86_64-pc-ebbrt " >> $bare/doconfig
+(cd $bare; . doconfig && make)
+
+#################################################
+# envoirnment variables
+#################################################
+cat > $base/loadenv << EOF
+export SESA=1
+export SESA_SRC=$src
+export KHCTL_BASEDIR=$(readlink -f ${base}/khdb)
+EOF
+echo 'export PATH=$PATH:$SESA_SRC/util/kh' >> $base/loadenv
+
+#################################################
+# makefile
+#################################################
+
+cat > $base/Makefile << EOF
+all: .DEFAULT
+.DEFAULT:
+	make -C ulnx \${MAKECMDGOALS}
+	make -C bare \${MAKECMDGOALS}
+EOF
+
+#################################################
+# make the apps
+#################################################
+
+touch $base/makeapp
+chmod 755 $base/makeapp
+
+cat > $base/makeapp << EOF
+#!/bin/bash
+base=$base
+ulnx=$ulnx
+bare=$bare
+imgtype=$imgtype
+EOF
+
+echo 'app=$1
+if [[ -z $app ]]
+then
+  echo "USAGE: $0 <appName>"
+  exit -1
+fi
+
+make -C $ulnx src/app/$app/$app
+make -C $bare src/app/$app/$app.$imgtype
+  
+'>> $base/makeapp 
+
+
+#################################################
+# run the apps
+#################################################
+
+touch $base/runapp
+chmod 755 $base/runapp
+
+cat > $base/runapp << EOF
+#!/bin/bash
+src=$src
+base=$base
+ulnx=$ulnx
+bare=$bare
+imgtype=$imgtype
+export SESA_GET=khget
+EOF
+
+echo '
+src=/home/jmcadden/work/sesa/EbbRT
+base=.
+ulnx=./ulnx
+bare=./bare
+imgtype=iso
+export SESA_GET=/home/jmcadden/work/sesa/EbbRT/util/kh/khget
+export SESA_UTIL=/home/jmcadden/work/sesa/EbbRT/util/kh/khctl
+export SESA_BASEDIR=/scratch/build/khdb
+
+declare app
+declare count
+declare name
+declare tap
+declare fcnt
+declare -i lp=0
+declare -i optcount=0
+
+while getopts "n:t:f:" OPT
+do 
+  case $OPT in
+      ("n") name="$OPTARG"; (( optcount=optcount + 2));;
+      ("t") tap="$OPTARG"; (( optcount=optcount + 2));;
+      ("f") fcnt="$OPTARG"; (( optcount=optcount + 2));;
+      ("P") lp=1; (( optcount=optcount + 1));;
+  esac
+done
+
+shift $optcount
+app=$1
+count=$2
+if [[ -z $count ]]; then count=1; fi
+
+
+if [[ -z $app  || -z $count ]]
+then
+  echo "USAGE: $0 [-n name] [-t tap] [-f fcnt] <app> <count>"
+  echo "     -n  name : specify name of the job " 
+  echo "     -t  tap  : tap interface (sudo required)" 
+  echo "     -f  fcnt : load "fcnt"-many linux front-end processes" 
+  #echo "     -P       : run front-end as a local process" 
+  echo "     app      : EbbRT application to run (e.g., HelloWorld)"
+  echo "     count    : num of baremetal nodes to boot"
+  exit 1;
+fi
+
+if [[ -n $tap ]]; then 
+    if [[ $UID != 0 ]]; then
+      echo "Error: sudo required for TAP interfaces"
+      exit 1
+    else
+      export SESA_TAP=$tap
+    fi
+fi
+
+if [[ -z $name ]]; then name=$app$RANDOM; fi
+APPNAME="$name"
+BARE_IMG=$(readlink -f ${base}/bare/src/app/$app/$app.$imgtype)
+FNT_IMG=$(readlink -f ${base}/ulnx/src/app/$app/$app)
+
+if [[ ! -a $BARE_IMG ]]; then
+  echo "ERROR: binaries not found for $app. Try running ./makeapp $app"
+  exit 1
+fi
+
+echo "Loading nodes for $name"
+
+# frontend 
+if [[ -n $fcnt && $fcnt > 0 ]]; then
+    if [[ $lp > 0 ]]; then
+      # local process
+      for i in {1..$fcnt}; do
+        xterm -hold -e $FNT_IMG &
+      done
+    else
+      # linux vm front-ends
+      echo "#!/bin/bash" > $ulnx/run
+      echo "/root/ebbrt/src/app/$app/$app" >> $ulnx/run
+      mnt=$(readlink -f ${base}/ulnx)
+      ftcmd="$($SESA_GET -f -m $mnt $APPNAME $sesalnx $fcnt)"
+      serials=$(echo "$ftcmd" | grep serial | while read node nn junk path; do echo $path; done)
+
+      for sock in $serials; do
+        xterm -e socat - UNIX-CONNECT:$sock &
+      done
+    fi
+  sleep 3
+fi
+
+bkcmd="$($SESA_GET $APPNAME $BARE_IMG $count)"
+echo $bkcmd
+' >> $base/runapp 
