@@ -18,792 +18,876 @@
 #ifndef EBBRT_EBB_EVENTMANAGER_FUTURE_HPP
 #define EBBRT_EBB_EVENTMANAGER_FUTURE_HPP
 
-#include <cassert>
-
 #include <atomic>
-#include <forward_list>
+#include <exception>
+#include <memory>
 #include <mutex>
+#include <stdexcept>
 
 #include "ebb/EventManager/EventManager.hpp"
-#include "src/sync/spinlock.hpp"
 
 namespace ebbrt {
-  namespace future_internal {
-    template <typename T>
-    class Promise;
+  template <typename Res>
+  class Future;
 
-    template <typename T>
-    class Future;
+  template <typename Res>
+  class Promise;
 
-    struct make_future_tag{};
+  enum class launch {
+    sync,
+      async
+      };
 
-    template<class T, class... Args>
-    Future<T> make_future(Args&&... args);
+  struct unready_future_error : public std::logic_error
+  {
+    explicit unready_future_error(const std::string& what_arg)
+      : std::logic_error{what_arg} {}
+    explicit unready_future_error(const char* what_arg)
+      : std::logic_error{what_arg} {}
+  };
 
-    template <typename T>
-    class SharedData {
+  template <typename T, typename... Args>
+  Future<T> make_ready_future(Args&&... args);
+
+  template <typename T>
+  Future<T> make_failed_future(std::exception_ptr);
+
+  template <typename T>
+  struct Flatten {
+    typedef T type;
+  };
+
+  template <typename T>
+  struct Flatten<Future<T> > {
+    typedef typename Flatten<T>::type type;
+  };
+
+  template <typename F, typename... Args>
+  Future<typename Flatten<typename std::result_of<F(Args...)>::type>::type>
+  async(F&& f, Args&&... args);
+
+  namespace __future_detail {
+    struct make_ready_future_tag {};
+
+    template <typename Res>
+    class State {
+      Res val_;
+      std::exception_ptr eptr_;
+      move_function<void()> func_;
+      std::atomic_bool ready_;
+      std::mutex mutex_;
     public:
-      SharedData();
+      State();
 
-      template<class... Args>
-      SharedData(make_future_tag tag, Args&&... args);
+      State(std::exception_ptr eptr);
 
-      // no copy
-      SharedData(const SharedData&) = delete;
+      template <typename... Args>
+      State(make_ready_future_tag tag, Args&&... args);
 
-      // no copy
-      SharedData& operator=(const SharedData&) = delete;
+      template <typename F>
+      Future<typename Flatten<typename std::result_of<F(Future<Res>)>::type>::type>
+      Then(launch policy, F&& func, Future<Res> fut);
 
-      void Set(const T& val);
+      void SetValue(Res&& res);
 
-      void Set(T&& val);
+      void SetException(std::exception_ptr eptr);
 
-      void Set(Future<T> fut);
+      Res Get();
 
-      void SetException(const std::exception_ptr& exception);
-
-      Spinlock mutables_;
-
-      static constexpr unsigned PENDING = 0;
-      static constexpr unsigned FULFILLED = 1;
-      static constexpr unsigned FAILED = 2;
-
-      std::atomic_uint state_;
-
-      T val_;
-      std::exception_ptr exception_;
-
-      std::forward_list<std::function<void(T)> > success_funcs_;
-      std::forward_list<std::function<void(std::exception_ptr)> > failure_funcs_;
+      bool Ready() const;
     private:
+      //Non void return then
+      template <typename F>
+      typename std::enable_if<!std::is_void<typename std::result_of
+                                            <F(Future<Res>)>::type>::value,
+                              Future<typename Flatten<typename std::result_of
+                                                      <F(Future<Res>)>::type>::type> >::type
+      ThenHelp(launch policy, F&& func, Future<Res> fut);
+
+      //void return then
+      template <typename F>
+      typename std::enable_if<std::is_void<typename std::result_of
+                                           <F(Future<Res>)>::type>::value,
+                              Future<typename Flatten<typename std::result_of
+                                                      <F(Future<Res>)>::type>::type> >::type
+      ThenHelp(launch policy, F&& func, Future<Res> fut);
     };
 
     template <>
-    class SharedData<void> {
+    class State<void> {
+      std::exception_ptr eptr_;
+      move_function<void()> func_;
+      std::atomic_bool ready_;
+      std::mutex mutex_;
     public:
-      SharedData();
-      // no copy
-      SharedData(const SharedData&) = delete;
+      State();
 
-      // no copy
-      SharedData& operator=(const SharedData&) = delete;
+      State(std::exception_ptr eptr);
 
-      void Set();
+      State(make_ready_future_tag tag);
 
-      void Set(Future<void> fut);
+      template <typename F>
+      Future<typename Flatten<typename std::result_of<F(Future<void>)>::type>::type>
+      Then(launch policy, F&& func, Future<void> fut);
 
-      void SetException(const std::exception_ptr& exception);
+      void SetValue();
 
-      Spinlock mutables_;
+      void SetException(std::exception_ptr eptr);
 
-      static constexpr unsigned PENDING = 0;
-      static constexpr unsigned FULFILLED = 1;
-      static constexpr unsigned FAILED = 2;
+      void Get();
 
-      std::atomic_uint state_;
-
-      std::exception_ptr exception_;
-
-      std::forward_list<std::function<void()> > success_funcs_;
-      std::forward_list<std::function<void(std::exception_ptr)> > failure_funcs_;
-    };
-
-    template <typename T>
-    class Future {
-    public:
-      Future() = default;
-
-      template <typename F> //FIXME: flatten return
-      Future<typename std::result_of<F(T)>::type>
-      OnSuccess(F f);
-
-      template <typename F> //FIXME: flatten return
-      Future<typename std::result_of<F(std::exception_ptr)>::type>
-      OnFailure(F f);
-
-      T Get() const;
-
-      std::exception_ptr GetException() const;
-
-      bool Fulfilled() const;
-
-      bool Failed() const;
+      bool Ready() const;
     private:
-      friend class Promise<T>;
-      explicit Future(std::shared_ptr<SharedData<T> >& s) :
-        s_{s} {}
+      //Non void return then
+      template <typename F>
+      typename std::enable_if<!std::is_void<typename std::result_of
+                                            <F(Future<void>)>::type>::value,
+                              Future<typename Flatten<typename std::result_of
+                                                      <F(Future<void>)>::type>::type> >::type
+      ThenHelp(launch policy, F&& func, Future<void> fut);
 
-      template<typename T1, typename... Args>
-      friend Future<T1> make_future(Args&&... args);
-
-      template<class... Args>
-      Future(make_future_tag tag, Args&&... args);
-
-      std::shared_ptr<SharedData<T> > s_;
+      //void return then
+      template <typename F>
+      typename std::enable_if<std::is_void<typename std::result_of
+                                           <F(Future<void>)>::type>::value,
+                              Future<typename Flatten<typename std::result_of
+                                                      <F(Future<void>)>::type>::type> >::type
+      ThenHelp(launch policy, F&& func, Future<void> fut);
     };
+  }
 
-    template<class T, class... Args>
-    Future<T> make_future(Args&&... args)
-    {
-      return Future<T>(make_future_tag(), std::forward<Args>(args)...);
-    }
+  template <typename Res>
+  class Future {
+    typedef __future_detail::State<Res> State;
 
-    template <>
-    class Future<void> {
-    public:
-      Future();
+    std::shared_ptr<State> state_;
 
-      template <typename F> //FIXME: flatten return
-      Future<typename std::result_of<F()>::type>
-      OnSuccess(F f);
+  public:
+    Future() = default;
 
-      template <typename F> //FIXME: flatten return
-      Future<typename std::result_of<F(std::exception_ptr)>::type>
-      OnFailure(F f);
+    Future(const Future&) = delete;
+    Future& operator=(const Future&) = delete;
 
-      std::exception_ptr GetException() const;
-
-      bool Fulfilled() const;
-
-      bool Failed() const;
-    private:
-      friend class Promise<void>;
-      explicit Future(std::shared_ptr<SharedData<void> >& s) :
-        s_{s} {}
-
-      std::shared_ptr<SharedData<void> > s_;
-    };
-
-    // template <typename T>
-    // struct Flatten {
-    //   typedef T type;
-    // };
-
-    // template <typename T>
-    // struct Flatten<Future<T> > {
-    //   typedef typename Flatten<T>::type type;
-    // };
-
-    // template <typename T>
-    // Future<typename Flatten<T>::type>
-    // flatten(Future<T> t,
-    //         typename std::enable_if<std::is_same<T, typename Flatten<T>::type>
-    //         ::value>::type* = 0) {
-    //   return t;
-    // }
-
-    // template <typename T>
-    // Future<typename Flatten<T>::type>
-    // flatten(Future<Future<T> > fut) {
-    //   Promise<T> promise;
-    //   fut.OnSuccess([=](Future<T> inner) mutable {
-    //       inner.OnSuccess([=](T val) mutable {
-    //           promise.Set(std::move(val));
-    //         });
-
-    //       inner.OnFailure([=](std::exception_ptr eptr) mutable {
-    //           promise.SetException(std::move(eptr));
-    //         });
-    //     });
-
-    //   fut.OnFailure([=](std::exception_ptr eptr) mutable {
-    //       promise.SetException(std::move(eptr));
-    //     });
-
-    //   return flatten(promise.GetFuture());
-    // }
-
-    template <typename T>
-    class Promise {
-    public:
-      Promise();
-
-      void Set(const T& val);
-
-      void Set(T&& val);
-
-      void Set(Future<T> fut);
-
-      void SetException(const std::exception_ptr& exception);
-
-      Future<T> GetFuture();
-    private:
-      std::shared_ptr<SharedData<T> > i_;
-    };
-
-    template <>
-    class Promise<void> {
-    public:
-      Promise();
-
-      void Set();
-
-      void Set(Future<void> fut);
-
-      void SetException(const std::exception_ptr& exception);
-
-      Future<void> GetFuture();
-    private:
-      std::shared_ptr<SharedData<void> > i_;
-    };
+    Future(Future&&) = default;
+    Future& operator=(Future&&) = default;
 
     template <typename F>
-    Future<typename std::result_of<F()>::type>
-    AsyncHelper(F f,
-                typename std::enable_if<!std::is_void<typename std::result_of
-                <F()>::type>::value>::type* = 0)
-    {
-      auto promise = new Promise<typename std::result_of<F()>::type>;
-      Future<typename std::result_of<F()>::type> ret = promise->GetFuture();
-      event_manager->Async([=]() {
-          try {
-            promise->Set(f());
-          } catch (...) {
-            promise->SetException(std::current_exception());
-          }
-          delete promise;
-        });
-      return std::move(ret);
-    }
+    Future<typename Flatten<typename std::result_of<F(Future<Res>)>::type>::type>
+    Then(launch policy, F&& func);
 
     template <typename F>
-    Future<void>
-    AsyncHelper(F f,
-                typename std::enable_if<std::is_void<typename std::result_of
-                <F()>::type>::value>::type* = 0)
-    {
-      auto promise = new Promise<void>;
-      auto ret = promise->GetFuture();
-      event_manager->Async([=]() {
-          try {
-            f();
-            promise->Set();
-          } catch (...) {
-            promise->SetException(std::current_exception());
-          }
-          delete promise;
-        });
-      return std::move(ret);
-    }
+    Future<typename Flatten<typename std::result_of<F(Future<Res>)>::type>::type>
+    Then(F&& func);
+
+    bool Valid() const;
+
+    Res Get();
+
+    bool Ready() const;
+  private:
+    friend class Promise<Res>;
+    template <typename T, typename... Args>
+    friend Future<T> make_ready_future(Args&&... args);
+
+    template <typename T>
+    friend Future<T> make_failed_future(std::exception_ptr);
+
+    explicit Future(const std::shared_ptr<State>&);
+
+    template <typename... Args>
+    explicit Future(__future_detail::make_ready_future_tag tag, Args&&... args);
+
+    explicit Future(std::exception_ptr);
+  };
+
+  template <>
+  class Future<void> {
+    typedef __future_detail::State<void> State;
+
+    std::shared_ptr<State> state_;
+
+  public:
+    Future(const Future&) = delete;
+    Future& operator=(const Future&) = delete;
+
+    Future(Future&&) = default;
+    Future& operator=(Future&&) = default;
 
     template <typename F>
-    Future<typename std::result_of<F()>::type>
-    async(F f)
-    {
-      return AsyncHelper(f);
-    }
-
-    template <typename T>
-    Future<std::vector<T> >
-    when_all(std::vector<Future<T> >& vec)
-    {
-      static_assert(std::is_default_constructible<T>::value,
-                    "Future type is not default constructible");
-      if (vec.empty()) {
-        return make_future<std::vector<T> >();
-      }
-      auto retvec = new std::vector<T>(vec.size());
-      auto count = new std::atomic_size_t{vec.size()};
-      auto promise = new Promise<std::vector<T> >();
-      for (int i = 0; i < vec.size(); ++i) {
-        vec[i].OnSuccess([=](T val){
-            (*retvec)[i] = std::move(val);
-            if (count->fetch_sub(1) == 1) {
-              //we are the last one to fulfill it
-              promise->Set(std::move(*retvec));
-              delete retvec;
-              delete count;
-              delete promise;
-            }
-          });
-      }
-      return promise->GetFuture();
-    }
-
-    template <typename T>
-    SharedData<T>::SharedData() : state_{PENDING} {}
-
-    //perfect construct T
-    template <typename T>
-    template <typename ...Args>
-    SharedData<T>::SharedData(make_future_tag tag, Args&&... args)
-      : state_{FULFILLED}, val_(std::forward<Args>(args)...)
-    {
-    }
-
-    template <typename T>
-    void
-    SharedData<T>::Set(const T& val)
-    {
-      assert(state_ == PENDING);
-      {
-        mutables_.Lock();
-        val_ = val;
-        std::atomic_thread_fence(std::memory_order_release);
-        state_ = FULFILLED;
-        mutables_.Unlock();
-      }
-      for (const auto& f : success_funcs_) {
-        event_manager->Async(std::bind(std::move(f), val_));
-      }
-    }
-
-    template <typename T>
-    void
-    SharedData<T>::Set(T&& val)
-    {
-      assert(state_ == PENDING);
-      {
-        mutables_.Lock();
-        val_ = std::move(val);
-        std::atomic_thread_fence(std::memory_order_release);
-        state_ = FULFILLED;
-        mutables_.Unlock();
-      }
-      for (const auto& f : success_funcs_) {
-        event_manager->Async(std::bind(std::move(f), val_));
-      }
-    }
-
-    template <typename T>
-    void
-    SharedData<T>::Set(Future<T> fut)
-    {
-    }
-
-    template <typename T>
-    void
-    SharedData<T>::SetException(const std::exception_ptr& exception)
-    {
-      assert(state_ == PENDING);
-      {
-        mutables_.Lock();
-        exception_ = exception;
-        std::atomic_thread_fence(std::memory_order_release);
-        state_ = FAILED;
-        mutables_.Unlock();
-      }
-      for (const auto& f : failure_funcs_) {
-        event_manager->Async(std::bind(std::move(f), exception_));
-      }
-    }
-
-    // template <typename T>
-    // class SharedData<T&> {
-    // public:
-    //   SharedData() : state_{PENDING} {}
-    //   // no copy
-    //   SharedData(const SharedData&) = delete;
-
-    //   SharedData(T& ref) : state_{FULFILLED}, val_{&ref} {}
-
-    //   // no copy
-    //   SharedData& operator=(const SharedData&) = delete;
-
-    //   void Set(T& ref)
-    //   {
-    //     assert(state_ == PENDING);
-    //     {
-    //       std::lock_guard<std::mutex> lock(mutables_);
-    //       val_ = &ref;
-    //       std::atomic_thread_fence(std::memory_order_release);
-    //       state_ = FULFILLED;
-    //     }
-    //     for (const auto& f : success_funcs_) {
-    //       event_manager->Async(std::bind(std::move(f), std::ref(*val_)));
-    //     }
-    //   }
-
-    //   void SetException(const std::exception_ptr& exception)
-    //   {
-    //     assert(state_ == PENDING);
-    //     {
-    //       std::lock_guard<std::mutex> lock(mutables_);
-    //       exception_ = exception;
-    //       std::atomic_thread_fence(std::memory_order_release);
-    //       state_ = FAILED;
-    //     }
-    //     for (const auto& f : failure_funcs_) {
-    //       event_manager->Async(std::bind(std::move(f), exception_));
-    //     }
-    //   }
-
-    //   std::mutex mutables_;
-
-    //   static constexpr unsigned PENDING = 0;
-    //   static constexpr unsigned FULFILLED = 1;
-    //   static constexpr unsigned FAILED = 2;
-
-    //   std::atomic_uint state_;
-
-    //   T* val_;
-    //   std::exception_ptr exception_;
-
-    //   std::forward_list<std::function<void(T&)> > success_funcs_;
-    //   std::forward_list<std::function<void(std::exception_ptr)> > failure_funcs_;
-    // };
-
-    template <typename T, typename F>
-    Future<typename std::result_of<F(T)>::type>
-    FutureSuccessHelper(F f,
-                        std::forward_list<std::function<void(T)> >& list,
-                        typename std::enable_if<!std::is_void<typename std::result_of<F(T)>
-                        ::type>::value>::type* = 0,
-                        typename std::enable_if<!std::is_void<T>::value>::type* = 0)
-    {
-      auto promise = new Promise<typename std::result_of<F(T)>::type>;
-      auto ret = promise->GetFuture();
-      list.emplace_front([=](T val) {
-          try {
-            promise->Set(f(std::move(val)));
-          } catch (...) {
-            promise->SetException(std::current_exception());
-          }
-          delete promise;
-        });
-      return std::move(ret);
-    }
-
-    template <typename T, typename F>
-    Future<void>
-    FutureSuccessHelper(F f,
-                        std::forward_list<std::function<void(T)> >& list,
-                        typename std::enable_if<std::is_void<
-                        typename std::result_of<F(T)>::type>::value>::type* = 0,
-                        typename std::enable_if<!std::is_void<T>::value>::type* = 0)
-    {
-      auto promise = new Promise<void>;
-      auto ret = promise->GetFuture();
-      list.emplace_front([=](T val) {
-          try {
-            f(val);
-            promise->Set();
-          } catch (...) {
-            promise->SetException(std::current_exception());
-          }
-          delete promise;
-        });
-      return std::move(ret);
-    }
+    Future<typename Flatten<typename std::result_of<F(Future<void>)>::type>::type>
+    Then(launch policy, F&& func);
 
     template <typename F>
-    Future<typename std::result_of<F()>::type>
-    VoidFutureSuccessHelper(F f,
-                            std::forward_list<std::function<void()> >& list,
-                            typename std::enable_if<!std::is_void<typename std::result_of<F()>
-                            ::type>::value>::type* = 0)
-    {
-      auto promise = new Promise<typename std::result_of<F()>::type>;
-      auto ret = promise->GetFuture();
-      list.emplace_front([=]() {
-          try {
-            promise->Set(f());
-          } catch (...) {
-            promise->SetException(std::current_exception());
+    Future<typename Flatten<typename std::result_of<F(Future<void>)>::type>::type>
+    Then(F&& func);
+
+    bool Valid() const;
+
+    void Get();
+
+    bool Ready() const;
+  private:
+    friend class Promise<void>;
+    template <typename T, typename... Args>
+    friend Future<T> make_ready_future(Args&&... args);
+
+    template <typename T>
+    friend Future<T> make_failed_future(std::exception_ptr);
+
+    explicit Future(const std::shared_ptr<State>&);
+
+    explicit Future(__future_detail::make_ready_future_tag tag);
+
+    explicit Future(std::exception_ptr);
+  };
+
+  template <typename Res>
+  class Promise {
+    typedef __future_detail::State<Res> State;
+
+    std::shared_ptr<State> state_;
+
+  public:
+    Promise();
+
+    Promise(const Promise&) = delete;
+    Promise& operator=(const Promise&) = delete;
+
+    Promise(Promise&&) = default;
+    Promise& operator=(Promise&&) = default;
+
+    void SetValue(const Res&);
+
+    void SetValue(Res&&);
+
+    void SetException(std::exception_ptr);
+
+    Future<Res> GetFuture();
+  };
+
+  template <>
+  class Promise<void> {
+    typedef __future_detail::State<void> State;
+
+    std::shared_ptr<State> state_;
+
+  public:
+    Promise();
+
+    Promise(const Promise&) = delete;
+    Promise& operator=(const Promise&) = delete;
+
+    Promise(Promise&&) = default;
+    Promise& operator=(Promise&&) = default;
+
+    void SetValue();
+
+    void SetException(std::exception_ptr);
+
+    Future<void> GetFuture();
+  };
+
+  template <typename T, typename... Args>
+  Future<T> make_ready_future(Args&&... args)
+  {
+    return Future<T>{typename __future_detail::make_ready_future_tag(),
+        std::forward<Args>(args)...};
+  }
+
+  template <typename T>
+  Future<T> make_failed_future(std::exception_ptr eptr)
+  {
+    return Future<T>{std::move(eptr)};
+  }
+
+  template <typename T>
+  Future<std::vector<T> >
+  when_all(std::vector<Future<T> >& vec)
+  {
+    if (vec.empty()) {
+      return make_ready_future<std::vector<T> >();
+    }
+
+    auto retvec = new std::vector<T>{vec.size()};
+    auto count = new std::atomic_size_t{vec.size()};
+    auto promise = new Promise<std::vector<T> >{};
+    auto ret = promise->GetFuture();
+    for (int i = 0; i < vec.size(); ++i) {
+      vec[i].Then([=](Future<T> val) {
+          (*retvec)[i] = val.Get();
+          if (count->fetch_sub(1) == 1) {
+            // we are the last to fulfill
+            promise->SetValue(std::move(*retvec));
+            delete retvec;
+            delete count;
+            delete promise;
           }
-          delete promise;
         });
-      return std::move(ret);
     }
+    return std::move(ret);
+  }
 
-    template <typename F>
-    Future<void>
-    VoidFutureSuccessHelper(F f,
-                            std::forward_list<std::function<void()> >& list,
-                            typename std::enable_if<std::is_void<
-                            typename std::result_of<F()>::type>::value>::type* = 0)
-    {
-      auto promise = new Promise<void>;
-      auto ret = promise->GetFuture();
-      list.emplace_front([=]() {
+  template <typename Res>
+  Future<typename Flatten<Res>::type>
+  flatten(Future<Res> fut)
+  {
+    return std::move(fut);
+  }
+
+  template <typename Res>
+  Future<typename Flatten<Res>::type>
+  flatten(Future<Future<Res> > fut)
+  {
+    auto p = Promise<Res>();
+    auto ret = p.GetFuture();
+    fut.Then(move_bind([](Promise<Res> prom, Future<Future<Res> > fut) {
+          Future<Res> inner;
           try {
-            f();
-            promise->Set();
+            inner = std::move(fut.Get());
           } catch (...) {
-            promise->SetException(std::current_exception());
+            prom.SetException(std::current_exception());
+            return;
           }
-          delete promise;
-        });
-      return std::move(ret);
-    }
 
-    template <typename F>
-    Future<typename std::result_of<F(std::exception_ptr)>::type>
-    FutureFailHelper(F f,
-                     std::forward_list<std::function
-                     <void(std::exception_ptr)> >& list,
-                     typename std::enable_if<!std::is_void<typename std::result_of
-                     <F(std::exception_ptr)>::type>::value>::type* = 0)
-    {
-      auto promise = new Promise<typename std::result_of
-                                 <F(std::exception_ptr)>::type>;
-      auto ret = promise->GetFuture();
-      list.emplace_front([=](std::exception_ptr exception) {
+          inner.Then(move_bind([](Promise<Res> prom, Future<Res> fut) {
+                try {
+                  prom.SetValue(fut.Get());
+                } catch (...) {
+                  prom.SetException(std::current_exception());
+                }
+              }, std::move(prom)));
+        }, std::move(p)));
+    return flatten(std::move(ret));
+  }
+
+  // Non void return async implementation
+  template <typename F, typename... Args>
+  typename std::enable_if<!std::is_void<typename std::result_of
+                                        <F(Args...)>::type>::value,
+                          Future<typename Flatten<typename std::result_of
+                                                  <F(Args...)>::type>::type> >::type
+  async_helper(F&& f, Args&&... args)
+  {
+    typedef typename std::result_of<F(Args...)>::type result_type;
+    typedef decltype(std::bind(std::forward<F>(f), std::forward<Args>(args)...))
+      bound_fn_type;
+    auto p = Promise<result_type>();
+    auto ret = p.GetFuture();
+    auto bound_f = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
+    ebbrt::event_manager->Async(move_bind([](Promise<result_type> prom, bound_fn_type fn) {
           try {
-            promise->Set(f(exception));
+            prom.SetValue(fn());
           } catch (...) {
-            promise->SetException(std::current_exception());
+            prom.SetException(std::current_exception());
           }
-          delete promise;
-        });
-      return std::move(ret);
-    }
+        }, std::move(p), std::move(bound_f)));
+    return flatten(std::move(ret));
+  }
 
-    template <typename F>
-    Future<void>
-    FutureFailHelper(F f,
-                     std::forward_list<std::function
-                     <void(std::exception_ptr)> >& list,
-                     typename std::enable_if<std::is_void<typename std::result_of
-                     <F(std::exception_ptr)>::type>::value>::type* = 0)
-    {
-      auto promise = new Promise<void>;
-      auto ret = promise->GetFuture();
-      list.emplace_front([=](std::exception_ptr exception) {
+  // void return async implementation
+  template <typename F, typename... Args>
+  typename std::enable_if<std::is_void<typename std::result_of
+                                       <F(Args...)>::type>::value,
+                          Future<typename Flatten<typename std::result_of
+                                                  <F(Args...)>::type>::type> >::type
+  async_helper(F&& f, Args&&... args)
+  {
+    typedef decltype(std::bind(std::forward<F>(f), std::forward<Args>(args)...))
+      bound_fn_type;
+    auto p = Promise<void>();
+    auto ret = p.GetFuture();
+    auto bound_f = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
+    ebbrt::event_manager->Async(move_bind([](Promise<void> prom, bound_fn_type fn) {
           try {
-            f(exception);
-            promise->Set();
+            fn();
+            prom.SetValue();
           } catch (...) {
-            promise->SetException(std::current_exception());
+            prom.SetException(std::current_exception());
           }
-          delete promise;
-        });
-      return std::move(ret);
-    }
+        }, std::move(p), std::move(bound_f)));
+    return flatten(std::move(ret));
+  }
 
+  template <typename F, typename... Args>
+  Future<typename Flatten<typename std::result_of<F(Args...)>::type>::type>
+  async(F&& f, Args&&... args)
+  {
+    return async_helper(std::forward<F>(f), std::forward<Args>(args)...);
+  }
 
-    class UnfulfilledFuture : public std::exception {
-      virtual const char* what() const noexcept override
-      {
-        return "Attempted to Get() an unfulfilled Future";
+  template <typename Res>
+  Future<Res>::Future(const std::shared_ptr<__future_detail::State<Res>>& ptr)
+    : state_{ptr}
+{
+}
+
+  inline
+  Future<void>::Future(const std::shared_ptr<__future_detail::State<void>>& ptr)
+    : state_{ptr}
+{
+}
+
+  template <typename Res>
+  template <typename... Args>
+  Future<Res>::Future(__future_detail::make_ready_future_tag tag, Args&&... args)
+    : state_{std::make_shared<State>(tag, std::forward<Args>(args)...)}
+{
+}
+
+  inline
+  Future<void>::Future(__future_detail::make_ready_future_tag tag)
+    : state_{std::make_shared<State>(tag)}
+{
+}
+
+  template <typename Res>
+  Future<Res>::Future(std::exception_ptr eptr)
+    : state_{std::make_shared<State>(std::move(eptr))}
+{
+}
+
+  inline
+  Future<void>::Future(std::exception_ptr eptr)
+    : state_{std::make_shared<State>(std::move(eptr))}
+{
+}
+
+  template <typename Res>
+  template <typename F>
+  Future<typename Flatten<typename std::result_of<F(Future<Res>)>::type>::type>
+  Future<Res>::Then(launch policy, F&& func)
+  {
+    auto& state = *state_;
+    return state.Then(policy, std::forward<F>(func), std::move(*this));
+  }
+
+  template <typename F>
+  Future<typename Flatten<typename std::result_of<F(Future<void>)>::type>::type>
+  Future<void>::Then(launch policy, F&& func)
+  {
+    auto& state = *state_;
+    return state.Then(policy, std::forward<F>(func), std::move(*this));
+  }
+
+  template <typename Res>
+  template <typename F>
+  Future<typename Flatten<typename std::result_of<F(Future<Res>)>::type>::type>
+  Future<Res>::Then(F&& func)
+  {
+    return Then(launch::sync, std::forward<F>(func));
+  }
+
+  template <typename F>
+  Future<typename Flatten<typename std::result_of<F(Future<void>)>::type>::type>
+  Future<void>::Then(F&& func)
+  {
+    return Then(launch::sync, std::forward<F>(func));
+  }
+
+  template <typename Res>
+  Res
+  Future<Res>::Get()
+  {
+    return state_->Get();
+  }
+
+  inline
+  void
+  Future<void>::Get()
+  {
+    state_->Get();
+  }
+
+  template <typename Res>
+  bool
+  Future<Res>::Ready() const
+  {
+    return state_->Ready();
+  }
+
+  inline
+  bool
+  Future<void>::Ready() const
+  {
+    return state_->Ready();
+  }
+
+  template <typename Res>
+  bool
+  Future<Res>::Valid() const
+  {
+    return static_cast<bool>(state_);
+  }
+
+  inline
+  bool
+  Future<void>::Valid() const
+  {
+    return static_cast<bool>(state_);
+  }
+
+  template <typename Res>
+  Promise<Res>::Promise()
+    : state_{std::make_shared<State>()}
+{
+}
+
+  inline
+  Promise<void>::Promise()
+    : state_{std::make_shared<State>()}
+{
+}
+
+  template <typename Res>
+  void
+  Promise<Res>::SetValue(Res&& res)
+  {
+    state_->SetValue(std::move(res));
+  }
+
+  inline
+  void
+  Promise<void>::SetValue()
+  {
+    state_->SetValue();
+  }
+
+  template <typename Res>
+  void
+  Promise<Res>::SetException(std::exception_ptr eptr)
+  {
+    state_->SetException(std::move(eptr));
+  }
+
+  inline
+  void
+  Promise<void>::SetException(std::exception_ptr eptr)
+  {
+    state_->SetException(std::move(eptr));
+  }
+
+  template <typename Res>
+  Future<Res>
+  Promise<Res>::GetFuture()
+  {
+    return Future<Res>{state_};
+  }
+
+  inline
+  Future<void>
+  Promise<void>::GetFuture()
+  {
+    return Future<void>{state_};
+  }
+
+  template <typename Res>
+  __future_detail::State<Res>::State()
+    : ready_{false}
+{
+}
+
+  inline
+  __future_detail::State<void>::State()
+    : ready_{false}
+{
+}
+
+  template <typename Res>
+  template <typename... Args>
+  __future_detail::State<Res>::State(__future_detail::make_ready_future_tag tag,
+                                     Args&&... args)
+    : val_(std::forward<Args>(args)...), ready_{true}
+{
+}
+
+  inline
+  __future_detail::State<void>::State(__future_detail::make_ready_future_tag tag)
+    : ready_{true}
+{
+}
+
+  template <typename Res>
+  __future_detail::State<Res>::State(std::exception_ptr eptr)
+    : eptr_{std::move(eptr)}, ready_{true}
+{
+}
+
+  inline
+  __future_detail::State<void>::State(std::exception_ptr eptr)
+    : eptr_{std::move(eptr)}, ready_{true}
+{
+}
+
+  template <typename Res>
+  template <typename F>
+  Future<typename Flatten<typename std::result_of<F(Future<Res>)>::type>::type>
+  __future_detail::State<Res>::Then(launch policy, F&& func, Future<Res> fut)
+  {
+    return ThenHelp(policy, std::forward<F>(func), std::move(fut));
+  }
+
+  template <typename F>
+  Future<typename Flatten<typename std::result_of<F(Future<void>)>::type>::type>
+  __future_detail::State<void>::Then(launch policy, F&& func, Future<void> fut)
+  {
+    return ThenHelp(policy, std::forward<F>(func), std::move(fut));
+  }
+
+  //Non void return thenhelp
+  template <typename Res>
+  template <typename F>
+  typename std::enable_if<!std::is_void<typename std::result_of
+                                        <F(Future<Res>)>::type>::value,
+                          Future<typename Flatten<typename std::result_of
+                                                  <F(Future<Res>)>::type>::type> >::type
+  __future_detail::State<Res>::ThenHelp(launch policy, F&& func, Future<Res> fut)
+  {
+    typedef typename std::result_of<F(Future<Res>)>::type result_type;
+    if (!Ready()) {
+      std::lock_guard<std::mutex> lock{mutex_};
+      // Have to check ready again to avoid a race
+      if (!Ready()) {
+        //helper sets function to be called
+        auto prom = Promise<result_type>();
+        auto ret = prom.GetFuture();
+        func_ = move_bind([](Promise<result_type> prom,
+                             Future<Res> fut, F fn) {
+                            try {
+                              prom.SetValue(fn(std::move(fut)));
+                            } catch (...) {
+                              prom.SetException(std::current_exception());
+                            }
+                          }, std::move(prom), std::move(fut), std::move(func));
+        return flatten(std::move(ret));
       }
-    };
-
-    class UnfailedFuture : public std::exception {
-      virtual const char* what() const noexcept override
-      {
-        return "Attempted to GetException() an unfailed Future";
+    }
+    // We only get here if Ready is true
+    if (policy == launch::sync) {
+      try {
+        return flatten(make_ready_future<result_type>(func(std::move(fut))));
+      } catch (...) {
+        return flatten(make_failed_future<result_type>(std::current_exception()));
       }
-    };
-
-    template <typename T>
-    template <typename ...Args>
-    Future<T>::Future(make_future_tag tag, Args&&... args) :
-      s_{std::make_shared<SharedData<T> >
-        (tag, std::forward<Args>(args)...)}
-    {
-    }
-
-    template <typename T>
-    template <typename F> //FIXME: flatten return
-    Future<typename std::result_of<F(T)>::type>
-    Future<T>::OnSuccess(F f)
-    {
-      s_->mutables_.Lock();
-      switch (s_->state_.load()) {
-      case SharedData<T>::PENDING:
-      case SharedData<T>::FAILED:
-        {
-          auto&& fut = FutureSuccessHelper(f, s_->success_funcs_);
-          s_->mutables_.Unlock();
-          return fut;
-          break;
-        }
-      case SharedData<T>::FULFILLED:
-        {
-          auto&& fut = async(std::bind(std::move(f), s_->val_));
-          s_->mutables_.Unlock();
-          return fut;
-          break;
-        }
-      }
-      throw std::runtime_error("Invalid Future state");
-    }
-
-    template <typename T>
-    template <typename F> //FIXME: flatten return
-    Future<typename std::result_of<F(std::exception_ptr)>::type>
-    Future<T>::OnFailure(F f)
-    {
-      s_->mutables_.Lock();
-      switch (s_->state_.load()) {
-      case SharedData<T>::PENDING:
-      case SharedData<T>::FULFILLED:
-        {
-        auto&& fut = FutureFailHelper(f, s_->failure_funcs_);
-        s_->mutables_.Unlock();
-        return fut;
-        break;
-        }
-      case SharedData<T>::FAILED:
-        {
-          auto&& fut = async(std::bind(std::move(f), s_->exception_));
-          s_->mutables_.Unlock();
-          return fut;
-          break;
-        }
-      }
-    }
-
-    template <typename T>
-    T
-    Future<T>::Get() const
-    {
-      switch (s_->state_.load()) {
-      case SharedData<T>::FAILED:
-      case SharedData<T>::PENDING:
-        throw UnfulfilledFuture();
-        break;
-      case SharedData<T>::FULFILLED:
-        std::atomic_thread_fence(std::memory_order_acquire);
-        return s_->val_;
-        break;
-      }
-      assert(0);
-    }
-
-    template <typename T>
-    std::exception_ptr
-    Future<T>::GetException() const
-    {
-      switch (s_->state_.load()) {
-      case SharedData<T>::FULFILLED:
-      case SharedData<T>::PENDING:
-        throw UnfailedFuture();
-        break;
-      case SharedData<T>::FAILED:
-        std::atomic_thread_fence(std::memory_order_acquire);
-        return s_->exception_;
-        break;
-      }
-      assert(0);
-    }
-
-    template <typename T>
-    bool
-    Future<T>::Fulfilled() const
-    {
-      return s_->state_ == SharedData<T>::FULFILLED;
-    }
-
-    template <typename T>
-    bool
-    Future<T>::Failed() const
-    {
-      return s_->state_ == SharedData<T>::FAILED;
-    }
-
-    template <typename F> //FIXME: flatten return
-    Future<typename std::result_of<F()>::type>
-    Future<void>::OnSuccess(F f)
-    {
-      s_->mutables_.Lock();
-      switch (s_->state_.load()) {
-      case SharedData<void>::PENDING:
-      case SharedData<void>::FAILED:
-        {
-          auto&& fut = VoidFutureSuccessHelper(f, s_->success_funcs_);
-          s_->mutables_.Unlock();
-          return fut;
-          break;
-        }
-      case SharedData<void>::FULFILLED:
-        {
-          auto&& fut = async(std::move(f));
-          s_->mutables_.Unlock();
-          return fut;
-          break;
-        }
-      }
-      assert(0);
-    }
-
-    template <typename F> //FIXME: flatten return
-    Future<typename std::result_of<F(std::exception_ptr)>::type>
-    Future<void>::OnFailure(F f)
-    {
-      s_->mutables_.Lock();
-      switch (s_->state_.load()) {
-      case SharedData<void>::PENDING:
-      case SharedData<void>::FULFILLED:
-        {
-        auto&& fut = FutureFailHelper(f, s_->failure_funcs_);
-        s_->mutables_.Unlock();
-        return fut;
-        break;
-        }
-      case SharedData<void>::FAILED:
-        {
-        auto&& fut = async(std::bind(std::move(f), s_->exception_));
-        s_->mutables_.Unlock();
-        return fut;
-        break;
-        }
-      }
-      assert(0);
-    }
-
-    template <typename T>
-    Promise<T>::Promise() :
-      i_{std::make_shared<SharedData<T> >()} {}
-
-    template <typename T>
-    void
-    Promise<T>::Set(const T& val)
-    {
-      i_->Set(val);
-    }
-
-    template <typename T>
-    void
-    Promise<T>::Set(T&& val)
-    {
-      i_->Set(std::move(val));
-    }
-
-    template <typename T>
-    void
-    Promise<T>::Set(Future<T> fut)
-    {
-      assert(i_->state_ == SharedData<T>::PENDING);
-      if (fut.Fulfilled()) {
-        i_->Set(fut.Get());
-      } else if (fut.Failed()) {
-        i_->SetException(fut.GetException());
-      } else {
-        //Kludge to pass member variable by value
-        fut.OnSuccess(std::bind([](std::shared_ptr<SharedData<T> > ptr, T val) {
-              ptr->Set(std::move(val));
-            }, i_, std::placeholders::_1));
-        //Kludge to pass member variable by value
-        fut.OnFailure(std::bind([](std::shared_ptr<SharedData<T> > ptr,
-                                   std::exception_ptr eptr) {
-                                  ptr->SetException(std::move(eptr));
-                                }, i_, std::placeholders::_1));
-      }
-    }
-
-    template <typename T>
-    void
-    Promise<T>::SetException(const std::exception_ptr& exception)
-    {
-      i_->SetException(exception);
-    }
-
-    template <typename T>
-    Future<T>
-    Promise<T>::GetFuture()
-    {
-      return Future<T>(i_);
+    } else {
+      return async(move_bind([](F fn, Future<Res> fut) {
+            return fn(std::move(fut));
+          }, std::move(func), std::move(fut)));
     }
   }
 
-  using future_internal::Future;
-  using future_internal::Promise;
-  using future_internal::UnfulfilledFuture;
-  using future_internal::UnfailedFuture;
-  using future_internal::async;
-  using future_internal::make_future;
-  using future_internal::when_all;
+  //Non void return thenhelp
+  template <typename F>
+  typename std::enable_if<!std::is_void<typename std::result_of
+                                        <F(Future<void>)>::type>::value,
+                          Future<typename Flatten<typename std::result_of
+                                                  <F(Future<void>)>::type>::type> >::type
+  __future_detail::State<void>::ThenHelp(launch policy, F&& func, Future<void> fut)
+  {
+    typedef typename std::result_of<F(Future<void>)>::type result_type;
+    if (!Ready()) {
+      std::lock_guard<std::mutex> lock{mutex_};
+      // Have to check ready again to avoid a race
+      if (!Ready()) {
+        //helper sets function to be called
+        auto prom = Promise<result_type>();
+        auto ret = prom.GetFuture();
+        func_ = move_bind([](Promise<result_type> prom,
+                             Future<void> fut, F fn) {
+                            try {
+                              prom.SetValue(fn(std::move(fut)));
+                            } catch (...) {
+                              prom.SetException(std::current_exception());
+                            }
+                          }, std::move(prom), std::move(fut), std::move(func));
+        return flatten(std::move(ret));
+      }
+    }
+    // We only get here if Ready is true
+    if (policy == launch::sync) {
+      try {
+        return flatten(make_ready_future<result_type>(func(std::move(fut))));
+      } catch (...) {
+        return flatten(make_failed_future<result_type>(std::current_exception()));
+      }
+    } else {
+      return async(move_bind([](F fn, Future<void> fut) {
+            return fn(std::move(fut));
+          }, std::move(func), std::move(fut)));
+    }
+  }
+
+  //void return thenhelp
+  template <typename Res>
+  template <typename F>
+  typename std::enable_if<std::is_void<typename std::result_of
+                                       <F(Future<Res>)>::type>::value,
+                          Future<typename Flatten<typename std::result_of
+                                                  <F(Future<Res>)>::type>::type> >::type
+  __future_detail::State<Res>::ThenHelp(launch policy, F&& func, Future<Res> fut)
+  {
+    typedef typename std::result_of<F(Future<Res>)>::type result_type;
+    if (!Ready()) {
+      std::lock_guard<std::mutex> lock{mutex_};
+      // Have to check ready again to avoid a race
+      if (!Ready()) {
+        //helper sets function to be called
+        auto prom = Promise<result_type>();
+        auto ret = prom.GetFuture();
+        func_ = move_bind([](Promise<result_type> prom,
+                             Future<Res> fut, F fn) {
+                            try {
+                              fn(std::move(fut));
+                              prom.SetValue();
+                            } catch (...) {
+                              prom.SetException(std::current_exception());
+                            }
+                          }, std::move(prom), std::move(fut), std::move(func));
+        return flatten(std::move(ret));
+      }
+    }
+    // We only get here if Ready is true
+    if (policy == launch::sync) {
+      try {
+        func(std::move(fut));
+        return flatten(make_ready_future<result_type>());
+      } catch (...) {
+        return flatten(make_failed_future<result_type>(std::current_exception()));
+      }
+    } else {
+      return async(move_bind([](F fn, Future<Res> fut) {
+            return fn(std::move(fut));
+          }, std::move(func), std::move(fut)));
+    }
+  }
+
+  //void return thenhelp
+  template <typename F>
+  typename std::enable_if<std::is_void<typename std::result_of
+                                       <F(Future<void>)>::type>::value,
+                          Future<typename Flatten<typename std::result_of
+                                                  <F(Future<void>)>::type>::type> >::type
+  __future_detail::State<void>::ThenHelp(launch policy, F&& func, Future<void> fut)
+  {
+    typedef typename std::result_of<F(Future<void>)>::type result_type;
+    if (!Ready()) {
+      std::lock_guard<std::mutex> lock{mutex_};
+      // Have to check ready again to avoid a race
+      if (!Ready()) {
+        //helper sets function to be called
+        auto prom = Promise<result_type>();
+        auto ret = prom.GetFuture();
+        func_ = move_bind([](Promise<result_type> prom,
+                             Future<void> fut, F fn) {
+                            try {
+                              fn(std::move(fut));
+                              prom.SetValue();
+                            } catch (...) {
+                              prom.SetException(std::current_exception());
+                            }
+                          }, std::move(prom), std::move(fut), std::move(func));
+        return flatten(std::move(ret));
+      }
+    }
+    // We only get here if Ready is true
+    if (policy == launch::sync) {
+      try {
+        func(std::move(fut));
+        return flatten(make_ready_future<result_type>());
+      } catch (...) {
+        return flatten(make_failed_future<result_type>(std::current_exception()));
+      }
+    } else {
+      return async(move_bind([](F fn, Future<void> fut) {
+            return fn(std::move(fut));
+          }, std::move(func), std::move(fut)));
+    }
+  }
+
+  template <typename Res>
+  void
+  __future_detail::State<Res>::SetValue(Res&& res)
+  {
+    val_ = std::move(res);
+    ready_ = true;
+    if (func_) {
+      ebbrt::event_manager->Async(std::move(func_));
+    }
+  }
+
+  inline
+  void
+  __future_detail::State<void>::SetValue()
+  {
+    ready_ = true;
+    if (func_) {
+      ebbrt::event_manager->Async(std::move(func_));
+    }
+  }
+
+  template <typename Res>
+  void
+  __future_detail::State<Res>::SetException(std::exception_ptr eptr)
+  {
+    std::lock_guard<std::mutex> lock{mutex_};
+    eptr_ = std::move(eptr);
+    ready_ = true;
+    if (func_) {
+      ebbrt::event_manager->Async(std::move(func_));
+    }
+  }
+
+  inline
+  void
+  __future_detail::State<void>::SetException(std::exception_ptr eptr)
+  {
+    std::lock_guard<std::mutex> lock{mutex_};
+    eptr_ = std::move(eptr);
+    ready_ = true;
+    if (func_) {
+      ebbrt::event_manager->Async(std::move(func_));
+    }
+  }
+
+  template <typename Res>
+  Res
+  __future_detail::State<Res>::Get()
+  {
+    if (!Ready()) {
+      throw unready_future_error("Get() called on unready future");
+    }
+
+    if (eptr_ != nullptr) {
+      std::rethrow_exception(std::move(eptr_));
+    }
+
+    return std::move(val_);
+  }
+
+  inline
+  void
+  __future_detail::State<void>::Get()
+  {
+    if (!Ready()) {
+      throw unready_future_error("Get() called on unready future");
+    }
+
+    if (eptr_ != nullptr) {
+      std::rethrow_exception(std::move(eptr_));
+    }
+  }
+
+  template <typename Res>
+  bool
+  __future_detail::State<Res>::Ready() const
+  {
+    return ready_;
+  }
+
+  inline
+  bool
+  __future_detail::State<void>::Ready() const
+  {
+    return ready_;
+  }
 }
 #endif

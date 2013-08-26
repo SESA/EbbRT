@@ -59,12 +59,13 @@ ebbrt::MCPhotonExecutor::Execute(const std::string& task,
     auto wr = reinterpret_cast<WRITEABLE*>(buf);
     init_writeable(wr);
     taskcode(task_num, 5000, &ro, wr);
-    return make_future<std::vector<Buffer> >(1, Buffer(buf, sizeof(WRITEABLE)));
+    return make_ready_future<std::vector<Buffer> >
+      (1, Buffer(buf, sizeof(WRITEABLE)));
   } else if (memcmp(task.data(), "print", 5) == 0) {
     auto wr = reinterpret_cast<WRITEABLE*>(inputs[0].data());
     char header[] = " *** final results ***";
     print_writeable(stdout, header, wr);
-    return make_future<std::vector<Buffer> >();
+    return make_ready_future<std::vector<Buffer> >();
    } else {
     auto buf = std::malloc(sizeof(WRITEABLE));
     if (buf == nullptr) {
@@ -79,6 +80,7 @@ ebbrt::MCPhotonExecutor::Execute(const std::string& task,
       collect_writeable(wr, reinterpret_cast<WRITEABLE*>(inputs[i].data()));
     }
 
-    return make_future<std::vector<Buffer> >(1, Buffer(buf, sizeof(WRITEABLE)));
+    return make_ready_future<std::vector<Buffer> >
+      (1, Buffer(buf, sizeof(WRITEABLE)));
   }
 }

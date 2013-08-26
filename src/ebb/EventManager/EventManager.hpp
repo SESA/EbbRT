@@ -21,6 +21,7 @@
 #include <functional>
 
 #include "ebb/ebb.hpp"
+#include "ebb/EventManager/MoveFunction.hpp"
 #include "lrt/event_impl.hpp"
 
 namespace ebbrt {
@@ -37,7 +38,7 @@ namespace ebbrt {
      * out events
      * @param [in] func The function to be invoked
      */
-    virtual void Async(std::function<void()> func) = 0;
+    virtual void Async(move_function<void()> func) = 0;
 
 #ifdef __linux__
     virtual void RegisterFD(int fd, uint32_t events, uint8_t interrupt) = 0;

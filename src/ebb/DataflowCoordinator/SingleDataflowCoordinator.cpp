@@ -78,7 +78,7 @@ ebbrt::SingleDataflowCoordinator::Execute(TaskTable task_table,
     idle_workers_.pop();
   }
 
-  return Future<void>();
+  return make_ready_future<void>();
 }
 
 bool
@@ -155,29 +155,27 @@ HandleStartWork(NetworkId from,
                                     message.inputs(i).name());
   }
 
-  when_all(input_futs).OnSuccess([=](std::vector<Buffer> inputs) {
+  when_all(input_futs).Then([=](Future<std::vector<Buffer> > inputs) {
       //once we get all inputs, execute the task
       auto executor = EbbRef<Executor>{message.executor()};
-      return executor->Execute(message.task_name(), std::move(inputs));
-    }).OnSuccess([=](Future<std::vector<Buffer> > fut) {
-        //FIXME: change futures so this collapses automatically
-        fut.OnSuccess([=](std::vector<Buffer> outputs) {
-            assert(outputs.size() == message.outputs_size());
-            //once we have all the outputs, store them
-            for (int i = 0; i < message.outputs_size(); ++i) {
-              hash_table->Set(message.outputs(i), std::move(outputs[i]));
-            }
+      return executor->Execute(message.task_name(), std::move(inputs.Get()));
+    }).Then([=](Future<std::vector<Buffer> > outputs) {
+        auto outs = outputs.Get();
+        assert(outs.size() == message.outputs_size());
+        //once we have all the outputs, store them
+        for (int i = 0; i < message.outputs_size(); ++i) {
+          hash_table->Set(message.outputs(i), std::move(outs[i]));
+        }
 
-            //Then reply that we have completed the task
-            SingleDataflowCoordinatorMessage reply;
-            reply.set_type(SingleDataflowCoordinatorMessage::COMPLETEWORK);
-            auto complete_work = reply.mutable_complete_work();
-            complete_work->set_task_id(message.task_id());
+        //Then reply that we have completed the task
+        SingleDataflowCoordinatorMessage reply;
+        reply.set_type(SingleDataflowCoordinatorMessage::COMPLETEWORK);
+        auto complete_work = reply.mutable_complete_work();
+        complete_work->set_task_id(message.task_id());
 
-            auto buf = message_manager->Alloc(reply.ByteSize());
-            reply.SerializeToArray(buf.data(), buf.length());
-            message_manager->Send(from, ebbid_, std::move(buf));
-          });
+        auto buf = message_manager->Alloc(reply.ByteSize());
+        reply.SerializeToArray(buf.data(), buf.length());
+        message_manager->Send(from, ebbid_, std::move(buf));
       });
 }
 

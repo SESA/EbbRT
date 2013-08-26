@@ -46,7 +46,7 @@ namespace ebbrt {
 
     struct DataDescriptor {
       DataDescriptor() : exists{false} {}
-      DataDescriptor(std::string prod) : producer{prod} {}
+      DataDescriptor(std::string prod) : producer{prod}, exists{false} {}
       std::string producer;
       std::unordered_set<std::string> consumers;
       bool exists;

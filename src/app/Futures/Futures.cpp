@@ -11,118 +11,150 @@
 ebbrt::Future<int>
 MyAsyncApi()
 {
-  return ebbrt::Future<int>(42);
-}
-
-ebbrt::Future<int>
-MyAsyncApi2()
-{
-  return ebbrt::async([](){return 42;});
+  return ebbrt::async([](){return 84;});
 }
 
 void
 setup()
 {
-  ebbrt::console->Write("Setup\n");
+  std::cout << "Setup" << std::endl;
 
-  auto fut = MyAsyncApi();
-  fut.OnSuccess([](int val) {
-      std::ostringstream str;
-      str << "Got val asynchronously: " << val << std::endl;
-      ebbrt::console->Write(str.str().c_str());
-    });
-
-  if (fut.Fulfilled()) {
-    auto val = fut.Get();
-    std::ostringstream str;
-    str << "Got val (if): " << val << std::endl;
-    ebbrt::console->Write(str.str().c_str());
-  }
-
-  try {
-    auto val = fut.Get();
-    std::ostringstream str;
-    str << "Got val (exception): " << val << std::endl;
-    ebbrt::console->Write(str.str().c_str());
-  } catch (std::exception& e) {
-    std::ostringstream str;
-    str << "Got exception: " << e.what() << std::endl;
-    ebbrt::console->Write(str.str().c_str());
-  }
-
+  // Call async to execute a function asynchronously on its own event
   ebbrt::async([]() {
-      ebbrt::console->Write("Printed asynchronously\n");
-    }).OnSuccess([]() {
-        ebbrt::console->Write("Printed asynchronously x2\n");
-      }).OnSuccess([]() {
-          ebbrt::console->Write("Printed asynchronously x3\n");
-        });
-
-  auto fut2 = MyAsyncApi2();
-  fut2.OnSuccess([](int val) {
-      std::ostringstream str;
-      str << "Got val asynchronously: " << val << std::endl;
-      ebbrt::console->Write(str.str().c_str());
+      std::cout << "Hello Asynchronous World" << std::endl;
     });
 
-  if (fut2.Fulfilled()) {
-    auto val = fut2.Get();
-    std::ostringstream str;
-    str << "Got val (if): " << val << std::endl;
-    ebbrt::console->Write(str.str().c_str());
-  } else {
-    fut2.OnSuccess([](int val) {
-        std::ostringstream str;
-        str << "Got val (if) asynchronously: " << val << std::endl;
-        ebbrt::console->Write(str.str().c_str());
-      });
+  // Async returns a Future which can be used to get the return value
+  // of the function
+  ebbrt::Future<int> future = ebbrt::async([]() {
+      std::cout << "Hello Asynchronous Futures" << std::endl;
+      return 42;
+    });
+
+  // Call Then to get the return value out of the future
+  future.Then([](ebbrt::Future<int> fval) {
+      std::cout << "Got " << fval.Get() << " from a Future" << std::endl;
+    });
+
+  // Futures can be returned and passed (copying is not allowed)
+  ebbrt::Future<int> future2 = MyAsyncApi();
+  // Call Then to get the return value out of the future
+  future2.Then([](ebbrt::Future<int> fval) {
+      std::cout << "Got " << fval.Get() <<
+        " from a ebbrt::Future returned from another function" << std::endl;
+    });
+
+  // If a future can be fulfilled synchronously, then just make it
+  ebbrt::Future<int> future3 = ebbrt::make_ready_future<int>(168);
+
+  // A user can check if a future is Ready()
+  if (future3.Ready()) {
+    // And Get() the value synchronously
+    std::cout << "Got " << future3.Get() << " synchronously from a ebbrt::Future"
+              << std::endl;
   }
 
+  ebbrt::Future<int> future4 = ebbrt::async([](){return 22;});
+
+  // Careful! calling Get() on a ebbrt::Future that isn't Ready() will throw
+  // an exception
   try {
-    auto val = fut2.Get();
-    std::ostringstream str;
-    str << "Got val (exception): " << val << std::endl;
-    ebbrt::console->Write(str.str().c_str());
+    future4.Get();
   } catch (std::exception& e) {
-    std::ostringstream str;
-    str << "Got exception: " << e.what() << std::endl;
-    ebbrt::console->Write(str.str().c_str());
-    fut2.OnSuccess([](int val) {
-        std::ostringstream str;
-        str << "Got val (exception) asynchronously: " << val << std::endl;
-        ebbrt::console->Write(str.str().c_str());
-      });
+    std::cerr << "Caught exception: " << e.what() << std::endl;
   }
 
-  auto fut3 = ebbrt::async([]() {
-      throw std::runtime_error("Runtime exception!");
+  ebbrt::Future<int> future5 = ebbrt::make_ready_future<int>(33);
+
+  // Then() will call the function synchronously if the future is
+  // Ready()
+  future5.Then([](ebbrt::Future<int> fval) {
+      std::cout << "Got " << fval.Get() <<
+        " synchronously from a ebbrt::Future using Then()" << std::endl;
     });
 
-  fut3.OnFailure([](std::exception_ptr eptr) {
+  ebbrt::Future<int> future6 = ebbrt::make_ready_future<int>(44);
+
+  // To prevent the function from being called synchronously, pass
+  // in a different launch policy
+  future6.Then(ebbrt::launch::async, [](ebbrt::Future<int> fval) {
+      std::cout << "Got " << fval.Get() <<
+        " asynchronously from a ebbrt::Future using Then()" << std::endl;
+    });
+
+  // Futures can also capture exceptions
+  ebbrt::Future<void> future7 =
+    ebbrt::async([](){
+        throw std::runtime_error("Exception thrown asynchronously");
+      });
+
+  future7.Then([](ebbrt::Future<void> fval) {
+      //Once the future is Ready(), Get() will rethrow the exception
       try {
-        std::rethrow_exception(eptr);
-      } catch (std::runtime_error& e) {
-        std::ostringstream str;
-        str << "Future failed asynchronously: " << e.what() << std::endl;
-        ebbrt::console->Write(str.str().c_str());
+        fval.Get();
+      } catch (std::exception& e) {
+        std::cout << "Caught exception from ebbrt::Future: " << e.what() << std::endl;
       }
     });
 
-  // async([]() {
-  //     return async([]() {
-  //         return 81;
-  //       });
-  //   }).OnSuccess([](int val){
-  //       std::cout << "Got val: " << val << " from flattened future" << std::endl;
-  //     });
+  ebbrt::Future<void> future8 = ebbrt::async([](){});
 
-  // async([]() {
-  //     return Future<int> {81};
-  //   }).OnSuccess([](int val){
-  //       std::cout << "Got val: " << val << " from flattened future" << std::endl;
-  //     });
+  // Then() actually returns a future containing the result of the
+  // function. This allows chaining asynchronous calls onto each
+  // other.
+  future8.Then([](ebbrt::Future<void> fval) {
+      std::cout << "Printed Asynchronously x1" << std::endl;
+  }).Then([](ebbrt::Future<void> fval) {
+      std::cout << "Printed Asynchronously x2" << std::endl;
+  }).Then([](ebbrt::Future<void> fval) {
+      std::cout << "Printed Asynchronously x3" << std::endl;
+  });
 
-  ebbrt::console->Write("Setup complete\n");
+  ebbrt::Future<int> future9;
+  if (!future9.Valid()) {
+    std::cout << "not a valid future" << std::endl;
+  }
+
+  // Nested futures make little sense, but sometimes they arise
+  ebbrt::Future<ebbrt::Future<int> > future10 =
+    ebbrt::make_ready_future<ebbrt::Future<int> >(ebbrt::make_ready_future<int>(81));
+
+  // flatten() will flatten a nested future until it is no longer nested
+  ebbrt::Future<int> future11 = flatten(std::move(future10));
+
+  future11.Then([](ebbrt::Future<int> fval) {
+      std::cout << "Got val: " << fval.Get() <<
+        " from flattened future" << std::endl;
+    });
+
+
+  // async() will automatically flatten the result
+  ebbrt::Future<int> future12 = ebbrt::async([](){
+      return ebbrt::async([](){
+          return 16;
+        });
+    });
+
+  future12.Then([](ebbrt::Future<int> fval) {
+      std::cout << "Got val: " << fval.Get() <<
+        " from flattened future from async" << std::endl;
+    });
+
+  ebbrt::Future<void> future13 = ebbrt::make_ready_future<void>();
+
+  // Then() also flattens the result
+  ebbrt::Future<int> future14 = future13.Then([](ebbrt::Future<void> fval) {
+      return ebbrt::async([](){
+          return 72;
+        });
+    });
+
+  future14.Then([](ebbrt::Future<int> fval) {
+      std::cout << "Got val: " << fval.Get() <<
+        " from flattened future from Then()" << std::endl;
+    });
+
+  std::cout << "Setup complete" << std::endl;
 }
 
 #ifdef __ebbrt__

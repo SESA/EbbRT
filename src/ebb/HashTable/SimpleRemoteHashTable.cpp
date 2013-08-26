@@ -120,6 +120,6 @@ ebbrt::SimpleRemoteHashTable::HandleGetResponse(NetworkId from,
   auto it = promise_map_.find(op_id);
   assert(it != promise_map_.end());
 
-  it->second.Set(std::move(buffer));
+  it->second.SetValue(std::move(buffer));
   promise_map_.erase(it);
 }
