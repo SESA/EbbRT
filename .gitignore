@@ -15,6 +15,10 @@
 *.la
 *.a
 
+# Compiled protobuf files
+*.pb.cc
+*.pb.h
+
 Makefile.in
 aclocal.m4
 autom4te.cache/

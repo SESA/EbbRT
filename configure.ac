@@ -72,8 +72,6 @@ AC_ARG_WITH([protobuf-includedir],
         [PROTOBUF_INCLUDEDIR='/usr/include'])
 AC_SUBST([PROTOBUF_INCLUDEDIR])
 
-AS_ECHO($PROTOBUF_INCLUDEDIR)
-
 CPPFLAGS="$CPPFLAGS -I$PROTOBUF_INCLUDEDIR"
 #AC_CHECK_HEADER([google/protobuf/stubs/common.h], [], [AC_MSG_ERROR([cannot find protobuf headers])])
 
