@@ -18,6 +18,8 @@
 #ifndef EBBRT_EBB_DATAFLOWCOORDINATOR_SINGLEDATAFLOWCOORDINATOR_HPP
 #define EBBRT_EBB_DATAFLOWCOORDINATOR_SINGLEDATAFLOWCOORDINATOR_HPP
 
+#include <unordered_set>
+
 #include "ebb/DataflowCoordinator/DataflowCoordinator.hpp"
 #include "ebb/DataflowCoordinator/SingleDataflowCoordinator.pb.h"
 
@@ -38,6 +40,7 @@ namespace ebbrt {
 
   private:
     bool TaskRunnable(const TaskDescriptor& task);
+    bool EndTask(const TaskDescriptor& task);
     void Schedule(const std::string& task, NetworkId worker);
 
     void HandleStartWork(NetworkId from,
@@ -49,7 +52,9 @@ namespace ebbrt {
     DataTable data_table_;
     std::stack<std::string> runnable_tasks_;
     std::stack<NetworkId> idle_workers_;
+    std::unordered_set<std::string> end_tasks_;
     std::unordered_map<NetworkId, std::string> running_workers_;
+    Promise<void> promise_;
 
     EbbRef<Executor> executor_;
     EbbRef<RemoteHashTable> hash_table_;

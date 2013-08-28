@@ -41,7 +41,7 @@ setup()
   // Call Then to get the return value out of the future
   future2.Then([](ebbrt::Future<int> fval) {
       std::cout << "Got " << fval.Get() <<
-        " from a ebbrt::Future returned from another function" << std::endl;
+        " from a Future returned from another function" << std::endl;
     });
 
   // If a future can be fulfilled synchronously, then just make it
@@ -50,7 +50,7 @@ setup()
   // A user can check if a future is Ready()
   if (future3.Ready()) {
     // And Get() the value synchronously
-    std::cout << "Got " << future3.Get() << " synchronously from a ebbrt::Future"
+    std::cout << "Got " << future3.Get() << " synchronously from a Future"
               << std::endl;
   }
 
@@ -70,7 +70,7 @@ setup()
   // Ready()
   future5.Then([](ebbrt::Future<int> fval) {
       std::cout << "Got " << fval.Get() <<
-        " synchronously from a ebbrt::Future using Then()" << std::endl;
+        " synchronously from a Future using Then()" << std::endl;
     });
 
   ebbrt::Future<int> future6 = ebbrt::make_ready_future<int>(44);
@@ -79,7 +79,7 @@ setup()
   // in a different launch policy
   future6.Then(ebbrt::launch::async, [](ebbrt::Future<int> fval) {
       std::cout << "Got " << fval.Get() <<
-        " asynchronously from a ebbrt::Future using Then()" << std::endl;
+        " asynchronously from a Future using Then()" << std::endl;
     });
 
   // Futures can also capture exceptions
@@ -93,7 +93,7 @@ setup()
       try {
         fval.Get();
       } catch (std::exception& e) {
-        std::cout << "Caught exception from ebbrt::Future: " << e.what() << std::endl;
+        std::cout << "Caught exception from Future: " << e.what() << std::endl;
       }
     });
 
@@ -110,6 +110,7 @@ setup()
       std::cout << "Printed Asynchronously x3" << std::endl;
   });
 
+  // Futures can be default constructed
   ebbrt::Future<int> future9;
   if (!future9.Valid()) {
     std::cout << "not a valid future" << std::endl;

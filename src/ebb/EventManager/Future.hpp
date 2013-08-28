@@ -314,6 +314,7 @@ namespace ebbrt {
     auto ret = promise->GetFuture();
     for (int i = 0; i < vec.size(); ++i) {
       vec[i].Then([=](Future<T> val) {
+          //FIXME: exception handling
           (*retvec)[i] = val.Get();
           if (count->fetch_sub(1) == 1) {
             // we are the last to fulfill

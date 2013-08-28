@@ -70,6 +70,9 @@ ebbrt::SingleDataflowCoordinator::Execute(TaskTable task_table,
     if (TaskRunnable(kv.second)) {
       runnable_tasks_.push(kv.first);
     }
+    if (EndTask(kv.second)) {
+      end_tasks_.insert(kv.first);
+    }
   }
 
   while (!runnable_tasks_.empty() && !idle_workers_.empty()) {
@@ -78,7 +81,7 @@ ebbrt::SingleDataflowCoordinator::Execute(TaskTable task_table,
     idle_workers_.pop();
   }
 
-  return make_ready_future<void>();
+  return promise_.GetFuture();
 }
 
 bool
@@ -93,13 +96,33 @@ ebbrt::SingleDataflowCoordinator::TaskRunnable(const TaskDescriptor& task)
   return true;
 }
 
+bool
+ebbrt::SingleDataflowCoordinator::EndTask(const TaskDescriptor& task)
+{
+  return task.outputs.empty();
+}
+
 void
 ebbrt::SingleDataflowCoordinator::Schedule(const std::string& taskstr,
                                            NetworkId worker)
 {
+  //std::cout << "Scheduling " << taskstr << " to " << worker.rank << std::endl;
+
   running_workers_.emplace(worker, taskstr);
 
   const auto& task = task_table_[taskstr];
+
+  // std::cout << "Inputs: ";
+  // for (const auto& input : task.inputs) {
+  //   std::cout << input << " ";
+  // }
+  // std::cout << std::endl;
+
+  // std::cout << "Outputs: ";
+  // for (const auto& output : task.outputs) {
+  //   std::cout << output << " ";
+  // }
+  // std::cout << std::endl;
 
   SingleDataflowCoordinatorMessage message;
   message.set_type(SingleDataflowCoordinatorMessage::STARTWORK);
@@ -156,27 +179,27 @@ HandleStartWork(NetworkId from,
   }
 
   when_all(input_futs).Then([=](Future<std::vector<Buffer> > inputs) {
-      //once we get all inputs, execute the task
-      auto executor = EbbRef<Executor>{message.executor()};
-      return executor->Execute(message.task_name(), std::move(inputs.Get()));
-    }).Then([=](Future<std::vector<Buffer> > outputs) {
-        auto outs = outputs.Get();
-        assert(outs.size() == message.outputs_size());
-        //once we have all the outputs, store them
-        for (int i = 0; i < message.outputs_size(); ++i) {
-          hash_table->Set(message.outputs(i), std::move(outs[i]));
-        }
+    //once we get all inputs, execute the task
+    auto executor = EbbRef<Executor>{message.executor()};
+    return executor->Execute(message.task_name(), std::move(inputs.Get()));
+  }).Then([=](Future<std::vector<Buffer> > outputs) {
+    auto outs = outputs.Get();
+    assert(outs.size() == message.outputs_size());
+    //once we have all the outputs, store them
+    for (int i = 0; i < message.outputs_size(); ++i) {
+      hash_table->Set(message.outputs(i), std::move(outs[i]));
+    }
 
-        //Then reply that we have completed the task
-        SingleDataflowCoordinatorMessage reply;
-        reply.set_type(SingleDataflowCoordinatorMessage::COMPLETEWORK);
-        auto complete_work = reply.mutable_complete_work();
-        complete_work->set_task_id(message.task_id());
+    //Then reply that we have completed the task
+    SingleDataflowCoordinatorMessage reply;
+    reply.set_type(SingleDataflowCoordinatorMessage::COMPLETEWORK);
+    auto complete_work = reply.mutable_complete_work();
+    complete_work->set_task_id(message.task_id());
 
-        auto buf = message_manager->Alloc(reply.ByteSize());
-        reply.SerializeToArray(buf.data(), buf.length());
-        message_manager->Send(from, ebbid_, std::move(buf));
-      });
+    auto buf = message_manager->Alloc(reply.ByteSize());
+    reply.SerializeToArray(buf.data(), buf.length());
+    message_manager->Send(from, ebbid_, std::move(buf));
+  });
 }
 
 void
@@ -184,6 +207,12 @@ ebbrt::SingleDataflowCoordinator::
 HandleCompleteWork(NetworkId from,
                    const SingleDataflowCoordinatorCompleteWork& message)
 {
+  end_tasks_.erase(message.task_id());
+  if (end_tasks_.empty()) {
+    promise_.SetValue();
+    return;
+  }
+
   idle_workers_.push(from);
   for (const auto& outputstr : task_table_[message.task_id()].outputs) {
     auto& output = data_table_[outputstr];

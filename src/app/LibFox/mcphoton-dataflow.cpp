@@ -18,6 +18,9 @@
 
 #include <cstdlib>
 
+#include <chrono>
+#include <iostream>
+
 #include <mpi.h>
 
 #include "ebbrt.hpp"
@@ -104,98 +107,59 @@ int main(int argc, char* argv[])
     ebbrt::DataflowCoordinator::DataTable::iterator data_it;
     ebbrt::DataflowCoordinator::TaskTable::iterator task_it;
 
-    // std::tie(data_it, std::ignore) =
-    //   data_table.emplace("data0", ebbrt::DataflowCoordinator::DataDescriptor());
-    // data_it->second.consumers.insert("photon0");
-    // std::tie(data_it, std::ignore) =
-    //   data_table.emplace("data1", ebbrt::DataflowCoordinator::DataDescriptor());
-    // data_it->second.consumers.insert("photon1");
-    // std::tie(data_it, std::ignore) =
-    //   data_table.emplace("data2", ebbrt::DataflowCoordinator::DataDescriptor());
-    // data_it->second.consumers.insert("photon2");
-    // std::tie(data_it, std::ignore) =
-    //   data_table.emplace("data3", ebbrt::DataflowCoordinator::DataDescriptor());
-    // data_it->second.consumers.insert("photon3");
+    //Calculate the log of the number of tasks
+    int logntasks = 0;
+    {
+      unsigned ntaskstmp = ntasks;
+      while (ntaskstmp >>= 1) {
+        ++logntasks;
+      }
+    }
 
-    std::tie(task_it, std::ignore) =
-      task_table.emplace("photon0",
-                         ebbrt::DataflowCoordinator::TaskDescriptor());
-    task_it->second.task = "photon0";
-    task_it->second.outputs.emplace_back("photon_out0");
-    std::tie(task_it, std::ignore) =
-      task_table.emplace("photon1",
-                         ebbrt::DataflowCoordinator::TaskDescriptor());
-    task_it->second.task = "photon1";
-    task_it->second.outputs.emplace_back("photon_out1");
-    std::tie(task_it, std::ignore) =
-      task_table.emplace("photon2",
-                         ebbrt::DataflowCoordinator::TaskDescriptor());
-    task_it->second.task = "photon2";
-    task_it->second.outputs.emplace_back("photon_out2");
-    std::tie(task_it, std::ignore) =
-      task_table.emplace("photon3",
-                         ebbrt::DataflowCoordinator::TaskDescriptor());
-    task_it->second.task = "photon3";
-    task_it->second.outputs.emplace_back("photon_out3");
+    //The task dataflow graph is a tree, the first layer runs the
+    //photon task and the other layers do a logarithmic reduction of
+    //the outputs
+    for (int i = 0; i <= logntasks; ++i) {
+      for (int j = 0; j < (1 << (logntasks - i)); ++j) {
+        auto append = std::to_string(i);
+        append += "_";
+        append += std::to_string(j);
+        auto task = std::string{"task"};
+        task += append;
+        auto out = std::string{"out"};
+        out += append;
 
-    std::tie(data_it, std::ignore) =
-      data_table.emplace("photon_out0",
-                         ebbrt::DataflowCoordinator::DataDescriptor("photon0"));
-    data_it->second.consumers.insert("reduce0_0");
-    std::tie(data_it, std::ignore) =
-      data_table.emplace("photon_out1",
-                         ebbrt::DataflowCoordinator::DataDescriptor("photon1"));
-    data_it->second.consumers.insert("reduce0_0");
-    std::tie(data_it, std::ignore) =
-      data_table.emplace("photon_out2",
-                         ebbrt::DataflowCoordinator::DataDescriptor("photon2"));
-    data_it->second.consumers.insert("reduce0_1");
-    std::tie(data_it, std::ignore) =
-      data_table.emplace("photon_out3",
-                         ebbrt::DataflowCoordinator::DataDescriptor("photon3"));
-    data_it->second.consumers.insert("reduce0_1");
+        if (i == 0) {
+          auto phot = std::string{"photon"};
+          phot += std::to_string(j);
+          task_table.insert({task, {phot, {}, {out}}});
+        } else {
+          auto inbase = std::string{"out"};
+          inbase += std::to_string(i-1);
+          inbase += "_";
+          auto in0 = inbase;
+          in0 += std::to_string(j*2);
+          auto in1 = inbase;
+          in1 += std::to_string(j*2 + 1);
+          task_table.insert({task, {"reduce", {in0, in1}, {out}}});
+        }
 
-    std::tie(task_it, std::ignore) =
-      task_table.emplace("reduce0_0",
-                         ebbrt::DataflowCoordinator::TaskDescriptor());
-    task_it->second.task = "reduce";
-    task_it->second.inputs.emplace_back("photon_out0");
-    task_it->second.inputs.emplace_back("photon_out1");
-    task_it->second.outputs.emplace_back("reduce_out0_0");
-    std::tie(task_it, std::ignore) =
-      task_table.emplace("reduce0_1",
-                         ebbrt::DataflowCoordinator::TaskDescriptor());
-    task_it->second.task = "reduce";
-    task_it->second.inputs.emplace_back("photon_out2");
-    task_it->second.inputs.emplace_back("photon_out3");
-    task_it->second.outputs.emplace_back("reduce_out0_1");
+        auto consumer = std::string{"task"};
+        consumer += std::to_string(i+1);
+        consumer += "_";
+        consumer += std::to_string(j / 2);
+        data_table.insert({out, {task, {consumer}}});
+      }
+    }
 
-    std::tie(data_it, std::ignore) =
-      data_table.emplace("reduce_out0_0",
-                         ebbrt::DataflowCoordinator::DataDescriptor("reduce0_0"));
-    data_it->second.consumers.insert("reduce1_0");
-    std::tie(data_it, std::ignore) =
-      data_table.emplace("reduce_out0_1",
-                         ebbrt::DataflowCoordinator::DataDescriptor("reduce0_1"));
-    data_it->second.consumers.insert("reduce1_0");
-
-    std::tie(task_it, std::ignore) =
-      task_table.emplace("reduce1_0",
-                         ebbrt::DataflowCoordinator::TaskDescriptor());
-    task_it->second.task = "reduce";
-    task_it->second.inputs.emplace_back("reduce_out0_0");
-    task_it->second.inputs.emplace_back("reduce_out0_1");
-    task_it->second.outputs.emplace_back("reduce_out1_0");
-    std::tie(data_it, std::ignore) =
-      data_table.emplace("reduce_out1_0",
-                         ebbrt::DataflowCoordinator::DataDescriptor("reduce1_0"));
-    data_it->second.consumers.insert("print_results");
-
-    std::tie(task_it, std::ignore) =
-      task_table.emplace("print_results",
-                         ebbrt::DataflowCoordinator::TaskDescriptor());
-    task_it->second.task = "print";
-    task_it->second.inputs.emplace_back("reduce_out1_0");
+    //The final task is to print the result of the last reduce
+    auto task = std::string{"task"};
+    task += std::to_string(logntasks + 1);
+    task += "_0";
+    auto in = std::string{"out"};
+    in += std::to_string(logntasks);
+    in += "_0";
+    task_table.insert({task, {"print", {in}, {}}});
 
     ebbrt::EbbRef<ebbrt::DataflowCoordinator>
       dfcoord{ebbrt::lrt::trans::find_static_ebb_id("DataflowCoordinator")};
@@ -206,8 +170,26 @@ int main(int argc, char* argv[])
     ebbrt::EbbRef<ebbrt::RemoteHashTable>
       hash_table{ebbrt::lrt::trans::find_static_ebb_id("RemoteHashTable")};
 
-    dfcoord->Execute(std::move(task_table), std::move(data_table), executor,
-                     hash_table);
+    auto t1 = std::chrono::steady_clock::now();
+
+    auto f = dfcoord->Execute(std::move(task_table), std::move(data_table),
+                              executor, hash_table);
+
+    f.Then([=](ebbrt::Future<void> fut) {
+        try {
+          fut.Get();
+        } catch (std::exception& e) {
+          std::cerr << "Failed: " << e.what() << std::endl;
+          return;
+        } catch (...) {
+          std::cerr << "Failed" << std::endl;
+          return;
+        }
+        auto t2 = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast
+          <std::chrono::duration<double>>(t2-t1).count();
+        std::cout << "Wall time (sec) = " << duration << std::endl;
+      });
   }
 
   context.Loop(-1);

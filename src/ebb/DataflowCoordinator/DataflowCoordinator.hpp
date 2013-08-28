@@ -39,6 +39,12 @@ namespace ebbrt {
       Executor(EbbId id) : EbbRep{id} {}
     };
     struct TaskDescriptor {
+      TaskDescriptor() = default;
+      TaskDescriptor(std::string t,
+                     std::initializer_list<std::string> ins,
+                     std::initializer_list<std::string> outs)
+        : task{std::move(t)}, inputs{ins}, outputs{outs} {}
+
       std::string task;
       std::vector<std::string> inputs;
       std::vector<std::string> outputs;
@@ -46,7 +52,9 @@ namespace ebbrt {
 
     struct DataDescriptor {
       DataDescriptor() : exists{false} {}
-      DataDescriptor(std::string prod) : producer{prod}, exists{false} {}
+      DataDescriptor(std::string prod,
+                     std::initializer_list<std::string> cons)
+        : producer{std::move(prod)}, consumers{cons}, exists{false} {}
       std::string producer;
       std::unordered_set<std::string> consumers;
       bool exists;
