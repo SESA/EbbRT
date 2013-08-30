@@ -15,30 +15,21 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_EBB_REMOTEHASHTABLE_REMOTEHASHTABLE_HPP
-#define EBBRT_EBB_REMOTEHASHTABLE_REMOTEHASHTABLE_HPP
-
-#include <functional>
+#ifndef EBBRT_EBB_FAILUREDETECTOR_ACCRUALFAILUREDETECTOR_HPP
+#define EBBRT_EBB_FAILUREDETECTOR_ACCRUALFAILUREDETECTOR_HPP
 
 #include "ebb/ebb.hpp"
-#include "ebb/EventManager/Future.hpp"
 
 namespace ebbrt {
-  class RemoteHashTable : public EbbRep {
+  class AccrualFailureDetector : public EbbRep {
   public:
-    class TimeoutError : public std::runtime_error
-    {
-    public:
-      TimeoutError() : std::runtime_error{"Timeout while fetching data"} {}
-    };
-
-    virtual Future<Buffer>
-    Get(NetworkId from, const std::string& key) = 0;
-
-    virtual void
-    Set(const std::string& key, Buffer val) = 0;
+    virtual void Register(NetworkId who,
+                          std::function<void(NetworkId,bool)> func,
+                          double threshold = 5.0) = 0;
+    virtual ~AccrualFailureDetector() {}
   protected:
-    RemoteHashTable(EbbId id) : EbbRep{id} {}
+    AccrualFailureDetector(EbbId id) : EbbRep{id} {}
   };
 }
+
 #endif

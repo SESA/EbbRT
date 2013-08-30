@@ -20,6 +20,7 @@
 #include "ebb/SharedRoot.hpp"
 #include "ebb/HashTable/SimpleRemoteHashTable.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
+#include "ebb/Timer/Timer.hpp"
 
 ebbrt::EbbRoot*
 ebbrt::SimpleRemoteHashTable::ConstructRoot()
@@ -56,6 +57,12 @@ ebbrt::SimpleRemoteHashTable::Get(NetworkId from, const std::string& key)
 
   message_manager->Send(from, ebbid_, buffer);
 
+  timer->Wait(std::chrono::seconds{5},
+              [=]() {
+                auto me = EbbRef<SimpleRemoteHashTable>{ebbid_};
+                me->HandleTimeout(op_id);
+              });
+
   //Store a promise to be fulfilled later
   auto pair = promise_map_.emplace(std::piecewise_construct,
                                    std::forward_as_tuple(op_id),
@@ -82,6 +89,16 @@ ebbrt::SimpleRemoteHashTable::HandleMessage(NetworkId from,
   case HTOp::GET_RESPONSE:
     HandleGetResponse(from, header->op_id, buffer + sizeof(Header));
     break;
+  }
+}
+
+void
+ebbrt::SimpleRemoteHashTable::HandleTimeout(unsigned op_id)
+{
+  auto it = promise_map_.find(op_id);
+  if (it != promise_map_.end()) {
+    it->second.SetException(make_exception_ptr(TimeoutError()));
+    promise_map_.erase(it);
   }
 }
 
@@ -118,8 +135,8 @@ ebbrt::SimpleRemoteHashTable::HandleGetResponse(NetworkId from,
                                                 Buffer buffer)
 {
   auto it = promise_map_.find(op_id);
-  assert(it != promise_map_.end());
-
-  it->second.SetValue(std::move(buffer));
-  promise_map_.erase(it);
+  if (it != promise_map_.end()) {
+    it->second.SetValue(std::move(buffer));
+    promise_map_.erase(it);
+  }
 }

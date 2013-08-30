@@ -122,7 +122,7 @@ struct move_function<ReturnType(ParamTypes...)>{
 
   template<class... Args>
   ReturnType
-  operator()(Args&& ...args)
+  operator()(Args&& ...args) const
   {
     return ptr_->callFunc(std::forward<Args>(args)...);
   }

@@ -308,20 +308,21 @@ namespace ebbrt {
       return make_ready_future<std::vector<T> >();
     }
 
-    auto retvec = new std::vector<T>{vec.size()};
-    auto count = new std::atomic_size_t{vec.size()};
-    auto promise = new Promise<std::vector<T> >{};
+    auto retvec = std::make_shared<std::vector<T> >(vec.size());
+    auto count = std::make_shared<std::atomic_size_t>(vec.size());
+    auto promise = std::make_shared<Promise<std::vector<T> > >();
     auto ret = promise->GetFuture();
     for (int i = 0; i < vec.size(); ++i) {
       vec[i].Then([=](Future<T> val) {
-          //FIXME: exception handling
-          (*retvec)[i] = val.Get();
+          try {
+            (*retvec)[i] = val.Get();
+          } catch (...) {
+            promise->SetException(std::current_exception());
+            return;
+          }
           if (count->fetch_sub(1) == 1) {
             // we are the last to fulfill
             promise->SetValue(std::move(*retvec));
-            delete retvec;
-            delete count;
-            delete promise;
           }
         });
     }

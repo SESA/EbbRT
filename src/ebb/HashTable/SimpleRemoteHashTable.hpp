@@ -47,6 +47,8 @@ namespace ebbrt {
       unsigned op_id;
     };
 
+    virtual void HandleTimeout(unsigned op_id);
+
     void HandleGetRequest(NetworkId from, unsigned op_id, Buffer buffer);
     void HandleGetResponse(NetworkId from, unsigned op_id, Buffer buffer);
 

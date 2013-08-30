@@ -15,30 +15,22 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_EBB_REMOTEHASHTABLE_REMOTEHASHTABLE_HPP
-#define EBBRT_EBB_REMOTEHASHTABLE_REMOTEHASHTABLE_HPP
-
-#include <functional>
+#ifndef EBBRT_EBB_TIMER_TIMER_HPP
+#define EBBRT_EBB_TIMER_TIMER_HPP
 
 #include "ebb/ebb.hpp"
-#include "ebb/EventManager/Future.hpp"
 
 namespace ebbrt {
-  class RemoteHashTable : public EbbRep {
+  class Timer : public EbbRep {
   public:
-    class TimeoutError : public std::runtime_error
-    {
-    public:
-      TimeoutError() : std::runtime_error{"Timeout while fetching data"} {}
-    };
-
-    virtual Future<Buffer>
-    Get(NetworkId from, const std::string& key) = 0;
-
-    virtual void
-    Set(const std::string& key, Buffer val) = 0;
+    virtual void Wait(std::chrono::nanoseconds,
+                      std::function<void()> func) = 0;
+    virtual ~Timer() {}
   protected:
-    RemoteHashTable(EbbId id) : EbbRep{id} {}
+    Timer(EbbId id) : EbbRep{id} {}
   };
+  const EbbRef<Timer> timer =
+    EbbRef<Timer>(lrt::trans::find_static_ebb_id("Timer"));
 }
+
 #endif

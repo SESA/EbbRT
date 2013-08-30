@@ -36,11 +36,16 @@ namespace ebbrt {
 #else
   class NetworkId {
   public:
+    NetworkId() = default;
+    NetworkId(const NetworkId& other) : rank{other.rank} {}
     int rank;
   };
   inline bool operator==(const NetworkId& lhs, const NetworkId& rhs)
   {
     return lhs.rank == rhs.rank;
+  }
+  inline bool operator!=(const NetworkId& lhs, const NetworkId& rhs) {
+    return !(lhs == rhs);
   }
 #endif
 }

@@ -26,4 +26,5 @@ message SingleDataflowCoordinatorStartWork {
 
 message SingleDataflowCoordinatorCompleteWork {
   required bytes task_id = 1;
+  required bool success = 2;
 }

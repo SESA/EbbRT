@@ -18,6 +18,7 @@
 #ifndef EBBRT_EBB_DATAFLOWCOORDINATOR_SINGLEDATAFLOWCOORDINATOR_HPP
 #define EBBRT_EBB_DATAFLOWCOORDINATOR_SINGLEDATAFLOWCOORDINATOR_HPP
 
+#include <unordered_map>
 #include <unordered_set>
 
 #include "ebb/DataflowCoordinator/DataflowCoordinator.hpp"
@@ -33,12 +34,15 @@ namespace ebbrt {
     virtual Future<void>
     Execute(TaskTable task_table, DataTable data_table,
             EbbRef<Executor> executor,
-            EbbRef<RemoteHashTable> hash_table) override;
+            EbbRef<RemoteHashTable> hash_table,
+            EbbRef<AccrualFailureDetector> fd) override;
 
     virtual void
     HandleMessage(NetworkId from, Buffer buf) override;
 
   private:
+    void CheckReexecute(const TaskDescriptor& task);
+    void Failure(NetworkId who, bool fail);
     bool TaskRunnable(const TaskDescriptor& task);
     bool EndTask(const TaskDescriptor& task);
     void Schedule(const std::string& task, NetworkId worker);
@@ -50,14 +54,20 @@ namespace ebbrt {
 
     TaskTable task_table_;
     DataTable data_table_;
-    std::stack<std::string> runnable_tasks_;
-    std::stack<NetworkId> idle_workers_;
-    std::unordered_set<std::string> end_tasks_;
+
+    std::unordered_set<NetworkId> idle_workers_;
     std::unordered_map<NetworkId, std::string> running_workers_;
+    std::unordered_set<NetworkId> failed_workers_;
+
+    std::unordered_set<std::string> runnable_tasks_;
+    std::unordered_multimap<NetworkId, std::string> task_locations_;
+    std::unordered_set<std::string> end_tasks_;
+
     Promise<void> promise_;
 
     EbbRef<Executor> executor_;
     EbbRef<RemoteHashTable> hash_table_;
+    EbbRef<AccrualFailureDetector> fd_;
   };
 };
 

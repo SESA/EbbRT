@@ -26,7 +26,9 @@ src_app_LibFox_mcphoton_dataflow_ebbs = \
 	src/ebb/EventManager/libSimpleEventManager.a \
 	src/ebb/MessageManager/libMPIMessageManager.a \
 	src/ebb/DataflowCoordinator/libSingleDataflowCoordinator.a \
-	src/ebb/HashTable/libSimpleRemoteHashTable.a
+	src/ebb/HashTable/libSimpleRemoteHashTable.a \
+	src/ebb/FailureDetector/libPhiAccrualFailureDetector.a \
+	src/ebb/Timer/libSimpleTimer.a
 
 src_app_LibFox_mcphoton_dataflow_LDFLAGS = \
 	$(app_linkflags) \

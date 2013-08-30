@@ -26,6 +26,7 @@
 #include "ebb/ebb.hpp"
 #include "ebb/EventManager/Future.hpp"
 #include "ebb/HashTable/RemoteHashTable.hpp"
+#include "ebb/FailureDetector/AccrualFailureDetector.hpp"
 #include "misc/network.hpp"
 
 namespace ebbrt {
@@ -43,18 +44,22 @@ namespace ebbrt {
       TaskDescriptor(std::string t,
                      std::initializer_list<std::string> ins,
                      std::initializer_list<std::string> outs)
-        : task{std::move(t)}, inputs{ins}, outputs{outs} {}
+        : task{std::move(t)}, inputs{ins}, outputs{outs},
+        must_be_executed{true}, running{false} {}
 
       std::string task;
       std::vector<std::string> inputs;
       std::vector<std::string> outputs;
+      bool must_be_executed;
+      bool running;
     };
 
     struct DataDescriptor {
       DataDescriptor() : exists{false} {}
       DataDescriptor(std::string prod,
                      std::initializer_list<std::string> cons)
-        : producer{std::move(prod)}, consumers{cons}, exists{false} {}
+        : producer{std::move(prod)}, consumers{cons},
+        exists{false} {}
       std::string producer;
       std::unordered_set<std::string> consumers;
       bool exists;
@@ -67,7 +72,8 @@ namespace ebbrt {
     virtual Future<void> Execute(TaskTable task_table,
                                  DataTable data_table,
                                  EbbRef<Executor> executor,
-                                 EbbRef<RemoteHashTable> hash_table)= 0;
+                                 EbbRef<RemoteHashTable> hash_table,
+                                 EbbRef<AccrualFailureDetector> fd) = 0;
   protected:
     DataflowCoordinator(EbbId id) : EbbRep{id} {}
   };

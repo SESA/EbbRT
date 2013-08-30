@@ -24,7 +24,9 @@ constexpr ebbrt::app::Config::InitEbb late_init_ebbs[] = {
   { .name = "MessageManager" },
   { .name = "DataflowCoordinator" },
   { .name = "MCPhotonExecutor" },
-  { .name = "RemoteHashTable" }
+  { .name = "RemoteHashTable" },
+  { .name = "PhiAccrualFailureDetector" },
+  { .name = "Timer" }
 };
 
 constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
@@ -33,7 +35,9 @@ constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
   {.name = "MessageManager", .id = 7},
   {.name = "DataflowCoordinator", .id = 8},
   {.name = "MCPhotonExecutor", .id = 9},
-  {.name = "RemoteHashTAble", .id = 10}
+  {.name = "RemoteHashTable", .id = 10},
+  {.name = "PhiAccrualFailureDetector", .id = 11},
+  {.name = "Timer", .id = 12}
 };
 
 const ebbrt::app::Config ebbrt::app::config = {

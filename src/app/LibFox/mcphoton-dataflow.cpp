@@ -22,16 +22,28 @@
 #include <iostream>
 
 #include <mpi.h>
+#include <signal.h>
+#include <unistd.h>
 
 #include "ebbrt.hpp"
 #include "app/LibFox/MCPhotonExecutor.hpp"
 #include "ebb/DataflowCoordinator/DataflowCoordinator.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
+#include "ebb/FailureDetector/AccrualFailureDetector.hpp"
 
 namespace {
   constexpr int DEFAULT_NPROC = 0;
   constexpr int DEFAULT_NPHOTONS = 5000;
   constexpr int DEFAULT_NTASKS = 1;
+}
+
+int rank;
+
+void timeout(int signal)
+{
+  std::cout << rank << " failing" << std::endl;
+  while (1)
+    ;
 }
 
 int main(int argc, char* argv[])
@@ -85,7 +97,6 @@ int main(int argc, char* argv[])
     exit(-1);
   }
 
-  int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   ebbrt::EbbRT instance;
@@ -170,10 +181,13 @@ int main(int argc, char* argv[])
     ebbrt::EbbRef<ebbrt::RemoteHashTable>
       hash_table{ebbrt::lrt::trans::find_static_ebb_id("RemoteHashTable")};
 
+    auto fd = ebbrt::EbbRef<ebbrt::AccrualFailureDetector>
+      {ebbrt::lrt::trans::find_static_ebb_id("PhiAccrualFailureDetector")};
+
     auto t1 = std::chrono::steady_clock::now();
 
     auto f = dfcoord->Execute(std::move(task_table), std::move(data_table),
-                              executor, hash_table);
+                              executor, hash_table, fd);
 
     f.Then([=](ebbrt::Future<void> fut) {
         try {
@@ -191,6 +205,11 @@ int main(int argc, char* argv[])
         std::cout << "Wall time (sec) = " << duration << std::endl;
       });
   }
+
+  signal(SIGALRM, timeout);
+  // if (rank == 3) {
+  //   alarm(30);
+  // }
 
   context.Loop(-1);
 }
