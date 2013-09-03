@@ -481,7 +481,6 @@ function SESAcleanApp
     locked_rm_nodes "*" "$1" "*" "*" "*" "*"
     for j in ${nodes[@]}
     do
-      echo $j
       locked_touch_nodes "$j" "$FREEOWNER" "$FREEPNET"\
         "$FREEINETFLG" "$FREEXNETFLG" "$FREECONID"
     done
@@ -490,7 +489,6 @@ function SESAcleanApp
   # clean up files
   rm -rf $SESANETDIR/$net
   rm -rf $( echo ${files[@]} | sort -u )
-
 }
 
 function SESAlistApp
@@ -512,7 +510,7 @@ function SESAlistApp
 function SESAgenerateMac()
 {
   local mac
-  printf -v mac 'DE:AD:BE:EF:%02X:%02X' $((RANDOM%256)) $((RANDOM%256))
+  printf -v mac 'CO:FF:EE:00:%02X:%02X' $((RANDOM%256)) $((RANDOM%256))
   echo $mac
 }
 
