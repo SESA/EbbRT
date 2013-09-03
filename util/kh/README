@@ -9,3 +9,13 @@ khget - allocate a node to an application
 khls - list active applications
 khrm - remove an active application
 setup - set up an EbbRT build testbed, a new khdb and some helper scripts
+
+## Usage
+Run setup script from the directory you want to setup the build environment 
+`mkdir ~/sesa/build  
+cd ~/sesa/build`
+First argument of setup is the full path to the root EbbRT source directory 
+~/sesa/EbbRT/util/kh/setup ~/sesa/EbbRT
+
+Load environment variables, enabling khls, khrm, etc
+`source loadenv`

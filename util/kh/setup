@@ -45,7 +45,7 @@ echo "$src/configure 'CXXFLAGS=$flags' --host=x86_64-pc-ebbrt " >> $bare/doconfi
 (cd $bare; . doconfig && make)
 
 #################################################
-# envoirnment variables
+# environment variables
 #################################################
 cat > $base/loadenv << EOF
 export SESA=1

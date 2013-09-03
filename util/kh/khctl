@@ -541,6 +541,7 @@ SESAconfigNodes()
   local concmd=""
   local mntcmd=""
   local bioscmd=""
+  local ram="128"
 
   #echo "SESAconfigNodes: khuser=$khuser pnetids=$pnetids  inet=$inet xnet=$xnet conid=$conid num=$num, nodes=$nodes dir=$dir"
 
@@ -603,6 +604,7 @@ SESAconfigNodes()
     if [[ -d $SESAMNTDIR ]]
     then
       mntcmd="-drive file=fat:rw:$SESAMNTDIR"
+      ram="512"
     fi
 
     # bios rom
@@ -612,7 +614,7 @@ SESAconfigNodes()
     fi
 
     # instantiate node!
-    $SESAEMUCMD $netcmd $srlcmd $concmd -enable-kvm -daemonize -pidfile $dir/pid $SESA_ROM $SESA_IMG $mntcmd > $dir/vnclog 2>&1
+    $SESAEMUCMD $netcmd $srlcmd $concmd -enable-kvm -m $ram -daemonize -pidfile $dir/pid $SESA_ROM $SESA_IMG $mntcmd > $dir/vnclog 2>&1
   done
 
   return 0
