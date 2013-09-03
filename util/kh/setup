@@ -66,6 +66,18 @@ all: .DEFAULT
 EOF
 
 #################################################
+# docker run script
+#################################################
+
+cat > $base/docker-run << EOF
+if [[ -a Dockerfile ]]; then
+  # create and run container 
+  docker build -t ebbrt-app .
+  docker run ebbrt-app
+fi
+EOF
+
+#################################################
 # make the apps
 #################################################
 
@@ -111,11 +123,7 @@ export SESA_GET=khget
 EOF
 
 echo '
-src=/home/jmcadden/work/sesa/EbbRT
-base=.
-ulnx=./ulnx
-bare=./bare
-imgtype=iso
+sesalnx=/home/jmcadden/sesalnx.img
 export SESA_GET=/home/jmcadden/work/sesa/EbbRT/util/kh/khget
 export SESA_UTIL=/home/jmcadden/work/sesa/EbbRT/util/kh/khctl
 export SESA_BASEDIR=/scratch/build/khdb
@@ -128,7 +136,7 @@ declare fcnt
 declare -i lp=0
 declare -i optcount=0
 
-while getopts "n:t:f:" OPT
+while getopts "n:t:f:P" OPT
 do 
   case $OPT in
       ("n") name="$OPTARG"; (( optcount=optcount + 2));;
@@ -141,16 +149,16 @@ done
 shift $optcount
 app=$1
 count=$2
-if [[ -z $count ]]; then count=1; fi
+if [[ -z $count ]]; then count=0; fi
 
 
 if [[ -z $app  || -z $count ]]
 then
-  echo "USAGE: $0 [-n name] [-t tap] [-f fcnt] <app> <count>"
+  echo "USAGE: $0 [-n name] [-t tap] [-f fcnt] [-P] <app> <count>"
   echo "     -n  name : specify name of the job " 
   echo "     -t  tap  : tap interface (sudo required)" 
-  echo "     -f  fcnt : load "fcnt"-many linux front-end processes" 
-  #echo "     -P       : run front-end as a local process" 
+  echo "     -f  fcnt : load 'fcnt'-many linux front-end processes" 
+  echo "     -P       : run front-end as a local processes" 
   echo "     app      : EbbRT application to run (e.g., HelloWorld)"
   echo "     count    : num of baremetal nodes to boot"
   exit 1;
@@ -170,7 +178,7 @@ APPNAME="$name"
 BARE_IMG=$(readlink -f ${base}/bare/src/app/$app/$app.$imgtype)
 FNT_IMG=$(readlink -f ${base}/ulnx/src/app/$app/$app)
 
-if [[ ! -a $BARE_IMG ]]; then
+if [[ ! -a $BARE_IMG && $count>0 ]]; then
   echo "ERROR: binaries not found for $app. Try running ./makeapp $app"
   exit 1
 fi
@@ -185,20 +193,30 @@ if [[ -n $fcnt && $fcnt > 0 ]]; then
         xterm -hold -e $FNT_IMG &
       done
     else
-      # linux vm front-ends
-      echo "#!/bin/bash" > $ulnx/run
-      echo "/root/ebbrt/src/app/$app/$app" >> $ulnx/run
-      mnt=$(readlink -f ${base}/ulnx)
+      # linux vm image uses Docker to contain app dependancies 
+      mkdir -p $base/docker/$APPNAME 
+      # move in binary + run script
+      cp $ulnx/src/app/$app/$app $base/docker/$APPNAME/myapp 
+      cp $base/docker-run $base/docker/$APPNAME/run
+      # move in Dockerfile
+      dockerfile=$src/util/docker/$app.dockerfile
+      if [[ ! -a $dockerfile ]]; then
+        dockerfile=$src/util/docker/default.dockerfile
+      fi
+      cp $dockerfile $base/docker/$APPNAME/Dockerfile
+      # mount and run
+      mnt=$(readlink -f ${base}/docker/$APPNAME)
       ftcmd="$($SESA_GET -f -m $mnt $APPNAME $sesalnx $fcnt)"
       serials=$(echo "$ftcmd" | grep serial | while read node nn junk path; do echo $path; done)
-
       for sock in $serials; do
         xterm -e socat - UNIX-CONNECT:$sock &
       done
     fi
-  sleep 3
+  sleep 5
 fi
 
-bkcmd="$($SESA_GET $APPNAME $BARE_IMG $count)"
-echo $bkcmd
+if [[ $count > 0 ]]; then
+  bkcmd="$($SESA_GET $APPNAME $BARE_IMG $count)"
+  echo $bkcmd
+fi
 ' >> $base/runapp 
