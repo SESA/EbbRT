@@ -173,7 +173,12 @@ if [[ -n $tap ]]; then
     fi
 fi
 
-if [[ -z $name ]]; then name=$app$RANDOM; fi
+# Assign a random application instance name if none is given 
+if [[ -z $name ]]; then 
+  name=$app$RANDOM; 
+fi
+echo "Application: $name"
+
 APPNAME="$name"
 BARE_IMG=$(readlink -f ${base}/bare/src/app/$app/$app.$imgtype)
 FNT_IMG=$(readlink -f ${base}/ulnx/src/app/$app/$app)
@@ -183,7 +188,6 @@ if [[ ! -a $BARE_IMG && $count>0 ]]; then
   exit 1
 fi
 
-echo "Loading nodes for $name"
 
 # frontend 
 if [[ -n $fcnt && $fcnt > 0 ]]; then

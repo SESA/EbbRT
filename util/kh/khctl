@@ -573,29 +573,29 @@ SESAconfigNodes()
     then
       mac=$(SESAgenerateMac)
       netcmd="$netcmd -net nic,vlan=1,macaddr=$mac -net bridge,vlan=1,br=brX"
-      echo "node $n: network External : eth0 : $mac"
+      echo "$n: network_external eth0 $mac"
     fi
     # internal network
     if (( $inet == 1 ))
     then
       mac=$(SESAgenerateMac)
       netcmd="$netcmd -net nic,vlan=2,macaddr=$mac -net bridge,vlan=2,br=brI"
-      echo "node $n: network Internal : eth1 : $mac"
+      echo "$n: network_internal eth1 $mac"
     fi
     # private network(s)
     for p in ${pnetids//,/ }; do
       mac=$(SESAgenerateMac)
       netcmd="$netcmd -net nic,vlan=$p,model=virtio,macaddr=$mac -net vde,vlan=$p,sock=$SESANETDIR/${p}/sock"
-      echo "node $n: network Private $p : eth${j} : $mac"
+      echo "$n: network_application eth${j} $mac"
       (( j++ ))
     done
 
     # serial
-    echo "node $n: serial: $dir/com1"
+    echo "$n: serial $dir/com1"
     srlcmd="-serial unix:$dir/com1,server,nowait"
 
     # vde 
-    echo "node $n: console: $dir/vnc"
+    echo "$n: console $dir/vnc"
     concmd="-vnc unix:$dir/vnc -name $khuser:$conid:$n"
 
     # mount
