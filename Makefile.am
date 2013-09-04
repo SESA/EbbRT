@@ -45,10 +45,14 @@ libebbrt_a_LIBADD =
 libebbrt_a_DEPENDENCIES =
 EXTRA_DIST =
 EXTRA_LIBRARIES =
+CLEANFILES =
 ebbrt_libs =
 
 app_linkflags =
 app_deps =
+
+%.pb.cc %.pb.h: %.proto
+	$(PROTOC) --proto_path=$(dir $^) --cpp_out=$(dir $^) $^
 
 if LRT_BARE
 

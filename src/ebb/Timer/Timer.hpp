@@ -15,35 +15,22 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_EBB_ETHERNET_ETHERNET_HPP
-#define EBBRT_EBB_ETHERNET_ETHERNET_HPP
-
-#include <functional>
+#ifndef EBBRT_EBB_TIMER_TIMER_HPP
+#define EBBRT_EBB_TIMER_TIMER_HPP
 
 #include "ebb/ebb.hpp"
-#include "misc/buffer.hpp"
 
 namespace ebbrt {
-  class Ethernet : public EbbRep {
+  class Timer : public EbbRep {
   public:
-    class Header {
-    public:
-      uint8_t destination[6];
-      uint8_t source[6];
-      uint16_t ethertype;
-    } __attribute__((packed));
-    virtual Buffer Alloc(size_t size) = 0;
-    virtual void Send(Buffer buffer, const char* to,
-                      const char* from, uint16_t ethertype) = 0;
-    virtual const char* MacAddress() = 0;
-    virtual void SendComplete() = 0;
-    virtual void Register(uint16_t ethertype,
-                          std::function<void(Buffer, const char[6])> func) = 0;
-    virtual void Receive() = 0;
+    virtual void Wait(std::chrono::nanoseconds,
+                      std::function<void()> func) = 0;
+    virtual ~Timer() {}
   protected:
-    Ethernet(EbbId id) : EbbRep{id} {}
+    Timer(EbbId id) : EbbRep{id} {}
   };
-  extern EbbRef<Ethernet> ethernet;
+  const EbbRef<Timer> timer =
+    EbbRef<Timer>(lrt::trans::find_static_ebb_id("Timer"));
 }
 
 #endif

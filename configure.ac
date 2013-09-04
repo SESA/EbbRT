@@ -65,6 +65,43 @@ AX_CONFIG_FEATURE(
         [epoll], [This platform supports epoll(7)],
         [HAVE_EPOLL], [This platform supports epoll(7).])
 
+AC_ARG_WITH([protobuf-includedir],
+        [AS_HELP_STRING([--with-protobuf-includedir=INCLUDE_DIR],
+                [location of the protocol buffers headers, defaults to /usr/include])],
+        [PROTOBUF_INCLUDEDIR="$withval"],
+        [PROTOBUF_INCLUDEDIR='/usr/include'])
+AC_SUBST([PROTOBUF_INCLUDEDIR])
+
+AC_ARG_WITH([protobuf-libdir],
+[AS_HELP_STRING([--with-protobuf-libdir=LIB_DIR],
+[location of the protocol buffers libraries, defaults to /usr/lib])],
+[PROTOBUF_LIBDIR="$withval"],
+[PROTOBUF_LIBDIR='/usr/lib'])
+AC_SUBST([PROTOBUF_LIBDIR])
+
+CPPFLAGS_SAVE=$CPPFLAGS
+LDFLAGS_SAVE=$LDFLAGS
+
+CPPFLAGS="$CPPFLAGS -I$PROTOBUF_INCLUDEDIR"
+LDFLAGS="$LDFLAGS -L$PROTOBUF_LIBDIR"
+
+with_PROTOBUF=yes
+AC_CHECK_HEADERS([google/protobuf/stubs/common.h],,[with_PROTOBUF=no])
+AC_CHECK_LIB([protobuf-lite], [main],,[with_PROTOBUF=no])
+AS_ECHO([$with_PROTOBUF])
+AM_CONDITIONAL([PROTOBUF], [test x$with_PROTOBUF = xyes])
+
+
+CPPFLAGS=$CPPFLAGS_SAVE
+LDFLAGS=$LDFLAGS_SAVE
+
+AC_ARG_WITH([protoc],
+        [AS_HELP_STRING([--with-protoc=PATH],
+                [location of the protoc protocol buffer compiler binary, defaults to protoc])],
+        [PROTOC="$withval"],
+        [PROTOC='protoc'])
+AC_SUBST([PROTOC])
+
 # Checks for programs.
 AM_PROG_AS
 AC_PROG_CC

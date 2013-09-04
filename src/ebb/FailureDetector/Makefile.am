@@ -13,8 +13,8 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+EXTRA_LIBRARIES += \
+	src/ebb/FailureDetector/libPhiAccrualFailureDetector.a
 
-include src/app/LibFox/DHT.am
-include src/app/LibFox/Hash.am
-include src/app/LibFox/ME.am
-include src/app/LibFox/dataflow.am
+src_ebb_FailureDetector_libPhiAccrualFailureDetector_a_SOURCES = \
+	src/ebb/FailureDetector/PhiAccrualFailureDetector.cpp

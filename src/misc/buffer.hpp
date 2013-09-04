@@ -18,10 +18,81 @@
 #ifndef EBBRT_MISC_BUFFER_HPP
 #define EBBRT_MISC_BUFFER_HPP
 
+#include <cstdlib>
+#include <cstring>
+
 #include <list>
+#include <memory>
+#include <string>
 
 namespace ebbrt {
   typedef std::list<std::pair<const void*, size_t> > BufferList;
+
+  class Buffer {
+    std::shared_ptr<char> ptr_;
+    size_t length_;
+  public:
+    Buffer() = default;
+    Buffer(void* buffer, size_t length)
+      : ptr_{static_cast<char*>(buffer), std::free},
+      length_{length}
+    {
+    }
+
+    template <typename Deleter>
+    Buffer(void* buffer, size_t length, Deleter deleter)
+      : ptr_{static_cast<char*>(buffer), deleter},
+      length_{length}
+    {
+    }
+
+    Buffer(const std::string& str) {
+      auto buf = std::malloc(str.length());
+      if (buf == nullptr) {
+        throw std::bad_alloc();
+      }
+      std::strncpy(static_cast<char*>(buf), str.c_str(), str.length());
+      ptr_ = std::shared_ptr<char>(static_cast<char*>(buf), std::free);
+      length_ = str.length();
+    }
+
+    Buffer operator+(size_t offset) {
+      auto buf = Buffer{ptr_.get() + offset, length_ - offset,
+                        ptr_};
+      ptr_.reset();
+      return std::move(buf);
+    }
+
+    Buffer operator-(size_t offset) {
+      auto buf = Buffer{ptr_.get() - offset, length_ + offset,
+                        ptr_};
+      ptr_.reset();
+      return std::move(buf);
+    }
+
+    size_t length() const
+    {
+      return length_;
+    }
+
+    char& operator[](size_t pos) const
+    {
+      return ptr_.get()[pos];
+    }
+
+    char* data() const
+    {
+      return ptr_.get();
+    }
+  private:
+    Buffer(char* buffer, size_t length,
+           const std::shared_ptr<char>& shared_ptr)
+      : ptr_{shared_ptr, buffer}, length_{length}
+    {
+    }
+  };
+
+
 }
 
 #endif

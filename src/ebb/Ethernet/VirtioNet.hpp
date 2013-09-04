@@ -18,7 +18,7 @@
 #ifndef EBBRT_EBB_ETHERNET_VIRTIONET_HPP
 #define EBBRT_EBB_ETHERNET_VIRTIONET_HPP
 
-#include <map>
+#include <unordered_map>
 
 #include "ebb/Ethernet/Ethernet.hpp"
 #include "device/virtio.hpp"
@@ -29,27 +29,28 @@ namespace ebbrt {
   public:
     static EbbRoot* ConstructRoot();
     VirtioNet(EbbId id);
-    void Send(BufferList buffers,
-              std::function<void()> cb = nullptr) override;
-    const uint8_t* MacAddress() override;
+    Buffer Alloc(size_t size) override;
+    void Send(Buffer buffer, const char* to,
+              const char* from, uint16_t ethertype) override;
+    const char* MacAddress() override;
     void SendComplete() override;
     void Register(uint16_t ethertype,
-                  std::function<void(const char*, size_t)> func) override;
+                  std::function<void(Buffer, const char[6])> func) override;
     void Receive() override;
   private:
     uint16_t io_addr_;
     uint16_t next_free_;
     uint16_t next_available_;
-    uint16_t last_sent_used_ = 0;
+    uint16_t last_sent_used_;
     Spinlock lock_;
     uint16_t send_max_;
     bool msix_enabled_;
-    uint8_t mac_address_[6];
+    char mac_address_[6];
     virtio::QueueDescriptor* send_descs_;
     virtio::Available* send_available_;
     virtio::Used* send_used_;
     char empty_header_[10];
-    std::map<uint16_t, std::function<void()> > cb_map_;
+    std::unordered_map<uint16_t, Buffer> buffer_map_;
   };
 }
 

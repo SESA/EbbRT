@@ -21,12 +21,13 @@
 #include <functional>
 
 #include "ebb/ebb.hpp"
+#include "misc/buffer.hpp"
 
 namespace ebbrt {
   class Console : public EbbRep {
   public:
-    virtual void Write(const char* str,
-                       std::function<void()> cb = nullptr) = 0;
+    virtual Buffer Alloc(size_t size) = 0;
+    virtual void Write(Buffer buffer) = 0;
   protected:
     Console(EbbId id) : EbbRep{id} {}
   };
