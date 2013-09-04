@@ -19,6 +19,7 @@
 #define EBBRT_MISC_BUFFER_HPP
 
 #include <cstdlib>
+#include <cstring>
 
 #include <list>
 #include <memory>

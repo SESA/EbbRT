@@ -93,7 +93,10 @@ ebbrt::app::start()
   ebb_manager->Bind(PCI::ConstructRoot, pci);
   ethernet = EbbRef<Ethernet>(ebb_manager->AllocateId());
   ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
-  console->Write("Hello World (remote)\n");
+  const char str[] = "Hello World (frontend)\n";
+  auto buf = ebbrt::console->Alloc(sizeof(str));
+  std::memcpy(buf.data(), str, sizeof(str));
+  ebbrt::console->Write(std::move(buf));
 }
 #endif
 

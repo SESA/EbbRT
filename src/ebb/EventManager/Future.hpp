@@ -23,6 +23,7 @@
 #include <memory>
 #include <mutex>
 #include <stdexcept>
+#include <vector>
 
 #include "ebb/EventManager/EventManager.hpp"
 

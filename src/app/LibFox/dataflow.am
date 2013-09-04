@@ -13,6 +13,7 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 EXTRA_PROGRAMS += src/app/LibFox/mcphoton-dataflow
 
 src_app_LibFox_mcphoton_dataflow_SOURCES = \
@@ -30,12 +31,17 @@ src_app_LibFox_mcphoton_dataflow_ebbs = \
 	src/ebb/FailureDetector/libPhiAccrualFailureDetector.a \
 	src/ebb/Timer/libSimpleTimer.a
 
+src_app_LibFox_mcphoton_dataflow_CPPFLAGS = \
+	$(CPPFLAGS) \
+	-I$PROTOBUF_INCLUDEDIR
+
 src_app_LibFox_mcphoton_dataflow_LDFLAGS = \
 	$(app_linkflags) \
 	-Wl,-whole-archive \
 	$(ebbrt_libs) \
 	$(src_app_LibFox_mcphoton_dataflow_ebbs) \
-	-Wl,-no-whole-archive
+	-Wl,-no-whole-archive \
+	-L$(PROTOBUF_LIBDIR)
 
 src_app_LibFox_mcphoton_dataflow_LDADD = \
 	libebbrt.a
