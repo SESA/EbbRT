@@ -59,7 +59,7 @@ ebbrt::SimpleEventManager::AllocateInterrupt(std::function<void()> func)
 }
 
 void
-ebbrt::SimpleEventManager::Async(std::function<void()> func)
+ebbrt::SimpleEventManager::Async(move_function<void()> func)
 {
   asyncs_.push(std::move(func));
 }

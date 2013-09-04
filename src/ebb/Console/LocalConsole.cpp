@@ -44,15 +44,23 @@ static void _reg_symbol()
 
 ebbrt::LocalConsole::LocalConsole(EbbId id) : Console(id) {}
 
+ebbrt::Buffer
+ebbrt::LocalConsole::Alloc(size_t size)
+{
+  auto buf = malloc(size);
+  if (buf == nullptr) {
+    throw std::bad_alloc();
+  }
+
+  return Buffer{buf, size};
+}
+
 void
-ebbrt::LocalConsole::Write(const char* str,
-                            std::function<void()> cb)
+ebbrt::LocalConsole::Write(Buffer buffer)
 {
 #ifdef __linux__
-  assert(!cb);
-  std::cout << str;
+  std::cout << buffer.data();
 #elif __ebbrt__
-  LRT_ASSERT(!cb);
-  lrt::console::write(str);
+  lrt::console::write(buffer.data());
 #endif
 }

@@ -30,18 +30,19 @@ namespace ebbrt {
     static EbbRoot* ConstructRoot();
 
     RawSocket(EbbId id);
-    void Send(BufferList buffers,
-              std::function<void()> cb = nullptr) override;
-    const uint8_t* MacAddress() override;
+    Buffer Alloc(size_t size) override;
+    void Send(Buffer buffer, const char* to,
+              const char* from, uint16_t ethertype) override;
+    const char* MacAddress() override;
     void SendComplete() override;
     void Register(uint16_t ethertype,
-                  std::function<void(const char*, size_t)> func) override;
+                  std::function<void(Buffer, const char[6])> func) override;
     void Receive() override;
   private:
-    uint8_t mac_addr_[6];
+    char mac_addr_[6];
     pcap_t* pdev_;
     std::unordered_map<uint16_t,
-                       std::function<void(const char*, size_t)> > map_;
+                       std::function<void(Buffer, const char[6])> > map_;
   };
 }
 

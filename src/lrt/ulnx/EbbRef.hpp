@@ -52,6 +52,12 @@ namespace ebbrt {
           /* construct the ref corresponding to the given id */
           id_{id}
         {}
+
+        template <class R>
+        constexpr operator EbbRef<R>() const
+        {
+          return EbbRef<R>(id_);
+        }
         /**
          * @brief Overload arrow operator
          *

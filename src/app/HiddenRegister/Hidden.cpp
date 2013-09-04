@@ -32,7 +32,10 @@ ebbrt::Hidden::Hidden(EbbId id) : EbbRep{id}
   std::ostringstream stream;
   stream << "In " << __PRETTY_FUNCTION__ << " this pointer = " << this <<
     std::endl;
-  console->Write(stream.str().c_str());
+  auto str = stream.str();
+  auto buf = console->Alloc(str.size());
+  std::memcpy(buf.data(), str.c_str(), str.size());
+  console->Write(std::move(buf));
 }
 
 void
@@ -41,7 +44,10 @@ ebbrt::Hidden::NoReturn()
   std::ostringstream stream;
   stream << "In " << __PRETTY_FUNCTION__ << " this pointer = " << this <<
     std::endl;
-  console->Write(stream.str().c_str());
+  auto str = stream.str();
+  auto buf = console->Alloc(str.size());
+  std::memcpy(buf.data(), str.c_str(), str.size());
+  console->Write(std::move(buf));
 }
 
 ebbrt::Hidden::SmallStruct
@@ -51,7 +57,10 @@ ebbrt::Hidden::SmallPODReturn()
   std::ostringstream stream;
   stream << "In " << __PRETTY_FUNCTION__ << " this pointer = " << this <<
     std::endl;
-  console->Write(stream.str().c_str());
+  auto str = stream.str();
+  auto buf = console->Alloc(str.size());
+  std::memcpy(buf.data(), str.c_str(), str.size());
+  console->Write(std::move(buf));
   return s;
 }
 
@@ -62,6 +71,9 @@ ebbrt::Hidden::BigPODReturn()
   std::ostringstream stream;
   stream << "In " << __PRETTY_FUNCTION__ << " this pointer = " << this <<
     std::endl;
-  console->Write(stream.str().c_str());
+  auto str = stream.str();
+  auto buf = console->Alloc(str.size());
+  std::memcpy(buf.data(), str.c_str(), str.size());
+  console->Write(std::move(buf));
   return b;
 }

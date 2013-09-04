@@ -24,6 +24,7 @@
 #include "lrt/bare/assert.hpp"
 #endif
 
+#include "misc/buffer.hpp"
 #include "misc/network.hpp"
 
 namespace ebbrt {
@@ -35,8 +36,7 @@ namespace ebbrt {
       class EbbRep {
       public:
         virtual void HandleMessage(NetworkId from,
-                                   const char* buf,
-                                   size_t len)
+                                   Buffer buffer)
         {
 #ifdef __linux__
           assert(0);

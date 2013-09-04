@@ -31,7 +31,7 @@ namespace ebbrt {
 
     SimpleEventManager(EbbId id);
     virtual uint8_t AllocateInterrupt(std::function<void()> func) override;
-    virtual void Async(std::function<void()> func) override;
+    virtual void Async(move_function<void()> func) override;
 #ifdef __linux__
     virtual void RegisterFD(int fd, uint32_t events,
                             uint8_t interrupt) override;
@@ -45,7 +45,7 @@ namespace ebbrt {
 
     std::unordered_map<uint8_t, std::function<void()> > map_;
     uint8_t next_;
-    std::stack<std::function<void()> > asyncs_;
+    std::stack<move_function<void()> > asyncs_;
 #ifndef __bg__
     /** The epoll file descriptor for event dispatch */
     int epoll_fd_;

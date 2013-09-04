@@ -27,10 +27,11 @@ namespace ebbrt {
   public:
     static EbbRoot* ConstructRoot();
     MPIMessageManager(EbbId id);
+
+    virtual Buffer Alloc(size_t size) override;
     virtual void Send(NetworkId to,
                       EbbId ebb,
-                      BufferList buffers,
-                      std::function<void()> cb = nullptr) override;
+                      Buffer buffer) override;
     virtual void StartListening() override;
   private:
     virtual int CheckForInterrupt();
@@ -39,7 +40,7 @@ namespace ebbrt {
     uint8_t interrupt_;
     MPI_Status status_;
     std::vector<MPI_Request> reqs_;
-    std::vector<std::vector<char> > bufs_;
+    std::vector<Buffer> bufs_;
   };
 }
 #endif

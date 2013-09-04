@@ -15,26 +15,21 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_EBB_MESSAGEMANAGER_MESSAGEMANAGER_HPP
-#define EBBRT_EBB_MESSAGEMANAGER_MESSAGEMANAGER_HPP
+#ifndef EBBRT_APP_LIBFOX_MCPHOTONEXECUTOR_HPP
+#define EBBRT_APP_LIBFOX_MCPHOTONEXECUTOR_HPP
 
-#include <functional>
-
-#include "misc/network.hpp"
-#include "misc/buffer.hpp"
+#include "ebb/DataflowCoordinator/DataflowCoordinator.hpp"
 
 namespace ebbrt {
-  class MessageManager : public EbbRep {
+  class MCPhotonExecutor : public DataflowCoordinator::Executor {
   public:
-    virtual Buffer Alloc(size_t size) = 0;
-    virtual void Send(NetworkId to,
-                      EbbId ebb,
-                      Buffer buffer) = 0;
-    virtual void StartListening() = 0;
-  protected:
-    MessageManager(EbbId id) : EbbRep{id} {}
+    static EbbRoot* ConstructRoot();
+
+    MCPhotonExecutor(EbbId id);
+
+    virtual Future<std::vector<Buffer> >
+    Execute(const std::string& task, std::vector<Buffer> inputs) override;
   };
-  const EbbRef<MessageManager> message_manager =
-    EbbRef<MessageManager>(lrt::trans::find_static_ebb_id("MessageManager"));
 }
+
 #endif

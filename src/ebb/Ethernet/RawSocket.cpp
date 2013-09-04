@@ -81,14 +81,20 @@ ebbrt::RawSocket::RawSocket(EbbId id) : Ethernet{id}
   event_manager->RegisterFD(fd, EPOLLIN, interrupt);
 }
 
-void
-ebbrt::RawSocket::Send(BufferList buffers,
-                       std::function<void()> cb)
+ebbrt::Buffer
+ebbrt::RawSocket::Alloc(size_t size)
 {
   assert(0);
 }
 
-const uint8_t*
+void
+ebbrt::RawSocket::Send(Buffer buffer, const char* to,
+                       const char* from, uint16_t ethertype)
+{
+  assert(0);
+}
+
+const char*
 ebbrt::RawSocket::MacAddress()
 {
   return mac_addr_;
@@ -102,7 +108,7 @@ ebbrt::RawSocket::SendComplete()
 
 void
 ebbrt::RawSocket::Register(uint16_t ethertype,
-                           std::function<void(const char*, size_t)> func)
+                           std::function<void(Buffer buffer, const char[6])> func)
 {
   map_[ethertype] = func;
 }
@@ -114,10 +120,18 @@ ebbrt::RawSocket::Receive()
   const uint8_t* data;
   while (pcap_next_ex(pdev_, &header, &data) == 1) {
     assert(header->caplen >= 14);
+    auto mem = std::malloc(header->caplen);
+    if (mem == nullptr) {
+      throw std::bad_alloc();
+    }
+
+    std::memcpy(mem, data, header->caplen);
+    auto buf = Buffer{mem, header->caplen};
+    auto data = buf.data();
     uint16_t ethertype = ntohs(*reinterpret_cast<const uint16_t*>(&data[12]));
     auto it = map_.find(ethertype);
     if (it != map_.end()) {
-      it->second(reinterpret_cast<const char*>(data), header->caplen);
+      it->second(buf + 14, data + 6);
     }
   }
 }

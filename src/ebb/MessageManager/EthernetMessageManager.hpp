@@ -19,19 +19,20 @@
 #define EBBRT_EBB_MESSAGEMANAGER_ETHERNETMESSAGEMANAGER_HPP
 
 #include "ebb/MessageManager/MessageManager.hpp"
+#include "misc/buffer.hpp"
 
 namespace ebbrt {
   class EthernetMessageManager : public MessageManager {
   public:
     static EbbRoot* ConstructRoot();
     EthernetMessageManager(EbbId id);
+    virtual Buffer Alloc(size_t size) override;
     virtual void Send(NetworkId to,
                       EbbId ebb,
-                      BufferList buffers,
-                      std::function<void()> cb = nullptr) override;
+                      Buffer buffer) override;
     virtual void StartListening() override;
   private:
-    uint8_t mac_addr_[6];
+    char mac_addr_[6];
   };
 }
 #endif

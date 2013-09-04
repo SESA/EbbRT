@@ -29,8 +29,8 @@ namespace ebbrt {
     static EbbRoot* ConstructRoot();
 
     LocalConsole(EbbId id);
-    virtual void Write(const char* str,
-                       std::function<void()> cb = nullptr) override;
+    virtual Buffer Alloc(size_t size) override;
+    virtual void Write(Buffer buffer) override;
   };
 }
 #endif

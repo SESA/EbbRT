@@ -15,35 +15,30 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_EBB_ETHERNET_ETHERNET_HPP
-#define EBBRT_EBB_ETHERNET_ETHERNET_HPP
+#ifndef EBBRT_EBB_REMOTEHASHTABLE_REMOTEHASHTABLE_HPP
+#define EBBRT_EBB_REMOTEHASHTABLE_REMOTEHASHTABLE_HPP
 
 #include <functional>
 
 #include "ebb/ebb.hpp"
-#include "misc/buffer.hpp"
+#include "ebb/EventManager/Future.hpp"
 
 namespace ebbrt {
-  class Ethernet : public EbbRep {
+  class RemoteHashTable : public EbbRep {
   public:
-    class Header {
+    class TimeoutError : public std::runtime_error
+    {
     public:
-      uint8_t destination[6];
-      uint8_t source[6];
-      uint16_t ethertype;
-    } __attribute__((packed));
-    virtual Buffer Alloc(size_t size) = 0;
-    virtual void Send(Buffer buffer, const char* to,
-                      const char* from, uint16_t ethertype) = 0;
-    virtual const char* MacAddress() = 0;
-    virtual void SendComplete() = 0;
-    virtual void Register(uint16_t ethertype,
-                          std::function<void(Buffer, const char[6])> func) = 0;
-    virtual void Receive() = 0;
-  protected:
-    Ethernet(EbbId id) : EbbRep{id} {}
-  };
-  extern EbbRef<Ethernet> ethernet;
-}
+      TimeoutError() : std::runtime_error{"Timeout while fetching data"} {}
+    };
 
+    virtual Future<Buffer>
+    Get(NetworkId from, const std::string& key) = 0;
+
+    virtual void
+    Set(const std::string& key, Buffer val) = 0;
+  protected:
+    RemoteHashTable(EbbId id) : EbbRep{id} {}
+  };
+}
 #endif

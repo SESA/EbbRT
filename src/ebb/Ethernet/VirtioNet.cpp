@@ -145,20 +145,24 @@ ebbrt::VirtioNet::VirtioNet(EbbId id) : Ethernet{id}, next_free_{0},
   virtio::driver_ok(io_addr_);
 }
 
-void
-ebbrt::VirtioNet::Send(BufferList buffers,
-                       std::function<void()> cb)
+ebbrt::Buffer
+ebbrt::VirtioNet::Alloc(size_t size)
 {
-  size_t size = VIRTIO_HEADER_LEN;
-  for (auto& buffer : buffers) {
-    size += buffer.second;
+  auto mem = std::malloc(size);
+  if (mem == nullptr) {
+    throw std::bad_alloc();
   }
-  LRT_ASSERT(size <= 1512);
+  return Buffer(mem, size);
+}
 
+void
+ebbrt::VirtioNet::Send(Buffer buffer, const char* to,
+                       const char* from, uint16_t ethertype)
+{
   lock_.Lock();
-  LRT_ASSERT((next_free_ + buffers.size() + 1) < send_max_);
+  LRT_ASSERT((next_free_ + 2) < send_max_);
   uint16_t desc_index = next_free_;
-  next_free_ += buffers.size();
+  next_free_ += 2;
   lock_.Unlock();
 
   uint16_t index = desc_index;
@@ -167,29 +171,23 @@ ebbrt::VirtioNet::Send(BufferList buffers,
   send_descs_[index].flags.next = true;
   send_descs_[index].next = index + 1;
   ++index;
-  for (auto& buffer : buffers) {
-    send_descs_[index].address = reinterpret_cast<uint64_t>(buffer.first);
-    send_descs_[index].length = buffer.second;
-    send_descs_[index].flags.next = true;
-    send_descs_[index].next = index + 1;
-    ++index;
-  }
-  send_descs_[index - 1].flags.next = false;
+  send_descs_[index].address = reinterpret_cast<uint64_t>(buffer.data());
+  send_descs_[index].length = buffer.length();
+  send_descs_[index].flags.next = false;
 
   lock_.Lock();
   send_available_->ring[next_available_] = desc_index;
   std::atomic_thread_fence(std::memory_order_release);
   send_available_->index++;
-  if (cb) {
-    cb_map_.insert(std::make_pair(desc_index, std::move(cb)));
-  }
+
+  buffer_map_.emplace(desc_index, std::move(buffer));
   lock_.Unlock();
 
   std::atomic_thread_fence(std::memory_order_release);
   virtio::queue_notify(io_addr_, 1);
 }
 
-const uint8_t*
+const char*
 ebbrt::VirtioNet::MacAddress()
 {
   return mac_address_;
@@ -205,8 +203,7 @@ ebbrt::VirtioNet::SendComplete()
     while(last_sent_used_ != index) {
       auto desc = send_used_->ring[last_sent_used_].index;
       //TODO: actually free the descriptors
-      cb_map_[desc]();
-      cb_map_.erase(desc);
+      buffer_map_.erase(desc);
       last_sent_used_ = (last_sent_used_ + 1) % send_max_;
     }
   } while (index != send_used_->index);
@@ -214,7 +211,7 @@ ebbrt::VirtioNet::SendComplete()
 
 void
 ebbrt::VirtioNet::Register(uint16_t ethertype,
-                           std::function<void(const char*, size_t)> func)
+                           std::function<void(Buffer, const char[6])> func)
 {
   LRT_ASSERT(0);
 }

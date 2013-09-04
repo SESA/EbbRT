@@ -172,6 +172,8 @@ fox_queue_set(fox_ptr fhand,
   return 0;
 }
 
+#include <iostream>
+
 extern "C"
 int
 fox_queue_get(fox_ptr fhand,
@@ -184,7 +186,7 @@ fox_queue_get(fox_ptr fhand,
   }
 
   char* buf = static_cast<char*>(malloc(it->second.length()));
-  std::strncpy(buf, it->second.c_str(), it->second.length());
+  std::memcpy(buf, it->second.c_str(), it->second.length());
   *pvalue = buf;
   *pvalue_sz = it->second.length();
 

@@ -15,26 +15,30 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_EBB_MESSAGEMANAGER_MESSAGEMANAGER_HPP
-#define EBBRT_EBB_MESSAGEMANAGER_MESSAGEMANAGER_HPP
+#ifndef EBBRT_EBB_TIMER_SIMPLETIMER_HPP
+#define EBBRT_EBB_TIMER_SIMPLETIMER_HPP
 
-#include <functional>
+#include <map>
 
-#include "misc/network.hpp"
-#include "misc/buffer.hpp"
+#include "ebb/Timer/Timer.hpp"
 
 namespace ebbrt {
-  class MessageManager : public EbbRep {
+  class SimpleTimer : public Timer {
   public:
-    virtual Buffer Alloc(size_t size) = 0;
-    virtual void Send(NetworkId to,
-                      EbbId ebb,
-                      Buffer buffer) = 0;
-    virtual void StartListening() = 0;
-  protected:
-    MessageManager(EbbId id) : EbbRep{id} {}
+    static EbbRoot* ConstructRoot();
+
+    SimpleTimer(EbbId id);
+
+    virtual void Wait(std::chrono::nanoseconds duration,
+                      std::function<void()> func) override;
+  private:
+    void FireTimers();
+    int CheckForInterrupt();
+
+    std::multimap<std::chrono::steady_clock::time_point,
+                  std::function<void()> > timers_;
+    int interrupt_;
   };
-  const EbbRef<MessageManager> message_manager =
-    EbbRef<MessageManager>(lrt::trans::find_static_ebb_id("MessageManager"));
 }
+
 #endif

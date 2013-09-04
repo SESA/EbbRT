@@ -84,7 +84,10 @@ ebbrt::app::start()
 {
   static Spinlock lock;
   lock.Lock();
-  console->Write("Hello Ebb\n");
+  char str[] = "Hello Ebb\n";
+  auto buf = ebbrt::console->Alloc(sizeof(str));
+  std::memcpy(buf.data(), str, sizeof(str));
+  ebbrt::console->Write(std::move(buf));
   lock.Unlock();
 }
 #endif
@@ -99,7 +102,10 @@ int main()
     thread = std::thread([&]{
       ebbrt::Context context{instance};
       context.Activate();
-      ebbrt::console->Write("Hello Ebb\n");
+      char str[] = "Hello Ebb\n";
+      auto buf = ebbrt::console->Alloc(sizeof(str));
+      std::memcpy(buf.data(), str, sizeof(str));
+      ebbrt::console->Write(std::move(buf));
       context.Deactivate();
       });
   }
