@@ -25,7 +25,8 @@ constexpr ebbrt::app::Config::InitEbb late_init_ebbs[] =
 #endif
   { .name = "EventManager" },
   { .name = "Console" },
-  { .name = "MessageManager" }
+  { .name = "MessageManager" },
+  { .name = "Echo" }
 };
 
 #ifdef __ebbrt__
@@ -45,7 +46,8 @@ constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
   {.name = "Syscall", .id = 4},
   {.name = "EventManager", .id = 5},
   {.name = "Console", .id = 6},
-  {.name = "MessageManager", .id = 7}
+  {.name = "MessageManager", .id = 7},
+  {.name = "Echo", .id = 8}
 };
 
 const ebbrt::app::Config ebbrt::app::config = {

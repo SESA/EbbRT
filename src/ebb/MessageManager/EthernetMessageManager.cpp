@@ -77,28 +77,7 @@ ebbrt::EthernetMessageManager::Send(NetworkId to,
   header->ebb = id;
 
   ethernet->Send(std::move(buf), to.mac_addr, mac_addr_,
-                 htons(MESSAGE_MANAGER_ETHERTYPE));
-
-//   void* addr = std::malloc(sizeof(MessageHeader) + sizeof(Ethernet::Header));
-
-//   Ethernet::Header* eth_header = static_cast<Ethernet::Header*>(addr);
-//   std::copy(&to.mac_addr[0], &to.mac_addr[6], eth_header->destination);
-//   std::copy(&mac_addr_[0], &mac_addr_[6], eth_header->source);
-//   eth_header->ethertype = htons(MESSAGE_MANAGER_ETHERTYPE);
-
-//   MessageHeader* msg_header = reinterpret_cast<MessageHeader*>(eth_header + 1);
-//   msg_header->ebb = id;
-
-//   buffers.emplace_front(eth_header, sizeof(MessageHeader) + sizeof(Ethernet::Header));
-// #ifdef __linux__
-//   assert(!cb);
-// #elif __ebbrt__
-//   LRT_ASSERT(!cb);
-// #endif
-//   ethernet->Send(std::move(buffers),
-//                  [=]() {
-//                    free(addr);
-//                  });
+                 MESSAGE_MANAGER_ETHERTYPE);
 }
 
 void

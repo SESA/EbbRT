@@ -21,10 +21,13 @@ src_app_PingPong_PingPong_SOURCES = \
 
 if LRT_ULNX
 src_app_PingPong_PingPong_SOURCES += \
-	src/app/PingPong/PingPong_linux.cpp
+	src/app/PingPong/PingPong_linux.cpp \
+	src/app/PingPong/Echo_linux.cpp
 else
 if LRT_BARE
-	src/app/PingPong/PingPong_bare.cpp
+src_app_PingPong_PingPong_SOURCES += \
+	src/app/PingPong/PingPong_baremetal.cpp \
+	src/app/PingPong/Echo_baremetal.cpp
 endif
 endif
 src_app_PingPong_PingPong_ebbs = \

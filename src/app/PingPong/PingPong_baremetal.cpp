@@ -16,28 +16,33 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <iostream>
-
+#include "app/app.hpp"
 #include "ebb/EbbManager/EbbManager.hpp"
-#include "ebb/Ethernet/RawSocket.hpp"
+#include "ebb/Ethernet/VirtioNet.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
+#include "ebb/PCI/PCI.hpp"
 
-int main(int argc, char** argv)
+void
+ebbrt::app::start()
 {
-  ebbrt::EbbRT instance;
+  pci = EbbRef<PCI>(ebb_manager->AllocateId());
+  ebb_manager->Bind(PCI::ConstructRoot, pci);
 
-  ebbrt::Context context{instance};
-  context.Activate();
+  ethernet = EbbRef<Ethernet>(ebb_manager->AllocateId());
+  ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
 
-  ebbrt::ethernet =
-    ebbrt::EbbRef<ebbrt::Ethernet>(ebbrt::ebb_manager->AllocateId());
-  ebbrt::ebb_manager->Bind(ebbrt::RawSocket::ConstructRoot, ebbrt::ethernet);
+  message_manager->StartListening();
 
-  ebbrt::message_manager->StartListening();
-
-  std::cout << "Ready" << std::endl;
-
-  context.Loop(-1);
-
-  return 0;
+  const char cbuf[] = "PING\n";
+  auto buf = message_manager->Alloc(sizeof(cbuf));
+  std::memcpy(buf.data(), cbuf, sizeof(cbuf));
+  NetworkId id;
+  id.mac_addr[0] = 0xff;
+  id.mac_addr[1] = 0xff;
+  id.mac_addr[2] = 0xff;
+  id.mac_addr[3] = 0xff;
+  id.mac_addr[4] = 0xff;
+  id.mac_addr[5] = 0xff;
+  message_manager->Send(id, lrt::trans::find_static_ebb_id("Echo"),
+                        std::move(buf));
 }

@@ -16,28 +16,28 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <iostream>
+#include "app/app.hpp"
+#include "app/PingPong/Echo.hpp"
+#include "ebb/SharedRoot.hpp"
 
-#include "ebb/EbbManager/EbbManager.hpp"
-#include "ebb/Ethernet/RawSocket.hpp"
-#include "ebb/MessageManager/MessageManager.hpp"
-
-int main(int argc, char** argv)
+ebbrt::EbbRoot*
+ebbrt::Echo::ConstructRoot()
 {
-  ebbrt::EbbRT instance;
+  return new SharedRoot<Echo>;
+}
 
-  ebbrt::Context context{instance};
-  context.Activate();
+// registers symbol for configuration
+__attribute__((constructor(65535)))
+static void _reg_symbol()
+{
+  ebbrt::app::AddSymbol ("Echo", ebbrt::Echo::ConstructRoot);
+}
 
-  ebbrt::ethernet =
-    ebbrt::EbbRef<ebbrt::Ethernet>(ebbrt::ebb_manager->AllocateId());
-  ebbrt::ebb_manager->Bind(ebbrt::RawSocket::ConstructRoot, ebbrt::ethernet);
+ebbrt::Echo::Echo(EbbId id) : EbbRep(id) {}
 
-  ebbrt::message_manager->StartListening();
-
-  std::cout << "Ready" << std::endl;
-
-  context.Loop(-1);
-
-  return 0;
+void
+ebbrt::Echo::HandleMessage(NetworkId from,
+                           Buffer buffer)
+{
+  lrt::console::write(buffer.data());
 }

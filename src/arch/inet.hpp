@@ -22,6 +22,7 @@
 
 namespace ebbrt {
   inline uint16_t htons(uint16_t hostshort);
+  inline uint16_t ntohs(uint16_t netshort);
 }
 
 #ifdef ARCH_X86_64

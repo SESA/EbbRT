@@ -15,29 +15,20 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifndef EBBRT_APP_PINGPONG_ECHO_HPP
+#define EBBRT_APP_PINGPONG_ECHO_HPP
 
-#include <iostream>
+#include "ebb/ebb.hpp"
 
-#include "ebb/EbbManager/EbbManager.hpp"
-#include "ebb/Ethernet/RawSocket.hpp"
-#include "ebb/MessageManager/MessageManager.hpp"
+namespace ebbrt {
+  class Echo : public EbbRep {
+  public:
+    static EbbRoot* ConstructRoot();
+    Echo(EbbId id);
 
-int main(int argc, char** argv)
-{
-  ebbrt::EbbRT instance;
-
-  ebbrt::Context context{instance};
-  context.Activate();
-
-  ebbrt::ethernet =
-    ebbrt::EbbRef<ebbrt::Ethernet>(ebbrt::ebb_manager->AllocateId());
-  ebbrt::ebb_manager->Bind(ebbrt::RawSocket::ConstructRoot, ebbrt::ethernet);
-
-  ebbrt::message_manager->StartListening();
-
-  std::cout << "Ready" << std::endl;
-
-  context.Loop(-1);
-
-  return 0;
+    virtual void HandleMessage(NetworkId from,
+                               Buffer buffer) override;
+  };
 }
+
+#endif
