@@ -120,14 +120,14 @@ ulnx=$ulnx
 bare=$bare
 imgtype=$imgtype
 export SESA_GET=khget
+
+##### LINUX IMAGE#########################################
+sesalnx=$HOME/sesalnx.img
+#########################################################
+
 EOF
 
 echo '
-sesalnx=/home/jmcadden/sesalnx.img
-export SESA_GET=/home/jmcadden/work/sesa/EbbRT/util/kh/khget
-export SESA_UTIL=/home/jmcadden/work/sesa/EbbRT/util/kh/khctl
-export SESA_BASEDIR=/scratch/build/khdb
-
 declare app
 declare count
 declare name
