@@ -85,12 +85,6 @@ ebbrt::VirtioNet::VirtioNet(EbbId id) : Ethernet{id}
   msix_addr += offset;
   auto msix_table = reinterpret_cast<volatile PCI::Device::MSIXTableEntry*>
     (msix_addr);
-  // msix_table[0].raw[0] = 0;
-  // msix_table[0].upper = 0xFEE;
-  // msix_table[0].raw[1] = 0;
-  // msix_table[0].raw[2] = 0;
-  // msix_table[0].vector = event_manager->AllocateInterrupt(nullptr);
-  // msix_table[0].raw[3] = 0;
 
   //Setup receive interrupt
   msix_table[0].raw[0] = 0xFEE00000;
@@ -150,8 +144,12 @@ ebbrt::VirtioNet::VirtioNet(EbbId id) : Ethernet{id}
 
   // Add buffers to receive queue
   for (uint16_t i = 0; i < receive_.size; ++i) {
+    auto buf = malloc(1514);
+    if (buf == nullptr) {
+      throw std::bad_alloc();
+    }
     receive_.descs[i].address =
-      reinterpret_cast<uintptr_t>(new char[1514]);
+      reinterpret_cast<uintptr_t>(buf);
     receive_.descs[i].length = 1514;
     receive_.descs[i].flags.write = true;
     receive_.available->ring[i] = i;
@@ -250,23 +248,36 @@ ebbrt::VirtioNet::Register(uint16_t ethertype,
 void
 ebbrt::VirtioNet::Receive()
 {
-  LRT_ASSERT(0);
-  // //FIXME: temporarily disable interrupts on the device as an optimization
-  // int avail_index = receive_.available->index;
-  // auto used_index = receive_.used->index;
-  // while (receive_.last_used != used_index) {
-  //   auto last_used = receive_.last_used % receive_.size;
-  //   auto desc = receive_.used->ring[last_used].index;
+  //FIXME: temporarily disable interrupts on the device as an optimization
+  int avail_index = receive_.available->index;
+  auto used_index = receive_.used->index;
+  while (receive_.last_used != used_index) {
+    auto last_used = receive_.last_used % receive_.size;
+    auto desc = receive_.used->ring[last_used].index;
 
-  //   auto buf = reinterpret_cast<const char*>(receive_.descs[desc].address);
-  //   uint16_t ethertype =
-  //     ntohs(*reinterpret_cast<const uint16_t*>(&buf[VIRTIO_HEADER_LEN + 12]));
-  //   auto it = rcv_map_.find(ethertype);
-  //   if (it != rcv_map_.end()) {
-  //     //If we have a listener registered then invoke them
-  //     it->second()
-  //   }
-  // }
+    auto buf = reinterpret_cast<char*>(receive_.descs[desc].address);
+    uint16_t ethertype =
+      ntohs(*reinterpret_cast<uint16_t*>(&buf[VIRTIO_HEADER_LEN + 12]));
+    auto it = rcv_map_.find(ethertype);
+    if (it != rcv_map_.end()) {
+      //If we have a listener registered then invoke them
+      it->second(Buffer(buf, receive_.used->ring[last_used].length) +
+                 (VIRTIO_HEADER_LEN + 14), buf + VIRTIO_HEADER_LEN + 6);
+    }
+    auto newbuf = malloc(1514);
+    if (newbuf == nullptr) {
+      throw std::bad_alloc();
+    }
+    receive_.descs[desc].address =
+      reinterpret_cast<uintptr_t>(newbuf);
+    receive_.available->ring[avail_index % receive_.size] = desc;
+    avail_index++;
+    receive_.last_used++;
+  }
+  std::atomic_thread_fence(std::memory_order_release);
+  receive_.available->index = avail_index;
+  std::atomic_thread_fence(std::memory_order_release);
+  virtio::queue_notify(io_addr_, 0);
 }
 
 void
