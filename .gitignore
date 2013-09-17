@@ -25,3 +25,4 @@ autom4te.cache/
 configure
 build-aux
 config.h.in
+build

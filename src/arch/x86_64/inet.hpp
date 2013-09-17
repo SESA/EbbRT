@@ -24,3 +24,9 @@ ebbrt::htons(uint16_t hostshort)
 {
   return hostshort << 8 | hostshort >> 8;
 }
+
+inline uint16_t
+ebbrt::ntohs(uint16_t netshort)
+{
+  return netshort << 8 | netshort >> 8;
+}

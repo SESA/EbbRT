@@ -38,19 +38,27 @@ namespace ebbrt {
                   std::function<void(Buffer, const char[6])> func) override;
     void Receive() override;
   private:
+    struct Ring {
+      uint16_t size;
+      uint16_t free_head;
+      uint16_t num_free;
+      uint16_t last_used;
+      virtio::QueueDescriptor* descs;
+      virtio::Available* available;
+      virtio::Used* used;
+    };
+
+    void InitRing(Ring& ring);
+
     uint16_t io_addr_;
-    uint16_t next_free_;
-    uint16_t next_available_;
-    uint16_t last_sent_used_;
-    Spinlock lock_;
-    uint16_t send_max_;
+    Ring receive_;
+    Ring send_;
     bool msix_enabled_;
     char mac_address_[6];
-    virtio::QueueDescriptor* send_descs_;
-    virtio::Available* send_available_;
-    virtio::Used* send_used_;
     char empty_header_[10];
     std::unordered_map<uint16_t, Buffer> buffer_map_;
+    std::unordered_map<uint16_t,
+                       std::function<void(Buffer, const char[6])> > rcv_map_;
   };
 }
 
