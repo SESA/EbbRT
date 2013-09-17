@@ -85,6 +85,8 @@ const ebbrt::app::Config ebbrt::app::config = {
   .static_ebb_ids = static_ebbs
 };
 
+#include <cstdio>
+
 #ifdef __ebbrt__
 void
 ebbrt::app::start()
@@ -93,7 +95,7 @@ ebbrt::app::start()
   ebb_manager->Bind(PCI::ConstructRoot, pci);
   ethernet = EbbRef<Ethernet>(ebb_manager->AllocateId());
   ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
-  const char str[] = "Hello World (frontend)\n";
+  const char str[] = "Hello World (remote)\n";
   auto buf = ebbrt::console->Alloc(sizeof(str));
   std::memcpy(buf.data(), str, sizeof(str));
   ebbrt::console->Write(std::move(buf));

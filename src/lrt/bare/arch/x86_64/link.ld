@@ -37,7 +37,7 @@ SECTIONS
                 *(.gnu.linkonce.r*)
         }
 
-        .eh_frame_hdr ALIGN(16) : {
+        .eh_frame_hdr ALIGN(4K) : {
                 *(.eh_frame_hdr)
         }
 
@@ -47,18 +47,18 @@ SECTIONS
                 QUAD(0);
         }
 
-        .gcc_except_table : ONLY_IF_RO {
+        .gcc_except_table BLOCK(4K) : ALIGN(4K) ONLY_IF_RO {
                 *(.gcc_except_table .gcc_except_table.*)
         }
 
-        .ctors ALIGN(16) : {
+        .ctors BLOCK(4K) : ALIGN(4K) {
                start_ctors = .;
                KEEP(*(SORT(.ctors.*)))
                KEEP(*(.ctors))
                end_ctors = .;
         }
 
-        .dtors ALIGN(16) : {
+        .dtors BLOCK(4K) : ALIGN(4K) {
                 KEEP(*(SORT(.dtors.*)))
                 KEEP(*(.dtors))
         }
@@ -73,17 +73,13 @@ SECTIONS
               QUAD(0);
         }
 
-        .gcc_except_table : ONLY_IF_RW {
-        *(.gcc_except_table .gcc_except_table.*)
-        }
-
-        .data ALIGN (4K) :
+        .data BLOCK(4K) : ALIGN (4K)
         {
                 *(.data .data.*)
                 *(.gnu.linkonce.d*)
         }
 
-        .bss :
+        .bss BLOCK(4K) : ALIGN (4K)
         {
                 sbss = .;
                 *(.bss .bss.*)
@@ -92,21 +88,21 @@ SECTIONS
                 ebss = .;
         }
 
-        static_ebb_ids :
+        static_ebb_ids BLOCK(4K) : ALIGN(4K)
         {
                 static_ebb_ids_start = .;
                 *(static_ebb_ids)
                 static_ebb_ids_end = .;
         }
 
-        ebbstrtab :
+        ebbstrtab BLOCK(4K) : ALIGN(4K)
         {
                 ebbstrtab_start = .;
                 *(ebbstrtab)
                 ebbstrtab_end = .;
         }
 
-        ebbsymtab :
+        ebbsymtab BLOCK(4K) : ALIGN(4K)
         {
                 ebbsymtab_start = .;
                 *(ebbsymtab)

@@ -15,20 +15,20 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_ARCH_INET_HPP
-#define EBBRT_ARCH_INET_HPP
+#ifndef EBBRT_APP_PINGPONG_ECHO_HPP
+#define EBBRT_APP_PINGPONG_ECHO_HPP
 
-#include <cstdint>
+#include "ebb/ebb.hpp"
 
 namespace ebbrt {
-  inline uint16_t htons(uint16_t hostshort);
-  inline uint16_t ntohs(uint16_t netshort);
-}
+  class Echo : public EbbRep {
+  public:
+    static EbbRoot* ConstructRoot();
+    Echo(EbbId id);
 
-#ifdef ARCH_X86_64
-#include "arch/x86_64/inet.hpp"
-#else
-#error "Unsupported Architecture"
-#endif
+    virtual void HandleMessage(NetworkId from,
+                               Buffer buffer) override;
+  };
+}
 
 #endif

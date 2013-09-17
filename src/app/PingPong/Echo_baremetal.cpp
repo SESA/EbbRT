@@ -15,20 +15,29 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_ARCH_INET_HPP
-#define EBBRT_ARCH_INET_HPP
 
-#include <cstdint>
+#include "app/app.hpp"
+#include "app/PingPong/Echo.hpp"
+#include "ebb/SharedRoot.hpp"
 
-namespace ebbrt {
-  inline uint16_t htons(uint16_t hostshort);
-  inline uint16_t ntohs(uint16_t netshort);
+ebbrt::EbbRoot*
+ebbrt::Echo::ConstructRoot()
+{
+  return new SharedRoot<Echo>;
 }
 
-#ifdef ARCH_X86_64
-#include "arch/x86_64/inet.hpp"
-#else
-#error "Unsupported Architecture"
-#endif
+// registers symbol for configuration
+__attribute__((constructor(65535)))
+static void _reg_symbol()
+{
+  ebbrt::app::AddSymbol ("Echo", ebbrt::Echo::ConstructRoot);
+}
 
-#endif
+ebbrt::Echo::Echo(EbbId id) : EbbRep(id) {}
+
+void
+ebbrt::Echo::HandleMessage(NetworkId from,
+                           Buffer buffer)
+{
+  lrt::console::write(buffer.data());
+}

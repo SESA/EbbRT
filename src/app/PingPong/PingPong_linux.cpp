@@ -15,20 +15,29 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_ARCH_INET_HPP
-#define EBBRT_ARCH_INET_HPP
 
-#include <cstdint>
+#include <iostream>
 
-namespace ebbrt {
-  inline uint16_t htons(uint16_t hostshort);
-  inline uint16_t ntohs(uint16_t netshort);
+#include "ebb/EbbManager/EbbManager.hpp"
+#include "ebb/Ethernet/RawSocket.hpp"
+#include "ebb/MessageManager/MessageManager.hpp"
+
+int main(int argc, char** argv)
+{
+  ebbrt::EbbRT instance;
+
+  ebbrt::Context context{instance};
+  context.Activate();
+
+  ebbrt::ethernet =
+    ebbrt::EbbRef<ebbrt::Ethernet>(ebbrt::ebb_manager->AllocateId());
+  ebbrt::ebb_manager->Bind(ebbrt::RawSocket::ConstructRoot, ebbrt::ethernet);
+
+  ebbrt::message_manager->StartListening();
+
+  std::cout << "Ready" << std::endl;
+
+  context.Loop(-1);
+
+  return 0;
 }
-
-#ifdef ARCH_X86_64
-#include "arch/x86_64/inet.hpp"
-#else
-#error "Unsupported Architecture"
-#endif
-
-#endif

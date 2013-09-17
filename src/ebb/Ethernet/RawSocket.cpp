@@ -84,14 +84,24 @@ ebbrt::RawSocket::RawSocket(EbbId id) : Ethernet{id}
 ebbrt::Buffer
 ebbrt::RawSocket::Alloc(size_t size)
 {
-  assert(0);
+  auto mem = std::malloc(size + 14);
+  if (mem == nullptr) {
+    throw std::bad_alloc();
+  }
+  return Buffer(mem, size + 14) + 14;
 }
 
 void
 ebbrt::RawSocket::Send(Buffer buffer, const char* to,
                        const char* from, uint16_t ethertype)
 {
-  assert(0);
+  auto buf = buffer - 14;
+  auto data = buf.data();
+  memcpy(data, to, 6);
+  memcpy(data + 6, from, 6);
+  *reinterpret_cast<uint16_t*>(data + 12) = htons(ethertype);
+  //TODO: this is a blocking call
+  pcap_inject(pdev_, data, buf.length());
 }
 
 const char*
