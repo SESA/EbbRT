@@ -1,11 +1,9 @@
 #!/bin/bash
-#set -x
-dir=$(dirname $0)
+# Clean database, remove all applications / networks 
 
-if [[ -z $SESA_BASEDIR && $dir/../../EbbRT ]]; then
-   export KHCTL_BASEDIR=$(readlink -f ${dir}/../../sesadb)
-else
-   export KHCTL_BASEDIR=${SESA_BASEDIR:-~/sesa/sesadb }
+if [[ ! -d $KHCTL_BASEDIR ]]; then
+  echo "ERROR: $KHCTL_BASEDIR not found"
+  exit 1
 fi
 
 if [[ $(type -p khctl ) ]]; then
@@ -13,16 +11,4 @@ if [[ $(type -p khctl ) ]]; then
    declare SESA_UTIL=khctl
 fi
 
-if [[ -z $SESA_UTIL && $dir/../../EbbRT ]]; then
-   declare SESA_UTIL=$(readlink -f ${dir}/../../scripts/khctl)
-else
-   declare SESA_UTIL=${SESA_UTIL:-~/sesa/scripts/khctl}
-fi
-
-if [[ ! $(type -p $SESA_EMUCMD ) ]]; then
-   export SESA_EMUCMD=qemu-system-x86_64
-fi
-export SESA=1
-
 $SESA_UTIL SESAcleanAll
-

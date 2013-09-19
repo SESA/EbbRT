@@ -1,0 +1,9 @@
+#!/bin/bash
+con=$1
+
+if [[ ! -S $con ]]; then
+  echo "USAGE: $0 <console socket file>"
+  exit 1
+fi
+
+xterm -e socat - UNIX-CONNECT:$con &

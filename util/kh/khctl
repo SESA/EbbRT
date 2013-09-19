@@ -61,7 +61,7 @@ if [[ -n SESA ]]; then
   # SESA General
   declare -r SESAMAXNODES=${SESA_MAX_NODES:-256}
   declare -r SESANETDIR=${SESA_NETDIR:-$KHBASEDIR/Networks}
-  declare -r SESAEMUCMD=${SESA_EMUCMD:-"qemu-system-x86_64"}
+  declare -r SESAEMUCMD=${SESA_EMUCMD:-"/opt/bin/qemu-system-x86_64"}
   declare -r SESAMNTDIR=${SESA_MNTDIR:=""}
   declare -r SESABIOS=${SESA_BIOS:=""}
   declare -r SESATAP=${SESA_TAP:=""}
@@ -516,7 +516,6 @@ function SESAgenerateMac()
 
 SESAconfigNodes()
 {
-  #set -x
   local khuser=$1
   local pnetids=$2
   local inet=$3

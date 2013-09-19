@@ -1,5 +1,4 @@
 #!/bin/bash
-#set -x
 
 # Set the path do your sesa-scripts and node database directories
 dir=$(dirname $0)
@@ -15,9 +14,6 @@ if [[ -z $SESA_UTIL && $dir/../../EbbRT ]]; then
    declare SESA_UTIL=$(readlink -f ${dir}/../../scripts/khctl)
 else
    declare SESA_UTIL=${SESA_UTIL:-~/sesa/scripts/khctl}
-fi
-if [[ ! $(type -p $SESA_EMUCMD ) ]]; then
-   export SESA_EMUCMD=qemu-system-x86_64
 fi
 
 declare app
