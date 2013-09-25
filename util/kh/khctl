@@ -15,7 +15,6 @@ if [[ $BASH_VERSION != 3.1.* ]]; then shopt -s compat31; fi
 shopt -s extglob
 
 PATH=$PATH:/sbin
-
 declare -r KHBASEDIR=${KHCTL_BASEDIR:-/home/kh}
 declare -r KHCONSDIR=${KHCTL_CONSDIR:-$KHBASEDIR/Consoles}
 declare -r KHCTLDIR=${KHCTL_CTLDIR:-$KHBASEDIR/Ctl}
@@ -31,16 +30,16 @@ declare -r KHFREENETID=${KHCTL_FREENETID:-2}
 declare -r KHPNETSRESERVED=${KHCTL_PNETSRESERVED:-3}
 declare -r KHPNETIDSTART=${KHCTL_PNETIDSTART:-$KHPNETSRESERVED}
 declare -r KHPNETIDEND=${KHCTL_PNETIDEND:-$(printf "%d" 0xffffffff)}
-declare -r KHXNETMTUFILE=${KHCTL_XNETMTU:-/proc/device-tree/u-boot-env/sitemtu}
-declare -r KHTTYPROCDIR=${KHCTL_TTYPROCDIR:-/proc/sys/dev/bgtty}
+#declare -r KHXNETMTUFILE=${KHCTL_XNETMTU:-/proc/device-tree/u-boot-env/sitemtu}
+#declare -r KHTTYPROCDIR=${KHCTL_TTYPROCDIR:-/proc/sys/dev/bgtty}
+#declare -r KHTOTALSIZEFILE=${KHCTL_TOTALSIZEFILE:-/proc/device-tree/u-boot-env/bgp_totalnodes}
+#declare -r KHRANKFILE=${KHCTL_RANKFILE:-/proc/device-tree/u-boot-env/bgp_rank}
+#declare -r KHCTRLTTY=${KHCTL_CTRLTTY:-/dev/bgtty0}
+#declare -r KHTTYMAJOR=${KHCTL_TTYMAJOR:-230}
+#declare -r KHXIPFILE=${KHCTL_XIPFILE:-/proc/device-tree/u-boot-env/xip}
+#declare -r KHNATIPFILE=${KHCTL_NATFILE:-/proc/device-tree/u-boot-env/natip}
 declare -r KHUSERPREFIX=${KHCTL_USERPREFIX:-con}
-declare -r KHTOTALSIZEFILE=${KHCTL_TOTALSIZEFILE:-/proc/device-tree/u-boot-env/bgp_totalnodes}
-declare -r KHRANKFILE=${KHCTL_RANKFILE:-/proc/device-tree/u-boot-env/bgp_rank}
-declare -r KHCTRLTTY=${KHCTL_CTRLTTY:-/dev/bgtty0}
 declare -r KHCTRLID=${KHCTL_CTRLID:-0}
-declare -r KHTTYMAJOR=${KHCTL_TTYMAJOR:-230}
-declare -r KHXIPFILE=${KHCTL_XIPFILE:-/proc/device-tree/u-boot-env/xip}
-declare -r KHNATIPFILE=${KHCTL_NATFILE:-/proc/device-tree/u-boot-env/natip}
 declare -r FREEOWNER='_FREE_'
 declare -r FREEPNET=$KHFREENETID
 declare -r FREEINETFLG=0
@@ -161,230 +160,7 @@ getRespfile()
     echo /tmp/$$.respfile.$RANDOM
 }
 
-readUbootResponse()
-{
-#   set -x
-   local tty=$1
-   local num=$2
-   local respfile=$3
-   local -i c=0
-   local response
 
-   if [[ ! -c $tty || -z $num || -z $respfile ]]
-   then
-      echo "USAGE: $FUNCNAME <tty> <num> <respfile>"
-      exit 255 
-   fi 
-
-   if [[ -e $respfile ]]
-   then
-      if ! rm $respfile
-      then
-        echo "ERROR: $FUNCNAME: could not remove $respfile"
-        return 255
-      fi
-   fi
-   touch ${respfile}.running
-   while read line
-   do
-     if [[ "$line" =~ "^nodeinfo: .*" ]]
-     then
-       response="$response$line\n"
-       (( c++ ))
-       if (( $c == $num ))
-       then
-         break
-       fi
-     fi
-   done < $tty
-   printf "$response" > $respfile
-   rm ${respfile}.running
-   return 0
-}
-
-gatherUbootResponse()
-{
-#   set -x
-   local tty=$1
-   local num=$2
-   local respfile=$3
-   local readpid
-
-   if [[ ! -c $tty || -z $num || -z $respfile ]]
-   then
-      echo "USAGE: $FUNCNAME <tty> <num> <respfile>" >&2
-      return 255
-   fi
-   
-   if [[ -a ${respfile}.running ]] 
-   then
-      rm ${respfile}.running
-   fi
-   readUbootResponse $tty $num $respfile &
-   # give the child some time to start and get the tty open
-   # before we do any writes so that we capture all responses
-   while [[ ! -a ${respfile}.running ]]
-   do
-      sleep 0.5  
-   done
-   readpid=$(jobs -p %%)
-   disown %%
-   echo $readpid > $respfile.pid
-   return 0
-}
-
-waitForUbootResponse()
-{
-    local respfile=$1
-    local pollcnt=$2
-    local workerpid
-    local -i i
-
-    if [[ -z $respfile || -z $pollcnt ]]
-    then
-      echo "USAGE: $FUNCNAME <respfile> <pollcnt>"
-      return 255
-    fi
-    if [[ ! -e $respfile.pid ]]
-    then
-      echo "ERROR: could not fie $respfile.pid"
-      return 255
-    fi
-
-    workerpid=$(cat $respfile.pid)
-    rm $respfile.pid
-
-    if [[ -e $respfile ]]
-    then
-      return 0
-    fi
-    (( i=0 ))
-    while (( $i < $pollcnt )) 
-    do
-      if [[ -e $respfile ]]
-      then
-        return 0
-      fi
-      (( i++ ))
-      sleep 0.05
-    done
-
-    if [[ -n $workerpid ]]
-    then
-      kill $workerpid >& /dev/null
-    fi
-    return 255
-}
-
-function getUbootNodeInfo
-{
-    local tty=$1
-    local num=$2
-    local extra=$3
-    local respfile
-    local i
-
-    if [[ ! -c $tty || -z $num  ]]
-    then
-       echo "USAGE: $FUNCNAME <tty> <num> [extra info to get]"
-       exit 255
-    fi
-    
-    respfile=$(getRespfile)
-
-    (( i=0 ))
-    while (( $i<10 ))
-    do   
-      gatherUbootResponse $tty $num $respfile
-      # bypass buffering and write directly to the tty
-      ttyRawWrite "echo nodeinfo: \$bgp_rank \$uni $extra" $tty
-      if waitForUbootResponse $respfile 1000
-      then
-         cat $respfile | grep '^nodeinfo'
-         rm $respfile
-         return 0
-      fi
-      (( i++ ))
-    done
-    if [[ -e $respfile ]]
-    then
-       rm $respfile
-    fi
-    return 255
-}
-
-clearTTYBuffer()
-{
-    TTYBUFFERVAR=""
-}
-
-flushTTY()
-{
-   local tty=$1
-
-   if (( $BUFFERTTY == 1 ))
-   then
-      ttyRawWrite "$TTYBUFFERVAR" $tty
-#      echo "$TTYBUFFERVAR" >> /tmp/TTYFlushBuffer
-      sleep 0.05
-   fi
-}
-
-isquish()
-{
-    #set -x 
-    local -i val
-    local -i min
-    local -i max
-    local -i started=0
-    local valuefmtstring="%d\n"
-    local rangefmtstring="%d %d\n"
-
-    if [[ -n "$1" ]]
-    then
-      valuefmtstring="$1"
-    fi
-    
-    if [[ -n "$2" ]]
-    then
-      rangefmtstring="$2"
-    fi
- 
-    while read val
-    do
-      if (( $started == 0 ))
-      then
-        ((min=$val))
-        ((max=$val))
-        ((started=1))
-      else
-        if (( $val == ($max + 1) ))
-        then
-           ((max=$val))
-        else 
-           if (( $min == $max ))
-           then
-             printf "$valuefmtstring" "$min"
-           else
-             printf "$rangefmtstring" "$min" "$max"
-           fi
-           (( min=$val ))
-           (( max=$val ))
-        fi
-      fi
-   done
-
-   if (( $started == 1 ))
-   then
-     if (( $min == $max ))
-     then
-       printf "$valuefmtstring" "$min"
-     else
-       printf "$rangefmtstring" "$min" "$max"
-     fi
-   fi
-   return 0
-}
 
 
 SESAcreateNet()
@@ -510,7 +286,7 @@ function SESAlistApp
 function SESAgenerateMac()
 {
   local mac
-  printf -v mac 'CO:FF:EE:00:%02X:%02X' $((RANDOM%256)) $((RANDOM%256))
+  printf -v mac 'DE:AD:BE:EF:%02X:%02X' $((RANDOM%256)) $((RANDOM%256))
   echo $mac
 }
 
@@ -538,7 +314,7 @@ SESAconfigNodes()
   local concmd=""
   local mntcmd=""
   local bioscmd=""
-  local ram="128"
+  local ram="512"
 
   #echo "SESAconfigNodes: khuser=$khuser pnetids=$pnetids  inet=$inet xnet=$xnet conid=$conid num=$num, nodes=$nodes dir=$dir"
 
@@ -601,7 +377,6 @@ SESAconfigNodes()
     if [[ -d $SESAMNTDIR ]]
     then
       mntcmd="-drive file=fat:rw:$SESAMNTDIR"
-      ram="512"
     fi
 
     # bios rom
@@ -617,145 +392,6 @@ SESAconfigNodes()
   return 0
 }
 
-KHconfigNodes()
-{
-  local khuser=$1
-  local pnetids=$2
-  local inet=$3
-  local xnet=$4
-  local conid=$5
-  local num=$6
-  local nodes="$7"
-  local dir=$KHCONSDIR/$conid
-  local tty=$dir/tty
-  local n
-  local -i p
-  local -i j
-  local -i i
-  local -i ethoffset
-  local inetdesc
-  local tmp
-  local ubootnodeinfo
-  local tmpnodes
-  local itestlines
-  local itestline
-  local myiip
-  local xmtu
-
-  if [[ ! -c $KHCTRLTTY ]]
-  then
-    if [[ -a $KHCTRLTTY ]]; then rm -rf $KHCTRLTTY; fi
-    mknod $KHCTRLTTY c $KHTTYMAJOR $KHCTRLID
-    stty raw -clocal cread -echo -echok -echoe < $KHCTRLTTY
-  fi 
-
-  clearTTYBuffer
-
-  tmpnodes="$(for n in $nodes; do echo $n; done)"
-  itestlines="$(echo "$tmpnodes" | isquish "itest \$bgp_rank == %d && setenv bgtty_sendid $conid && setenv bgtty_rcvid $conid" "itest \$bgp_rank >= %d && itest \$bgp_rank <= %d && setenv bgtty_sendid $conid && setenv bgtty_rcvid $conid")"
-
-  for itestline in "$itestlines"
-  do
-    writeTTY "$itestline" $KHCTRLTTY 
-  done
-
-  flushTTY $KHCTRLTTY
-
-  clearTTYBuffer  
-  # make sure all nodes have swung over to $tty
-  ubootnodeinfo=$(getUbootNodeInfo $tty $num)
-  if (( $? != 0 ))
-  then 
-     echo "ERROR: $FUNCNAME: getUbootNodeInfo failed to confirm nodes allocated\n" >&2 
-  fi
-
-  ethoffset=0
-  if (( $xnet == 1 )) 
-  then
-    (( ethoffset++ ))
-  fi
-
-  if (( $inet == 1 ))
-  then
-    (( ethoffset++ ))
-  fi
-
-  j=2
-  tmp=( ${pnetids//,/ } )
-  i=${#tmp[@]}
-  (( i-- ))
-  while (( $i >= 0 ))
-  do
-    p=${tmp[$i]}
-    writeTTY "mketh $p $j"  $tty
-    (( j++ ))
-    (( i-- ))
-  done  
-
-  writeTTY "fdt rm /plb/ethernet@1" $tty
-  if (( $inet == 1 ))
-  then
-    writeTTY "mketh 2 1" $tty
-    if (( $ethoffset == 1 ))
-    then
-      inetdesc="network Internal : eth0"
-      writeTTY "setenv bg_eth0_netid 2" $tty
-    else
-      inetdesc="network Internal : eth1"
-      writeTTY "setenv bg_eth1_netid 2" $tty
-    fi
-  fi
-    
-  writeTTY "fdt rm /plb/ethernet@0" $tty
-  if (( $xnet == 1 ))
-  then
-    if [[ -a $KHXNETMTUFILE ]]
-    then
-      xmtu=$(cat $KHXNETMTUFILE)
-    fi
-    writeTTY "mketh 1 0 $xmtu" $tty
-    writeTTY "setenv bg_eth0_netid 1" $tty
-    echo "network External : eth0"
-  fi
-
-  if (( $inet == 1 ))
-  then
-     echo "$inetdesc"
-  fi
-
-  j=$ethoffset
-  for p in ${pnetids//,/ }
-  do
-    writeTTY "setenv bg_eth${j}_netid $p" $tty
-    echo "network $p : eth${j}"
-    (( j++ ))
-  done
-  writeTTY "setenv bg_num_netids $j" $tty
-
-  myiip=$(myIPAddrs eth1)
-  if [[ -n "$myiip" ]]
-  then
-    writeTTY "setenv khctlserver $myiip" $tty
-  fi
-  writeTTY "setenv khctluser $khuser" $tty
-  #kludge for demo
-  writeTTY "itest \$demoenv == 1 && run dosettmpboot" $tty
-
-  flushTTY $tty
-
-  #added eth0ip as a kludge to make demo easier
-  if [[ -n $(getNatIP) ]]; then
-      ubootnodeinfo=$(getUbootNodeInfo $tty $num "\$eth0ip \$ionode_uni \$ionode_siteip \$bgp_rankinpset")
-  else
-      ubootnodeinfo=$(getUbootNodeInfo $tty $num "\$eth0ip")
-  fi
-  if (( $? != 0 ))
-  then 
-     echo "ERROR: $FUNCNAME: getUbootNodeInfo failed to confirm nodes configured\n" >&2 
-  fi
-  echo "$ubootnodeinfo"
-  return 0
-}
 
 SESAcreateCon()
 { 
@@ -784,39 +420,6 @@ SESAcreateCon()
   return 0
 }
 
-KHcreateCon()
-{ 
-  local khuser=$1
-  local conid=$2
-  local nodes="$3"
-
-  local dir=$KHCONSDIR/$conid
-  local tty=$dir/tty
-  local procfile=$KHTTYPROCDIR/$conid
-
-  if [[ -d $dir ]]
-  then
-      echo "ERROR: $dir already exists?!?" >&2
-      return 255
-  fi
-  
-  mkdir -p $dir
-
-  echo "$nodes" > $dir/nodes
-  echo "$khuser" > $dir/owner
-
-  mknod $tty c $KHTTYMAJOR $conid
-  stty raw -clocal cread -echo -echok -echoe < $tty
-  if (( $num == 1 ))
-  then
-    echo "FIXME: using broadcast just for one node :-(" >&2
-    echo "$conid $conid b" > $procfile
-  else
-    echo "$conid $conid b" > $procfile
-  fi
-
-  return 0
-}
 
 SESAcreateConUser()
 {
@@ -844,69 +447,6 @@ SESAcreateConUser()
   fi
 
   return 0
-}
-
-KHcreateConUser()
-{
-  local khuser=$1
-  local pnetid=$2
-  local conid=$3
-  local num=$4
-  local nodes="$5"
-
-  local dir=$KHCONSDIR/$conid
-  local conuser=$KHUSERPREFIX${conid}
-  local home=$dir/$conuser
-  local shell=$dir/conshell
-  local tty=$dir/tty
-
-  if [[ ! -d $dir ]]
-  then
-    echo "ERROR: createConUser: $dir does not exist?!?" >&2
-    return 255
-  fi
-  if ! mkdir $home
-  then
-    echo "ERROR: createConUser: could not make $home?!?" >&2
-    return 255
-  fi
-
-  if grep "^$conuser:" /etc/passwd
-  then
-    echo "ERROR: $conuser already in /etc/passwd" >&2
-    return 255
-  fi
-
-  # FIXME:  Enable this when ready to try credentials
-  # cred=$(locked_ls_users "$khuser" "*")
-  # cred=${cred##*:}
-  # mkdir -p $home/.ssh
-  # echo "$cred" > $home/.ssh/authorizedkeys
-
-  cat >$shell <<EOF
-#!/bin/bash
-stty raw -clocal cread -echo -echok -echoe < $tty
-
-if [[ \$TERM = KHREAD ]]
-then
-  exec cat $tty
-fi
-
-if tty > /dev/null
-then
-# getting closer but still needs more
-#  stty raw -clocal cread -echo -echok -echoe
-  echo "$conuser: Console"
-  cat $tty > /dev/tty & 
-fi
-cat > $tty
-EOF
-
-  echo "$conuser::65534:65534:nobody:$home:$shell" >> /etc/passwd
-  
-  chown $conuser $tty
-  chmod u+x $shell
-  chown $conuser $shell
 }
 
 assignNodes()
