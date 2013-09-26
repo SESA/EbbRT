@@ -32,11 +32,12 @@ fi
 base=.
 ulnx=$base/ulnx
 bare=$base/bare
+scripts=$base/scripts
 #TODO: debug flags & optimisations
 flags='-g -O0'
 
 # Run configuration and make for both platforms
-mkdir -p $bare $ulnx
+mkdir -p $bare $ulnx $scripts
 
 echo "$src/configure 'CXXFLAGS=$flags' " >> $ulnx/doconfig
 (cd $ulnx; . doconfig && make)
@@ -47,7 +48,7 @@ echo "$src/configure 'CXXFLAGS=$flags' --host=x86_64-pc-ebbrt " >> $bare/doconfi
 #################################################
 # environment variables
 #################################################
-cat > $base/loadenv << EOF
+cat > $base/environment_vars<< EOF
 export SESA=1
 export SESA_SRC=$src
 export KHCTL_BASEDIR=$(readlink -f ${base}/khdb)
@@ -66,10 +67,10 @@ all: .DEFAULT
 EOF
 
 #################################################
-# docker run script
+# misc run scripts
 #################################################
 
-cat > $base/docker-run << EOF
+cat > $scripts/docker << EOF
 if [[ -a Dockerfile ]]; then
   # create and run container 
   docker build -t ebbrt-app .
@@ -77,14 +78,20 @@ if [[ -a Dockerfile ]]; then
 fi
 EOF
 
+echo '
+if [[ -a $app ]]
+  echo "convert to elf32"
+  echo "boot with kexec"
+'>> $scripts/kexec 
+
 #################################################
-# make the apps
+# quick make
 #################################################
 
-touch $base/makeapp
-chmod 755 $base/makeapp
+touch $base/quickmake
+chmod 755 $base/quickmake
 
-cat > $base/makeapp << EOF
+cat > $base/quickmake << EOF
 #!/bin/bash
 base=$base
 ulnx=$ulnx
@@ -102,17 +109,17 @@ fi
 make -C $ulnx src/app/$app/$app
 make -C $bare src/app/$app/$app.$imgtype
   
-'>> $base/makeapp 
+'>> $base/quickmake 
 
 
 #################################################
-# run the apps
+# quick run
 #################################################
 
-touch $base/runapp
-chmod 755 $base/runapp
+touch $base/quickrun
+chmod 755 $base/quickrun
 
-cat > $base/runapp << EOF
+cat > $base/quickrun << EOF
 #!/bin/bash
 src=$src
 base=$base
@@ -121,10 +128,9 @@ bare=$bare
 imgtype=$imgtype
 export SESA_GET=khget
 
-##### LINUX IMAGE#########################################
+##### LINUX IMAGE #######################################
 sesalnx=$HOME/sesalnx.img
 #########################################################
-
 EOF
 
 echo '
@@ -184,7 +190,7 @@ BARE_IMG=$(readlink -f ${base}/bare/src/app/$app/$app.$imgtype)
 FNT_IMG=$(readlink -f ${base}/ulnx/src/app/$app/$app)
 
 if [[ ! -a $BARE_IMG && $count>0 ]]; then
-  echo "ERROR: binaries not found for $app. Try running ./makeapp $app"
+  echo "ERROR: binaries not found for $app. Try running ./quickmake $app"
   exit 1
 fi
 
@@ -223,4 +229,4 @@ if [[ $count > 0 ]]; then
   bkcmd="$($SESA_GET $APPNAME $BARE_IMG $count)"
   echo $bkcmd
 fi
-' >> $base/runapp 
+' >> $base/quickrun 
