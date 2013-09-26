@@ -30,14 +30,6 @@ declare -r KHFREENETID=${KHCTL_FREENETID:-2}
 declare -r KHPNETSRESERVED=${KHCTL_PNETSRESERVED:-3}
 declare -r KHPNETIDSTART=${KHCTL_PNETIDSTART:-$KHPNETSRESERVED}
 declare -r KHPNETIDEND=${KHCTL_PNETIDEND:-$(printf "%d" 0xffffffff)}
-#declare -r KHXNETMTUFILE=${KHCTL_XNETMTU:-/proc/device-tree/u-boot-env/sitemtu}
-#declare -r KHTTYPROCDIR=${KHCTL_TTYPROCDIR:-/proc/sys/dev/bgtty}
-#declare -r KHTOTALSIZEFILE=${KHCTL_TOTALSIZEFILE:-/proc/device-tree/u-boot-env/bgp_totalnodes}
-#declare -r KHRANKFILE=${KHCTL_RANKFILE:-/proc/device-tree/u-boot-env/bgp_rank}
-#declare -r KHCTRLTTY=${KHCTL_CTRLTTY:-/dev/bgtty0}
-#declare -r KHTTYMAJOR=${KHCTL_TTYMAJOR:-230}
-#declare -r KHXIPFILE=${KHCTL_XIPFILE:-/proc/device-tree/u-boot-env/xip}
-#declare -r KHNATIPFILE=${KHCTL_NATFILE:-/proc/device-tree/u-boot-env/natip}
 declare -r KHUSERPREFIX=${KHCTL_USERPREFIX:-con}
 declare -r KHCTRLID=${KHCTL_CTRLID:-0}
 declare -r FREEOWNER='_FREE_'
@@ -47,7 +39,6 @@ declare -r FREEXNETFLG=0
 declare -r FREECONID=$KHCTRLID
 declare BUFFERVAR
 declare -i BUFFERTTY=1
-
 typeset dofunc
 
 # configurable functions
@@ -55,19 +46,17 @@ declare  configNodes=KHconfigNodes
 declare  createCon=KHcreateCon
 declare  createConUser=KHcreateConUser
 
-
-if [[ -n SESA ]]; then
-  # SESA General
-  declare -r SESAMAXNODES=${SESA_MAX_NODES:-256}
-  declare -r SESANETDIR=${SESA_NETDIR:-$KHBASEDIR/Networks}
-  declare -r SESAEMUCMD=${SESA_EMUCMD:-"/opt/bin/qemu-system-x86_64"}
-  declare -r SESAMNTDIR=${SESA_MNTDIR:=""}
-  declare -r SESABIOS=${SESA_BIOS:=""}
-  declare -r SESATAP=${SESA_TAP:=""}
-  declare  configNodes=SESAconfigNodes
-  declare  createCon=SESAcreateCon
-  declare  createConUser=SESAcreateConUser
-fi
+# SESA General
+declare -r SESAMAXNODES=${SESA_MAX_NODES:-256}
+declare -r SESANETDIR=${SESA_NETDIR:-$KHBASEDIR/Networks}
+declare -r SESAEMUCMD=${SESA_EMUCMD:-"/opt/bin/qemu-system-x86_64"}
+declare SESAMNTDIRA=${SESA_MNTDIR_A:=""}
+declare SESAMNTDIRB=${SESA_MNTDIR_B:=""}
+declare -r SESABIOS=${SESA_BIOS:=""}
+declare -r SESATAP=${SESA_TAP:=""}
+declare  configNodes=SESAconfigNodes
+declare  createCon=SESAcreateCon
+declare  createConUser=SESAcreateConUser
 
 function getNatIP
 {
@@ -181,6 +170,9 @@ SESAcreateNet()
     echo "YIKES mkdir of $dir failed" > /dev/stderr
     return 255
   fi
+
+  # ip directory
+  mkdir -p $dir/ip
 
   # optional tap interface
   if [[ -n $tap ]]; then
@@ -316,8 +308,6 @@ SESAconfigNodes()
   local bioscmd=""
   local ram="512"
 
-  #echo "SESAconfigNodes: khuser=$khuser pnetids=$pnetids  inet=$inet xnet=$xnet conid=$conid num=$num, nodes=$nodes dir=$dir"
-
   # Private network construction 
   for p in ${pnetids//,/ }
   do
@@ -343,6 +333,16 @@ SESAconfigNodes()
     netcmd=""
     dir=$basedir/nodes/$n
     j=$ethoffset
+
+    #ip directory
+    ipdir=$SESANETDIR/$p/ip/$n
+    mkdir -p $ipdir
+    # setup network share for frontend instances
+    if (( $ethoffset > 0 ))
+    then
+      SESAMNTDIRA=$ipdir
+    fi
+
     # external network
     if (( $xnet == 1 ))
     then
@@ -350,6 +350,7 @@ SESAconfigNodes()
       netcmd="$netcmd -net nic,vlan=1,macaddr=$mac -net bridge,vlan=1,br=brX"
       echo "$n: network_external eth0 $mac"
     fi
+
     # internal network
     if (( $inet == 1 ))
     then
@@ -357,6 +358,7 @@ SESAconfigNodes()
       netcmd="$netcmd -net nic,vlan=2,macaddr=$mac -net bridge,vlan=2,br=brI"
       echo "$n: network_internal eth1 $mac"
     fi
+
     # private network(s)
     for p in ${pnetids//,/ }; do
       mac=$(SESAgenerateMac)
@@ -373,11 +375,17 @@ SESAconfigNodes()
     echo "$n: console $dir/vnc"
     concmd="-vnc unix:$dir/vnc -name $khuser:$conid:$n"
 
-    # mount
-    if [[ -d $SESAMNTDIR ]]
+    # mount 1 (sdb1) - shared
+    if [[ -d $SESAMNTDIRA ]]
     then
-      mntcmd="-drive file=fat:rw:$SESAMNTDIR"
+      mntcmd="$mntcmd -drive file=fat:rw:$SESAMNTDIRA,index=1,cache=directsync,media=disk"
     fi
+    # mount 2 (sdc1) - control
+    if [[ -d $SESAMNTDIRB ]]
+    then
+      mntcmd="$mntcmd -drive file=fat:rw:$SESAMNTDIRB,index=2,cache=directsync,media=disk"
+    fi
+    # TODO: mount 3 configuration
 
     # bios rom
     if [[ -a $SESABIOS ]]
@@ -385,10 +393,10 @@ SESAconfigNodes()
       bioscmd="-bios $SESABIOS"
     fi
 
-    # instantiate node!
+    # instantaneously instantiate the instance!
+    set -x
     $SESAEMUCMD $netcmd $srlcmd $concmd -enable-kvm -m $ram -daemonize -pidfile $dir/pid $SESA_ROM $SESA_IMG $mntcmd > $dir/vnclog 2>&1
   done
-
   return 0
 }
 
@@ -472,7 +480,7 @@ assignNodes()
        configdesc=$($configNodes $khuser $pnetid $inet $xnet $conid $num "${nodes[*]}")
        if (( $? == 0 ))
        then
-          if [[ -n $SESA ]]; then
+          if [[ 1 ]]; then # FIXME: cleanup
                echo "protocol: openfirmware"
           else 
              if [[ -n $SSH_CONNECTION ]]
