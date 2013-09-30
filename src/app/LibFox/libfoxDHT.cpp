@@ -35,7 +35,7 @@ extern "C" {
 
 //static hashtable for these apps
 const ebbrt::EbbRef<ebbrt::HashTable> the_hash_table =
-  ebbrt::EbbRef<ebbrt::HashTable>(ebbrt::lrt::trans::
+  ebbrt::EbbRef<ebbrt::HashTable>(ebbrt::lrt::config::
                                   find_static_ebb_id("HashTable"));
 
 struct fox_st {
