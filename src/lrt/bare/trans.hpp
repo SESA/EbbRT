@@ -54,12 +54,15 @@ namespace ebbrt {
       /**
        * Construct early roots, before exceptions and global
        * constructors.
+       *
+       * @return early_init_count
        */
-      void early_init_ebbs();
+      int early_init_ebbs();
       /**
        * @brief Construct roots for statically linked Ebbs
+       * int early_init_count
        */
-      void init_ebbs();
+      void init_ebbs(int early_init_count);
       /**
        * @brief Per-core initialization
        */

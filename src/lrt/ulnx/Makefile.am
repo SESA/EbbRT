@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 lrt_ulnx_sources = \
+	src/lrt/ulnx/config.cpp \
 	src/lrt/ulnx/event.cpp \
 	src/lrt/ulnx/init.cpp \
 	src/lrt/ulnx/trans.cpp

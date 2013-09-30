@@ -22,8 +22,9 @@
 #include "ebb/EbbManager/EbbManager.hpp"
 #include "lrt/bare/boot.hpp"
 #include "lrt/event.hpp"
+#include "lib/fdt/libfdt.h"
 #include "lrt/bare/mem.hpp"
-#include "lrt/bare/config.hpp"
+#include "lrt/config.hpp"
 #include "lrt/trans_impl.hpp"
 
 namespace {
@@ -41,34 +42,66 @@ ebbrt::lrt::trans::initial_root_table(unsigned i)
   return init_root_table[i];
 }
 
-void
+int
 ebbrt::lrt::trans::early_init_ebbs()
 {
-  int num_roots = app::config.num_early_init + app::config.num_late_init;
+  int root =  fdt_path_offset(ebbrt::lrt::boot::fdt, "/");
+  uint32_t num_roots = ebbrt::lrt::config::fdt_getint32(root, "ebbrt_num_static_init");
+
   init_root_table = new (mem::malloc(sizeof(RootBinding) *
                                      num_roots, 0))
     RootBinding[num_roots];
 
-  for (unsigned i = 0; i < app::config.num_early_init; ++i) {
-    init_root_table[i].id =
-      find_static_ebb_id(app::config.early_init_ebbs[i].name);
-    ebbrt::app::ConfigFuncPtr func =
-      LookupSymbol(app::config.early_init_ebbs[i].name);
-    LRT_ASSERT( func != nullptr );// lookup failed
-    init_root_table[i].root = func();
+  int i = 0;
+  int ebbs =  fdt_path_offset(ebbrt::lrt::boot::fdt, "/ebbs");
+  int nextebb = fdt_first_subnode(ebbrt::lrt::boot::fdt, ebbs);
+  while( nextebb > 0) 
+  {
+    const char *name;
+    int len;
+
+    name = fdt_get_name(ebbrt::lrt::boot::fdt, nextebb, &len);
+    uint32_t id = ebbrt::lrt::config::fdt_getint32(nextebb, "id");
+    uint32_t early = ebbrt::lrt::config::fdt_getint32(nextebb, "early_init_ebbrt");
+
+    if(early){
+      init_root_table[i].id = id;
+      ebbrt::app::ConfigFuncPtr func = ebbrt::lrt::config::LookupSymbol(name);
+      LRT_ASSERT( func != nullptr );// lookup failed
+      init_root_table[i].root = func();
+      /* TODO: pass fdt config offset to constructor ? */
+      i++;
+    }
+    nextebb = fdt_next_subnode(ebbrt::lrt::boot::fdt, nextebb);
   }
+  return i;
 }
 
+
 void
-ebbrt::lrt::trans::init_ebbs()
+ebbrt::lrt::trans::init_ebbs(int early_init_count)
 {
-  for (unsigned i = 0; i < app::config.num_late_init; ++i) {
-    init_root_table[i].id =
-      lrt::trans::find_static_ebb_id(app::config.late_init_ebbs[i].name);
-    ebbrt::app::ConfigFuncPtr func =
-      ebbrt::app::LookupSymbol(app::config.late_init_ebbs[i].name);
-    LRT_ASSERT( func != nullptr );// lookup failed
-    init_root_table[i].root = func();
+  int i = early_init_count; 
+  int ebbs =  fdt_path_offset(ebbrt::lrt::boot::fdt, "/ebbs");
+  int nextebb = fdt_first_subnode(ebbrt::lrt::boot::fdt, ebbs);
+  while( nextebb > 0) 
+  {
+    const char *name;
+    int len;
+
+    name = fdt_get_name(ebbrt::lrt::boot::fdt, nextebb, &len);
+    uint32_t id = ebbrt::lrt::config::fdt_getint32(nextebb, "id");
+    uint32_t late = ebbrt::lrt::config::fdt_getint32(nextebb, "late_init_ebbrt");
+
+    if(late){
+      init_root_table[i].id = id;
+      ebbrt::app::ConfigFuncPtr func = ebbrt::app::LookupSymbol(name);
+      LRT_ASSERT( func != nullptr );// lookup failed
+      init_root_table[i].root = func();
+      /* TODO: pass fdt config offset to constructor ? */
+      i++;
+    }
+    nextebb = fdt_next_subnode(ebbrt::lrt::boot::fdt, nextebb);
   }
 }
 
@@ -121,9 +154,10 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
                                      EbbId id)
 {
   EbbRoot* root = nullptr;
+  uint32_t num_roots = 
+    ebbrt::lrt::config::fdt_getint32(0, "ebbrt_num_static_init");
   /* look up root in initial global translation table */
-  for (unsigned i = 0; i <
-	 (app::config.num_early_init + app::config.num_late_init); ++i) {
+  for (unsigned i = 0; i < (num_roots); ++i) {
     if (init_root_table[i].id == id) {
       root = init_root_table[i].root;
       break;

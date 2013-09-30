@@ -15,26 +15,50 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef LRT_BARE_CONFIG_HPP
-#define LRT_BARE_CONFIG_HPP
+#ifndef EBBRT_LRT_CONFIG_HPP
+#error "Don't include this file directly"
+#endif
 
 #include "app/app.hpp"
 
 namespace ebbrt {
   namespace lrt {
-    
-    struct SymTabEntry {
-      /* 
-	 FIXME:function here should take an argument to section of
-	 flattened device tree, and should return void
-      */
-      ebbrt::EbbRoot* (*config_func)(); 
-      char *str;
-    };
+    namespace config {
 
-    void dump_config_info();
-    /// lookup return function poitner
-    app::ConfigFuncPtr LookupSymbol(const char *str);
+      struct SymTabEntry {
+        /* 
+          FIXME:function here should take an argument to section of
+          flattened device tree, and should return void
+        */
+        trans::EbbRoot* (*config_func)(); 
+        char *str;
+      };
+
+      /**
+       * @brief Look up reference in the pre-init symbol table
+       * Early init ebbs must add a reference to thier root 
+       * constructor to the symbol table using the 
+       * ADD_EARLY_CONFIG_SYMBOL macro. This allows the bootstapping 
+       * early ebb constructors before general C++ constructors. 
+       *
+       * @param str Ebb name
+       *
+       * @return Pointer to corresponding function's symbol 
+       */
+      app::ConfigFuncPtr LookupSymbol(const char *str);
+
+
+
+      /**
+       * @brief Get byte-ordered uint32 from fdt 
+       *
+       * @param root fdt offset
+       * @param prop property name
+       *
+       * @return 
+       */
+      uint32_t fdt_getint32(int root, const char *prop);
+    }
   }
 }
 
@@ -42,18 +66,17 @@ namespace ebbrt {
 /* 
  * Symbol table for functions needed early in boot.
  */
-extern struct ebbrt::lrt::SymTabEntry ebbsymtab_start[];
-extern struct ebbrt::lrt::SymTabEntry ebbsymtab_end[];
+extern struct ebbrt::lrt::config::SymTabEntry ebbsymtab_start[];
+extern struct ebbrt::lrt::config::SymTabEntry ebbsymtab_end[];
 
 #define ADD_EARLY_CONFIG_SYMBOL(symbol,func)		\
-char __table ## symbol[] = #symbol;					\
-							\
-ebbrt::lrt::SymTabEntry					\
+  char __table ## symbol[] = #symbol;					\
+\
+ebbrt::lrt::config::SymTabEntry					\
 __table ## symbol ## _entry __attribute__((section("ebbsymtab")))	\
 = {							\
   .config_func = func,					\
   .str = __table ## symbol					\
 };
 
-#endif /*LRT_BARE_CONFIG_HPP*/
 

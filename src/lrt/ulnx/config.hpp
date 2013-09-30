@@ -15,23 +15,14 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_LRT_BARE_BOOT_HPP
+#ifndef EBBRT_LRT_CONFIG_HPP
 #error "Don't include this file directly"
 #endif
 
-#include <atomic>
-#include <cstdint>
-#include <string>
-
-#include "arch/x86_64/multiboot.hpp"
-
 namespace ebbrt {
   namespace lrt {
-    namespace boot {
-      extern uint32_t smp_lock;
-      extern const MultibootInformation* multiboot_information;
-      extern void* fdt; // flattened device tree
-      uint32_t fdt_getint32(int offset, const char *prop);
+    namespace config {
+      /* */
     }
   }
 }

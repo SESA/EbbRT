@@ -25,12 +25,23 @@ ebbrt::lrt::mem::init(unsigned num_cores)
 {
   /**@brief Partition available address space into core-specific regions */
   LRT_ASSERT(boot::multiboot_information->has_mem);
+
+  /* adjust mem_start to account for bootloaded modules */
+  if(boot::multiboot_information->modules_count > 0){
+    auto addr_32 = static_cast<uintptr_t>(lrt::boot::multiboot_information->modules_address);
+    auto addr = reinterpret_cast<uint32_t *>(addr_32);
+    uint32_t mod_val = *(addr + 1 + ((boot::multiboot_information->modules_count - 1) * 4));
+    mem_start = reinterpret_cast<char *>(mod_val);
+  }
+  
   /* regions array stored at start of free memory */
   regions = reinterpret_cast<Region*>(mem_start);
   char* ptr = mem_start + (num_cores * sizeof(Region));
+
   /* remaining memory is calculated and divided equally between cores */
   uint64_t num_bytes = static_cast<uint64_t>
     (boot::multiboot_information->memory_higher) << 10;
+
   /* 1MB being the start of the kernel */
   num_bytes -= reinterpret_cast<uint64_t>(mem_start) - 0x100000;
   for (unsigned i = 0; i < num_cores; ++i) {

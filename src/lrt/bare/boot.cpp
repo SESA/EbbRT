@@ -19,6 +19,7 @@
 #include "app/app.hpp"
 #include "lrt/bare/boot.hpp"
 #include "lrt/bare/console.hpp"
+#include "lrt/config.hpp"
 #include "lrt/event.hpp"
 #include "lrt/bare/mem.hpp"
 #include "lrt/trans.hpp"
@@ -52,12 +53,12 @@ namespace {
   /** Once only construction */
   void construct()
   {
-    ebbrt::lrt::trans::early_init_ebbs();
+    int early_init_count = ebbrt::lrt::trans::early_init_ebbs();
     __register_frame(__eh_frame_start);
     for (unsigned i = 0; i < (end_ctors - start_ctors); ++i) {
       start_ctors[i]();
     }
-    ebbrt::lrt::trans::init_ebbs();
+    ebbrt::lrt::trans::init_ebbs(early_init_count);
   }
 
   ebbrt::Spinlock lock;
@@ -75,16 +76,13 @@ namespace {
   }
 }
 
-/* by default no secondary cores will come up */
-bool ebbrt::app::multi __attribute__((weak)) = false;
-
 void
 ebbrt::lrt::boot::init_cpu()
 {
   /* per-core translation setup */
   trans::init_cpu();
 
-  if (app::multi) {
+  if (config::get_multicore()) {
     /* if multi, then construct only on core 0 and spin the others */
     static std::atomic<bool> initialized {false};
     if (event::get_location() == 0) {
