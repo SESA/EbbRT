@@ -33,13 +33,13 @@ ebbrt::lrt::config::get_space_id(void)
 }
 
   uint32_t
-ebbrt::lrt::config::get_static_ebb_id(void)
+ebbrt::lrt::config::fdt_getint32(int a, const char* b)
 {
   assert(0);
   return 0;
 }
 
-  uint32_t
+  bool
 ebbrt::lrt::config::get_multicore(void)
 {
   assert(0);

@@ -22,6 +22,7 @@
 namespace ebbrt {
   namespace lrt {
     namespace config {
+      uint32_t fdt_getint32(int root, const char *prop);
       /* */
     }
   }

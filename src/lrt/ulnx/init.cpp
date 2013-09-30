@@ -19,7 +19,9 @@
 
 #include "ebbrt.hpp"
 #include "app/app.hpp"
+#include "lrt/config.hpp"
 #include "lrt/event_impl.hpp"
+#include "lib/fdt/libfdt.h"
 #include "lrt/ulnx/init.hpp"
 
 __thread ebbrt::Context* ebbrt::active_context;
@@ -27,7 +29,8 @@ __thread ebbrt::Context* ebbrt::active_context;
 ebbrt::EbbRT::EbbRT() : initialized_{false}, next_id_{0},
   miss_handler_(&lrt::trans::init_root)
 {
-  initial_root_table_ = new lrt::trans::RootBinding[app::config.num_late_init];
+  //initial_root_table_ = new lrt::trans::RootBinding[app::config.num_late_init];
+  initial_root_table_ = new lrt::trans::RootBinding[lrt::config::get_static_ebb_count()];
 }
 
 ebbrt::lrt::event::Location
@@ -41,6 +44,7 @@ ebbrt::EbbRT::AllocateLocation()
 ebbrt::Context::Context(EbbRT& instance) : instance_(instance)
 {
   active_context = nullptr;
+  char* fdt = nullptr;
 
   location_ = instance_.AllocateLocation();
 
@@ -50,14 +54,42 @@ ebbrt::Context::Context(EbbRT& instance) : instance_(instance)
     // note: these create root calls may make ebb calls which is why
     // this is done from within a context and not when we construct
     // the EbbRT
-    for (unsigned i = 0; i < app::config.num_late_init; ++i) {
+#if 0
+    for (unsigned i = 0; i < lrt::config::get_static_ebb_count(); ++i) {
+
       instance_.initial_root_table_[i].id =
         lrt::trans::find_static_ebb_id(app::config.late_init_ebbs[i].name);
+
       ebbrt::app::ConfigFuncPtr func =
-	ebbrt::app::LookupSymbol(app::config.late_init_ebbs[i].name);
+        ebbrt::app::LookupSymbol(app::config.late_init_ebbs[i].name);
       assert( func != nullptr );// lookup failed
       instance_.initial_root_table_[i].root = func();
     }
+#endif
+
+  int ebbs =  fdt_path_offset(fdt, "/ebbs");
+  int nextebb = fdt_first_subnode(fdt, ebbs);
+  while( nextebb > 0) 
+  {
+    const char *name;
+    int len;
+    int i=0;
+
+    name = fdt_get_name(fdt, nextebb, &len);
+    uint32_t id = ebbrt::lrt::config::fdt_getint32(nextebb, "id");
+    uint32_t early = ebbrt::lrt::config::fdt_getint32(nextebb, "early_init_ebbrt");
+
+    if(early){
+      instance_.initial_root_table_[i].id = id;
+      ebbrt::app::ConfigFuncPtr func = ebbrt::app::LookupSymbol(name);
+      assert( func != nullptr );// lookup failed
+      instance_.initial_root_table_[i].root = func();
+      i++;
+    }
+    nextebb = fdt_next_subnode(fdt, nextebb);
+  }
+
+    /////////
     std::lock_guard<std::mutex> lock(instance_.init_lock_);
     instance_.initialized_ = true;
     instance_.init_cv_.notify_all();

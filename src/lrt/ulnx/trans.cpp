@@ -23,9 +23,10 @@
 #include "arch/args.hpp"
 #include "app/app.hpp"
 #include "ebb/EbbManager/EbbManager.hpp"
-#include "lrt/ulnx/init.hpp"
+#include "lrt/config.hpp"
 #include "lrt/event.hpp"
 #include "lrt/trans_impl.hpp"
+#include "lrt/ulnx/init.hpp"
 
 namespace {
   auto def_rep = &ebbrt::lrt::trans::default_vtable;
@@ -62,7 +63,7 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
 {
   EbbRoot* root = nullptr;
   /* look up root in initial global translation table */
-  for (unsigned i = 0; i < app::config.num_late_init; ++i) {
+  for (unsigned i = 0; i < lrt::config::get_static_ebb_count(); ++i) {
     if (active_context->instance_.initial_root_table_[i].id == id) {
       root = active_context->instance_.initial_root_table_[i].root;
       break;
