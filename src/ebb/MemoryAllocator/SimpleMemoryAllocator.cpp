@@ -21,7 +21,7 @@
 #include "ebb/DistributedRoot.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
 #include "lrt/trans_impl.hpp"
-#include "src/lrt/bare/config.hpp"
+#include "src/lrt/config.hpp"
 
 #ifdef __ebbrt__
 #include "lrt/bare/mem_impl.hpp"
@@ -29,8 +29,10 @@
 
 using namespace ebbrt;
 
+#ifdef __ebbrt__
 ADD_EARLY_CONFIG_SYMBOL(MemoryAllocator,
 			&ebbrt::SimpleMemoryAllocatorConstructRoot)
+#endif
 
 ebbrt::SimpleMemoryAllocator::SimpleMemoryAllocator(EbbId id, Location loc) :
 MemoryAllocator{id}

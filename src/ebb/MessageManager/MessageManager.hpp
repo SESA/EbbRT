@@ -35,6 +35,6 @@ namespace ebbrt {
     MessageManager(EbbId id) : EbbRep{id} {}
   };
   const EbbRef<MessageManager> message_manager =
-    EbbRef<MessageManager>(lrt::trans::find_static_ebb_id("MessageManager"));
+    EbbRef<MessageManager>(lrt::config::find_static_ebb_id("MessageManager"));
 }
 #endif

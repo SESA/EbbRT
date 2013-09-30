@@ -22,6 +22,7 @@
 
 #include "ebb/ebb.hpp"
 #include "ebb/EventManager/MoveFunction.hpp"
+#include "lrt/config.hpp"
 #include "lrt/event_impl.hpp"
 
 namespace ebbrt {
@@ -62,6 +63,6 @@ namespace ebbrt {
     virtual void ProcessEvent() = 0;
   };
   const EbbRef<EventManager> event_manager =
-    EbbRef<EventManager>(lrt::trans::find_static_ebb_id("EventManager"));
+    EbbRef<EventManager>(lrt::config::find_static_ebb_id("EventManager"));
 }
 #endif

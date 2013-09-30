@@ -25,8 +25,11 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <fstream>
+#include <iostream>
 #include <mutex>
 #include <stack>
+#include <string>
 #include <unordered_map>
 
 #include "lrt/event.hpp"
@@ -50,7 +53,9 @@ namespace ebbrt {
   class EbbRT {
   public:
     EbbRT();
+    EbbRT(std::string);
   private:
+    void load_config();
     friend class Context;
     friend const lrt::trans::RootBinding&
     lrt::trans::initial_root_table(unsigned);

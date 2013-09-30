@@ -17,8 +17,7 @@
 */
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Console/LocalConsole.hpp"
-#include "ebb/MessageManager/MessageManager.hpp"
-#include "src/lrt/bare/config.hpp"
+#include "src/lrt/config.hpp"
 #include "src/app/app.hpp"
 
 #ifdef __ebbrt__
