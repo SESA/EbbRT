@@ -31,8 +31,10 @@ namespace ebbrt {
   protected:
     Timer(EbbId id) : EbbRep{id} {}
   };
+#ifdef __ebbrt__
   const EbbRef<Timer> timer =
     EbbRef<Timer>(lrt::trans::find_static_ebb_id("Timer"));
+#endif
 }
 
 #endif
