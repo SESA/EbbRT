@@ -18,3 +18,9 @@ EXTRA_LIBRARIES += \
 
 src_ebb_Timer_libSimpleTimer_a_SOURCES = \
 	src/ebb/Timer/SimpleTimer.cpp
+
+EXTRA_LIBRARIES += \
+	src/ebb/Timer/libApicTimer.a
+
+src_ebb_Timer_libApicTimer_a_SOURCES = \
+	src/ebb/Timer/ApicTimer.cpp
