@@ -26,6 +26,7 @@ namespace ebbrt {
     void init();
     unsigned get_num_cores();
     unsigned get_num_io_apics();
+    uint16_t get_timer();
     class Header {
     public:
       char signature[4];

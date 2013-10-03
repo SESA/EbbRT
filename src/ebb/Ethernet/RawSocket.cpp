@@ -64,7 +64,7 @@ ebbrt::RawSocket::RawSocket(EbbId id) : Ethernet{id}
   assert(addr != NULL);
 
   auto packet_addr = reinterpret_cast<struct sockaddr_ll*>(addr->addr);
-  std::copy(&packet_addr->sll_addr[0], &packet_addr->sll_addr[5], mac_addr_);
+  std::copy(&packet_addr->sll_addr[0], &packet_addr->sll_addr[6], mac_addr_);
 
   pdev_ = pcap_open_live(dev, 65535, 0, 0, errbuf);
   assert(dev != NULL);
@@ -84,24 +84,21 @@ ebbrt::RawSocket::RawSocket(EbbId id) : Ethernet{id}
 ebbrt::Buffer
 ebbrt::RawSocket::Alloc(size_t size)
 {
-  auto mem = std::malloc(size + 14);
+  auto mem = std::malloc(size);
   if (mem == nullptr) {
     throw std::bad_alloc();
   }
-  return Buffer(mem, size + 14) + 14;
+  return Buffer(mem, size);
 }
 
+#include <iostream>
+
 void
-ebbrt::RawSocket::Send(Buffer buffer, const char* to,
-                       const char* from, uint16_t ethertype)
+ebbrt::RawSocket::Send(Buffer buffer)
 {
-  auto buf = buffer - 14;
-  auto data = buf.data();
-  memcpy(data, to, 6);
-  memcpy(data + 6, from, 6);
-  *reinterpret_cast<uint16_t*>(data + 12) = htons(ethertype);
   //TODO: this is a blocking call
-  pcap_inject(pdev_, data, buf.length());
+  int ret = pcap_inject(pdev_, buffer.data(), buffer.length());
+  assert(ret != -1);
 }
 
 const char*
@@ -118,7 +115,7 @@ ebbrt::RawSocket::SendComplete()
 
 void
 ebbrt::RawSocket::Register(uint16_t ethertype,
-                           std::function<void(Buffer buffer, const char[6])> func)
+                           std::function<void(Buffer buffer)> func)
 {
   map_[ethertype] = func;
 }
@@ -141,7 +138,7 @@ ebbrt::RawSocket::Receive()
     uint16_t ethertype = ntohs(*reinterpret_cast<const uint16_t*>(&data[12]));
     auto it = map_.find(ethertype);
     if (it != map_.end()) {
-      it->second(buf + 14, data + 6);
+      it->second(buf);
     }
   }
 }

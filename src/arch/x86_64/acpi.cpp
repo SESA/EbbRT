@@ -24,6 +24,7 @@ const ebbrt::acpi::Rsdt* rsdt;
 const ebbrt::acpi::Xsdt* xsdt;
 const ebbrt::acpi::Madt* madt;
 const ebbrt::acpi::Srat* srat;
+const char* fadt;
 
 void
 ebbrt::acpi::init()
@@ -36,15 +37,26 @@ ebbrt::acpi::init()
         reinterpret_cast<uintptr_t>(xsdt) <= 0xFFFFFFFF) {
         madt = reinterpret_cast<const Madt*>(xsdt->find("APIC"));
         srat = reinterpret_cast<const Srat*>(xsdt->find("SRAT"));
+        fadt = reinterpret_cast<const char*>(xsdt->find("FACP"));
     } else {
       rsdt = rsdp->getRsdt();
       if (rsdt != nullptr &&
           reinterpret_cast<uintptr_t>(rsdt) <= 0xFFFFFFFF) {
         madt = reinterpret_cast<const Madt*>(rsdt->find("APIC"));
         srat = reinterpret_cast<const Srat*>(rsdt->find("SRAT"));
+        fadt = reinterpret_cast<const char*>(rsdt->find("FACP"));
       }
     }
   }
+}
+
+#include "lrt/bare/assert.hpp"
+
+uint16_t
+ebbrt::acpi::get_timer()
+{
+  auto ret = *reinterpret_cast<const uint32_t*>(fadt + 76);
+  return ret;
 }
 
 unsigned

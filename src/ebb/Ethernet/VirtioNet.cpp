@@ -106,19 +106,20 @@ ebbrt::VirtioNet::VirtioNet(EbbId id) : Ethernet{id}
   io_addr_ = static_cast<uint16_t>(it->BAR(0) & ~0x3);
   it->BusMaster(true);
 
+  virtio::reset(io_addr_);
   virtio::acknowledge(io_addr_);
   virtio::driver(io_addr_);
 
   // Negotiate features
   Features features;
   features.raw = virtio::device_features(io_addr_);
+  LRT_ASSERT(features.mac);
 
   Features supported_features;
   supported_features.raw = 0;
   supported_features.mac = features.mac;
   virtio::guest_features(io_addr_, supported_features.raw);
 
-  LRT_ASSERT(features.mac);
   uint16_t addr = io_addr_ + 24;
 
   for (unsigned i = 0; i < 6; ++i) {
@@ -142,20 +143,30 @@ ebbrt::VirtioNet::VirtioNet(EbbId id) : Ethernet{id}
   // Tell the device we are good to go
   virtio::driver_ok(io_addr_);
 
-  // Add buffers to receive queue
+  //Add buffers to receive queue
   for (uint16_t i = 0; i < receive_.size; ++i) {
-    auto buf = malloc(1514);
+    size_t size;
+    if ((i & 1) == 0) {
+      size = VIRTIO_HEADER_LEN;
+    } else {
+      size = 1514;
+    }
+    auto buf = malloc(size);
     if (buf == nullptr) {
       throw std::bad_alloc();
     }
     receive_.descs[i].address =
       reinterpret_cast<uintptr_t>(buf);
-    receive_.descs[i].length = 1514;
+    receive_.descs[i].length = size;
     receive_.descs[i].flags.write = true;
-    receive_.available->ring[i] = i;
+    if ((i & 1) == 0) {
+      receive_.descs[i].flags.next= true;
+      receive_.available->ring[i / 2] = i;
+    }
   }
   std::atomic_thread_fence(std::memory_order_release);
   receive_.available->index = receive_.size - 1;
+  //receive_.available->index = 1;
   std::atomic_thread_fence(std::memory_order_release);
   virtio::queue_notify(io_addr_, 0);
 }
@@ -171,14 +182,8 @@ ebbrt::VirtioNet::Alloc(size_t size)
 }
 
 void
-ebbrt::VirtioNet::Send(Buffer buffer, const char* to,
-                       const char* from, uint16_t ethertype)
+ebbrt::VirtioNet::Send(Buffer buffer)
 {
-  auto buf = buffer - 14;
-  auto data = buf.data();
-  memcpy(data, to, 6);
-  memcpy(data + 6, from, 6);
-  *reinterpret_cast<uint16_t*>(data + 12) = htons(ethertype);
   //FIXME: handle this by queueing the buffer to be sent out later
   LRT_ASSERT(send_.num_free > 2);
   send_.num_free -= 2;
@@ -188,11 +193,14 @@ ebbrt::VirtioNet::Send(Buffer buffer, const char* to,
   send_.descs[index].address = reinterpret_cast<uint64_t>(empty_header_);
   send_.descs[index].length = VIRTIO_HEADER_LEN;
   send_.descs[index].flags.next = true;
-  send_.descs[index].next = index + 1;
-  ++index;
-  send_.descs[index].address = reinterpret_cast<uint64_t>(data);
-  send_.descs[index].length = buf.length();
+
+  index = send_.descs[index].next;
+
+  send_.descs[index].address = reinterpret_cast<uint64_t>(buffer.data());
+  send_.descs[index].length = buffer.length();
   send_.descs[index].flags.next = false;
+
+  send_.free_head = send_.descs[index].next;
 
   auto avail = send_.available->index % send_.size;
   send_.available->ring[avail] = head;
@@ -240,7 +248,7 @@ ebbrt::VirtioNet::SendComplete()
 
 void
 ebbrt::VirtioNet::Register(uint16_t ethertype,
-                           std::function<void(Buffer, const char[6])> func)
+                           std::function<void(Buffer)> func)
 {
   rcv_map_[ethertype] = func;
 }
@@ -254,21 +262,23 @@ ebbrt::VirtioNet::Receive()
   while (receive_.last_used != used_index) {
     auto last_used = receive_.last_used % receive_.size;
     auto desc = receive_.used->ring[last_used].index;
+    LRT_ASSERT(receive_.descs[desc].length == VIRTIO_HEADER_LEN);
 
-    auto buf = reinterpret_cast<char*>(receive_.descs[desc].address);
+    auto payload_desc = desc + 1;
+
+    auto buf = reinterpret_cast<char*>(receive_.descs[payload_desc].address);
     uint16_t ethertype =
-      ntohs(*reinterpret_cast<uint16_t*>(&buf[VIRTIO_HEADER_LEN + 12]));
+      ntohs(*reinterpret_cast<uint16_t*>(&buf[12]));
     auto it = rcv_map_.find(ethertype);
     if (it != rcv_map_.end()) {
       //If we have a listener registered then invoke them
-      it->second(Buffer(buf, receive_.used->ring[last_used].length) +
-                 (VIRTIO_HEADER_LEN + 14), buf + VIRTIO_HEADER_LEN + 6);
+      it->second(Buffer(buf, receive_.used->ring[last_used].length - VIRTIO_HEADER_LEN));
     }
     auto newbuf = malloc(1514);
     if (newbuf == nullptr) {
       throw std::bad_alloc();
     }
-    receive_.descs[desc].address =
+    receive_.descs[payload_desc].address =
       reinterpret_cast<uintptr_t>(newbuf);
     receive_.available->ring[avail_index % receive_.size] = desc;
     avail_index++;
