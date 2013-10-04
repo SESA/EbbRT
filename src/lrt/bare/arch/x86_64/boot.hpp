@@ -31,7 +31,6 @@ namespace ebbrt {
       extern uint32_t smp_lock;
       extern const MultibootInformation* multiboot_information;
       extern void* fdt; // flattened device tree
-      uint32_t fdt_getint32(int offset, const char *prop);
     }
   }
 }

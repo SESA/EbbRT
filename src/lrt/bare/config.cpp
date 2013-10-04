@@ -45,40 +45,51 @@ namespace ebbrt {
 
 
       uint32_t
-        fdt_getint32(int root, const char *prop)
+        fdt_getint32(void *fdt, int root, const char *prop)
         {
+          if(!fdt)
+            fdt = boot::fdt;
           int len;
-          const unsigned char *id = (const unsigned char *)fdt_getprop(ebbrt::lrt::boot::fdt, root, prop, &len);
+          const unsigned char *id = (const unsigned char *)fdt_getprop(fdt, root, prop, &len);
           LRT_ASSERT(len == 4);
           // machine independant byte ordering of litte-endian value
           return ((id[3]<<0)|(id[2]<<8)|(id[1]<<16)|(id[0]<<24));
         }
 
       uint32_t
-        find_static_ebb_id(const char* name)
+        find_static_ebb_id(void *fdt, const char* name)
         {
+          if(!fdt)
+            fdt = boot::fdt;
           std::string path="/ebbs/";
           path.append(name);
-          int offset =  fdt_path_offset(ebbrt::lrt::boot::fdt, path.c_str());
-          return fdt_getint32(offset, "id");
+          int offset =  fdt_path_offset(fdt, path.c_str());
+          return fdt_getint32(fdt, offset, "id");
         }
 
       uint16_t
-        get_space_id(void)
+        get_space_id(void *fdt)
         {
-          return (uint16_t)(fdt_getint32(0, "space_id") & 0xFFFF);
+          if(!fdt)
+            fdt = boot::fdt;
+          return (uint16_t)(fdt_getint32(fdt, 0, "space_id") & 0xFFFF);
         }
 
       uint32_t
-        get_static_ebb_count(void)
+        get_static_ebb_count(void *fdt)
         {
-          return fdt_getint32(0, "ebbrt_num_static_init");
+          if(!fdt)
+            fdt = boot::fdt;
+          return fdt_getint32(fdt, 0, "ebbrt_num_static_init");
         }
 
       bool
-        get_multicore(void)
+        get_multicore(void *fdt)
         {
-          return (bool)fdt_getint32(0, "multicore");
+          if(!fdt)
+            fdt = boot::fdt;
+
+          return (bool)fdt_getint32(fdt, 0, "multicore");
         }
     }
   }

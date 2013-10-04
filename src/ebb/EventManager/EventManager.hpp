@@ -62,9 +62,7 @@ namespace ebbrt {
     virtual void HandleInterrupt(uint8_t interrupt) = 0;
     virtual void ProcessEvent() = 0;
   };
-#ifdef __ebbrt__
   const EbbRef<EventManager> event_manager =
-    EbbRef<EventManager>(lrt::config::find_static_ebb_id("EventManager"));
-#endif
+    EbbRef<EventManager>(lrt::config::find_static_ebb_id(nullptr,"EventManager"));
 }
 #endif

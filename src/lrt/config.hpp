@@ -32,10 +32,10 @@ namespace ebbrt {
   namespace lrt {
     namespace config {
       trans::EbbId 
-        find_static_ebb_id(const char* name);
-        uint16_t get_space_id(void);
-        uint32_t get_static_ebb_count(void);
-        bool get_multicore(void);
+        find_static_ebb_id(void* config, const char* name);
+        uint16_t get_space_id(void* config);
+        uint32_t get_static_ebb_count(void* config);
+        bool get_multicore(void* config);
     }
   }
 }

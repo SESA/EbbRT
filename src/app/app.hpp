@@ -40,6 +40,45 @@ namespace ebbrt {
     /// lookup return function poitner
     ConfigFuncPtr LookupSymbol (std::string str);
 
+
+    struct Config {
+      /** The space this node should allocate
+       * ebbrt::lrt::trans::EbbId%s out of */
+      uint16_t space_id;
+
+      /** An element used to statically construct Ebbs. */
+      class InitEbb {
+        public:
+          /** The id to install the root on */
+          const char* name;
+      };
+
+      /** Number of Ebbs to statically construct early
+       * These Ebbs cannot rely on globally constructed
+       * objects or exceptions at construction time */
+      size_t num_late_init;
+      /** Array describing which Ebbs to statically construct */
+      const InitEbb* late_init_ebbs;
+      /** Size of ebbrt::app::Config::static_ebb_ids
+       * */
+      size_t num_statics;
+      /**
+       * * Defines a  statically known EbbId.
+       * */
+      class StaticEbbId {
+        public:
+          const char* name;
+          lrt::trans::EbbId id;
+      };
+      const StaticEbbId* static_ebb_ids;
+    };
+
+    /**
+     * * The configuration which is statically linked in to
+     * * the application.
+     * * This is defined by each application.
+     * */
+        extern const Config config;
     /**
      * The entry point to the application.
      * Upon return the system enters the event loop and begins

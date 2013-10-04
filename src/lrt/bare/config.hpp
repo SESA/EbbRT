@@ -57,7 +57,7 @@ namespace ebbrt {
        *
        * @return 
        */
-      uint32_t fdt_getint32(int root, const char *prop);
+      uint32_t fdt_getint32(void* fdt, int root, const char *prop);
     }
   }
 }

@@ -33,10 +33,8 @@ namespace ebbrt {
     Console(EbbId id) : EbbRep{id} {}
   };
 
-#ifdef __ebbrt__
   const EbbRef<Console> console =
-    EbbRef<Console>(lrt::config::find_static_ebb_id("Console"));
-#endif
+    EbbRef<Console>(lrt::config::find_static_ebb_id(nullptr,"Console"));
 
 }
 #endif

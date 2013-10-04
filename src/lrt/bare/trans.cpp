@@ -46,7 +46,8 @@ int
 ebbrt::lrt::trans::early_init_ebbs()
 {
   int root =  fdt_path_offset(ebbrt::lrt::boot::fdt, "/");
-  uint32_t num_roots = ebbrt::lrt::config::fdt_getint32(root, "ebbrt_num_static_init");
+  uint32_t num_roots = ebbrt::lrt::config::fdt_getint32(
+          ebbrt::lrt::boot::fdt, root, "ebbrt_num_static_init");
 
   init_root_table = new (mem::malloc(sizeof(RootBinding) *
                                      num_roots, 0))
@@ -61,8 +62,8 @@ ebbrt::lrt::trans::early_init_ebbs()
     int len;
 
     name = fdt_get_name(ebbrt::lrt::boot::fdt, nextebb, &len);
-    uint32_t id = ebbrt::lrt::config::fdt_getint32(nextebb, "id");
-    uint32_t early = ebbrt::lrt::config::fdt_getint32(nextebb, "early_init_ebbrt");
+    uint32_t id = ebbrt::lrt::config::fdt_getint32(ebbrt::lrt::boot::fdt,nextebb, "id");
+    uint32_t early = ebbrt::lrt::config::fdt_getint32(ebbrt::lrt::boot::fdt,nextebb, "early_init_ebbrt");
 
     if(early){
       init_root_table[i].id = id;
@@ -90,8 +91,8 @@ ebbrt::lrt::trans::init_ebbs(int early_init_count)
     int len;
 
     name = fdt_get_name(ebbrt::lrt::boot::fdt, nextebb, &len);
-    uint32_t id = ebbrt::lrt::config::fdt_getint32(nextebb, "id");
-    uint32_t late = ebbrt::lrt::config::fdt_getint32(nextebb, "late_init_ebbrt");
+    uint32_t id = ebbrt::lrt::config::fdt_getint32(ebbrt::lrt::boot::fdt,nextebb, "id");
+    uint32_t late = ebbrt::lrt::config::fdt_getint32(ebbrt::lrt::boot::fdt,nextebb, "late_init_ebbrt");
 
     if(late){
       init_root_table[i].id = id;
@@ -155,7 +156,7 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
 {
   EbbRoot* root = nullptr;
   uint32_t num_roots = 
-    ebbrt::lrt::config::fdt_getint32(0, "ebbrt_num_static_init");
+    ebbrt::lrt::config::fdt_getint32(ebbrt::lrt::boot::fdt,0, "ebbrt_num_static_init");
   /* look up root in initial global translation table */
   for (unsigned i = 0; i < (num_roots); ++i) {
     if (init_root_table[i].id == id) {

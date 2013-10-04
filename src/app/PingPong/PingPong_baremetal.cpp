@@ -45,7 +45,7 @@ void ebbrt::app::start() {
   id.mac_addr[3] = 0xff;
   id.mac_addr[4] = 0xff;
   id.mac_addr[5] = 0xff;
-#endif
-  message_manager->Send(id, lrt::trans::find_static_ebb_id("Echo"),
+  //TODO: configuration needs to be resolved here
+  message_manager->Send(id, lrt::trans::find_static_ebb_id(nullptr,"Echo"),
                         std::move(buf));
 }

@@ -20,7 +20,18 @@
 #include "ebb/EbbManager/PrimitiveEbbManager.hpp"
 #include "lrt/trans_impl.hpp"
 #include "misc/vtable.hpp"
-#include "src/lrt/config.hpp"
+#include "lrt/config.hpp"
+
+
+// FIXME: ugly kludge around configuration
+#ifdef __ebbrt__
+#include "lrt/bare/boot.hpp"
+  void* fdt = ebbrt::lrt::boot::fdt;
+#elif  __linux__
+#include "lrt/ulnx/init.hpp"
+  void* fdt = ebbrt::active_context->instance_.fdt_;
+#endif
+
 
 #ifdef __ebbrt__
 ADD_EARLY_CONFIG_SYMBOL(EbbManager, &ebbrt::PrimitiveEbbManagerConstructRoot)
@@ -54,7 +65,9 @@ ebbrt::PrimitiveEbbManager::PrimitiveEbbManager(EbbId id,
   : EbbManager{id}, root_table_(root_table), root_table_lock_(root_table_lock),
     factory_table_(factory_table), factory_table_lock_(factory_table_lock)
 {
-  next_free_ = lrt::config::get_space_id() << 16 |
+
+  // FIXME: This should really be call to a "Config" Ebb
+  next_free_ = lrt::config::get_space_id(fdt) << 16 |
     ((1 << 16) /
 #ifdef __linux__
      lrt::event::get_max_contexts()
@@ -79,7 +92,8 @@ ebbrt::PrimitiveEbbManager::AllocateId()
 void
 ebbrt::PrimitiveEbbManager::Bind(EbbRoot* (*factory)(), EbbId id)
 {
-  if ((id >> 16) == ebbrt::lrt::config::get_space_id()) {
+  //FIXME: resolve fdt pointer
+  if ((id >> 16) == ebbrt::lrt::config::get_space_id(fdt)) {
     factory_table_lock_.Lock();
     factory_table_[id] = factory;
     factory_table_lock_.Unlock();
@@ -165,7 +179,7 @@ ebbrt::PrimitiveEbbManager::Install()
   if (root_table_.empty()) {
     // We need to copy the initial table in, install our new miss
     // handler
-    size_t num_init = lrt::config::get_static_ebb_count();
+    size_t num_init = lrt::config::get_static_ebb_count(nullptr);
     auto it = root_table_.begin();
     for (unsigned i = 0; i < num_init ; ++i) {
       auto binding = lrt::trans::initial_root_table(i);

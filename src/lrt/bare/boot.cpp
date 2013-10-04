@@ -76,13 +76,14 @@ namespace {
   }
 }
 
+// int offset =  fdt_path_offset( path.c_str());
 void
 ebbrt::lrt::boot::init_cpu()
 {
   /* per-core translation setup */
   trans::init_cpu();
 
-  if (config::get_multicore()) {
+  if (config::get_multicore(ebbrt::lrt::boot::fdt)) {
     /* if multi, then construct only on core 0 and spin the others */
     static std::atomic<bool> initialized {false};
     if (event::get_location() == 0) {

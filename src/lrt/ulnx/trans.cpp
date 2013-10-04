@@ -63,7 +63,7 @@ ebbrt::lrt::trans::InitRoot::PreCall(ebbrt::Args* args,
 {
   EbbRoot* root = nullptr;
   /* look up root in initial global translation table */
-  for (unsigned i = 0; i < lrt::config::get_static_ebb_count(); ++i) {
+  for (unsigned i = 0; i < lrt::config::get_static_ebb_count(active_context->instance_.fdt_); ++i) {
     if (active_context->instance_.initial_root_table_[i].id == id) {
       root = active_context->instance_.initial_root_table_[i].root;
       break;
