@@ -26,10 +26,8 @@
 // FIXME: ugly kludge around configuration
 #ifdef __ebbrt__
 #include "lrt/bare/boot.hpp"
-  void* fdt = ebbrt::lrt::boot::fdt;
 #elif  __linux__
 #include "lrt/ulnx/init.hpp"
-  void* fdt = ebbrt::active_context->instance_.fdt_;
 #endif
 
 
@@ -67,6 +65,12 @@ ebbrt::PrimitiveEbbManager::PrimitiveEbbManager(EbbId id,
 {
 
   // FIXME: This should really be call to a "Config" Ebb
+#ifdef __ebbrt__
+  void* fdt = ebbrt::lrt::boot::fdt;
+#elif  __linux__
+  void* fdt = ebbrt::active_context->instance_.fdt_;
+#endif
+
   next_free_ = lrt::config::get_space_id(fdt) << 16 |
     ((1 << 16) /
 #ifdef __linux__
@@ -92,7 +96,11 @@ ebbrt::PrimitiveEbbManager::AllocateId()
 void
 ebbrt::PrimitiveEbbManager::Bind(EbbRoot* (*factory)(), EbbId id)
 {
-  //FIXME: resolve fdt pointer
+#ifdef __ebbrt__
+  void* fdt = ebbrt::lrt::boot::fdt;
+#elif  __linux__
+  void* fdt = ebbrt::active_context->instance_.fdt_;
+#endif
   if ((id >> 16) == ebbrt::lrt::config::get_space_id(fdt)) {
     factory_table_lock_.Lock();
     factory_table_[id] = factory;
