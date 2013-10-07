@@ -1,0 +1,18 @@
+# check for shared mount drive, write ip back
+if [[ -a /dev/sdb1 ]]
+then
+  declare -i COUNT=0
+  declare -i MAX=1
+  while [[ $COUNT -lt $MAX ]]; do
+    if [[ $( ip -4 -o addr | grep -o "eth0" ) ]]
+    then
+      echo "eth0 found"
+      ip -4 -o addr show eth0 > /mnt/shared/addr
+      echo "" >> /mnt/shared/addr
+      break
+    fi
+    sleep 1
+    COUNT=$COUNT+1
+    echo "Checking ip on interface eth0... $COUNT"
+  done
+fi

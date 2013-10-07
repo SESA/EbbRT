@@ -308,6 +308,7 @@ SESAconfigNodes()
   local bioscmd=""
   local ram="512"
 
+
   # Private network construction 
   for p in ${pnetids//,/ }
   do
@@ -347,7 +348,7 @@ SESAconfigNodes()
     if (( $xnet == 1 ))
     then
       mac=$(SESAgenerateMac)
-      netcmd="$netcmd -net nic,vlan=1,macaddr=$mac -net bridge,vlan=1,br=brX"
+      netcmd="$netcmd -net nic,vlan=1,model=virtio,macaddr=$mac -net bridge,vlan=1,br=brX"
       echo "$n: network_external eth0 $mac"
     fi
 
@@ -355,17 +356,19 @@ SESAconfigNodes()
     if (( $inet == 1 ))
     then
       mac=$(SESAgenerateMac)
-      netcmd="$netcmd -net nic,vlan=2,macaddr=$mac -net bridge,vlan=2,br=brI"
+      netcmd="$netcmd -net nic,vlan=2,model=virtio,macaddr=$mac -net bridge,vlan=2,br=brI"
       echo "$n: network_internal eth1 $mac"
     fi
 
-    # private network(s)
-    for p in ${pnetids//,/ }; do
-      mac=$(SESAgenerateMac)
-      netcmd="$netcmd -net nic,vlan=$p,model=virtio,macaddr=$mac -net vde,vlan=$p,sock=$SESANETDIR/${p}/sock"
-      echo "$n: network_application eth${j} $mac"
-      (( j++ ))
-    done
+  # Private Networks Disabled 
+  #
+  #  # private network(s)
+  #  for p in ${pnetids//,/ }; do
+  #    mac=$(SESAgenerateMac)
+  #    netcmd="$netcmd -net nic,vlan=$p,model=virtio,macaddr=$mac -net vde,vlan=$p,sock=$SESANETDIR/${p}/sock"
+  #    echo "$n: network_application eth${j} $mac"
+  #    (( j++ ))
+  #  done
 
     # serial
     echo "$n: serial $dir/com1"
@@ -394,7 +397,6 @@ SESAconfigNodes()
     fi
 
     # instantaneously instantiate the instance!
-    set -x
     $SESAEMUCMD $netcmd $srlcmd $concmd -enable-kvm -m $ram -daemonize -pidfile $dir/pid $SESA_ROM $SESA_IMG $mntcmd > $dir/vnclog 2>&1
   done
   return 0

@@ -1,16 +1,28 @@
 #!/bin/bash
 # setup a build tree conducive to sesa/kittyhawk utility layer usage 
-# 
-# Instructions: The setup the EbbRT x84_64 utility build run this script from
-# the desires build direction, passing in the EbbRT source directory as the
-# only argument.
+ 
+# Info: The setup of an EbbRT x84_64 utility build envoirnment + helper
+# scripts
+
+# Instructions: run this script from the desiref build direction, 
+# passing in the EbbRT source directory as the first argument.
+# e.g., 
+# mkdir ~/build; cd ~/build; 
+# ~/EbbRT/util/setup ~/EbbRT/
+#
+
+#################################################
+# setup new build location
+#################################################
+
 src=$1
 imgtype=iso
 
 # By default we assume the script is run from EbbRt/../build
 if [[ -z $src ]]
 then
-    src=../EbbRT
+  echo "ERROR: pass in path to source directory as first argument"
+  exit -1
 fi
 
 # check if we've discovered the EbbRT source
@@ -33,31 +45,18 @@ base=.
 ulnx=$base/ulnx
 bare=$base/bare
 scripts=$base/scripts
-#TODO: debug flags & optimisations
+khscripts=$src/util/kh/khscripts
+#TODO: variable debug flags & optimisations
 flags='-g -O0'
+#TODO: variable boot images 
+bootimg=sesalnx
 
-# Run configuration and make for both platforms
+# Run configuration and make for bare,ulnx platforms
 mkdir -p $bare $ulnx $scripts
-
 echo "$src/configure 'CXXFLAGS=$flags' " >> $ulnx/doconfig
 (cd $ulnx; . doconfig && make)
-
 echo "$src/configure 'CXXFLAGS=$flags' --host=x86_64-pc-ebbrt " >> $bare/doconfig
 (cd $bare; . doconfig && make)
-
-#################################################
-# environment variables
-#################################################
-cat > $base/environment_vars<< EOF
-export SESA=1
-export SESA_SRC=$src
-export KHCTL_BASEDIR=$(readlink -f ${base}/khdb)
-EOF
-echo 'export PATH=$PATH:$SESA_SRC/util/kh' >> $base/loadenv
-
-#################################################
-# makefile
-#################################################
 
 cat > $base/Makefile << EOF
 all: .DEFAULT
@@ -66,60 +65,42 @@ all: .DEFAULT
 	make -C bare \${MAKECMDGOALS}
 EOF
 
-#################################################
-# misc run scripts
-#################################################
 
-cat > $scripts/docker << EOF
-if [[ -a Dockerfile ]]; then
-  # create and run container 
-  docker build -t ebbrt-app .
-  docker run ebbrt-app
-fi
+#################################################
+# environment variables into a file
+#################################################
+cat > $base/enviro<< EOF
+export SESA=1
+export SESA_SRC=$src
+export KHCTL_BASEDIR=$(readlink -f ${base}/khdb)
 EOF
+echo 'export PATH=$PATH:$SESA_SRC/util/kh' >> $base/enviro
 
-echo '
-if [[ -a $app ]]
-  echo "convert to elf32"
-  echo "boot with kexec"
-'>> $scripts/kexec 
 
 #################################################
-# quick make
+# quick make script
 #################################################
 
-touch $base/quickmake
-chmod 755 $base/quickmake
+touch $base/makeapp
+chmod 755 $base/makeapp
 
-cat > $base/quickmake << EOF
+cat > $base/makeapp << EOF
 #!/bin/bash
 base=$base
 ulnx=$ulnx
 bare=$bare
 imgtype=$imgtype
 EOF
-
-echo 'app=$1
-if [[ -z $app ]]
-then
-  echo "USAGE: $0 <appName>"
-  exit -1
-fi
-
-make -C $ulnx src/app/$app/$app
-make -C $bare src/app/$app/$app.$imgtype
-  
-'>> $base/quickmake 
-
+cat $khscripts/makeapp-base >> $base/makeapp 
 
 #################################################
-# quick run
+# quick run script
 #################################################
 
-touch $base/quickrun
-chmod 755 $base/quickrun
+touch $base/runapp
+chmod 755 $base/runapp
 
-cat > $base/quickrun << EOF
+cat > $base/runapp << EOF
 #!/bin/bash
 src=$src
 base=$base
@@ -127,106 +108,18 @@ ulnx=$ulnx
 bare=$bare
 imgtype=$imgtype
 export SESA_GET=khget
-
 ##### LINUX IMAGE #######################################
 sesalnx=$HOME/sesalnx.img
+config_dir=/mnt/app
+share_dir=/mnt/share
 #########################################################
 EOF
+cat $khscripts/runapp-base >> $base/runapp 
 
-echo '
-declare app
-declare count
-declare name
-declare tap
-declare fcnt
-declare -i lp=0
-declare -i optcount=0
+#################################################
+# copy misc scripts
+#################################################
+cp $khscripts/$bootimg/* $scripts
 
-while getopts "n:t:f:P" OPT
-do 
-  case $OPT in
-      ("n") name="$OPTARG"; (( optcount=optcount + 2));;
-      ("t") tap="$OPTARG"; (( optcount=optcount + 2));;
-      ("f") fcnt="$OPTARG"; (( optcount=optcount + 2));;
-      ("P") lp=1; (( optcount=optcount + 1));;
-  esac
-done
-
-shift $optcount
-app=$1
-count=$2
-if [[ -z $count ]]; then count=0; fi
-
-
-if [[ -z $app  || -z $count ]]
-then
-  echo "USAGE: $0 [-n name] [-t tap] [-f fcnt] [-P] <app> <count>"
-  echo "     -n  name : specify name of the job " 
-  echo "     -t  tap  : tap interface (sudo required)" 
-  echo "     -f  fcnt : load 'fcnt'-many linux front-end processes" 
-  echo "     -P       : run front-end as a local processes" 
-  echo "     app      : EbbRT application to run (e.g., HelloWorld)"
-  echo "     count    : num of baremetal nodes to boot"
-  exit 1;
-fi
-
-if [[ -n $tap ]]; then 
-    if [[ $UID != 0 ]]; then
-      echo "Error: sudo required for TAP interfaces"
-      exit 1
-    else
-      export SESA_TAP=$tap
-    fi
-fi
-
-# Assign a random application instance name if none is given 
-if [[ -z $name ]]; then 
-  name=$app$RANDOM; 
-fi
-echo "Application: $name"
-
-APPNAME="$name"
-BARE_IMG=$(readlink -f ${base}/bare/src/app/$app/$app.$imgtype)
-FNT_IMG=$(readlink -f ${base}/ulnx/src/app/$app/$app)
-
-if [[ ! -a $BARE_IMG && $count>0 ]]; then
-  echo "ERROR: binaries not found for $app. Try running ./quickmake $app"
-  exit 1
-fi
-
-
-# frontend 
-if [[ -n $fcnt && $fcnt > 0 ]]; then
-    if [[ $lp > 0 ]]; then
-      # local process
-      for i in {1..$fcnt}; do
-        xterm -hold -e $FNT_IMG &
-      done
-    else
-      # linux vm image uses Docker to contain app dependancies 
-      mkdir -p $base/docker/$APPNAME 
-      # move in binary + run script
-      cp $ulnx/src/app/$app/$app $base/docker/$APPNAME/myapp 
-      cp $base/docker-run $base/docker/$APPNAME/run
-      # move in Dockerfile
-      dockerfile=$src/util/docker/$app.dockerfile
-      if [[ ! -a $dockerfile ]]; then
-        dockerfile=$src/util/docker/default.dockerfile
-      fi
-      cp $dockerfile $base/docker/$APPNAME/Dockerfile
-      # mount and run
-      mnt=$(readlink -f ${base}/docker/$APPNAME)
-      ftcmd="$($SESA_GET -f -m $mnt $APPNAME $sesalnx $fcnt)"
-      serials=$(echo "$ftcmd" | grep serial | while read node nn junk path; do echo $path; done)
-      for sock in $serials; do
-        xterm -e socat - UNIX-CONNECT:$sock &
-      done
-    fi
-  sleep 5
-fi
-
-if [[ $count > 0 ]]; then
-  bkcmd="$($SESA_GET $APPNAME $BARE_IMG $count)"
-  echo $bkcmd
-fi
-' >> $base/quickrun 
+####
+echo "Setup complete"

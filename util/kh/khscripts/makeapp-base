@@ -1,0 +1,10 @@
+app=$1
+if [[ -z $app ]]
+then
+  echo "USAGE: $0 <appName>"
+  exit -1
+fi
+
+make -C $ulnx src/app/$app/$app
+make -C $bare src/app/$app/$app.$imgtype
+  
