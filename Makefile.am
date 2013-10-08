@@ -57,16 +57,17 @@ app_deps =
 %.pb.cc %.pb.h: %.proto
 	$(PROTOC) --proto_path=$(dir $^) --cpp_out=$(dir $^) $^
 
+
 if LRT_BARE
 
-if ARCH_X86_64
-app_linkflags += -Wl,-n,-z,max-page-size=0x1000 \
-	-Wl,-T,$(top_srcdir)/src/lrt/bare/arch/x86_64/link.ld
-
+.PRECIOUS: %.dtb
 
 %.dtb: %.dts 
 	dtc -O dtb -o $@ $<
 
+if ARCH_X86_64
+app_linkflags += -Wl,-n,-z,max-page-size=0x1000 \
+	-Wl,-T,$(top_srcdir)/src/lrt/bare/arch/x86_64/link.ld
 
 %.iso: % %.dtb util/grub.cfg
 	strip -s $< -o $<.stripped
