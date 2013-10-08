@@ -18,12 +18,14 @@
 #ifndef EBBRT_EBB_TIMER_TIMER_HPP
 #define EBBRT_EBB_TIMER_TIMER_HPP
 
+#include <chrono>
+
 #include "ebb/ebb.hpp"
 
 namespace ebbrt {
   class Timer : public EbbRep {
   public:
-    virtual void Wait(std::chrono::nanoseconds,
+    virtual void Wait(std::chrono::microseconds,
                       std::function<void()> func) = 0;
     virtual ~Timer() {}
   protected:
