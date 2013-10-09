@@ -13,21 +13,15 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-ebb_sources = \
-	src/ebb/ebb.hpp
+EXTRA_LIBRARIES += src/ebb/NodeAllocator/libKittyhawk.a
 
-include src/ebb/Console/Makefile.am
-include src/ebb/DataflowCoordinator/Makefile.am
-include src/ebb/EbbManager/Makefile.am
-include src/ebb/Ethernet/Makefile.am
-include src/ebb/EventManager/Makefile.am
-include src/ebb/FailureDetector/Makefile.am
-include src/ebb/Gthread/Makefile.am
-include src/ebb/HashTable/Makefile.am
-include src/ebb/MemoryAllocator/Makefile.am
-include src/ebb/MessageManager/Makefile.am
-include src/ebb/Network/Makefile.am
-include src/ebb/NodeAllocator/Makefile.am
-include src/ebb/PCI/Makefile.am
-include src/ebb/Syscall/Makefile.am
-include src/ebb/Timer/Makefile.am
+src_ebb_NodeAllocator_libKittyhawk_a_SOURCES = \
+	src/ebb/NodeAllocator/NodeAllocator.cpp \
+	src/ebb/NodeAllocator/Kittyhawk.cpp
+
+#
+#EXTRA_LIBRARIES += src/ebb/NodeAllocator/libRawSocket.a
+#
+#src_ebb_NodeAllocator_libRawSocket_a_SOURCES = \
+#	src/ebb/NodeAllocator/NodeAllocator.cpp \
+#	src/ebb/NodeAllocator/RawSocket.cpp
