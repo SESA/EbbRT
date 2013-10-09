@@ -21,6 +21,7 @@
 
 #include <cstring>
 #include <string>
+#include <fstream>
 #include <functional>
 #include <unordered_map>
 
@@ -40,6 +41,9 @@ namespace ebbrt {
     /// lookup return function poitner
     ConfigFuncPtr LookupSymbol (std::string str);
 
+    /* Configuration functions */
+    char* LoadConfig(char* path, int *len);
+    char* DumpConfig(char* ptr, std::string path);
 
     struct Config {
       /** The space this node should allocate

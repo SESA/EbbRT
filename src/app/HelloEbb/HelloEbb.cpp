@@ -55,7 +55,6 @@ ebbrt::app::start()
 #ifdef __linux__
 
 #include <stdlib.h>
-#include <fstream>
 #include "lib/fdt/libfdt.h"
 
 
@@ -79,35 +78,14 @@ const ebbrt::app::Config ebbrt::app::config = {
 int 
 main(int argc, char* argv[] )
 {
-  char *fdt;
   if(argc < 2)
   {
       std::cout << "Usage: ./HelloEbb HelloEbb.dtb\n";
       std::exit(1);
   }
-  std::ifstream is (argv[1], std::ifstream::binary);
-  if (is) {
-    // get length of file:
-    is.seekg (0, is.end);
-    int length = is.tellg();
-    is.seekg (0, is.beg);
 
-    fdt = new char [length+length];
-
-    std::cout << "file opened, reading " << length << " characters... ";
-    // read data as a block:
-    is.read (fdt,length);
-
-    if (is)
-      std::cout << "all characters read successfully.\n";
-    else
-      std::cout << "error: only " << is.gcount() << " could be read\n";
-    is.close();
-  }else
-  {
-      std::cout << "No configuration found. Exiting\n";
-      std::exit(1);
-  }
+  int n;
+  char *fdt = ebbrt::app::LoadConfig(argv[1], &n);
 
   // ...fdt buffer contains the entire file...
   ebbrt::EbbRT instance((void *)fdt);

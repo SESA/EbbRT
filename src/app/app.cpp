@@ -16,6 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <unordered_map>
+#include <fstream>
 #include "app.hpp"
 
 namespace ebbrt {
@@ -32,6 +33,28 @@ namespace ebbrt {
 	//it->second(data, header->caplen);
 	return it->second;
       }
+      return nullptr;
+    }
+
+    char* LoadConfig(char* path, int* len)
+    {
+      std::ifstream is (path, std::ifstream::binary);
+      *len=0;
+      if (is) {
+        is.seekg (0, is.end);
+        *len = is.tellg();
+        is.seekg (0, is.beg);
+
+        auto fdt = new char[*len+1024];
+        is.read (fdt,*len);
+        is.close();
+        return fdt;
+      }
+      return nullptr;
+    }
+
+    char* DumpConfig(char* ptr, std::string path)
+    {
       return nullptr;
     }
   }
