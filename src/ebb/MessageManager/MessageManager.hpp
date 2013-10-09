@@ -20,6 +20,7 @@
 
 #include <functional>
 
+#include "lrt/config.hpp"
 #include "misc/network.hpp"
 #include "misc/buffer.hpp"
 

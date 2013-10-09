@@ -67,9 +67,6 @@ constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
   {.name = "EventManager", .id = 6},
 };
 const ebbrt::app::Config ebbrt::app::config = {
-  .space_id = 0,
-  .num_late_init = 0,
-  .late_init_ebbs = 0,
   .num_statics = sizeof(static_ebbs) / sizeof(Config::StaticEbbId),
   .static_ebb_ids = static_ebbs
 };

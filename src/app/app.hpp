@@ -46,23 +46,6 @@ namespace ebbrt {
     char* DumpConfig(char* ptr, std::string path);
 
     struct Config {
-      /** The space this node should allocate
-       * ebbrt::lrt::trans::EbbId%s out of */
-      uint16_t space_id;
-
-      /** An element used to statically construct Ebbs. */
-      class InitEbb {
-        public:
-          /** The id to install the root on */
-          const char* name;
-      };
-
-      /** Number of Ebbs to statically construct early
-       * These Ebbs cannot rely on globally constructed
-       * objects or exceptions at construction time */
-      size_t num_late_init;
-      /** Array describing which Ebbs to statically construct */
-      const InitEbb* late_init_ebbs;
       /** Size of ebbrt::app::Config::static_ebb_ids
        * */
       size_t num_statics;
