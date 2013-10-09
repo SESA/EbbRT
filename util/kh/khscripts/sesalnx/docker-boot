@@ -1,0 +1,6 @@
+cd /mnt/app
+if [[ -a Dockerfile ]]; then
+  # create and run container 
+  docker build -t ebbrt-app .
+  docker run ebbrt-app
+fi

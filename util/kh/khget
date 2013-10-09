@@ -1,37 +1,25 @@
 #!/bin/bash
 
-# Set the path do your sesa-scripts and node database directories
-dir=$(dirname $0)
-if [[ -z $KHCTL_BASEDIR && $dir/../../EbbRT ]]; then
-   export KHCTL_BASEDIR=$(readlink -f ${dir}/../../khdb)
-else
-   export KHCTL_BASEDIR=${KHCTL_BASEDIR:-~/sesa/build/khdb }
-fi
 if [[ $(type -p khctl ) ]]; then
    declare SESA_UTIL=khctl
-fi
-if [[ -z $SESA_UTIL && $dir/../../EbbRT ]]; then
-   declare SESA_UTIL=$(readlink -f ${dir}/../../scripts/khctl)
-else
-   declare SESA_UTIL=${SESA_UTIL:-~/sesa/scripts/khctl}
 fi
 
 declare app
 declare bootimg
 declare inet
 declare xnet
-declare bios
+#declare bios
 declare mnt1=0
 declare mnt2=0
 declare -i count=1
 declare -i optcount=0
 
-while getopts "s:c:b:ixf" OPT
+while getopts "s:c:ixf" OPT
 do 
   case $OPT in
       ("s") mnt1="$OPTARG"; (( optcount=optcount + 2));;
       ("c") mnt2="$OPTARG"; (( optcount=optcount + 2));;
-      ("b") bios="$OPTARG"; (( optcount=optcount + 2));;
+#     ("b") bios="$OPTARG"; (( optcount=optcount + 2));;
       ("i") inet="-i"; (( optcount=optcount + 1));;
       ("x") xnet="-x"; (( optcount=optcount + 1));;
       ("f") inet='-i'; xnet='-x'; (( optcount=optcount + 1));;
@@ -46,12 +34,12 @@ bootimg=$2
 if [[ -z $app  || ! (-a $bootimg)]]
 then
   echo "USAGE: khget [-s dir] [-c dir] [-f] [-i] [-x] [-b bios] <appName> <boot_img> [count] \ " 
-  echo "     -s path : mount shared directory as FAT fs"
-  echo "     -c path : mount config directory as FAT fs"
-  echo "     -f       : enable front end, equivalent to -x -i" 
+  echo "     -s path  : mount shared directory as FAT fs"
+  echo "     -c path  : mount config directory as FAT fs"
+#  echo "     -b path  : path to bios rom"
   echo "     -i       : add nodes to the Internal public network" 
   echo "     -x       : add nodes to the External network" 
-  echo "     -b path  : path to bios rom"
+  echo "     -f       : enable front end, equivalent to -x -i" 
   echo "     appname  : application to get the nodes for" 
   echo "     bootimg  : path to back-end boot image" 
   echo "     count    : number of backend nodes, default is 1" 

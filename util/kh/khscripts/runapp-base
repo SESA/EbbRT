@@ -68,24 +68,41 @@ mkdir -p $appdir
 #################################################
 
 if [[ $docker == 1 ]]; then
-echo "Not yet implemented"
-exit 1 
-#      # linux vm image uses Docker to contain app dependancies 
-#      # move in binary + run script
-#      cp $ulnx/src/app/$app/$app $base/docker/$APPNAME/myapp 
-#      cp $base/docker-run $base/docker/$APPNAME/run
-#      # move in Dockerfile
-#      dockerfile=$src/util/docker/$app.dockerfile
-#      if [[ ! -a $dockerfile ]]; then
-#        dockerfile=$src/util/docker/default.dockerfile
-#      fi
-#      cp $dockerfile $base/docker/$APPNAME/Dockerfile
-#
-# # open serials 
-#  serials=$(echo "$ftcmd" | grep serial | while read node nn junk path; do echo $path; done)
-#  for sock in $serials; do
-#    xterm -e socat - UNIX-CONNECT:$sock &
-#  done
+  echo "Not yet implemented"
+  exit 1 
+  # linux vm image uses Docker to contain app dependancies 
+  # move in binary + run script
+
+  # create directory for this particular instance-type
+  instdir=$appdir/$instid; 
+  mkdir -p $instdir
+
+  cp $ulnx/src/app/$app/$app $instdir/app 
+  cp $base/scripts/docker-run $instdir/launch
+
+  # check source directory for Dockerfile
+  dockerfile=$src/util/docker/$app.dockerfile
+  if [[ ! -a $dockerfile ]]; then
+    dockerfile=$src/util/docker/default.dockerfile
+  fi
+  cp $dockerfile $instdir/Dockerfile
+
+  # Create director for copy-on-write images (if nessessary)
+  cowdir=$base/cowimgs/$APPNAME
+  mkdir -p $cowdir
+  qemu-img create -f qcow2 -b $sesalnx $cowdir/$instid.img >> /dev/null
+  FNT_IMG=$(readlink -f ${cowdir}/$instid.img)
+
+  # mount and run
+  mnt=$(readlink -f ${base}/$instdir)
+  ftcmd="$($SESA_GET -i -c $mnt $APPNAME $FNT_IMG 1)"
+  echo $ftcmd
+
+  # open serials 
+  #serials=$(echo "$ftcmd" | grep serial | while read node nn junk path; do echo $path; done)
+  #for sock in $serials; do
+  #  xterm -e socat - UNIX-CONNECT:$sock &
+  #done
 fi
 
 #################################################
