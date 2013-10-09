@@ -44,6 +44,8 @@ src_app_PingPong_PingPong_ebbs += \
 endif
 
 if LRT_ULNX
+src_app_PingPong_PingPong_ebbs += \
+	src/ebb/NodeAllocator/libKittyhawk.a
 if UDP
 src_app_PingPong_PingPong_ebbs += \
 	src/ebb/Network/libSocketNetwork.a

@@ -22,6 +22,8 @@
 #ifndef UDP
 #include "ebb/Ethernet/RawSocket.hpp"
 #endif
+#include "ebb/NodeAllocator/NodeAllocator.hpp"
+#include "ebb/NodeAllocator/Kittyhawk.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
 
 int main(int argc, char** argv)
@@ -36,8 +38,13 @@ int main(int argc, char** argv)
     ebbrt::EbbRef<ebbrt::Ethernet>(ebbrt::ebb_manager->AllocateId());
   ebbrt::ebb_manager->Bind(ebbrt::RawSocket::ConstructRoot, ebbrt::ethernet);
 #endif
+  ebbrt::node_allocator = 
+    ebbrt::EbbRef<ebbrt::NodeAllocator>(ebbrt::ebb_manager->AllocateId());
+  ebbrt::ebb_manager->Bind(ebbrt::Kittyhawk::ConstructRoot, ebbrt::node_allocator);
 
   ebbrt::message_manager->StartListening();
+
+  ebbrt::node_allocator->Allocate();
 
   std::cout << "Ready" << std::endl;
 
