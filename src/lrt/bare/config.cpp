@@ -72,7 +72,14 @@ namespace ebbrt {
         {
           if(!fdt)
             fdt = boot::fdt;
-          return (uint16_t)(fdt_getint32(fdt, 0, "space_id") & 0xFFFF);
+
+          uint32_t id = fdt_getint32(fdt, 0, "space_id");
+
+          // kludge... space id must be >= 1
+          if( id ) 
+            return (uint16_t)id;
+          else
+            return 1;
         }
 
       uint32_t
