@@ -47,10 +47,12 @@ fi
 if [[ -z $name ]]; then 
   name=$app$RANDOM; 
 fi
+
 APPNAME="$name"
 echo "Application: $name"
 
 BARE_IMG=$(readlink -f ${base}/bare/src/app/$app/$app.$imgtype)
+CONFIG=$(readlink -f ${base}/bare/src/app/$app/$app.dtb)
 FNT_IMG=$(readlink -f ${base}/ulnx/src/app/$app/$app)
 
 if [[ ! -a $BARE_IMG && $count>0 ]]; then
@@ -115,8 +117,8 @@ if [[ $kexrun == 1 ]]; then
   instdir=$appdir/$instid; 
   mkdir -p $instdir
 
-  # move in binary 
-  #cp $bare/src/app/$app/$app $instdir/app 
+  # move in binaries
+  cp $bare/src/app/$app/$app.dtb $instdir/config.dtb
   objcopy -O elf32-i386 $bare/src/app/$app/$app $instdir/app.elf32
 
   # construct launch script
@@ -124,6 +126,7 @@ if [[ $kexrun == 1 ]]; then
   cat > $instdir/prelaunch << EOF
 #!/bin/bash
 app=$config_dir/app.elf32
+mod=$config_dir/config.dtb
 EOF
 
   # write ip 
@@ -167,6 +170,6 @@ fi
 
 if [[ $localrun == 1 ]]; then
   for i in `seq 1 $count`; do
-    xterm -hold -e $FNT_IMG &
+    xterm -hold -e $FNT_IMG $CONFIG &
   done
 fi
