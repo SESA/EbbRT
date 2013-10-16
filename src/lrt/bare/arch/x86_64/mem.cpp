@@ -30,8 +30,11 @@ ebbrt::lrt::mem::init(unsigned num_cores)
   if(boot::multiboot_information->modules_count > 0){
     auto addr_32 = static_cast<uintptr_t>(lrt::boot::multiboot_information->modules_address);
     auto addr = reinterpret_cast<uint32_t *>(addr_32);
-    uint32_t mod_val = *(addr + 1 + ((boot::multiboot_information->modules_count - 1) * 4));
-    mem_start = reinterpret_cast<char *>(mod_val);
+    if( *addr >= (uintptr_t)mem_start)
+    {
+      uint32_t mod_val = *(addr + 1 + ((boot::multiboot_information->modules_count - 1) * 4));
+      mem_start = reinterpret_cast<char *>(mod_val);
+    }
   }
   
   /* regions array stored at start of free memory */
