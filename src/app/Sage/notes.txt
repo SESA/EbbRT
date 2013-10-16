@@ -1,0 +1,41 @@
+See 
+~/Work/sage/sage-5.11/devel/sage/sage/matrix/docs.py
+
+
+class MyMatrix(sage.matrix.matrix_generic_dense.Matrix_generic_dense):
+      def __init__(self, parent, entries, copy, coerce):
+      	  sage.matrix.matrix_generic_dense.Matrix_generic_dense.__init__(self, parent, entries, copy, coerce)
+
+      
+
+
+very helpful in understanding basic structures
+
+~/Work/sage/sage-5.11/devel/sage/sage/matrix/matrix2.pyx
+defines the base implementation of randomize that I believe dense matrices of the ring RR
+will use.  It loops over the elements and invokes R._random_nonzero_element(...);
+
+
+eg:
+# create a dense 10x10 matrix (for the record to create a sparse matrix: a = matrix(RR, 100, sparse=True))
+# that will have zero values
+# below is equivalent to a = matrix(RR, 100, sparse=False);
+
+a = matrix(RR, 10); 
+
+# sage: type(a)
+# <type 'sage.matrix.matrix_generic_dense.Matrix_generic_dense'>
+
+a.randomize();
+
+now for double precision real matrix that is supposed to perform efficiently using BLAS via numpy 
+we would do 
+
+rda = matrix(RDF, 10);
+#sage: type(rda)
+#<type 'sage.matrix.matrix_real_double_dense.Matrix_real_double_dense'>
+
+rda.randomize();
+
+
+
