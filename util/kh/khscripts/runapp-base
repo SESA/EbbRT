@@ -2,17 +2,19 @@ declare app
 declare count
 declare name
 declare tap
+declare debug
 declare -i optcount=0
 declare -i barerun=0
 declare -i kexrun=0
 declare -i docker=0
 declare -i localrun=1
 
-while getopts "n:t:DBK" OPT
+while getopts "n:t:g:DBK" OPT
 do 
   case $OPT in
       ("n") name="$OPTARG"; (( optcount=optcount + 2));;
       ("t") tap="$OPTARG"; (( optcount=optcount + 2));;
+      ("g") debug="$OPTARG"; (( optcount=optcount + 2));;
       ("D") docker=1; localrun=0; (( optcount=optcount + 1));;
       ("K") kexrun=1; docker=0; localrun=0; (( optcount=optcount + 1));;
       ("B") barerun=1; kexrun=0; docker=0; localrun=0; (( optcount=optcount + 1));;
@@ -41,6 +43,10 @@ fi
 
 if [[ -n $tap ]]; then 
   export SESA_TAP=$tap
+fi
+
+if [[ -n $debug ]]; then 
+  export SESA_DEBUG=$debug
 fi
 
 # Assign a random application name if no name is given 

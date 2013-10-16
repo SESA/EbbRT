@@ -52,8 +52,9 @@ declare -r SESANETDIR=${SESA_NETDIR:-$KHBASEDIR/Networks}
 declare -r SESAEMUCMD=${SESA_EMUCMD:-"/opt/bin/qemu-system-x86_64"}
 declare SESAMNTDIRA=${SESA_MNTDIR_A:=""}
 declare SESAMNTDIRB=${SESA_MNTDIR_B:=""}
-declare -r SESABIOS=${SESA_BIOS:=""}
-declare -r SESATAP=${SESA_TAP:=""}
+declare SESADEBUG=${SESA_DEBUG:=""}
+declare SESABIOS=${SESA_BIOS:=""}
+declare SESATAP=${SESA_TAP:=""}
 declare  configNodes=SESAconfigNodes
 declare  createCon=SESAcreateCon
 declare  createConUser=SESAcreateConUser
@@ -306,7 +307,9 @@ SESAconfigNodes()
   local concmd=""
   local mntcmd=""
   local bioscmd=""
+  local gdbcmd=""
   local ram="512"
+  local -i gdbport=0
 
 
   # Private network construction 
@@ -327,6 +330,12 @@ SESAconfigNodes()
   if (( $inet == 1 ))
   then
     (( ethoffset++ ))
+  fi
+
+  # gdb debug
+  if [[ $SESADEBUG ]]
+  then
+    gdbport=$SESADEBUG
   fi
 
   # node construction 
@@ -396,8 +405,16 @@ SESAconfigNodes()
       bioscmd="-bios $SESABIOS"
     fi
 
+    # gdb debug
+    if [[ $gdbport > 0 ]]
+    then
+      gdbcmd="-gdb tcp::$gdbport"
+      gdbport=$gdbport+1
+    fi
+
     # instantaneously instantiate the instance!
-    $SESAEMUCMD $netcmd $srlcmd $concmd -enable-kvm -m $ram -daemonize -pidfile $dir/pid $SESA_ROM $SESA_IMG $mntcmd > $dir/vnclog 2>&1
+    set -x
+    $SESAEMUCMD $gdbcmd $netcmd $srlcmd $concmd -enable-kvm -m $ram -daemonize -pidfile $dir/pid $SESA_ROM $SESA_IMG $mntcmd > $dir/vnclog 2>&1
   done
   return 0
 }
