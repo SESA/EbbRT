@@ -30,12 +30,11 @@ namespace ebbrt {
     static EbbRoot* ConstructRoot();
     VirtioNet(EbbId id);
     Buffer Alloc(size_t size) override;
-    void Send(Buffer buffer, const char* to,
-              const char* from, uint16_t ethertype) override;
+    void Send(Buffer buffer) override;
     const char* MacAddress() override;
     void SendComplete() override;
     void Register(uint16_t ethertype,
-                  std::function<void(Buffer, const char[6])> func) override;
+                  std::function<void(Buffer)> func) override;
     void Receive() override;
   private:
     struct Ring {
@@ -58,7 +57,7 @@ namespace ebbrt {
     char empty_header_[10];
     std::unordered_map<uint16_t, Buffer> buffer_map_;
     std::unordered_map<uint16_t,
-                       std::function<void(Buffer, const char[6])> > rcv_map_;
+                       std::function<void(Buffer)> > rcv_map_;
   };
 }
 

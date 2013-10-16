@@ -63,8 +63,8 @@ ebbrt::EthernetMessageManager::EthernetMessageManager(EbbId id) :
 ebbrt::Buffer
 ebbrt::EthernetMessageManager::Alloc(size_t size)
 {
-  return (ethernet->Alloc(size + sizeof(MessageHeader)) +
-          sizeof(MessageHeader));
+  auto header_size = sizeof(MessageHeader) + sizeof(Ethernet::Header);
+  return ethernet->Alloc(header_size + size) + header_size;
 }
 
 void
@@ -72,23 +72,33 @@ ebbrt::EthernetMessageManager::Send(NetworkId to,
                                     EbbId id,
                                     Buffer buffer)
 {
-  auto buf = buffer - sizeof(MessageHeader);
-  auto header = reinterpret_cast<MessageHeader*>(buf.data());
-  header->ebb = id;
+  auto header_size = sizeof(MessageHeader) + sizeof(Ethernet::Header);
+  auto buf = buffer - header_size;
+  auto eth_header = reinterpret_cast<Ethernet::Header*>(buf.data());
+  std::copy(&to.mac_addr[0], &to.mac_addr[6], eth_header->destination);
+  std::copy(&mac_addr_[0], &mac_addr_[6], eth_header->source);
+  eth_header->ethertype = htons(MESSAGE_MANAGER_ETHERTYPE);
 
-  ethernet->Send(std::move(buf), to.mac_addr, mac_addr_,
-                 MESSAGE_MANAGER_ETHERTYPE);
+  auto msg_header_p = buf.data() + sizeof(Ethernet::Header);
+  auto msg_header = reinterpret_cast<MessageHeader*>(msg_header_p);
+  msg_header->ebb = id;
+
+  ethernet->Send(std::move(buf));
 }
 
 void
 ebbrt::EthernetMessageManager::StartListening()
 {
   ethernet->Register(MESSAGE_MANAGER_ETHERTYPE,
-                     [](Buffer buffer, const char from[6]) {
-                       auto mh = reinterpret_cast<const MessageHeader*>(buffer.data());
-                       auto ebb = EbbRef<EbbRep>{mh->ebb};
+                     [](Buffer buffer) {
+                       auto eth_header = reinterpret_cast<const Ethernet::Header*>(buffer.data());
                        NetworkId id;
-                       std::memcpy(id.mac_addr, from, 6);
-                       ebb->HandleMessage(id, buffer + sizeof(MessageHeader));
+                       std::copy(&eth_header->source[0], &eth_header->source[6],
+                                 id.mac_addr);
+                       auto msg_header = reinterpret_cast<const MessageHeader*>(buffer.data() + sizeof(Ethernet::Header));
+                       auto ebb = EbbRef<EbbRep>{msg_header->ebb};
+                       ebb->HandleMessage(id, buffer +
+                                          sizeof(Ethernet::Header) +
+                                          sizeof(MessageHeader));
     });
 }

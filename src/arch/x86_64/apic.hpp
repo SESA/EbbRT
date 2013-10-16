@@ -190,19 +190,19 @@ namespace ebbrt {
           volatile uint32_t lvt_cmci_ __attribute__((aligned(16)));
           volatile IcrLow lil_ __attribute__((aligned(16)));
           volatile IcrHigh lih_ __attribute__((aligned(16)));
-          volatile uint32_t lvt_timer_ __attribute__((aligned(16)));
+          volatile uint32_t lvt_timer __attribute__((aligned(16)));
           volatile uint32_t lvt_thermal_ __attribute__((aligned(16)));
           volatile uint32_t lvt_pmc_ __attribute__((aligned(16)));
           volatile uint32_t lvt_lint0_ __attribute__((aligned(16)));
           volatile uint32_t lvt_lint1_ __attribute__((aligned(16)));
           volatile uint32_t lvt_error_ __attribute__((aligned(16)));
-          volatile uint32_t init_count_ __attribute__((aligned(16)));
-          volatile uint32_t current_count_ __attribute__((aligned(16)));
+          volatile uint32_t init_count __attribute__((aligned(16)));
+          volatile uint32_t current_count __attribute__((aligned(16)));
           volatile uint32_t reserved13_ __attribute__((aligned(16)));
           volatile uint32_t reserved14_ __attribute__((aligned(16)));
           volatile uint32_t reserved15_ __attribute__((aligned(16)));
           volatile uint32_t reserved16_ __attribute__((aligned(16)));
-          volatile uint32_t dcr_ __attribute__((aligned(16)));
+          volatile uint32_t dcr __attribute__((aligned(16)));
           volatile uint32_t reserved17_ __attribute__((aligned(16)));
         };
       };
@@ -210,7 +210,7 @@ namespace ebbrt {
       void SendIpi(IcrLow icr_low, IcrHigh icr_high);
     };
     Lapic* const lapic = reinterpret_cast<Lapic*>(0xFEE00000);
-  };
+  }
 }
 
 #endif

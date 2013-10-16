@@ -146,6 +146,13 @@ namespace ebbrt {
       out8(status.raw, io_addr + 18);
     }
 
+    inline void reset(uint16_t io_addr)
+    {
+      DeviceStatus status;
+      status.raw = 0;
+      device_status(io_addr, status);
+    }
+
     inline void acknowledge(uint16_t io_addr)
     {
       DeviceStatus status = device_status(io_addr);

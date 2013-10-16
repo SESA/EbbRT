@@ -33,12 +33,11 @@ namespace ebbrt {
       uint16_t ethertype;
     } __attribute__((packed));
     virtual Buffer Alloc(size_t size) = 0;
-    virtual void Send(Buffer buffer, const char* to,
-                      const char* from, uint16_t ethertype) = 0;
+    virtual void Send(Buffer buffer) = 0;
     virtual const char* MacAddress() = 0;
     virtual void SendComplete() = 0;
     virtual void Register(uint16_t ethertype,
-                          std::function<void(Buffer, const char[6])> func) = 0;
+                          std::function<void(Buffer)> func) = 0;
     virtual void Receive() = 0;
   protected:
     Ethernet(EbbId id) : EbbRep{id} {}

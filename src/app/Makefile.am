@@ -26,6 +26,7 @@ include src/app/HelloRemote/Makefile.am
 include src/app/HelloWorld/Makefile.am
 include src/app/HiddenRegister/Makefile.am
 include src/app/LibFox/Makefile.am
+include src/app/NetworkTest/Makefile.am
 include src/app/PingPong/Makefile.am
+include src/app/TimerTest/Makefile.am
 include src/app/Sage/Makefile.am
-
