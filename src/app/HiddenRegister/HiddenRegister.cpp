@@ -56,9 +56,34 @@ ebbrt::app::start()
 #endif
 
 #ifdef __linux__
-int main()
+/****************************/
+// Static ebb ulnx kludge 
+/****************************/
+constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
+  {.name = "EbbManager", .id = 2},
+  {.name = "Console", .id = 5},
+  {.name = "EventManager", .id = 6},
+};
+
+const ebbrt::app::Config ebbrt::app::config = {
+  .num_statics = sizeof(static_ebbs) / sizeof(Config::StaticEbbId),
+  .static_ebb_ids = static_ebbs
+};
+/****************************/
+int 
+main(int argc, char* argv[] )
 {
-  ebbrt::EbbRT instance;
+  if(argc < 2)
+  {
+      std::cout << "Usage: dtb as first argument \n";
+      std::exit(1);
+  }
+
+  int n;
+  char *fdt = ebbrt::app::LoadConfig(argv[1], &n);
+
+  // ...fdt buffer contains the entire file...
+  ebbrt::EbbRT instance((void *)fdt);
 
   ebbrt::Context context{instance};
   context.Activate();

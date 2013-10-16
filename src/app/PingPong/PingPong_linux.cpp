@@ -18,6 +18,7 @@
 
 #include <iostream>
 
+#include "app/app.hpp"
 #include "ebb/EbbManager/EbbManager.hpp"
 #ifndef UDP
 #include "ebb/Ethernet/RawSocket.hpp"
@@ -25,10 +26,38 @@
 #include "ebb/NodeAllocator/NodeAllocator.hpp"
 #include "ebb/NodeAllocator/Kittyhawk.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
+#include "ebbrt.hpp"
 
-int main(int argc, char** argv)
+/****************************/
+// Static ebb ulnx kludge 
+/****************************/
+constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
+  {.name = "EbbManager", .id = 2},
+  {.name = "EventManager", .id = 5},
+  {.name = "Console", .id = 6},
+  {.name = "MessageManager", .id = 7},
+  {.name = "Echo", .id = 8}
+};
+
+const ebbrt::app::Config ebbrt::app::config = {
+  .num_statics = sizeof(static_ebbs) / sizeof(Config::StaticEbbId),
+  .static_ebb_ids = static_ebbs
+};
+/****************************/
+
+int 
+main(int argc, char* argv[] )
 {
-  ebbrt::EbbRT instance;
+  if(argc < 2)
+  {
+      std::cout << "Usage: Pass fdt binary in as first argument\n";
+      std::exit(1);
+  }
+
+  int n;
+  char *fdt = ebbrt::app::LoadConfig(argv[1], &n);
+
+  ebbrt::EbbRT instance(fdt);
 
   ebbrt::Context context{instance};
   context.Activate();

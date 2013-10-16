@@ -16,8 +16,7 @@
 
 EXTRA_PROGRAMS += src/app/PingPong/PingPong
 
-src_app_PingPong_PingPong_SOURCES = \
-	src/app/PingPong/config.cpp
+src_app_PingPong_PingPong_SOURCES = 
 
 if LRT_ULNX
 src_app_PingPong_PingPong_SOURCES += \

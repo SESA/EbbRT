@@ -21,8 +21,11 @@
 #include "ebb/Ethernet/VirtioNet.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
 #include "ebb/PCI/PCI.hpp"
+#include "lrt/config.hpp"
 
-void ebbrt::app::start() {
+void
+ebbrt::app::start()
+{
   pci = EbbRef<PCI>(ebb_manager->AllocateId());
   ebb_manager->Bind(PCI::ConstructRoot, pci);
 

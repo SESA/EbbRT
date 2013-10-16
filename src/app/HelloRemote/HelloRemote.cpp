@@ -43,47 +43,20 @@
 #include "ebb/Ethernet/VirtioNet.hpp"
 #endif
 
-constexpr ebbrt::app::Config::InitEbb late_init_ebbs[] =
-{
-#ifdef __linux__
-  { .name = "EbbManager" },
-#endif
-  { .name = "EventManager" },
-  { .name = "Console" },
-  { .name = "MessageManager" }
-};
-
-#ifdef __ebbrt__
-constexpr ebbrt::app::Config::InitEbb early_init_ebbs[] =
-{
-  { .name = "MemoryAllocator" },
-  { .name = "EbbManager" },
-  { .name = "Gthread" },
-  { .name = "Syscall" }
-};
-#endif
-
+/****************************/
+// Static ebb ulnx kludge 
+/****************************/
 constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
-  {.name = "MemoryAllocator", .id = 1},
   {.name = "EbbManager", .id = 2},
-  {.name = "Gthread", .id = 3},
-  {.name = "Syscall", .id = 4},
   {.name = "EventManager", .id = 5},
   {.name = "Console", .id = 6},
   {.name = "MessageManager", .id = 7}
 };
-
 const ebbrt::app::Config ebbrt::app::config = {
-  .space_id = 1,
-#ifdef __ebbrt__
-  .num_early_init = sizeof(early_init_ebbs) / sizeof(Config::InitEbb),
-  .early_init_ebbs = early_init_ebbs,
-#endif
-  .num_late_init = sizeof(late_init_ebbs) / sizeof(Config::InitEbb),
-  .late_init_ebbs = late_init_ebbs,
   .num_statics = sizeof(static_ebbs) / sizeof(Config::StaticEbbId),
   .static_ebb_ids = static_ebbs
 };
+/****************************/
 
 #include <cstdio>
 
@@ -103,15 +76,24 @@ ebbrt::app::start()
 #endif
 
 #ifdef __linux__
-int main(int argc, char** argv)
+int
+main(int argc, char* argv[] )
 {
+  if(argc < 2)
+  {
+    std::cout << "Usage: fdb as first argument \n";
+    std::exit(1);
+  }
+  int n;
+  char *fdt = ebbrt::app::LoadConfig(argv[1], &n);
+
 #ifdef __bg__
   if (MPI_Init(&argc, &argv) != MPI_SUCCESS) {
     std::cerr << "MPI_Init failed" << std::endl;
     return -1;
   }
 #endif
-  ebbrt::EbbRT instance;
+  ebbrt::EbbRT instance((void *)fdt);
 
   ebbrt::Context context{instance};
   context.Activate();
