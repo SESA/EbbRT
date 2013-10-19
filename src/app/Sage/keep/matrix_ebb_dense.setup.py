@@ -1,11 +1,14 @@
+import os
 from distutils.core import setup
 from Cython.Build import cythonize
 from distutils.extension import Extension
 
-inc_dirs = [ "/home/jappavoo/Work/sage/sage-5.12/devel/sage",
-             "/home/jappavoo/Work/sage/sage-5.12/devel/sage/sage/matrix",
-             "/home/jappavoo/Work/sage/sage-5.12/devel/sage/sage/ext/",
-             "/home/jappavoo/Work/sage/sage-5.12/devel/sage/c_lib/include" ]
+SAGE_ROOT = os.environ['SAGE_ROOT']
+
+inc_dirs = [ SAGE_ROOT + "/devel/sage",
+             SAGE_ROOT + "/devel/sage/sage/matrix",
+             SAGE_ROOT + "/devel/sage/sage/ext/",
+             SAGE_ROOT + "/devel/sage/c_lib/include" ]
 
 extensions = [
     Extension("matrix_ebb_dense", ["matrix_ebb_dense.pyx"],
