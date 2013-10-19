@@ -413,7 +413,6 @@ SESAconfigNodes()
     fi
 
     # instantaneously instantiate the instance!
-    set -x
     $SESAEMUCMD $gdbcmd $netcmd $srlcmd $concmd -enable-kvm -m $ram -daemonize -pidfile $dir/pid $SESA_ROM $SESA_IMG $mntcmd > $dir/vnclog 2>&1
   done
   return 0

@@ -99,7 +99,6 @@ cat $khscripts/makeapp-base >> $base/makeapp
 
 touch $base/runapp
 chmod 755 $base/runapp
-
 cat > $base/runapp << EOF
 #!/bin/bash
 src=$src
@@ -108,13 +107,37 @@ ulnx=$ulnx
 bare=$bare
 imgtype=$imgtype
 export SESA_GET=khget
-##### LINUX IMAGE #######################################
+##### SESA LINUX IMAGE ##################################
 sesalnx=$HOME/sesalnx.img
+sesalnx_id=$HOME/sesalnx_id
 config_dir=/mnt/app
 share_dir=/mnt/share
 #########################################################
 EOF
 cat $khscripts/runapp-base >> $base/runapp 
+
+#################################################
+# alloc (empty) instance script
+#################################################
+
+touch $base/alloc
+chmod 755 $base/alloc
+cat > $base/alloc << EOF
+#!/bin/bash
+src=$src
+base=$base
+ulnx=$ulnx
+bare=$bare
+imgtype=$imgtype
+export SESA_GET=khget
+##### SESA LINUX IMAGE ##################################
+sesalnx=$HOME/sesalnx.img
+sesalnx_id=$HOME/sesalnx_id
+config_dir=/mnt/app
+share_dir=/mnt/share
+#########################################################
+EOF
+cat $khscripts/alloc-base >> $base/alloc 
 
 #################################################
 # copy misc scripts

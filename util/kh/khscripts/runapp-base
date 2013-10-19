@@ -72,17 +72,14 @@ mkdir -p $appdir
 
 
 #################################################
-# Load docker instances 
+# Load single docker instance (instance count is ignored)
 #################################################
-
 if [[ $docker == 1 ]]; then
-  echo "Not yet implemented"
-  exit 1 
   # linux vm image uses Docker to contain app dependancies 
   # move in binary + run script
 
   # create directory for this particular instance-type
-  instdir=$appdir/$instid; 
+  instdir=$appdir; 
   mkdir -p $instdir
 
   cp $ulnx/src/app/$app/$app $instdir/app 
@@ -119,8 +116,8 @@ fi
 
 if [[ $kexrun == 1 ]]; then
 
-  # create directory for this particular instance-type
-  instdir=$appdir/$instid; 
+  # configuration volume is shared across all instances
+  instdir=$appdir; 
   mkdir -p $instdir
 
   # move in binaries
@@ -136,6 +133,8 @@ mod=$config_dir/config.dtb
 EOF
 
   # write ip 
+  let max=10+$count**2 # ip timeout
+  echo "MAX=$max" >> $instdir/prelaunch 
   cat $base/scripts/ip >> $instdir/prelaunch
 
   # kexec

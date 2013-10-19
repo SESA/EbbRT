@@ -1,13 +1,12 @@
 # check for shared mount drive, write ip back
-if [[ -a /dev/sdb1 ]]
+if [[ -a /dev/sdb1 && ( $MAX > 0 ) ]]
 then
   declare -i COUNT=0
-  declare -i MAX=1
   while [[ $COUNT -lt $MAX ]]; do
     if [[ $( ip -4 -o addr | grep -o "eth0" ) ]]
     then
-      echo "eth0 found"
-      ip -4 -o addr show eth0 > /mnt/shared/addr
+      echo "eth0 found after $COUNT"
+      ip -4 -o addr show eth0 | grep -Eo "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" | head -1 > /mnt/shared/addr
       echo "" >> /mnt/shared/addr
       break
     fi
