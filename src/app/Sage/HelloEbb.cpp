@@ -93,7 +93,7 @@ ebbrt::app::start()
 #endif
 
 #ifdef __linux__
-int initEbbRT()
+extern "C" void print_hello_ebb()
 {
   ebbrt::EbbRT instance;
   ebbrt::Context context{instance};
@@ -106,7 +106,5 @@ int initEbbRT()
   ebbrt::console->Write(std::move(buf));
 
   context.Deactivate();
-
-  return 0;
 }
 #endif

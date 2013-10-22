@@ -29,8 +29,9 @@
 default_func_common:
               // save
               .cfi_startproc
-              .cfi_lsda 0x03, .Llsda
-              .cfi_personality 0x03, __gxx_personality_v0
+              .cfi_lsda 0x1b, .Llsda
+              //.cfi_personality 0x03, DW.ref.__gxx_personality_v0
+              .cfi_personality 0x9b, DW.ref.__gxx_personality_v0
               sub   $520, %rsp //move stack pointer down (with alignment)
 
               .cfi_adjust_cfa_offset 520
@@ -59,13 +60,13 @@ default_func_common:
               mov   %rsp, %rdx
 
 .Lpre_precall:
-              call  _trans_precall
+              call  _trans_precall@PLT
 .Lpost_precall:
               testq %rax, %rax
               je .Lfail
 
               mov   (520 + 8*8 + 16)(%rsp), %rdi
-              call  _event_altstack_push
+              call  _event_altstack_push@PLT
 
               popq  %r11
               .cfi_adjust_cfa_offset -8
@@ -97,12 +98,12 @@ default_func_common:
 .Lpost_foo_call:
               pushq %rax
               .cfi_adjust_cfa_offset 8
-              call  _event_altstack_pop
+              call  _event_altstack_pop@PLT
               popq  %rdi
               .cfi_adjust_cfa_offset -8
               pushq %rax
               .cfi_adjust_cfa_offset 8
-              jmp   _trans_postcall
+              jmp   _trans_postcall@PLT
 .Lfail:
               popq  %rax
               .cfi_adjust_cfa_offset -8
@@ -111,22 +112,24 @@ default_func_common:
               ret
 .Llp0:
               mov   %rax, %rdi
-              call  __cxa_begin_catch
-              call _event_altstack_pop
+              call  __cxa_begin_catch@PLT
+              call _event_altstack_pop@PLT
               pushq %rax
 .Lpre_rethrow:
-              call  __cxa_rethrow
+              call  __cxa_rethrow@PLT
 .Lpost_rethrow:
               mov   %rax, 0x8(%rsp)
-              callq __cxa_end_catch
+              callq __cxa_end_catch@PLT
               mov   0x8(%rsp), %rax
               mov   %rax, %rdi
 .Lpre_unwind:
-              callq _Unwind_Resume
+              callq _Unwind_Resume@PLT
 .Lpost_unwind:
               .cfi_endproc
 
-              .section .gcc_except_table
+        .globl __gxx_personality_v0
+        .section .gcc_except_table, "a",@progbits
+        .align 4
 .Llsda:
               .byte 0xff //DW_EH_PE_omit (no encoding of landing pad base)
               .byte 0x03 //DW_EH_PE_udata4 encoding of entries in type
@@ -165,6 +168,16 @@ default_func_common:
 .Ltypes_table:
               .byte 0x00
 
+.hidden DW.ref.__gxx_personality_v0
+.weak DW.ref.__gxx_personality_v0
+.section .data.DW.ref.__gxx_personality_v0,"awG",@progbits,DW.ref.__gxx_personality_v0,comdat
+.align 8
+.type DW.ref.__gxx_personality_v0, @object
+.size DW.ref.__gxx_personality_v0, 8
+DW.ref.__gxx_personality_v0:
+        .quad __gxx_personality_v0
+
+        .text
 default_func 0
 default_func 1
 default_func 2

@@ -14,45 +14,24 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #to allow us to pass specific cflags
-EXTRA_LIBRARIES += src/app/Sage/libHelloEbb.a
+EXTRA_LTLIBRARIES += src/app/Sage/libHelloEbb.la
 
-src_app_Sage_libHelloEbb_a_SOURCES = \
+src_app_Sage_libHelloEbb_la_SOURCES = \
 	src/app/Sage/HelloEbb.cpp
 
-EXTRA_PROGRAMS += src/app/Sage/EbbRTDummy
+src_app_Sage_libHelloEbb_la_ebbs = \
+	src/ebb/EbbManager/libPrimitiveEbbManager.la \
+	src/ebb/Console/libLocalConsole.la \
+	src/ebb/EventManager/libSimpleEventManager.la
 
-src_app_Sage_EbbRTDummy_SOURCES = src/app/Sage/EbbRTDummy.cpp
+src_app_Sage_libHelloEbb_la_LIBADD = \
+	libebbrt.la \
+	$(src_app_Sage_libHelloEbb_la_ebbs)
 
-src_app_Sage_EbbRTDummy_ebbs = \
-	src/ebb/EbbManager/libPrimitiveEbbManager.a \
-	src/ebb/Console/libLocalConsole.a \
-	src/ebb/EventManager/libSimpleEventManager.a \
-	src/app/Sage/libHelloEbb.a 
-
-if LRT_BARE
-src_app_Sage_EbbRTDummy_ebbs += \
-	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a \
-	src/ebb/Syscall/libSyscall.a \
-	src/ebb/Gthread/libGthread.a
-endif
-
-src_app_Sage_EbbRTDummy_LDFLAGS = \
-	$(app_linkflags) \
-	-Wl,-whole-archive \
-	$(ebbrt_libs) \
-	$(src_app_Sage_EbbRTDummy_ebbs) \
-	-Wl,-no-whole-archive
-
-src_app_Sage_EbbRTDummy_LDADD = \
-	libebbrt.a
-
-src_app_Sage_EbbRTDummy_DEPENDENCIES = \
-	libebbrt.a \
+src_app_Sage_libHelloEbb_la_DEPENDENCIES = \
+	libebbrt.la \
 	$(app_deps) \
 	$(ebbrt_libs) \
-	$(src_app_Sage_EbbRTDummy_ebbs)
+	$(src_app_Sage_libHelloEbb_la_ebbs)
 
-if LRT_ULNX
-src_app_Sage_EbbRTDummy_LDFLAGS += \
-	-pthread
-endif
+src_app_Sage_libHelloEbb_la_LDFLAGS = -rpath /nowhere
