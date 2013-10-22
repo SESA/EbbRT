@@ -13,7 +13,9 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LIBRARIES += src/ebb/Network/libLWIPNetwork.a
+EXTRA_LIBRARIES += \
+	src/ebb/Network/libLWIPNetwork.a \
+	src/ebb/Network/libSocketNetwork.a
 
 src_ebb_Network_libLWIPNetwork_a_SOURCES = \
 	src/ebb/Network/LWIPNetwork.cpp \
@@ -47,3 +49,6 @@ src_ebb_Network_libLWIPNetwork_a_CPPFLAGS = \
 	-iquote $(top_srcdir)/src/ebb/Network/lwip-1.4.1/src/include \
 	-iquote $(top_srcdir)/src/ebb/Network/lwip-1.4.1/src/include/ipv4 \
 	-iquote $(top_srcdir)/src/ebb/Network
+
+src_ebb_Network_libSocketNetwork_a_SOURCES = \
+	src/ebb/Network/SocketNetwork.cpp

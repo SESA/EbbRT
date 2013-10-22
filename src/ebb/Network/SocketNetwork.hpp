@@ -15,37 +15,25 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_EBB_NETWORK_LWIPNETWORK_HPP
-#define EBBRT_EBB_NETWORK_LWIPNETWORK_HPP
+#ifndef EBBRT_EBB_NETWORK_SOCKETNETWORK_HPP
+#define EBBRT_EBB_NETWORK_SOCKETNETWORK_HPP
 
 #include "ebb/Network/Network.hpp"
-#include "lwip/udp.h"
 
 namespace ebbrt {
-class LWIPNetwork : public Network {
+class SocketNetwork : public Network {
 public:
   static EbbRoot *ConstructRoot();
 
-  LWIPNetwork(EbbId id);
+  SocketNetwork(EbbId id);
 
   virtual void InitPing() override;
   virtual void InitEcho() override;
   virtual void RegisterUDP(uint16_t port,
                            std::function<void(Buffer, NetworkId)> cb) override;
   virtual void SendUDP(Buffer buffer, NetworkId to, uint16_t port) override;
-  virtual void EmptyQueue();
 private:
-  virtual void RecvPacket(Buffer buffer);
-
-  std::function<void()> tcp_timer_func_;
-  std::function<void()> ip_timer_func_;
-  std::function<void()> arp_timer_func_;
-  std::function<void()> dhcp_coarse_timer_func_;
-  std::function<void()> dhcp_fine_timer_func_;
-  std::function<void()> dns_timer_func_;
-
-  std::queue<std::tuple<Buffer, NetworkId, uint16_t> > queue_;
-  udp_pcb send_pcb_;
+  int send_fd_;
 };
 }
 

@@ -15,10 +15,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 EXTRA_LIBRARIES += \
 	src/ebb/MessageManager/libEthernetMessageManager.a \
-	src/ebb/MessageManager/libMPIMessageManager.a
+	src/ebb/MessageManager/libMPIMessageManager.a \
+	src/ebb/MessageManager/libUDPMessageManager.a
 
 src_ebb_MessageManager_libEthernetMessageManager_a_SOURCES = \
 	src/ebb/MessageManager/EthernetMessageManager.cpp
 
 src_ebb_MessageManager_libMPIMessageManager_a_SOURCES = \
 	src/ebb/MessageManager/MPIMessageManager.cpp
+
+src_ebb_MessageManager_libUDPMessageManager_a_SOURCES = \
+	src/ebb/MessageManager/UDPMessageManager.cpp

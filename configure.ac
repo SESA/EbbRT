@@ -49,6 +49,12 @@ AS_CASE([$host_os], [linux-gnu],
 AM_CONDITIONAL([LRT_BARE], [test x$host_os == xebbrt])
 AM_CONDITIONAL([LRT_ULNX], [test x$host_os == xlinux-gnu])
 
+AC_ARG_ENABLE(udp, [ --enable-udp    Enable UDP messaging],,enable_udp=no)
+if test x$enable_udp = xyes; then
+   AC_DEFINE([UDP], [1], [UDP messaging])
+fi
+AM_CONDITIONAL(UDP, test x$enable_udp = xyes)
+
 AC_EGREP_CPP(yes,
 [#ifdef __bg__
   yes
@@ -88,7 +94,6 @@ LDFLAGS="$LDFLAGS -L$PROTOBUF_LIBDIR"
 with_PROTOBUF=yes
 AC_CHECK_HEADERS([google/protobuf/stubs/common.h],,[with_PROTOBUF=no])
 AC_CHECK_LIB([protobuf-lite], [main],,[with_PROTOBUF=no])
-AS_ECHO([$with_PROTOBUF])
 AM_CONDITIONAL([PROTOBUF], [test x$with_PROTOBUF = xyes])
 
 

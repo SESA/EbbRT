@@ -22,9 +22,7 @@
 #include "ebb/MessageManager/MessageManager.hpp"
 #include "ebb/PCI/PCI.hpp"
 
-void
-ebbrt::app::start()
-{
+void ebbrt::app::start() {
   pci = EbbRef<PCI>(ebb_manager->AllocateId());
   ebb_manager->Bind(PCI::ConstructRoot, pci);
 
@@ -37,12 +35,17 @@ ebbrt::app::start()
   auto buf = message_manager->Alloc(sizeof(cbuf));
   std::memcpy(buf.data(), cbuf, sizeof(cbuf));
   NetworkId id;
+#ifdef UDP
+  id.addr =
+    192 << 24 | 168 << 16 | 0 << 8 | 3;
+#else
   id.mac_addr[0] = 0xff;
   id.mac_addr[1] = 0xff;
   id.mac_addr[2] = 0xff;
   id.mac_addr[3] = 0xff;
   id.mac_addr[4] = 0xff;
   id.mac_addr[5] = 0xff;
+#endif
   message_manager->Send(id, lrt::trans::find_static_ebb_id("Echo"),
                         std::move(buf));
 }
