@@ -36,7 +36,7 @@ namespace ebbrt {
       return nullptr;
     }
 
-    char* LoadConfig(char* path, int* len)
+    char* LoadFile(char* path, int* len)
     {
       std::ifstream is (path, std::ifstream::binary);
       *len=0;
@@ -45,17 +45,19 @@ namespace ebbrt {
         *len = is.tellg();
         is.seekg (0, is.beg);
 
-        auto fdt = new char[*len+1024];
-        is.read (fdt,*len);
+        auto buf = new char[*len+1024]; //padding for fun
+        is.read (buf,*len);
         is.close();
-        return fdt;
+        return buf;
       }
       return nullptr;
     }
 
-    char* DumpConfig(char* ptr, std::string path)
+    void SaveFile(char* ptr, int len, char *filepath)
     {
-      return nullptr;
+      std::ofstream outfile (filepath, std::ofstream::binary);
+      outfile.write (ptr,len);
+      outfile.close();
     }
   }
 }

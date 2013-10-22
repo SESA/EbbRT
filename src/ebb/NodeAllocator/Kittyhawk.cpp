@@ -21,6 +21,7 @@
 #include "ebb/NodeAllocator/Kittyhawk.hpp"
 #include "ebb/EventManager/EventManager.hpp"
 
+
 ebbrt::EbbRoot*
 ebbrt::Kittyhawk::ConstructRoot()
 {
@@ -37,15 +38,24 @@ ebbrt::Kittyhawk::Kittyhawk(EbbId id) : NodeAllocator{id}
 }
 
 void
-ebbrt::Kittyhawk::Allocate()
+ebbrt::Kittyhawk::Allocate(std::string ip, std::string app, std::string config)
 {
+  //TODO: allocate by NetworkID, translate ip into string 
+
+  std::string loadcmd = "slload "+app+" "+config+" "+ip;
+
   FILE *fp;
   char out[1024];
 
-  fp = popen("khget -i InApp ~/EbbRT/build-tst/bare/src/app/PingPong/PingPong.iso 1", "r"); 
-
+  fp = popen(loadcmd.c_str(), "r");
   while (fgets(out, 1024, fp) != NULL)
-    printf("%s", out);
-
+    printf("%s \n", out);
   pclose(fp);
+
+//  fp = popen("khget -i InApp ~/EbbRT/build-tst/bare/src/app/PingPong/PingPong.iso 1", "r"); 
+//
+//  while (fgets(out, 1024, fp) != NULL)
+//    printf("%s \n", out);
+//
+//  pclose(fp);
 }

@@ -245,19 +245,51 @@ function SESAcleanApp
 
   # remove tuples
   lock tuples
-    locked_rm_users "$1" "*"
-    locked_rm_pnets "$net" "$1"
-    locked_rm_nodes "*" "$1" "*" "*" "*" "*"
-    for j in ${nodes[@]}
-    do
-      locked_touch_nodes "$j" "$FREEOWNER" "$FREEPNET"\
-        "$FREEINETFLG" "$FREEXNETFLG" "$FREECONID"
-    done
+  locked_rm_users "$1" "*"
+  locked_rm_pnets "$net" "$1"
+  locked_rm_nodes "*" "$1" "*" "*" "*" "*"
+  for j in ${nodes[@]}
+  do
+    locked_touch_nodes "$j" "$FREEOWNER" "$FREEPNET"\
+      "$FREEINETFLG" "$FREEXNETFLG" "$FREECONID"
+  done
   unlock tuples
   
   # clean up files
   rm -rf $SESANETDIR/$net
   rm -rf $( echo ${files[@]} | sort -u )
+}
+
+function SESAdisplayApp
+{
+  app=$1
+  if [[ -z $app ]]; then
+      echo "Error: No app name"
+      exit 1
+  fi
+  local nodes=()
+  local consoles=( $(tupleCmd echo Node "*:$app:*:*:*") )
+  if [[ $consoles == "*:$app:*:*:*" ]];then
+    echo "Error: App not found. Use khls to list active apps"
+    exit 1
+  fi
+
+  local network=( $(tupleCmd echo Pnet "*:$app") )
+  local files=( ${consoles[@]/*:/$KHCONSDIR/} )
+  local net=$( echo $network | cut -d ':' -f 1 )
+  local ipdir=$SESANETDIR/$net/ip
+
+  if [[ ! (${#consoles[@]} > 0) ]]; then
+    echo "ERROR: $app not found"
+    exit 1
+  fi
+
+  local ips=( $(cat ${ipdir/%//\*/addr} | sort -u ) )
+  for i in ${ips[@]}
+  do
+    echo $i
+  done
+
 }
 
 function SESAlistApp

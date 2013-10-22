@@ -27,7 +27,7 @@ namespace ebbrt {
   public:
     static EbbRoot* ConstructRoot();
     Kittyhawk(EbbId id);
-    void Allocate() override;
+    void Allocate(std::string ip, std::string app, std::string config) override;
   };
 }
 

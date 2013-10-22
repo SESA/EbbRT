@@ -15,22 +15,35 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_EBB_NODEALLOCATOR_NODEALLOCATOR_HPP
-#define EBBRT_EBB_NODEALLOCATOR_NODEALLOCATOR_HPP
+#ifndef EBBRT_EBB_CONFIG_CONFIG_HPP
+#define EBBRT_EBB_CONFIG_CONFIG_HPP
 
 #include <functional>
-
 #include "ebb/ebb.hpp"
-#include "misc/buffer.hpp"
 
 namespace ebbrt {
-  class NodeAllocator : public EbbRep {
+  class Config : public EbbRep {
   public:
-    virtual void Allocate(std::string id, std::string app, std::string config) = 0;
+    virtual void 
+      SetConfig(void *config) = 0;
+    virtual void *
+      GetConfig() = 0;
+    virtual uint32_t
+      GetInt32(std::string path, std::string prop) = 0;
+    virtual uint64_t
+      GetInt64(std::string path, std::string prop) = 0;
+    virtual std::string
+      GetString(std::string path, std::string prop) = 0;
+    virtual void
+      SetInt32(std::string path, std::string prop, uint32_t val) = 0;
+    virtual void
+      SetInt64(std::string path, std::string prop, uint64_t val) = 0;
+    virtual void
+      SetString(std::string path, std::string prop, std::string val) = 0;
   protected:
-    NodeAllocator(EbbId id) : EbbRep{id} {}
+    Config(EbbId id) : EbbRep{id} {}
   };
-  extern EbbRef<NodeAllocator> node_allocator;
+  extern EbbRef<Config> config_handle;
 }
 
 #endif

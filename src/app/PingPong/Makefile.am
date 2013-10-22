@@ -29,9 +29,11 @@ src_app_PingPong_PingPong_SOURCES += \
 	src/app/PingPong/Echo_baremetal.cpp
 endif
 endif
+
 src_app_PingPong_PingPong_ebbs = \
 	src/ebb/EbbManager/libPrimitiveEbbManager.a \
 	src/ebb/EventManager/libSimpleEventManager.a \
+	src/ebb/Config/libFdt.a \
 	src/ebb/Console/libLocalConsole.a
 
 if UDP

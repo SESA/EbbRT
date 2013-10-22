@@ -58,7 +58,13 @@ echo "MAX=$max" >> $instdir/prelaunch
 cat $base/scripts/ip >> $instdir/prelaunch
 
 # kexec
-cat $base/scripts/kexec >> $instdir/prelaunch
+touch $instdir/run; chmod 755 $instdir/run
+cat > $instdir/run << EOF
+#!/bin/bash
+app=/root/app.elf32
+mod=/root/config.dtb
+EOF
+cat $base/scripts/kexec >> $instdir/run
 
 # load isntances
 for i in `seq 1 $count`; do

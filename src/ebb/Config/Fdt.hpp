@@ -15,22 +15,30 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef EBBRT_EBB_NODEALLOCATOR_NODEALLOCATOR_HPP
-#define EBBRT_EBB_NODEALLOCATOR_NODEALLOCATOR_HPP
+#ifndef EBBRT_EBB_ETHERNET_RAWSOCKET_HPP
+#define EBBRT_EBB_ETHERNET_RAWSOCKET_HPP
 
-#include <functional>
-
-#include "ebb/ebb.hpp"
-#include "misc/buffer.hpp"
+#include "ebb/Config/Config.hpp"
 
 namespace ebbrt {
-  class NodeAllocator : public EbbRep {
+  class Fdt : public Config {
   public:
-    virtual void Allocate(std::string id, std::string app, std::string config) = 0;
-  protected:
-    NodeAllocator(EbbId id) : EbbRep{id} {}
+    static EbbRoot* ConstructRoot();
+    Fdt(EbbId id);
+    void SetConfig(void *config) override;
+    void* GetConfig() override;
+
+    uint32_t GetInt32(std::string path, std::string prop) override;
+    uint64_t GetInt64(std::string path, std::string prop) override;
+    std::string GetString(std::string path, std::string prop) override;
+
+    void SetInt32(std::string path, std::string prop, uint32_t val) override;
+    void SetInt64(std::string path, std::string prop, uint64_t val) override;
+    void SetString(std::string path, std::string prop, std::string val) override;
+  private:
+    void *fdt_;
+    bool initialized_;
   };
-  extern EbbRef<NodeAllocator> node_allocator;
 }
 
 #endif

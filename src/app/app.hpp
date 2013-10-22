@@ -37,13 +37,17 @@ namespace ebbrt {
     /* symbol table for configuration */
     // fixme, don't return root, for now needed to fill initial root table
     typedef lrt::trans::EbbRoot* (*ConfigFuncPtr)();
+
     void AddSymbol (std::string str, ConfigFuncPtr);
     /// lookup return function poitner
     ConfigFuncPtr LookupSymbol (std::string str);
 
-    /* Configuration functions */
-    char* LoadConfig(char* path, int *len);
-    char* DumpConfig(char* ptr, std::string path);
+#ifdef __linux__ 
+    /* Config helped functions 
+     * TODO: Move these somewhere else e.g., into a 'filesystem misc' header
+     * */
+    char* LoadFile(char* path, int *len);
+    void SaveFile(char* ptr, int len, char* path);
 
     struct Config {
       /** Size of ebbrt::app::Config::static_ebb_ids
@@ -66,6 +70,7 @@ namespace ebbrt {
      * * This is defined by each application.
      * */
         extern const Config config;
+#endif
     /**
      * The entry point to the application.
      * Upon return the system enters the event loop and begins

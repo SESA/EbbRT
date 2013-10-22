@@ -63,15 +63,15 @@ template <> struct hash<ebbrt::NetworkId> {
   }
 };
 }
-#elif __bg__
-namespace std {
+#elif __bg__ // BlueGene/Q rank
+namespace std { 
 template <> struct hash<ebbrt::NetworkId> {
   size_t operator()(const ebbrt::NetworkId &x) const {
     return hash<int>()(x.rank);
   }
 };
 }
-#else
+#else // raw ethernet
 namespace std {
 template <> struct hash<ebbrt::NetworkId> {
   size_t operator()(const ebbrt::NetworkId &x) const {

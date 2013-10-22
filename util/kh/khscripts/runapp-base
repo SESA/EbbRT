@@ -58,6 +58,7 @@ APPNAME="$name"
 echo "Application: $name"
 
 BARE_IMG=$(readlink -f ${base}/bare/src/app/$app/$app.$imgtype)
+BARE_32=$(readlink -f ${base}/bare/src/app/$app/$app.elf32)
 CONFIG=$(readlink -f ${base}/bare/src/app/$app/$app.dtb)
 FNT_IMG=$(readlink -f ${base}/ulnx/src/app/$app/$app)
 
@@ -175,6 +176,6 @@ fi
 
 if [[ $localrun == 1 ]]; then
   for i in `seq 1 $count`; do
-    xterm -hold -e $FNT_IMG $CONFIG &
+    xterm -hold -e $FNT_IMG $CONFIG $APPNAME $BARE_32 &
   done
 fi

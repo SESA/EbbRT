@@ -53,9 +53,9 @@ bootimg=sesalnx
 
 # Run configuration and make for bare,ulnx platforms
 mkdir -p $bare $ulnx $scripts
-echo "$src/configure 'CXXFLAGS=$flags' " >> $ulnx/doconfig
+echo "$src/configure 'CXXFLAGS=$flags' --enable-udp " >> $ulnx/doconfig
 (cd $ulnx; . doconfig && make)
-echo "$src/configure 'CXXFLAGS=$flags' --host=x86_64-pc-ebbrt " >> $bare/doconfig
+echo "$src/configure 'CXXFLAGS=$flags' --enable-udp --host=x86_64-pc-ebbrt " >> $bare/doconfig
 (cd $bare; . doconfig && make)
 
 cat > $base/Makefile << EOF
