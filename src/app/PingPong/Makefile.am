@@ -35,12 +35,22 @@ src_app_PingPong_PingPong_ebbs = \
 	src/ebb/EventManager/libSimpleEventManager.a \
 	src/ebb/Console/libLocalConsole.a
 
+if UDP
+src_app_PingPong_PingPong_ebbs += \
+	src/ebb/MessageManager/libUDPMessageManager.a
+else
 src_app_PingPong_PingPong_ebbs += \
 	src/ebb/MessageManager/libEthernetMessageManager.a
+endif
 
 if LRT_ULNX
+if UDP
+src_app_PingPong_PingPong_ebbs += \
+	src/ebb/Network/libSocketNetwork.a
+else
 src_app_PingPong_PingPong_ebbs += \
 	src/ebb/Ethernet/libRawSocket.a
+endif
 else
 if LRT_BARE
 src_app_PingPong_PingPong_ebbs += \
@@ -49,6 +59,12 @@ src_app_PingPong_PingPong_ebbs += \
 	src/ebb/PCI/libPCI.a \
 	src/ebb/Syscall/libSyscall.a \
 	src/ebb/Gthread/libGthread.a
+
+if UDP
+src_app_PingPong_PingPong_ebbs += \
+	src/ebb/Timer/libApicTimer.a \
+	src/ebb/Network/libLWIPNetwork.a
+endif
 endif
 endif
 

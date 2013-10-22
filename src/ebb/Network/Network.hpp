@@ -21,13 +21,19 @@
 #include "ebb/ebb.hpp"
 
 namespace ebbrt {
-  class Network : public EbbRep {
-  public:
-    virtual void InitPing() = 0;
-    virtual void InitEcho() = 0;
-  protected:
-    Network(EbbId id) : EbbRep{id} {}
-  };
+class Network : public EbbRep {
+public:
+  virtual void InitPing() = 0;
+  virtual void InitEcho() = 0;
+  virtual void RegisterUDP(uint16_t port,
+                           std::function<void(Buffer, NetworkId)> cb) = 0;
+  virtual void SendUDP(Buffer buffer, NetworkId to, uint16_t port) = 0;
+
+protected:
+  Network(EbbId id) : EbbRep{ id } {}
+};
+const EbbRef<Network> network =
+    EbbRef<Network>(lrt::trans::find_static_ebb_id("Network"));
 }
 
 #endif

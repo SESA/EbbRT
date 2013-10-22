@@ -30,6 +30,9 @@ endif
 
 AM_CXXFLAGS = -std=c++11 -Wall -Werror -Wno-unused-private-field
 AM_CPPFLAGS = -iquote $(top_srcdir)/src \
+	-iquote $(top_srcdir)/src/ebb/Network/lwip-1.4.1/src/include \
+	-iquote $(top_srcdir)/src/ebb/Network/lwip-1.4.1/src/include/ipv4 \
+	-iquote $(top_srcdir)/src/ebb/Network \
 	--include $(top_builddir)/config.h
 
 lib_LIBRARIES = libebbrt.a

@@ -24,51 +24,60 @@
 #include <string>
 
 namespace ebbrt {
-#ifndef __bg__
-  class NetworkId {
-  public:
-    char mac_addr[6];
-  };
-  inline bool operator==(const NetworkId& lhs, const NetworkId& rhs)
-  {
-    return std::strncmp(lhs.mac_addr, rhs.mac_addr, 6);
-  }
+#ifdef UDP
+class NetworkId {
+public:
+  uint32_t addr;
+};
+inline bool operator==(const NetworkId &lhs, const NetworkId &rhs) {
+  return lhs.addr == rhs.addr;
+}
+#elif __bg__
+class NetworkId {
+public:
+  NetworkId() = default;
+  NetworkId(const NetworkId &other) : rank{ other.rank } {}
+  int rank;
+};
+inline bool operator==(const NetworkId &lhs, const NetworkId &rhs) {
+  return lhs.rank == rhs.rank;
+}
+inline bool operator!=(const NetworkId &lhs, const NetworkId &rhs) {
+  return !(lhs == rhs);
+}
 #else
-  class NetworkId {
-  public:
-    NetworkId() = default;
-    NetworkId(const NetworkId& other) : rank{other.rank} {}
-    int rank;
-  };
-  inline bool operator==(const NetworkId& lhs, const NetworkId& rhs)
-  {
-    return lhs.rank == rhs.rank;
-  }
-  inline bool operator!=(const NetworkId& lhs, const NetworkId& rhs) {
-    return !(lhs == rhs);
-  }
+class NetworkId {
+public:
+  char mac_addr[6];
+};
+inline bool operator==(const NetworkId &lhs, const NetworkId &rhs) {
+  return std::strncmp(lhs.mac_addr, rhs.mac_addr, 6);
+}
 #endif
 }
-
-#ifndef __bg__
+#ifdef UDP
 namespace std {
-  template <> struct hash<ebbrt::NetworkId>
-  {
-    size_t operator()(const ebbrt::NetworkId& x) const
-    {
-      return hash<std::string>()(std::string(x.mac_addr, 6));
-    }
-  };
+template <> struct hash<ebbrt::NetworkId> {
+  size_t operator()(const ebbrt::NetworkId &x) const {
+    return hash<uint32_t>()(x.addr);
+  }
+};
+}
+#elif __bg__
+namespace std {
+template <> struct hash<ebbrt::NetworkId> {
+  size_t operator()(const ebbrt::NetworkId &x) const {
+    return hash<std::string>()(std::string(x.mac_addr, 6));
+  }
+};
 }
 #else
 namespace std {
-  template <> struct hash<ebbrt::NetworkId>
-  {
-    size_t operator()(const ebbrt::NetworkId& x) const
-    {
-      return hash<int>()(x.rank);
-    }
-  };
+template <> struct hash<ebbrt::NetworkId> {
+  size_t operator()(const ebbrt::NetworkId &x) const {
+    return hash<int>()(x.rank);
+  }
+};
 }
 #endif
 

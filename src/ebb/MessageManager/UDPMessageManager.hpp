@@ -15,33 +15,22 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifndef EBBRT_EBB_MESSAGEMANAGER_UDPMESSAGEMANAGER_HPP
+#define EBBRT_EBB_MESSAGEMANAGER_UDPMESSAGEMANAGER_HPP
 
-#include <iostream>
-
-#include "ebb/EbbManager/EbbManager.hpp"
-#ifndef UDP
-#include "ebb/Ethernet/RawSocket.hpp"
-#endif
 #include "ebb/MessageManager/MessageManager.hpp"
+#include "misc/buffer.hpp"
 
-int main(int argc, char** argv)
-{
-  ebbrt::EbbRT instance;
-
-  ebbrt::Context context{instance};
-  context.Activate();
-
-#ifndef UDP
-  ebbrt::ethernet =
-    ebbrt::EbbRef<ebbrt::Ethernet>(ebbrt::ebb_manager->AllocateId());
-  ebbrt::ebb_manager->Bind(ebbrt::RawSocket::ConstructRoot, ebbrt::ethernet);
-#endif
-
-  ebbrt::message_manager->StartListening();
-
-  std::cout << "Ready" << std::endl;
-
-  context.Loop(-1);
-
-  return 0;
+namespace ebbrt {
+  class UDPMessageManager : public MessageManager {
+  public:
+    static EbbRoot* ConstructRoot();
+    UDPMessageManager(EbbId id);
+    virtual Buffer Alloc(size_t size) override;
+    virtual void Send(NetworkId to,
+                      EbbId ebb,
+                      Buffer buffer) override;
+    virtual void StartListening() override;
+  };
 }
+#endif

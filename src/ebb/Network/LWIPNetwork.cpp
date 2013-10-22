@@ -20,8 +20,10 @@
 
 #include <cstdarg>
 #include <iostream>
+#include <queue>
 #include <stdexcept>
 
+#include "app/app.hpp"
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Ethernet/Ethernet.hpp"
 #include "ebb/Network/LWIPNetwork.hpp"
@@ -39,12 +41,17 @@
 #include "lwip/tcp_impl.h"
 #include "netif/etharp.h"
 
-ebbrt::EbbRoot* ebbrt::LWIPNetwork::ConstructRoot() {
+ebbrt::EbbRoot *ebbrt::LWIPNetwork::ConstructRoot() {
   return new SharedRoot<LWIPNetwork>();
 }
 
+// registers symbol for configuration
+__attribute__((constructor(65535))) static void _reg_symbol() {
+  ebbrt::app::AddSymbol("Network", ebbrt::LWIPNetwork::ConstructRoot);
+}
+
 namespace {
-err_t eth_output(struct netif* netif, struct pbuf* p) {
+err_t eth_output(struct netif *netif, struct pbuf *p) {
   try {
 
 #if ETH_PAD_SIZE
@@ -52,15 +59,15 @@ err_t eth_output(struct netif* netif, struct pbuf* p) {
 #endif
 
     u16_t len = 0;
-    for (struct pbuf* q = p; q != NULL; q = q->next) {
+    for (struct pbuf *q = p; q != NULL; q = q->next) {
       len += q->len;
     }
 
     // std::cout << "Sending " << len << std::endl;
 
     auto buf = ebbrt::ethernet->Alloc(len);
-    char* location = buf.data();
-    for (struct pbuf* q = p; q != NULL; q = q->next) {
+    char *location = buf.data();
+    for (struct pbuf *q = p; q != NULL; q = q->next) {
       memcpy(location, q->payload, q->len);
       location += q->len;
     }
@@ -74,7 +81,7 @@ err_t eth_output(struct netif* netif, struct pbuf* p) {
 
     return ERR_OK;
   }
-  catch (std::exception& e) {
+  catch (std::exception &e) {
     // std::cerr << "Sending packet failed: " << e.what() << std::endl;
   }
   catch (...) {
@@ -83,8 +90,7 @@ err_t eth_output(struct netif* netif, struct pbuf* p) {
   return ERR_IF;
 }
 
-
-err_t eth_init(struct netif* netif) {
+err_t eth_init(struct netif *netif) {
   LRT_ASSERT(netif != NULL);
 
   netif->hwaddr_len = 6;
@@ -99,19 +105,22 @@ err_t eth_init(struct netif* netif) {
 
   return ERR_OK;
 }
-  void status_callback(struct netif *netif) {
-    char buf[80];
-    sprintf(buf, "%" U16_F ".%" U16_F ".%" U16_F ".%" U16_F "\n",
-	    ip4_addr1_16(&netif->ip_addr),
-	    ip4_addr2_16(&netif->ip_addr),
-	    ip4_addr3_16(&netif->ip_addr),
-	    ip4_addr4_16(&netif->ip_addr));
-    ebbrt::lrt::console::write(buf);
-  }
+
+namespace {
+bool has_dhcp = false;
+}
+void status_callback(struct netif *netif) {
+  has_dhcp = true;
+  char buf[80];
+  sprintf(buf, "%" U16_F ".%" U16_F ".%" U16_F ".%" U16_F "\n",
+          ip4_addr1_16(&netif->ip_addr), ip4_addr2_16(&netif->ip_addr),
+          ip4_addr3_16(&netif->ip_addr), ip4_addr4_16(&netif->ip_addr));
+  ebbrt::lrt::console::write(buf);
+  static_cast<ebbrt::EbbRef<ebbrt::LWIPNetwork> >(ebbrt::network)->EmptyQueue();
+}
 }
 
-extern "C" int lwip_printf(const char *fmt, ...)
-{
+extern "C" int lwip_printf(const char *fmt, ...) {
   int ret;
   va_list ap;
   va_start(ap, fmt);
@@ -124,12 +133,12 @@ extern "C" int lwip_printf(const char *fmt, ...)
 
 static struct netif netif_;
 
-ebbrt::LWIPNetwork::LWIPNetwork(EbbId id) : Network{id} {
+ebbrt::LWIPNetwork::LWIPNetwork(EbbId id) : Network{ id } {
   auto f = [=](Buffer buffer) {
-      auto me = static_cast<EbbRef<LWIPNetwork> >(ebbid_);
-      me->RecvPacket(std::move(buffer));
+    auto me = static_cast<EbbRef<LWIPNetwork> >(ebbid_);
+    me->RecvPacket(std::move(buffer));
   };
-  
+
   ethernet->Register(0x0800, f);
   ethernet->Register(0x0806, f);
   lwip_init();
@@ -143,68 +152,61 @@ ebbrt::LWIPNetwork::LWIPNetwork(EbbId id) : Network{id} {
 
   netif_set_status_callback(&netif_, status_callback);
   dhcp_start(&netif_);
-
+  udp_bind(&send_pcb_, IP_ADDR_ANY, 0);
 
   tcp_timer_func_ = [&]() {
-    // lrt::console::write("TCP TIMER\n");
     tcp_tmr();
-    timer->Wait(std::chrono::milliseconds{TCP_TMR_INTERVAL}, tcp_timer_func_);
+    timer->Wait(std::chrono::milliseconds{ TCP_TMR_INTERVAL }, tcp_timer_func_);
   };
   ip_timer_func_ = [&]() {
-    // lrt::console::write("IP TIMER\n");
     ip_reass_tmr();
-    timer->Wait(std::chrono::milliseconds{IP_TMR_INTERVAL}, ip_timer_func_);
+    timer->Wait(std::chrono::milliseconds{ IP_TMR_INTERVAL }, ip_timer_func_);
   };
   arp_timer_func_ = [&]() {
-    // lrt::console::write("ARP TIMER\n");
     etharp_tmr();
-    timer->Wait(std::chrono::milliseconds{ARP_TMR_INTERVAL}, arp_timer_func_);
+    timer->Wait(std::chrono::milliseconds{ ARP_TMR_INTERVAL }, arp_timer_func_);
   };
   dhcp_coarse_timer_func_ = [&]() {
-    // lrt::console::write("DHCP COARSE TIMER\n");
     dhcp_coarse_tmr();
-    timer->Wait(std::chrono::milliseconds{DHCP_COARSE_TIMER_MSECS},
+    timer->Wait(std::chrono::milliseconds{ DHCP_COARSE_TIMER_MSECS },
                 dhcp_coarse_timer_func_);
   };
   dhcp_fine_timer_func_ = [&]() {
-    // lrt::console::write("DHCP FINE TIMER\n");
     dhcp_fine_tmr();
-    timer->Wait(std::chrono::milliseconds{DHCP_FINE_TIMER_MSECS},
+    timer->Wait(std::chrono::milliseconds{ DHCP_FINE_TIMER_MSECS },
                 dhcp_fine_timer_func_);
   };
   dns_timer_func_ = [&]() {
-    // lrt::console::write("DNS TIMER\n");
     dns_tmr();
-    timer->Wait(std::chrono::milliseconds{DNS_TMR_INTERVAL}, dns_timer_func_);
+    timer->Wait(std::chrono::milliseconds{ DNS_TMR_INTERVAL }, dns_timer_func_);
   };
 
-  timer->Wait(std::chrono::milliseconds{TCP_TMR_INTERVAL}, tcp_timer_func_);
+  timer->Wait(std::chrono::milliseconds{ TCP_TMR_INTERVAL }, tcp_timer_func_);
 #if IP_REASSEMBLY
-  timer->Wait(std::chrono::milliseconds{IP_TMR_INTERVAL}, ip_timer_func_);
+  timer->Wait(std::chrono::milliseconds{ IP_TMR_INTERVAL }, ip_timer_func_);
 #endif
 
 #if LWIP_ARP
-  timer->Wait(std::chrono::milliseconds{ARP_TMR_INTERVAL}, arp_timer_func_);
+  timer->Wait(std::chrono::milliseconds{ ARP_TMR_INTERVAL }, arp_timer_func_);
 #endif
 
 #if LWIP_DHCP
-  timer->Wait(std::chrono::milliseconds{DHCP_COARSE_TIMER_MSECS},
+  timer->Wait(std::chrono::milliseconds{ DHCP_COARSE_TIMER_MSECS },
               dhcp_coarse_timer_func_);
-  timer->Wait(std::chrono::milliseconds{DHCP_FINE_TIMER_MSECS},
+  timer->Wait(std::chrono::milliseconds{ DHCP_FINE_TIMER_MSECS },
               dhcp_fine_timer_func_);
 #endif
 
 #if LWIP_DNS
-  timer->Wait(std::chrono::milliseconds{DNS_TMR_INTERVAL}, dns_timer_func_);
+  timer->Wait(std::chrono::milliseconds{ DNS_TMR_INTERVAL }, dns_timer_func_);
 #endif
 }
 
-void ebbrt::LWIPNetwork::RecvPacket(Buffer buffer)
-{
+void ebbrt::LWIPNetwork::RecvPacket(Buffer buffer) {
   auto p = pbuf_alloc(PBUF_LINK, buffer.length() + 2, PBUF_POOL);
 
   LRT_ASSERT(p != NULL);
-  
+
   auto ptr = buffer.data();
   bool first = true;
   for (auto q = p; q != NULL; q = q->next) {
@@ -213,7 +215,7 @@ void ebbrt::LWIPNetwork::RecvPacket(Buffer buffer)
       add = 2;
       first = false;
     }
-    memcpy(static_cast<char*>(q->payload) + add, ptr, q->len - add);
+    memcpy(static_cast<char *>(q->payload) + add, ptr, q->len - add);
     ptr += q->len;
   }
 
@@ -221,12 +223,12 @@ void ebbrt::LWIPNetwork::RecvPacket(Buffer buffer)
 }
 
 namespace {
-u8_t ping_recv(void* arg, struct raw_pcb* upcb, struct pbuf* p,
-               struct ip_addr* addr) {
+u8_t ping_recv(void *arg, struct raw_pcb *upcb, struct pbuf *p,
+               struct ip_addr *addr) {
   LRT_ASSERT(p->tot_len >= (PBUF_IP_HLEN + sizeof(struct icmp_echo_hdr)));
   LRT_ASSERT(pbuf_header(p, -PBUF_IP_HLEN) == 0);
-  auto iecho = static_cast<struct icmp_echo_hdr*>(p->payload);
-  
+  auto iecho = static_cast<struct icmp_echo_hdr *>(p->payload);
+
   ICMPH_TYPE_SET(iecho, ICMP_ER);
   ICMPH_CODE_SET(iecho, 0);
   iecho->chksum = 0;
@@ -247,6 +249,70 @@ void ebbrt::LWIPNetwork::InitPing() {
 
 extern "C" void echo_init();
 
-void ebbrt::LWIPNetwork::InitEcho() {
-  echo_init();
+void ebbrt::LWIPNetwork::InitEcho() { echo_init(); }
+
+void
+ebbrt::LWIPNetwork::RegisterUDP(uint16_t port,
+                                std::function<void(Buffer, NetworkId)> cb) {
+  auto udp_pcb = udp_new();
+  LRT_ASSERT(udp_pcb != nullptr);
+  udp_bind(udp_pcb, IP_ADDR_ANY, port);
+  auto heap_cb = new std::function<void(Buffer, NetworkId)>(std::move(cb));
+  udp_recv(
+      udp_pcb,
+      [](void * arg, struct udp_pcb * upcb, struct pbuf * p,
+         struct ip_addr * addr, uint16_t port) {
+        auto cb =
+            reinterpret_cast<std::function<void(Buffer, NetworkId)> *>(arg);
+        NetworkId id;
+        id.addr = addr->addr;
+        size_t len = 0;
+        for (struct pbuf *q = p; q != NULL; q = q->next) {
+          len += q->len;
+        }
+
+        auto buf = static_cast<char *>(std::malloc(len));
+        if (buf == nullptr) {
+          throw std::bad_alloc();
+        }
+        auto location = buf;
+        for (struct pbuf *q = p; q != NULL; q = q->next) {
+          std::memcpy(location, q->payload, q->len);
+          location += q->len;
+        }
+        (*cb)(Buffer(buf, len), id);
+      },
+      heap_cb);
+}
+
+void ebbrt::LWIPNetwork::SendUDP(Buffer buffer, NetworkId to, uint16_t port) {
+  if (!has_dhcp) {
+    queue_.push(
+        std::make_tuple(std::move(buffer), std::move(to), std::move(port)));
+  } else {
+    auto p = pbuf_alloc(PBUF_TRANSPORT, buffer.length(), PBUF_POOL);
+    LRT_ASSERT(p != nullptr);
+
+    auto ptr = buffer.data();
+    for (auto q = p; q != nullptr; q = q->next) {
+      std::memcpy(static_cast<char *>(q->payload), ptr, q->len);
+      ptr += q->len;
+    }
+
+    struct ip_addr addr;
+    IP4_ADDR(&addr, (to.addr >> 24) & 0xFF, (to.addr >> 16) & 0xFF,
+             (to.addr >> 8) & 0xFF, to.addr & 0xFF);
+    udp_sendto(&send_pcb_, p, &addr, port);
+
+    pbuf_free(p);
+  }
+}
+
+void ebbrt::LWIPNetwork::EmptyQueue() {
+  while (!queue_.empty()) {
+    auto &tup = queue_.front();
+    SendUDP(std::get<0>(std::move(tup)), std::get<1>(std::move(tup)),
+            std::get<2>(std::move(tup)));
+    queue_.pop();
+  }
 }
