@@ -1,5 +1,3 @@
-# distutils: language = c++
-
 from sage.ext.mod_int cimport *    
 from sage.matrix.matrix_dense cimport Matrix_dense
 
