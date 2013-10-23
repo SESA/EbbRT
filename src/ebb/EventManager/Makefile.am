@@ -17,5 +17,3 @@ EXTRA_LTLIBRARIES += src/ebb/EventManager/libSimpleEventManager.la
 
 src_ebb_EventManager_libSimpleEventManager_la_SOURCES = \
 	src/ebb/EventManager/SimpleEventManager.cpp
-
-src_ebb_EventManager_libSimpleEventManager_la_LDFLAGS = -rpath /nowhere

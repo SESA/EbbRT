@@ -35,13 +35,10 @@
 ADD_EARLY_CONFIG_SYMBOL(EbbManager, &ebbrt::PrimitiveEbbManagerConstructRoot)
 #endif
 
-#include <iostream>
-
 // registers symbol for configuration
 __attribute__((constructor(65535)))
 static void _reg_symbol()
 {
-  std::cout << "Symbol add" << std::endl;
   ebbrt::app::AddSymbol ("EbbManager", ebbrt::PrimitiveEbbManagerConstructRoot);
 }
 

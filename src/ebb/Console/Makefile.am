@@ -22,11 +22,7 @@ src_ebb_Console_libRemoteConsole_la_SOURCES = \
 	src/ebb/Console/RemoteConsole.cpp \
 	src/ebb/Console/RemoteConsole.hpp
 
-src_ebb_Console_libRemoteConsole_la_LDFLAGS = -rpath /nowhere
-
 src_ebb_Console_libLocalConsole_la_SOURCES = \
 	src/ebb/Console/Console.hpp \
 	src/ebb/Console/LocalConsole.cpp \
 	src/ebb/Console/LocalConsole.hpp
-
-src_ebb_Console_libLocalConsole_la_LDFLAGS = -rpath /nowhere

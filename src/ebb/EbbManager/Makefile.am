@@ -17,5 +17,3 @@ EXTRA_LTLIBRARIES += src/ebb/EbbManager/libPrimitiveEbbManager.la
 
 src_ebb_EbbManager_libPrimitiveEbbManager_la_SOURCES = \
 	src/ebb/EbbManager/PrimitiveEbbManager.cpp
-
-src_ebb_EbbManager_libPrimitiveEbbManager_la_LDFLAGS = -rpath /nowhere

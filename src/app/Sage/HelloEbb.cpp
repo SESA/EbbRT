@@ -25,35 +25,14 @@
 #include "ebb/EventManager/SimpleEventManager.hpp"
 #include "ebb/MemoryAllocator/SimpleMemoryAllocator.hpp"
 
-#ifdef __linux__
-#include <iostream>
-#include <thread>
 #include "ebbrt.hpp"
-#elif __ebbrt__
-#include "ebb/Gthread/Gthread.hpp"
-#include "ebb/Syscall/Syscall.hpp"
-#include "lrt/bare/console.hpp"
-#include "sync/spinlock.hpp"
-#endif
 
 constexpr ebbrt::app::Config::InitEbb late_init_ebbs[] =
 {
-#ifdef __linux__
   { .name = "EbbManager" },
-#endif
   { .name = "Console" },
   { .name = "EventManager" }
 };
-
-#ifdef __ebbrt__
-constexpr ebbrt::app::Config::InitEbb early_init_ebbs[] =
-{
-  { .name = "MemoryAllocator" },
-  { .name = "EbbManager" },
-  { .name = "Gthread" },
-  { .name = "Syscall" }
-};
-#endif
 
 constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
   {.name = "MemoryAllocator", .id = 1},
@@ -66,33 +45,12 @@ constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
 
 const ebbrt::app::Config ebbrt::app::config = {
   .space_id = 0,
-#ifdef __ebbrt__
-  .num_early_init = sizeof(early_init_ebbs) / sizeof(Config::InitEbb),
-  .early_init_ebbs = early_init_ebbs,
-#endif
   .num_late_init = sizeof(late_init_ebbs) / sizeof(Config::InitEbb),
   .late_init_ebbs = late_init_ebbs,
   .num_statics = sizeof(static_ebbs) / sizeof(Config::StaticEbbId),
   .static_ebb_ids = static_ebbs
 };
 
-#ifdef __ebbrt__
-bool ebbrt::app::multi = true;
-
-void
-ebbrt::app::start()
-{
-  static Spinlock lock;
-  lock.Lock();
-  char str[] = "Hello Ebb\n";
-  auto buf = ebbrt::console->Alloc(sizeof(str));
-  std::memcpy(buf.data(), str, sizeof(str));
-  ebbrt::console->Write(std::move(buf));
-  lock.Unlock();
-}
-#endif
-
-#ifdef __linux__
 extern "C" void print_hello_ebb()
 {
   ebbrt::EbbRT instance;
@@ -107,4 +65,3 @@ extern "C" void print_hello_ebb()
 
   context.Deactivate();
 }
-#endif

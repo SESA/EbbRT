@@ -14,24 +14,41 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #to allow us to pass specific cflags
-EXTRA_LTLIBRARIES += src/app/Sage/libHelloEbb.la
+lib_LTLIBRARIES += src/app/Sage/hello_ebb.la
 
-src_app_Sage_libHelloEbb_la_SOURCES = \
-	src/app/Sage/HelloEbb.cpp
+src_app_Sage_hello_ebb_la_SOURCES = \
+	src/app/Sage/HelloEbb.cpp \
+	src/app/Sage/hello_ebb.c
 
-src_app_Sage_libHelloEbb_la_ebbs = \
+src_app_Sage_hello_ebb_la_ebbs = \
 	src/ebb/EbbManager/libPrimitiveEbbManager.la \
 	src/ebb/Console/libLocalConsole.la \
 	src/ebb/EventManager/libSimpleEventManager.la
 
-src_app_Sage_libHelloEbb_la_LIBADD = \
-	libebbrt.la \
-	$(src_app_Sage_libHelloEbb_la_ebbs)
+src_app_Sage_hello_ebb_la_LDFLAGS = \
+	-module
 
-src_app_Sage_libHelloEbb_la_DEPENDENCIES = \
+src_app_Sage_hello_ebb_la_LIBADD = \
+	$(src_app_Sage_hello_ebb_la_ebbs) \
+	libebbrt.la \
+	python-2.7
+
+src_app_Sage_hello_ebb_la_DEPENDENCIES = \
 	libebbrt.la \
 	$(app_deps) \
 	$(ebbrt_libs) \
-	$(src_app_Sage_libHelloEbb_la_ebbs)
+	$(src_app_Sage_hello_ebb_la_ebbs)
 
-src_app_Sage_libHelloEbb_la_LDFLAGS = -rpath /nowhere
+src_app_Sage_hello_ebb_la_CPPFLAGS = \
+	$(AM_CPPFLAGS) -I /usr/include/python2.7
+
+%.c: %.pyx
+	cython -v $< -o $@
+
+# EXTRA_PROGRAMS += src/app/Sage/HelloEbbTest
+
+# src_app_Sage_HelloEbbTest_SOURCES = \
+# 	src/app/Sage/test.cpp
+
+# src_app_Sage_HelloEbbTest_LDADD = \
+# 	src/app/Sage/libHelloEbb.la
