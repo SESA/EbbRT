@@ -1,0 +1,1 @@
+for im in *.*; do  convert $im -resize 20x20 ../images/${im%%.*}.gif; done

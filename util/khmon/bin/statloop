@@ -1,0 +1,16 @@
+#!/bin/bash
+#set -x
+monhost=$1
+dir=$2
+
+ssh -q -t khmon@$monhost "cat /dev/bgtty1" | while read line
+do    
+  line=${line#*[}
+  line=${line%%]*}
+  if [[ -n $line ]]
+  then
+     echo  "$dir/$line"
+     touch "$dir/$line"
+  fi
+done
+
