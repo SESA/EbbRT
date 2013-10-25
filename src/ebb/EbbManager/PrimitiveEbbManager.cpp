@@ -86,7 +86,6 @@ ebbrt::PrimitiveEbbManager::CacheRep(EbbId id, EbbRep* rep)
 {
   local_cache_rep(id, rep);
 }
-
 ebbrt::EbbId
 ebbrt::PrimitiveEbbManager::AllocateId()
 {

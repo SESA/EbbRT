@@ -28,7 +28,7 @@ TESTS = test/hello-bare.py
 endif
 endif
 
-AM_CXXFLAGS = -std=c++11 -Wall -Werror -Wno-unused-private-field
+AM_CXXFLAGS = -std=c++11 -Wall -Werror
 AM_CPPFLAGS = -iquote $(top_srcdir)/src \
 	-iquote $(top_srcdir)/src/ebb/Network/lwip-1.4.1/src/include \
 	-iquote $(top_srcdir)/src/ebb/Network/lwip-1.4.1/src/include/ipv4 \

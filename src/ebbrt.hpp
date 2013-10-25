@@ -55,10 +55,9 @@ namespace ebbrt {
   */
   class EbbRT {
   public:
-    EbbRT();
     EbbRT(void* config);
     /**
-     * Configuration (flattened device tree) pointer 
+     * Configuration (flattened device tree) pointer
      */
     void *fdt_;
   private:

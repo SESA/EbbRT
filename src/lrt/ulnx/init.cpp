@@ -16,6 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <cassert>
+#include <iostream>
 
 #include "ebbrt.hpp"
 #include "app/app.hpp"
@@ -24,35 +25,26 @@
 #include "lib/fdt/libfdt.h"
 #include "lrt/ulnx/init.hpp"
 
-__thread ebbrt::Context* ebbrt::active_context;
-
-ebbrt::EbbRT::EbbRT() : fdt_{nullptr}, initialized_{false}, next_id_{0},
-  initial_root_table_{nullptr}, miss_handler_(&lrt::trans::init_root)
-{
-  assert(0);
-}
+__thread ebbrt::Context *ebbrt::active_context;
 
 ebbrt::EbbRT::EbbRT(void* config) : fdt_{config},
-initialized_{false}, next_id_{0}, 
+initialized_{false}, next_id_{0},
   miss_handler_(&lrt::trans::init_root){
   initial_root_table_ = new lrt::trans::RootBinding[lrt::config::get_static_ebb_count(config)];
 }
 
-ebbrt::lrt::event::Location
-ebbrt::EbbRT::AllocateLocation()
-{
-  //TODO: make this allow for freeing of locations
+ebbrt::lrt::event::Location ebbrt::EbbRT::AllocateLocation() {
+  // TODO: make this allow for freeing of locations
   assert(next_id_ < lrt::event::get_max_contexts());
   return next_id_++;
 }
 
-ebbrt::Context::Context(EbbRT& instance) : instance_(instance)
-{
+ebbrt::Context::Context(EbbRT &instance) : instance_(instance) {
   active_context = nullptr;
 
   location_ = instance_.AllocateLocation();
 
-  //do initialization only on location 0
+  // do initialization only on location 0
   if (location_ == 0) {
     // fill in the initial root table
     // note: these create root calls may make ebb calls which is why
@@ -65,7 +57,7 @@ ebbrt::Context::Context(EbbRT& instance) : instance_(instance)
       const char *name;
       int len;
       int i=0;
-      while( nextebb > 0) 
+      while( nextebb > 0)
       {
 
         name = fdt_get_name(instance_.fdt_, nextebb, &len);
@@ -87,28 +79,20 @@ ebbrt::Context::Context(EbbRT& instance) : instance_(instance)
     std::lock_guard<std::mutex> lock(instance_.init_lock_);
     instance_.initialized_ = true;
     instance_.init_cv_.notify_all();
-
   } else { // else, location != 0
     std::unique_lock<std::mutex> lock{instance_.init_lock_};
     if (!instance_.initialized_) {
-      instance_.init_cv_.wait(lock,
-                              [&]{return instance_.initialized_;});
+      instance_.init_cv_.wait(lock, [&] { return instance_.initialized_; });
     }
   }
 }
 
-void
-ebbrt::Context::Activate(){
-  active_context = this;
-};
-void
-ebbrt::Context::Deactivate(){
-  active_context = nullptr;
-};
+void ebbrt::Context::Activate() { active_context = this; }
+;
+void ebbrt::Context::Deactivate() { active_context = nullptr; }
+;
 
-void
-ebbrt::Context::Loop(int count)
-{
+void ebbrt::Context::Loop(int count) {
   break_loop_ = false;
   int dispatched = 0;
   while (!break_loop_ && (count == -1 || dispatched < count)) {
@@ -117,8 +101,4 @@ ebbrt::Context::Loop(int count)
   }
 }
 
-void
-ebbrt::Context::Break()
-{
-  break_loop_ = true;
-}
+void ebbrt::Context::Break() { break_loop_ = true; }

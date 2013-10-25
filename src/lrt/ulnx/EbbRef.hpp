@@ -73,6 +73,17 @@ namespace ebbrt {
             return static_cast<T*>(it->second);
           }
         }
+
+        T* operator*() const
+        {
+          auto it = active_context->local_table_.find(id_);
+          if (it == active_context->local_table_.end()) {
+            active_context->last_ebbcall_id_ = id_;
+            return static_cast<T*>(default_rep);
+          } else {
+            return static_cast<T*>(it->second);
+          }
+        }
         /**
          * @brief Conversion operator between EbbRef and EbbID
          *

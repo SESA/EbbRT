@@ -31,7 +31,7 @@ src_app_Sage_hello_ebb_la_LDFLAGS = \
 src_app_Sage_hello_ebb_la_LIBADD = \
 	$(src_app_Sage_hello_ebb_la_ebbs) \
 	libebbrt.la \
-	python-2.7
+	-lpython2.7
 
 src_app_Sage_hello_ebb_la_DEPENDENCIES = \
 	libebbrt.la \
@@ -42,8 +42,66 @@ src_app_Sage_hello_ebb_la_DEPENDENCIES = \
 src_app_Sage_hello_ebb_la_CPPFLAGS = \
 	$(AM_CPPFLAGS) -I /usr/include/python2.7
 
+lib_LTLIBRARIES += src/app/Sage/matrix_ebb_real_double_dense.la
+
+src_app_Sage_matrix_ebb_real_double_dense_la_SOURCES = \
+	src/app/Sage/matrix_ebb_real_double_dense.cpp \
+	src/app/Sage/Rectangle.cpp
+
+src_app_Sage_matrix_ebb_real_double_dense_la_LDFLAGS = \
+	-module
+
+src_app_Sage_matrix_ebb_real_double_dense_la_LIBADD = \
+	-lpython2.7
+
+SAGE_ROOT = /home/jappavoo/Work/sage/sage-5.12
+
+CYTHON_CPPFLAGS = \
+	-I $(SAGE_ROOT)/devel/sage/ \
+	-I $(SAGE_ROOT)/devel/sage/sage/matrix \
+	-I $(SAGE_ROOT)/devel/sage/sage/ext \
+	-I $(SAGE_ROOT)/devel/sage/c_lib/include \
+	-I $(SAGE_ROOT)/local/lib/python/site-packages/numpy/core/include
+
+src_app_Sage_matrix_ebb_real_double_dense_la_CPPFLAGS = \
+	$(AM_CPPFLAGS) -I /usr/include/python2.7 $(CYTHON_CPPFLAGS)
+
+src_app_Sage_matrix_ebb_real_double_dense_la_CXXFLAGS = \
+	$(AM_CXXFLAGS) -Wno-error=unused-function -Wno-error=cpp
+
 %.c: %.pyx
-	cython -v $< -o $@
+	cython -v $(CYTHON_CPPFLAGS) $< -o $@
+
+%.cpp: %.pyx
+	cython --cplus -v $(CYTHON_CPPFLAGS) $< -o $@
+
+lib_LTLIBRARIES += src/app/Sage/ebb_matrix.la
+
+src_app_Sage_ebb_matrix_la_SOURCES = \
+	src/app/Sage/ebb_matrix.cpp \
+	src/app/Sage/ebb_matrix_helper.cpp \
+	src/app/Sage/Matrix.cpp
+
+src_app_Sage_ebb_matrix_la_ebbs = \
+	src/ebb/EbbManager/libPrimitiveEbbManager.la \
+	src/ebb/EventManager/libSimpleEventManager.la
+
+src_app_Sage_ebb_matrix_la_LDFLAGS = \
+	-module
+
+src_app_Sage_ebb_matrix_la_LIBADD = \
+	$(src_app_Sage_ebb_matrix_la_ebbs) \
+	libebbrt.la \
+	-lpython2.7
+
+src_app_Sage_ebb_matrix_la_DEPENDENCIES = \
+	libebbrt.la \
+	$(app_deps) \
+	$(ebbrt_libs) \
+	$(src_app_Sage_ebb_matrix_la_ebbs)
+
+src_app_Sage_ebb_matrix_la_CPPFLAGS = \
+	$(AM_CPPFLAGS) -I /usr/include/python2.7
 
 # EXTRA_PROGRAMS += src/app/Sage/HelloEbbTest
 
