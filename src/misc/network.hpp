@@ -67,7 +67,7 @@ template <> struct hash<ebbrt::NetworkId> {
 namespace std {
 template <> struct hash<ebbrt::NetworkId> {
   size_t operator()(const ebbrt::NetworkId &x) const {
-    return hash<std::string>()(std::string(x.mac_addr, 6));
+    return hash<int>()(x.rank);
   }
 };
 }
@@ -75,7 +75,7 @@ template <> struct hash<ebbrt::NetworkId> {
 namespace std {
 template <> struct hash<ebbrt::NetworkId> {
   size_t operator()(const ebbrt::NetworkId &x) const {
-    return hash<int>()(x.rank);
+    return hash<std::string>()(std::string(x.mac_addr, 6));
   }
 };
 }
