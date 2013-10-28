@@ -23,7 +23,7 @@ namespace ebbrt {
   namespace app {
     // Only for use after dynamic memory allocation
     std::unordered_map<std::string, ConfigFuncPtr> map_ __attribute__((init_priority(101)));
-  
+
     void AddSymbol (std::string str, ConfigFuncPtr func) {
       map_[str] = func;
     };
@@ -36,7 +36,7 @@ namespace ebbrt {
       return nullptr;
     }
 
-    char* LoadFile(char* path, int* len)
+    char* LoadFile(const char* path, int* len)
     {
       std::ifstream is (path, std::ifstream::binary);
       *len=0;
@@ -53,7 +53,7 @@ namespace ebbrt {
       return nullptr;
     }
 
-    void SaveFile(char* ptr, int len, char *filepath)
+    void SaveFile(char* ptr, int len, const char *filepath)
     {
       std::ofstream outfile (filepath, std::ofstream::binary);
       outfile.write (ptr,len);

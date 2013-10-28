@@ -67,14 +67,14 @@ app_deps =
 	$(PROTOC) --proto_path=$(dir $^) --cpp_out=$(dir $^) $^
 
 
+%.dtb: %.dts
+	dtc -O dtb -o $@ $<
+
 if LRT_BARE
 
 .PRECIOUS: %.dtb %.elf32
 
-%.dtb: %.dts 
-	dtc -O dtb -o $@ $<
-
-%.elf32: % 
+%.elf32: %
 	objcopy -O elf32-i386 $< $@
 
 if ARCH_X86_64

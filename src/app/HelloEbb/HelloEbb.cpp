@@ -58,7 +58,7 @@ ebbrt::app::start()
 #include "lib/fdt/libfdt.h"
 
 
-/** this is included as a ugly kludge around our current configuration model. 
+/** this is included as a ugly kludge around our current configuration model.
  * i.e., we need an id to statically construct ebbs before an fdt can be
  * parsed */
 constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
@@ -72,7 +72,7 @@ const ebbrt::app::Config ebbrt::app::config = {
 };
 
 
-int 
+int
 main(int argc, char* argv[] )
 {
   if(argc < 2)
@@ -82,7 +82,7 @@ main(int argc, char* argv[] )
   }
 
   int n;
-  char *fdt = ebbrt::app::LoadConfig(argv[1], &n);
+  char *fdt = ebbrt::app::LoadFile(argv[1], &n);
 
   // ...fdt buffer contains the entire file...
   ebbrt::EbbRT instance((void *)fdt);

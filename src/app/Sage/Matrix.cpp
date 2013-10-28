@@ -7,6 +7,12 @@
 #include "ebb/SharedRoot.hpp"
 #include "ebb/MessageManager/MessageManager.hpp"
 #include "src/app/Sage/Matrix.hpp"
+#include "ebb/Config/Config.hpp"
+
+#ifdef __linux__
+#include "ebb/NodeAllocator/NodeAllocator.hpp"
+#include "lib/fdt/libfdt.h"
+#endif
 
 #ifdef __linux__
 std::unordered_map<ebbrt::EbbId, size_t> size_map;
@@ -28,7 +34,7 @@ __attribute__((constructor(65535))) static void _reg_symbol() {
 #endif
 
 namespace {
-constexpr size_t MAX_DIM = 8000;
+constexpr size_t MAX_DIM = 2000;
 constexpr size_t MAX_BYTES = MAX_DIM * MAX_DIM * 8;
 }
 
@@ -41,8 +47,23 @@ ebbrt::Matrix::Matrix(EbbId id) : EbbRep(id) {
   nodes_ = std::ceil((double)bytes_needed / MAX_BYTES);
   backends_.reserve(nodes_);
   connected_ = 0;
-  std::cout << "Allocate " << nodes_ << " nodes for id: 0x" << std::hex << id
-            << std::endl;
+  config_handle->SetInt32("/ebbs/Matrix", "id", id);
+  auto outptr = static_cast<const char *>(ebbrt::config_handle->GetConfig());
+  std::ofstream outfile{ "/tmp/matrixconfig", std::ofstream::binary };
+  outfile.write(outptr, fdt_totalsize(outptr));
+  outfile.close();
+  auto fp = popen("khinfo MatrixPool", "r");
+  char out[1024];
+  for (size_t i = 0; i < nodes_; ++i) {
+    assert(fgets(out, 1024, fp) != nullptr);
+    std::string ip = out;
+    if (!ip.empty() && ip[ip.length() - 1] == '\n') {
+      ip.erase(ip.length() - 1);
+    }
+    node_allocator->Allocate(ip, "/home/dschatz/Work/SESA/EbbRT/newbuild/bare/"
+                                 "src/app/Sage/SageMatrix.elf32",
+                             "/tmp/matrixconfig");
+  }
 #else
   size_ = 0;
 #endif
@@ -112,7 +133,17 @@ void ebbrt::Matrix::Connect() {
 #ifdef __ebbrt__
   // FIXME: get from config
   NetworkId frontend;
-  frontend.addr = 192 << 24 | 168 << 16 | 0 << 8 | 3;
+  size_t pos = 0;
+  int count = 0;
+  int ip[4];
+  std::string s = config_handle->GetString("/", "frontend_ip");
+  while ((pos = s.find(".")) != std::string::npos) {
+    std::string t = s.substr(0, pos);
+    ip[count++] = atoi(t.c_str());
+    s.erase(0, pos + 1);
+  } ip[count] = atol(s.c_str());
+
+  frontend.addr = ip[0] << 24 | ip[1] << 16 | ip[2] << 8 | ip[3];
 
   connect_message msg{ CONNECT };
   auto buf = message_manager->Alloc(sizeof(msg));

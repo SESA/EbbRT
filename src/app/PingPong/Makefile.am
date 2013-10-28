@@ -33,7 +33,7 @@ endif
 src_app_PingPong_PingPong_ebbs = \
 	src/ebb/EbbManager/PrimitiveEbbManager.la \
 	src/ebb/EventManager/SimpleEventManager.la \
-	src/ebb/Config/libFDT.la
+	src/ebb/Config/Fdt.la \
 	src/ebb/Console/LocalConsole.la
 
 if UDP

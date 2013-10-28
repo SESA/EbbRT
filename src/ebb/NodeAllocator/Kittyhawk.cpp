@@ -30,17 +30,17 @@ ebbrt::Kittyhawk::ConstructRoot()
 
 ebbrt::Kittyhawk::Kittyhawk(EbbId id) : NodeAllocator{id}
 {
-  // assert if kh commands are unspecified 
-  FILE *fp;
-  fp = popen("khget", "r"); 
-  assert( fp );
-  pclose(fp);
+  // assert if kh commands are unspecified
+  // FILE *fp;
+  // fp = popen("khget", "r");
+  // assert( fp );
+  // pclose(fp);
 }
 
 void
 ebbrt::Kittyhawk::Allocate(std::string ip, std::string app, std::string config)
 {
-  //TODO: allocate by NetworkID, translate ip into string 
+  //TODO: allocate by NetworkID, translate ip into string
 
   std::string loadcmd = "slload "+app+" "+config+" "+ip;
 
@@ -52,7 +52,7 @@ ebbrt::Kittyhawk::Allocate(std::string ip, std::string app, std::string config)
     printf("%s \n", out);
   pclose(fp);
 
-//  fp = popen("khget -i InApp ~/EbbRT/build-tst/bare/src/app/PingPong/PingPong.iso 1", "r"); 
+//  fp = popen("khget -i InApp ~/EbbRT/build-tst/bare/src/app/PingPong/PingPong.iso 1", "r");
 //
 //  while (fgets(out, 1024, fp) != NULL)
 //    printf("%s \n", out);

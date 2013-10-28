@@ -50,29 +50,26 @@ ebbrt::Context::Context(EbbRT &instance) : instance_(instance) {
     // note: these create root calls may make ebb calls which is why
     // this is done from within a context and not when we construct
     // the EbbRT
-    if(instance_.fdt_){ // if we have an fdt
+    assert(instance_.fdt_);
+    int ebbs =  fdt_path_offset(instance_.fdt_, "/ebbs");
+    int nextebb = fdt_first_subnode(instance_.fdt_, ebbs);
+    const char *name;
+    int len;
+    int i=0;
+    while( nextebb > 0) {
 
-      int ebbs =  fdt_path_offset(instance_.fdt_, "/ebbs");
-      int nextebb = fdt_first_subnode(instance_.fdt_, ebbs);
-      const char *name;
-      int len;
-      int i=0;
-      while( nextebb > 0)
-      {
+      name = fdt_get_name(instance_.fdt_, nextebb, &len);
+      uint32_t id = ebbrt::lrt::config::fdt_getint32(instance_.fdt_,nextebb, "id");
+      uint32_t early = ebbrt::lrt::config::fdt_getint32(instance_.fdt_,nextebb, "late_init_linux");
 
-        name = fdt_get_name(instance_.fdt_, nextebb, &len);
-        uint32_t id = ebbrt::lrt::config::fdt_getint32(instance_.fdt_,nextebb, "id");
-        uint32_t early = ebbrt::lrt::config::fdt_getint32(instance_.fdt_,nextebb, "late_init_linux");
-
-        if(early){
-          instance_.initial_root_table_[i].id = id;
-          ebbrt::app::ConfigFuncPtr func = ebbrt::app::LookupSymbol(name);
-          assert( func != nullptr );// lookup failed
-          instance_.initial_root_table_[i].root = func();
-          i++;
-        }
-        nextebb = fdt_next_subnode(instance_.fdt_, nextebb);
+      if(early){
+        instance_.initial_root_table_[i].id = id;
+        ebbrt::app::ConfigFuncPtr func = ebbrt::app::LookupSymbol(name);
+        assert( func != nullptr );// lookup failed
+        instance_.initial_root_table_[i].root = func();
+        i++;
       }
+      nextebb = fdt_next_subnode(instance_.fdt_, nextebb);
     }
 
     /////////

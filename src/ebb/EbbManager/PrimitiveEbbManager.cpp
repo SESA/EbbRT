@@ -94,6 +94,8 @@ ebbrt::PrimitiveEbbManager::AllocateId()
   return next_free_++;
 }
 
+#include <iostream>
+
 void
 ebbrt::PrimitiveEbbManager::Bind(EbbRoot* (*factory)(), EbbId id)
 {
@@ -109,6 +111,7 @@ ebbrt::PrimitiveEbbManager::Bind(EbbRoot* (*factory)(), EbbId id)
   } else {
     //TODO: Go remote
 #ifdef __linux__
+    std::cout << "Failed on id " << id << std::endl;
     assert(0);
 #elif __ebbrt__
     LRT_ASSERT(0);
