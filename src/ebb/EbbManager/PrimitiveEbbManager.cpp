@@ -79,6 +79,8 @@ ebbrt::PrimitiveEbbManager::PrimitiveEbbManager(EbbId id,
      lrt::event::get_num_cores()
 #endif
      ) * get_location();
+  //KLUDGE: workaround allocating over the static ID space
+  next_free_ = std::max(next_free_, UINT32_C(20));
 }
 
 void

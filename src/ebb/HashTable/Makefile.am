@@ -13,14 +13,20 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LIBRARIES += \
-	src/ebb/HashTable/libDistributedHashTable.a \
-	src/ebb/HashTable/libSimpleRemoteHashTable.a
+EXTRA_LTLIBRARIES += \
+	src/ebb/HashTable/DistributedHashTable.la \
+	src/ebb/HashTable/SimpleRemoteHashTable.la
 
-src_ebb_HashTable_libDistributedHashTable_a_SOURCES = \
+src_ebb_HashTable_DistributedHashTable_la_SOURCES = \
 	src/ebb/HashTable/HashTable.hpp \
 	src/ebb/HashTable/DistributedHashTable.cpp \
 	src/ebb/HashTable/DistributedHashTable.hpp
 
-src_ebb_HashTable_libSimpleRemoteHashTable_a_SOURCES = \
+src_ebb_HashTable_DistributedHashTable_la_LDFLAGS = \
+	-module
+
+src_ebb_HashTable_SimpleRemoteHashTable_la_SOURCES = \
 	src/ebb/HashTable/SimpleRemoteHashTable.cpp
+
+src_ebb_HashTable_SimpleRemoteHashTable_la_LDFLAGS = \
+	-module

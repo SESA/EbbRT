@@ -1,8 +1,13 @@
 from cython.operator cimport dereference as deref
 
+cdef extern from "ebb/EventManager/Future.hpp" namespace "ebbrt":
+    cdef cppclass Future[T]:
+        pass
+
 cdef extern from "app/Sage/ebb_matrix_helper.hpp":
     void activate_context()
     void deactivate_context()
+    void wait_for_future(Future[void]*)
 
 cdef extern from "inttypes.h":
     ctypedef unsigned int uint32_t
@@ -28,7 +33,7 @@ cdef extern from "ebb/EbbManager/EbbManager.hpp" namespace "ebbrt":
 
 cdef extern from "app/Sage/Matrix.hpp" namespace "ebbrt":
     cdef cppclass Matrix:
-        void Randomize()
+        Future[void] Randomize()
 
 cdef extern from "app/Sage/Matrix.hpp" namespace "ebbrt::Matrix":
     EbbRoot* ConstructRoot()
@@ -54,5 +59,6 @@ cdef class EbbMatrix:
     def randomize(self):
         activate_context()
         cdef Matrix* ref = deref(self.matrix)
-        ref.Randomize()
+        cdef Future[void] fut = ref.Randomize()
+        wait_for_future(&fut)
         deactivate_context()

@@ -208,6 +208,8 @@ namespace ebbrt {
     std::shared_ptr<State> state_;
 
   public:
+    Future() = default;
+
     Future(const Future&) = delete;
     Future& operator=(const Future&) = delete;
 

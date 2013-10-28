@@ -1,14 +1,19 @@
 #include <memory>
 
 #include "app/app.hpp"
+#include "ebb/MessageManager/MessageManager.hpp"
 
 #ifdef __ebbrt__
+#include "ebb/EbbManager/EbbManager.hpp"
 #include "ebb/Ethernet/VirtioNet.hpp"
-#include "ebb/MessageManager/MessageManager.hpp"
 #include "ebb/PCI/PCI.hpp"
+#include "app/Sage/Matrix.hpp"
 #endif
 
+#ifdef __linux__
 #include "ebbrt.hpp"
+#include "app/Sage/ebb_matrix_helper.hpp"
+#endif
 
 constexpr ebbrt::app::Config::InitEbb late_init_ebbs[] =
 {
@@ -16,7 +21,12 @@ constexpr ebbrt::app::Config::InitEbb late_init_ebbs[] =
   { .name = "EbbManager" },
 #endif
   { .name = "EventManager" },
-  //  { .name = "MessageManager" }
+  { .name = "MessageManager" },
+  { .name = "Network" },
+#ifdef __ebbrt__
+  { .name = "Timer" },
+  { .name = "Matrix" }
+#endif
 };
 
 #ifdef __ebbrt__
@@ -35,11 +45,20 @@ constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
   {.name = "Gthread", .id = 3},
   {.name = "Syscall", .id = 4},
   {.name = "EventManager", .id = 5},
-  //{.name = "MessageManager", .id = 7},
+  {.name = "MessageManager", .id = 7},
+  {.name = "Network", .id = 9},
+  {.name = "Timer", .id = 10},
+
+  //FIXME: get from config
+  {.name = "Matrix", .id = 20}
 };
 
 const ebbrt::app::Config ebbrt::app::config = {
+#ifdef __linux__
+  .space_id = 0,
+#else
   .space_id = 1,
+#endif
 #ifdef __ebbrt__
   .num_early_init = sizeof(early_init_ebbs) / sizeof(Config::InitEbb),
   .early_init_ebbs = early_init_ebbs,
@@ -59,16 +78,29 @@ void activate_context() {
   if (!initialized) {
     instance.reset(new ebbrt::EbbRT());
     context.reset(new ebbrt::Context(*instance));
+    context->Activate();
+    ebbrt::message_manager->StartListening();
     initialized = true;
+  } else {
+    context->Activate();
   }
-  context->Activate();
 }
 
 void deactivate_context() {
   context->Deactivate();
 }
 
+void wait_for_future(ebbrt::Future<void>* fut) {
+  fut->Then(ebbrt::launch::async, [](ebbrt::Future<void> complete){
+      complete.Get();
+      context->Break();
+    });
+  context->Loop(-1);
+}
+
 #else
+
+
 void ebbrt::app::start() {
   pci = EbbRef<PCI>(ebb_manager->AllocateId());
   ebb_manager->Bind(PCI::ConstructRoot, pci);
@@ -77,5 +109,9 @@ void ebbrt::app::start() {
   ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
 
   message_manager->StartListening();
+
+  //FIXME: get from config
+  auto matrix = EbbRef<Matrix>(20);
+  matrix->Connect();
 }
 #endif

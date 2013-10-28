@@ -21,6 +21,7 @@
 #include <functional>
 
 #include "lrt/config.hpp"
+#include "ebb/ebb.hpp"
 #include "misc/network.hpp"
 #include "misc/buffer.hpp"
 

@@ -43,21 +43,20 @@ src_app_LibFox_libtfox_a_SOURCES = \
 src_app_LibFox_libtfox_a_CFLAGS = #-DUSE_MPI
 
 src_app_LibFox_mcphoton_ebbs = \
-	src/ebb/EbbManager/libPrimitiveEbbManager.a
+	src/ebb/EbbManager/PrimitiveEbbManager.la
+
+src_app_LibFox_mcphoton_linked_ebbs = $(foreach ebb,$(src_app_LibFox_mcphoton_ebbs),$(if $(filter %.la,$(ebb)),$(dir $(ebb)).libs/$(STATIC_LIBRARY_PREFIX)$(notdir $(basename $(ebb))).a,$(ebb)))
 
 src_app_LibFox_mcphoton_LDFLAGS = \
 	$(app_linkflags) \
-	-Wl,-whole-archive \
-	$(ebbrt_libs) \
-	$(src_app_LibFox_mcphoton_ebbs) \
-	-Wl,-no-whole-archive
+	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_libs) $(src_app_LibFox_mcphoton_linked_ebbs))),-no-whole-archive'
 
 src_app_LibFox_mcphoton_LDADD = \
-	libebbrt.a \
+	libebbrt.la \
 	src/app/LibFox/libmcphoton.a
 
 src_app_LibFox_mcphoton_DEPENDENCIES = \
-	libebbrt.a \
+	libebbrt.la \
 	src/app/LibFox/libmcphoton.a \
 	$(app_deps) \
 	$(ebbrt_libs) \
@@ -67,21 +66,20 @@ src_app_LibFox_mcphoton_LDFLAGS += \
 	-pthread
 
 src_app_LibFox_tfox_ebbs = \
-	src/ebb/EbbManager/libPrimitiveEbbManager.a
+	src/ebb/EbbManager/PrimitiveEbbManager.la
+
+src_app_LibFox_tfox_linked_ebbs = $(foreach ebb,$(src_app_LibFox_tfox_ebbs),$(if $(filter %.la,$(ebb)),$(dir $(ebb)).libs/$(STATIC_LIBRARY_PREFIX)$(notdir $(basename $(ebb))).a,$(ebb)))
 
 src_app_LibFox_tfox_LDFLAGS = \
 	$(app_linkflags) \
-	-Wl,-whole-archive \
-	$(ebbrt_libs) \
-	$(src_app_LibFox_tfox_ebbs) \
-	-Wl,-no-whole-archive
+	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_libs) $(src_app_LibFox_tfox_linked_ebbs))),-no-whole-archive'
 
 src_app_LibFox_tfox_LDADD = \
-	libebbrt.a \
+	libebbrt.la \
 	src/app/LibFox/libtfox.a
 
 src_app_LibFox_tfox_DEPENDENCIES = \
-	libebbrt.a \
+	libebbrt.la \
 	src/app/LibFox/libtfox.a \
 	$(app_deps) \
 	$(ebbrt_libs) \

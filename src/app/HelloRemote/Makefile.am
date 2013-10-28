@@ -21,45 +21,43 @@ src_app_HelloRemote_HelloRemote_SOURCES = \
 	src/app/HelloRemote/HelloRemote.cpp
 
 src_app_HelloRemote_HelloRemote_ebbs = \
-	src/ebb/EbbManager/libPrimitiveEbbManager.a \
-	src/ebb/EventManager/libSimpleEventManager.a \
-	src/ebb/Console/libRemoteConsole.a
+	src/ebb/EbbManager/PrimitiveEbbManager.la \
+	src/ebb/EventManager/SimpleEventManager.la \
+	src/ebb/Console/RemoteConsole.la
 
 if !BG
 src_app_HelloRemote_HelloRemote_ebbs += \
-	src/ebb/MessageManager/libEthernetMessageManager.a
+	src/ebb/MessageManager/EthernetMessageManager.la
 else
 src_app_HelloRemote_HelloRemote_ebbs += \
-	src/ebb/MessageManager/libMPIMessageManager.a
+	src/ebb/MessageManager/MPIMessageManager.la
 endif
 
 if LRT_ULNX
 if BG
 else
 src_app_HelloRemote_HelloRemote_ebbs += \
-	src/ebb/Ethernet/libRawSocket.a
+	src/ebb/Ethernet/RawSocket.la
 endif
 else
 if LRT_BARE
 src_app_HelloRemote_HelloRemote_ebbs += \
-	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a \
-	src/ebb/Ethernet/libVirtioNet.a \
-	src/ebb/PCI/libPCI.a \
-	src/ebb/Syscall/libSyscall.a \
-	src/ebb/Gthread/libGthread.a
+	src/ebb/MemoryAllocator/SimpleMemoryAllocator.la \
+	src/ebb/Ethernet/VirtioNet.la \
+	src/ebb/PCI/PCI.la \
+	src/ebb/Syscall/Syscall.la \
+	src/ebb/Gthread/Gthread.la
 endif
 endif
 
+src_app_HelloRemote_HelloRemote_linked_ebbs = $(foreach ebb,$(src_app_HelloRemote_HelloRemote_ebbs),$(if $(filter %.la,$(ebb)),$(dir $(ebb)).libs/$(STATIC_LIBRARY_PREFIX)$(notdir $(basename $(ebb))).a,$(ebb)))
 
 src_app_HelloRemote_HelloRemote_LDFLAGS = \
 	$(app_linkflags) \
-	-Wl,-whole-archive \
-	$(ebbrt_libs) \
-	$(src_app_HelloRemote_HelloRemote_ebbs) \
-	-Wl,-no-whole-archive
+	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_libs) $(src_app_HelloRemote_HelloRemote_linked_ebbs))),-no-whole-archive'
 
 src_app_HelloRemote_HelloRemote_LDADD = \
-	libebbrt.a
+	libebbrt.la
 
 if LRT_ULNX
 if !BG
@@ -69,7 +67,7 @@ endif
 endif
 
 src_app_HelloRemote_HelloRemote_DEPENDENCIES = \
-	libebbrt.a \
+	libebbrt.la \
 	$(app_deps) \
 	$(ebbrt_libs) \
 	$(src_app_HelloRemote_HelloRemote_ebbs)

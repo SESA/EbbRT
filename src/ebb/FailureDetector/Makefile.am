@@ -13,8 +13,11 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LIBRARIES += \
-	src/ebb/FailureDetector/libPhiAccrualFailureDetector.a
+EXTRA_LTLIBRARIES += \
+	src/ebb/FailureDetector/PhiAccrualFailureDetector.la
 
-src_ebb_FailureDetector_libPhiAccrualFailureDetector_a_SOURCES = \
+src_ebb_FailureDetector_PhiAccrualFailureDetector_la_SOURCES = \
 	src/ebb/FailureDetector/PhiAccrualFailureDetector.cpp
+
+src_ebb_FailureDetector_PhiAccrualFailureDetector_la_LDFLAGS = \
+	-module

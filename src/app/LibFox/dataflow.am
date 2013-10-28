@@ -23,31 +23,30 @@ src_app_LibFox_mcphoton_dataflow_SOURCES = \
 	src/app/LibFox/photon.c
 
 src_app_LibFox_mcphoton_dataflow_ebbs = \
-	src/ebb/EbbManager/libPrimitiveEbbManager.a \
-	src/ebb/EventManager/libSimpleEventManager.a \
-	src/ebb/MessageManager/libMPIMessageManager.a \
-	src/ebb/DataflowCoordinator/libSingleDataflowCoordinator.a \
-	src/ebb/HashTable/libSimpleRemoteHashTable.a \
-	src/ebb/FailureDetector/libPhiAccrualFailureDetector.a \
-	src/ebb/Timer/libSimpleTimer.a
+	src/ebb/EbbManager/PrimitiveEbbManager.la \
+	src/ebb/EventManager/SimpleEventManager.la \
+	src/ebb/MessageManager/MPIMessageManager.la \
+	src/ebb/DataflowCoordinator/SingleDataflowCoordinator.la \
+	src/ebb/HashTable/SimpleRemoteHashTable.la \
+	src/ebb/FailureDetector/PhiAccrualFailureDetector.la \
+	src/ebb/Timer/SimpleTimer.la
 
 src_app_LibFox_mcphoton_dataflow_CPPFLAGS = \
 	$(CPPFLAGS) \
 	-I$PROTOBUF_INCLUDEDIR
 
+src_app_LibFox_mcphoton_dataflow_linked_ebbs = $(foreach ebb,$(src_app_LibFox_mcphoton_dataflow_ebbs),$(if $(filter %.la,$(ebb)),$(dir $(ebb)).libs/$(STATIC_LIBRARY_PREFIX)$(notdir $(basename $(ebb))).a,$(ebb)))
+
 src_app_LibFox_mcphoton_dataflow_LDFLAGS = \
 	$(app_linkflags) \
-	-Wl,-whole-archive \
-	$(ebbrt_libs) \
-	$(src_app_LibFox_mcphoton_dataflow_ebbs) \
-	-Wl,-no-whole-archive \
+	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_libs) $(src_app_LibFox_mcphoton_dataflow_linked_ebbs))),-no-whole-archive' \
 	-L$(PROTOBUF_LIBDIR)
 
 src_app_LibFox_mcphoton_dataflow_LDADD = \
-	libebbrt.a
+	libebbrt.la
 
 src_app_LibFox_mcphoton_dataflow_DEPENDENCIES = \
-	libebbrt.a \
+	libebbrt.la \
 	$(app_deps) \
 	$(ebbrt_libs) \
 	$(src_app_LibFox_mcphoton_dataflow_ebbs)

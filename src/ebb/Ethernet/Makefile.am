@@ -13,14 +13,20 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LIBRARIES += src/ebb/Ethernet/libVirtioNet.a
+EXTRA_LTLIBRARIES += src/ebb/Ethernet/VirtioNet.la
 
-src_ebb_Ethernet_libVirtioNet_a_SOURCES = \
+src_ebb_Ethernet_VirtioNet_la_SOURCES = \
 	src/ebb/Ethernet/Ethernet.cpp \
 	src/ebb/Ethernet/VirtioNet.cpp
 
-EXTRA_LIBRARIES += src/ebb/Ethernet/libRawSocket.a
+src_ebb_Ethernet_VirtioNet_la_LDFLAGS = \
+	-module
 
-src_ebb_Ethernet_libRawSocket_a_SOURCES = \
+EXTRA_LTLIBRARIES += src/ebb/Ethernet/RawSocket.la
+
+src_ebb_Ethernet_RawSocket_la_SOURCES = \
 	src/ebb/Ethernet/Ethernet.cpp \
 	src/ebb/Ethernet/RawSocket.cpp
+
+src_ebb_Ethernet_RawSocket_la_LDFLAGS = \
+	-module

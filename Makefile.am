@@ -52,7 +52,14 @@ EXTRA_LTLIBRARIES =
 EXTRA_LIBRARIES =
 CLEANFILES =
 ebbrt_libs =
-
+EMPTY :=
+SPACE := $(EMPTY) $(EMPTY)
+COMMA := ,
+if LRT_BARE
+STATIC_LIBRARY_PREFIX := lib
+else
+STATIC_LIBRARY_PREFIX :=
+endif
 app_linkflags =
 app_deps =
 

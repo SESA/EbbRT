@@ -13,7 +13,10 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LIBRARIES += src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a
+EXTRA_LTLIBRARIES += src/ebb/MemoryAllocator/SimpleMemoryAllocator.la
 
-src_ebb_MemoryAllocator_libSimpleMemoryAllocator_a_SOURCES = \
+src_ebb_MemoryAllocator_SimpleMemoryAllocator_la_SOURCES = \
 	src/ebb/MemoryAllocator/SimpleMemoryAllocator.cpp
+
+src_ebb_MemoryAllocator_SimpleMemoryAllocator_la_LDFLAGS = \
+	-module

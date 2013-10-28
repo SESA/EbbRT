@@ -29,34 +29,33 @@ endif
 endif
 
 src_app_NetworkTest_NetworkTest_ebbs = \
-	src/ebb/EbbManager/libPrimitiveEbbManager.a \
-	src/ebb/EventManager/libSimpleEventManager.a \
-	src/ebb/Network/libLWIPNetwork.a
+	src/ebb/EbbManager/PrimitiveEbbManager.la \
+	src/ebb/EventManager/SimpleEventManager.la \
+	src/ebb/Network/LWIPNetwork.la
 
 if LRT_ULNX
 src_app_NetworkTest_NetworkTest_ebbs += \
-	src/ebb/Ethernet/libRawSocket.a
+	src/ebb/Ethernet/RawSocket.la
 else
 if LRT_BARE
 src_app_NetworkTest_NetworkTest_ebbs += \
-	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a \
-	src/ebb/Ethernet/libVirtioNet.a \
-	src/ebb/PCI/libPCI.a \
-	src/ebb/Syscall/libSyscall.a \
-	src/ebb/Gthread/libGthread.a \
-	src/ebb/Timer/libApicTimer.a
+	src/ebb/MemoryAllocator/SimpleMemoryAllocator.la \
+	src/ebb/Ethernet/VirtioNet.la \
+	src/ebb/PCI/PCI.la \
+	src/ebb/Syscall/Syscall.la \
+	src/ebb/Gthread/Gthread.la \
+	src/ebb/Timer/ApicTimer.la
 endif
 endif
+
+src_app_NetworkTest_NetworkTest_linked_ebbs = $(foreach ebb,$(src_app_NetworkTest_NetworkTest_ebbs),$(if $(filter %.la,$(ebb)),$(dir $(ebb)).libs/$(STATIC_LIBRARY_PREFIX)$(notdir $(basename $(ebb))).a,$(ebb)))
 
 src_app_NetworkTest_NetworkTest_LDFLAGS = \
 	$(app_linkflags) \
-	-Wl,-whole-archive \
-	$(ebbrt_libs) \
-	$(src_app_NetworkTest_NetworkTest_ebbs) \
-	-Wl,-no-whole-archive
+	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_libs) $(src_app_NetworkTest_NetworkTest_linked_ebbs))),-no-whole-archive'
 
 src_app_NetworkTest_NetworkTest_LDADD = \
-	libebbrt.a
+	libebbrt.la
 
 if LRT_ULNX
 src_app_NetworkTest_NetworkTest_LDADD += \
@@ -64,7 +63,7 @@ src_app_NetworkTest_NetworkTest_LDADD += \
 endif
 
 src_app_NetworkTest_NetworkTest_DEPENDENCIES = \
-	libebbrt.a \
+	libebbrt.la \
 	$(app_deps) \
 	$(ebbrt_libs) \
 	$(src_app_NetworkTest_NetworkTest_ebbs)

@@ -13,7 +13,10 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LIBRARIES += src/ebb/Gthread/libGthread.a
+EXTRA_LTLIBRARIES += src/ebb/Gthread/Gthread.la
 
-src_ebb_Gthread_libGthread_a_SOURCES = \
+src_ebb_Gthread_Gthread_la_SOURCES = \
 	src/ebb/Gthread/Gthread.cpp
+
+src_ebb_Gthread_Gthread_la_LDFLAGS = \
+	-module

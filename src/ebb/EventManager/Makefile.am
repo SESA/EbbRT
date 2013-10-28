@@ -13,7 +13,10 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LTLIBRARIES += src/ebb/EventManager/libSimpleEventManager.la
+EXTRA_LTLIBRARIES += src/ebb/EventManager/SimpleEventManager.la
 
-src_ebb_EventManager_libSimpleEventManager_la_SOURCES = \
+src_ebb_EventManager_SimpleEventManager_la_SOURCES = \
 	src/ebb/EventManager/SimpleEventManager.cpp
+
+src_ebb_EventManager_SimpleEventManager_la_LDFLAGS = \
+	-module

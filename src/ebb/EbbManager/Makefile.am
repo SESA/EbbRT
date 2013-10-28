@@ -13,7 +13,10 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LTLIBRARIES += src/ebb/EbbManager/libPrimitiveEbbManager.la
+EXTRA_LTLIBRARIES += src/ebb/EbbManager/PrimitiveEbbManager.la
 
-src_ebb_EbbManager_libPrimitiveEbbManager_la_SOURCES = \
+src_ebb_EbbManager_PrimitiveEbbManager_la_SOURCES = \
 	src/ebb/EbbManager/PrimitiveEbbManager.cpp
+
+src_ebb_EbbManager_PrimitiveEbbManager_la_LDFLAGS = \
+	-module

@@ -83,8 +83,10 @@ src_app_Sage_ebb_matrix_la_SOURCES = \
 	src/app/Sage/Matrix.cpp
 
 src_app_Sage_ebb_matrix_la_ebbs = \
-	src/ebb/EbbManager/libPrimitiveEbbManager.la \
-	src/ebb/EventManager/libSimpleEventManager.la
+	src/ebb/EbbManager/PrimitiveEbbManager.la \
+	src/ebb/EventManager/SimpleEventManager.la \
+	src/ebb/MessageManager/UDPMessageManager.la \
+	src/ebb/Network/SocketNetwork.la
 
 src_app_Sage_ebb_matrix_la_LDFLAGS = \
 	-module
@@ -102,6 +104,39 @@ src_app_Sage_ebb_matrix_la_DEPENDENCIES = \
 
 src_app_Sage_ebb_matrix_la_CPPFLAGS = \
 	$(AM_CPPFLAGS) -I /usr/include/python2.7
+
+EXTRA_PROGRAMS += src/app/Sage/SageMatrix
+
+src_app_Sage_SageMatrix_SOURCES = \
+	src/app/Sage/ebb_matrix_helper.cpp \
+	src/app/Sage/Matrix.cpp
+
+src_app_Sage_SageMatrix_ebbs = \
+	src/ebb/EbbManager/PrimitiveEbbManager.la \
+	src/ebb/EventManager/SimpleEventManager.la \
+	src/ebb/MessageManager/UDPMessageManager.la \
+	src/ebb/MemoryAllocator/SimpleMemoryAllocator.la \
+	src/ebb/Ethernet/VirtioNet.la \
+	src/ebb/PCI/PCI.la \
+	src/ebb/Syscall/Syscall.la \
+	src/ebb/Gthread/Gthread.la \
+	src/ebb/Timer/ApicTimer.la \
+	src/ebb/Network/LWIPNetwork.la
+
+src_app_Sage_SageMatrix_linked_ebbs = $(foreach ebb,$(src_app_Sage_SageMatrix_ebbs),$(if $(filter %.la,$(ebb)),$(dir $(ebb)).libs/$(STATIC_LIBRARY_PREFIX)$(notdir $(basename $(ebb))).a,$(ebb)))
+
+src_app_Sage_SageMatrix_LDFLAGS = \
+	$(app_linkflags) \
+	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_libs) $(src_app_Sage_SageMatrix_linked_ebbs))),-no-whole-archive'
+
+src_app_Sage_SageMatrix_LDADD = \
+	libebbrt.la
+
+src_app_Sage_SageMatrix_DEPENDENCIES = \
+	libebbrt.la \
+	$(app_deps) \
+	$(ebbrt_libs) \
+	$(src_app_Sage_SageMatrix_ebbs)
 
 # EXTRA_PROGRAMS += src/app/Sage/HelloEbbTest
 

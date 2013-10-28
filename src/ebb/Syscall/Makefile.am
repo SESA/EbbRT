@@ -13,7 +13,10 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LIBRARIES += src/ebb/Syscall/libSyscall.a
+EXTRA_LTLIBRARIES += src/ebb/Syscall/Syscall.la
 
-src_ebb_Syscall_libSyscall_a_SOURCES = \
+src_ebb_Syscall_Syscall_la_SOURCES = \
 	src/ebb/Syscall/Syscall.cpp
+
+src_ebb_Syscall_Syscall_la_LDFLAGS = \
+	-module
