@@ -19,6 +19,7 @@ include src/lrt/ulnx/Makefile.am
 
 lrt_sources = \
 	$(lrt_arch_sources) \
+	src/lrt/config.hpp \
 	src/lrt/event.cpp \
 	src/lrt/event.hpp \
 	src/lrt/event_impl.hpp \

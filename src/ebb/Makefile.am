@@ -17,6 +17,7 @@ ebb_sources = \
 	src/ebb/ebb.hpp
 
 include src/ebb/Console/Makefile.am
+include src/ebb/Config/Makefile.am
 include src/ebb/DataflowCoordinator/Makefile.am
 include src/ebb/EbbManager/Makefile.am
 include src/ebb/Ethernet/Makefile.am
@@ -27,6 +28,7 @@ include src/ebb/HashTable/Makefile.am
 include src/ebb/MemoryAllocator/Makefile.am
 include src/ebb/MessageManager/Makefile.am
 include src/ebb/Network/Makefile.am
+include src/ebb/NodeAllocator/Makefile.am
 include src/ebb/PCI/Makefile.am
 include src/ebb/Syscall/Makefile.am
 include src/ebb/Timer/Makefile.am

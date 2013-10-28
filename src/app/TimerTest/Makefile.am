@@ -16,8 +16,7 @@
 
 EXTRA_PROGRAMS += src/app/TimerTest/TimerTest
 
-src_app_TimerTest_TimerTest_SOURCES = \
-	src/app/TimerTest/config.cpp
+src_app_TimerTest_TimerTest_SOURCES = 
 
 if LRT_ULNX
 src_app_TimerTest_TimerTest_SOURCES += \

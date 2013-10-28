@@ -16,48 +16,88 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <string>
+
 #include "app/app.hpp"
 #include "ebb/EbbManager/EbbManager.hpp"
-#include "src/lrt/bare/config.hpp"
+#include "lib/fdt/libfdt.h"
+#include "src/lrt/bare/assert.hpp"
+#include "src/lrt/bare/boot.hpp"
+#include "src/lrt/config.hpp"
 
 namespace ebbrt {
   namespace lrt {
+    namespace config {
 
-void dump_config_info() 
-{
-  struct ebbrt::lrt::SymTabEntry *stptr = ebbsymtab_start;
-  // dump symbol table, move this elsewhere
-  lrt::console::write("Dumping symbol table\n");
-  while (stptr < ebbsymtab_end) {
-    lrt::console::write("\t");
-    lrt::console::write(stptr->str);
-    lrt::console::write("\n");
-    stptr++;
-  }
-}
+      app::ConfigFuncPtr 
+        LookupSymbol(const char *str)
+        {
+          struct SymTabEntry *stptr = ebbsymtab_start;
+          while (stptr < ebbsymtab_end) {
+            if (strcmp(str,(stptr->str)) == 0) {
+              return stptr->config_func;
+            } else {
+            }
+            stptr++;
+          }
+          return nullptr;
+        }
 
 
-app::ConfigFuncPtr 
-LookupSymbol(const char *str)
-{
-  // dump_config_info();
-  // FIXME
-  struct ebbrt::lrt::SymTabEntry *stptr = ebbsymtab_start;
-  while (stptr < ebbsymtab_end) {
-    if (strcmp(str,(stptr->str)) == 0) {
-      return stptr->config_func;
-    } else {
-#if 0
-      lrt::console::write("lookup: ");
-      lrt::console::write(stptr->str);
-      lrt::console::write(" != ");
-      lrt::console::write(str);
-      lrt::console::write("\n");
-#endif
+      uint32_t
+        fdt_getint32(void *fdt, int root, const char *prop)
+        {
+          if(!fdt)
+            fdt = boot::fdt;
+          int len;
+          const unsigned char *id = (const unsigned char *)fdt_getprop(fdt, root, prop, &len);
+          LRT_ASSERT(len == 4);
+          // machine independant byte ordering of litte-endian value
+          return ((id[3]<<0)|(id[2]<<8)|(id[1]<<16)|(id[0]<<24));
+        }
+
+      uint32_t
+        find_static_ebb_id(void *fdt, const char* name)
+        {
+          if(!fdt)
+            fdt = boot::fdt;
+          std::string path="/ebbs/";
+          path.append(name);
+          int offset =  fdt_path_offset(fdt, path.c_str());
+          return fdt_getint32(fdt, offset, "id");
+        }
+
+      uint16_t
+        get_space_id(void *fdt)
+        {
+          if(!fdt)
+            fdt = boot::fdt;
+
+          uint32_t id = fdt_getint32(fdt, 0, "space_id");
+
+          // kludge... space id must be >= 1
+          if( id ) 
+            return (uint16_t)id;
+          else
+            return 1;
+        }
+
+      uint32_t
+        get_static_ebb_count(void *fdt)
+        {
+          if(!fdt)
+            fdt = boot::fdt;
+          return fdt_getint32(fdt, 0, "ebbrt_num_static_init");
+        }
+
+      bool
+        get_multicore(void *fdt)
+        {
+          if(!fdt)
+            fdt = boot::fdt;
+
+          return (bool)fdt_getint32(fdt, 0, "multicore");
+        }
     }
-    stptr++;
-  }
-  return nullptr;
-}
   }
 }

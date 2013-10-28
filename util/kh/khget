@@ -1,39 +1,25 @@
 #!/bin/bash
-#set -x
 
-# Set the path do your sesa-scripts and node database directories
-dir=$(dirname $0)
-if [[ -z $KHCTL_BASEDIR && $dir/../../EbbRT ]]; then
-   export KHCTL_BASEDIR=$(readlink -f ${dir}/../../khdb)
-else
-   export KHCTL_BASEDIR=${KHCTL_BASEDIR:-~/sesa/build/khdb }
-fi
 if [[ $(type -p khctl ) ]]; then
    declare SESA_UTIL=khctl
-fi
-if [[ -z $SESA_UTIL && $dir/../../EbbRT ]]; then
-   declare SESA_UTIL=$(readlink -f ${dir}/../../scripts/khctl)
-else
-   declare SESA_UTIL=${SESA_UTIL:-~/sesa/scripts/khctl}
-fi
-if [[ ! $(type -p $SESA_EMUCMD ) ]]; then
-   export SESA_EMUCMD=qemu-system-x86_64
 fi
 
 declare app
 declare bootimg
 declare inet
 declare xnet
-declare bios
-declare mnt=0
+#declare bios
+declare mnt1=0
+declare mnt2=0
 declare -i count=1
 declare -i optcount=0
 
-while getopts "m:b:ixf" OPT
+while getopts "s:c:ixf" OPT
 do 
   case $OPT in
-      ("m") mnt="$OPTARG"; (( optcount=optcount + 2));;
-      ("b") bios="$OPTARG"; (( optcount=optcount + 2));;
+      ("s") mnt1="$OPTARG"; (( optcount=optcount + 2));;
+      ("c") mnt2="$OPTARG"; (( optcount=optcount + 2));;
+#     ("b") bios="$OPTARG"; (( optcount=optcount + 2));;
       ("i") inet="-i"; (( optcount=optcount + 1));;
       ("x") xnet="-x"; (( optcount=optcount + 1));;
       ("f") inet='-i'; xnet='-x'; (( optcount=optcount + 1));;
@@ -47,19 +33,21 @@ bootimg=$2
 
 if [[ -z $app  || ! (-a $bootimg)]]
 then
-  echo "USAGE: khget [-m mntdir] [-f] [-i] [-x] [-b bios] <appName> <boot_img> [count] \ " 
-  echo "     -m mnt   : mount directory as FAT fs"
-  echo "     -f       : enable front end, equivalent to -x -i" 
+  echo "USAGE: khget [-s dir] [-c dir] [-f] [-i] [-x] [-b bios] <appName> <boot_img> [count] \ " 
+  echo "     -s path  : mount shared directory as FAT fs"
+  echo "     -c path  : mount config directory as FAT fs"
+#  echo "     -b path  : path to bios rom"
   echo "     -i       : add nodes to the Internal public network" 
   echo "     -x       : add nodes to the External network" 
-  echo "     -b bios  : path to bios rom"
+  echo "     -f       : enable front end, equivalent to -x -i" 
   echo "     appname  : application to get the nodes for" 
   echo "     bootimg  : path to back-end boot image" 
   echo "     count    : number of backend nodes, default is 1" 
   exit 1;
 fi
 
-export SESA_MNTDIR=$mnt
+export SESA_MNTDIR_A=$mnt1
+export SESA_MNTDIR_B=$mnt2
 export SESA_IMG=$bootimg
 export SESA=1
 

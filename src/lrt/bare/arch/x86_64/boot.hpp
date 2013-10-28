@@ -21,6 +21,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <string>
 
 #include "arch/x86_64/multiboot.hpp"
 
@@ -29,6 +30,7 @@ namespace ebbrt {
     namespace boot {
       extern uint32_t smp_lock;
       extern const MultibootInformation* multiboot_information;
+      extern void* fdt; // flattened device tree
     }
   }
 }

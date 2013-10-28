@@ -20,6 +20,7 @@
 
 #include <functional>
 
+#include "lrt/config.hpp"
 #include "ebb/ebb.hpp"
 #include "misc/buffer.hpp"
 
@@ -31,7 +32,9 @@ namespace ebbrt {
   protected:
     Console(EbbId id) : EbbRep{id} {}
   };
+
   const EbbRef<Console> console =
-    EbbRef<Console>(lrt::trans::find_static_ebb_id("Console"));
+    EbbRef<Console>(lrt::config::find_static_ebb_id(nullptr,"Console"));
+
 }
 #endif

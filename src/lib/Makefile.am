@@ -13,6 +13,7 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+include src/lib/fdt/Makefile.am
 if LRT_BARE
 include src/lib/gthread/Makefile.am
 include src/lib/newlib/Makefile.am

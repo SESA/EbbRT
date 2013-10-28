@@ -1,0 +1,83 @@
+declare app
+declare count
+declare name
+declare tap
+declare debug
+declare -i optcount=0
+
+while getopts "n:t:g:DBK" OPT
+do 
+  case $OPT in
+      ("n") name="$OPTARG"; (( optcount=optcount + 2));;
+      ("t") tap="$OPTARG"; (( optcount=optcount + 2));;
+      ("g") debug="$OPTARG"; (( optcount=optcount + 2));;
+  esac
+done
+
+shift $optcount
+name=$1
+count=$2
+
+if [[ -z $name  || -z $count ]]
+then
+  echo "USAGE: $0 [-t tap] <name> <count>"
+  echo "     -t  tap  : tap interface" 
+  echo "     -g  port : gdb server port" 
+  echo "     app      : application to associate nodes with"
+  echo "     count    : num of instances"
+  exit 1;
+fi
+
+if [[ -z $count ]]; then count=1; fi
+echo "Loading $count node instances in $name"
+
+if [[ -n $tap ]]; then 
+  export SESA_TAP=$tap
+fi
+
+if [[ -n $debug ]]; then 
+  export SESA_DEBUG=$debug
+fi
+APPNAME="$name"
+
+# Create directory for instance config 
+instdir=$base/appdata/$APPNAME
+mkdir -p $instdir
+
+# construct launch script
+touch $instdir/prelaunch; chmod 755 $instdir/prelaunch
+cat > $instdir/prelaunch << EOF
+#!/bin/bash
+app=$config_dir/app.elf32
+mod=$config_dir/config.dtb
+EOF
+
+# write ip 
+let max=10+$count**2 # ip timeout
+echo "MAX=$max" >> $instdir/prelaunch 
+cat $base/scripts/ip >> $instdir/prelaunch
+
+# kexec
+touch $instdir/run; chmod 755 $instdir/run
+cat > $instdir/run << EOF
+#!/bin/bash
+app=/root/app.elf32
+mod=/root/config.dtb
+EOF
+cat $base/scripts/kexec >> $instdir/run
+
+# load isntances
+for i in `seq 1 $count`; do
+  instid=$RANDOM
+
+  # Create director for copy-on-write images (if nessessary)
+  cowdir=$base/cowimgs/$APPNAME
+  mkdir -p $cowdir
+
+  qemu-img create -f qcow2 -b $sesalnx $cowdir/$instid.img >> /dev/null
+  FNT_IMG=$(readlink -f ${cowdir}/$instid.img)
+
+  # mount and run
+  mnt=$(readlink -f ${base}/$instdir)
+  $SESA_GET -i -c $mnt $APPNAME $FNT_IMG 1
+done

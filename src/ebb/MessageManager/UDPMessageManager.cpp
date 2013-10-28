@@ -22,7 +22,7 @@
 #include "ebb/Network/Network.hpp"
 
 namespace {
-constexpr uint16_t MESSAGE_MANAGER_PORT = 43210;
+constexpr uint16_t MESSAGE_MANAGER_PORT = 43201;
 }
 
 ebbrt::EbbRoot *ebbrt::UDPMessageManager::ConstructRoot() {

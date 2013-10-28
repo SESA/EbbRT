@@ -3,9 +3,21 @@ nodes. The scripts within contain the logic to allocate and deallocate virtual
 machines (qemu+kvm) and store thier information in a local database.
 
 khclean - end active applications / delete entire utility database
-khctl - interfaces for managing kh
-khdo - issue commands to a console
+khcon - connect to a nodes console
+khctl - interfaces for managing kittyhawk layer
 khget - allocate a node to an application
 khls - list active applications
 khrm - remove an active application
-setup - set up an EbbRT build testbed, a new khdb and some helper scripts
+khvnc - connect to a nodes vnc server
+
+## Setup (optional)
+Set up an EbbRT build testbed, creates a new kh database,
+includes helper scripts to make/run EbbRT apps
+### usage
+* Run setup script from the directory you want to setup the build environment 
+`mkdir ~/sesa/build  
+cd ~/sesa/build`
+* First argument of setup is the full path to the EbbRT source directory 
+`~/sesa/EbbRT/util/kh/setup ~/sesa/EbbRT`
+* Load environment variables, enabling khls, khrm, etc
+`source loadenv`

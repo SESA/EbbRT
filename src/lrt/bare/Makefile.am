@@ -19,6 +19,8 @@ lrt_bare_sources = \
 	$(lrt_bare_arch_sources) \
 	src/lrt/bare/boot.cpp \
 	src/lrt/bare/boot.hpp \
+	src/lrt/bare/config.cpp \
+	src/lrt/bare/config.hpp \
 	src/lrt/bare/event.cpp \
 	src/lrt/bare/event.hpp \
 	src/lrt/bare/event_impl.hpp \

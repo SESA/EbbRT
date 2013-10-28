@@ -16,8 +16,7 @@
 
 EXTRA_PROGRAMS += src/app/NetworkTest/NetworkTest
 
-src_app_NetworkTest_NetworkTest_SOURCES = \
-	src/app/NetworkTest/config.cpp
+src_app_NetworkTest_NetworkTest_SOURCES = 
 
 if LRT_ULNX
 src_app_NetworkTest_NetworkTest_SOURCES += \

@@ -15,33 +15,15 @@
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifndef EBBRT_LRT_CONFIG_HPP
+#error "Don't include this file directly"
+#endif
 
-#include <iostream>
-
-#include "ebb/EbbManager/EbbManager.hpp"
-#include "ebb/Ethernet/RawSocket.hpp"
-#include "ebb/Network/LWIPNetwork.hpp"
-
-int main(int argc, char** argv)
-{
-  ebbrt::EbbRT instance;
-
-  ebbrt::Context context{instance};
-  context.Activate();
-
-  ebbrt::ethernet =
-    ebbrt::EbbRef<ebbrt::Ethernet>(ebbrt::ebb_manager->AllocateId());
-  ebbrt::ebb_manager->Bind(ebbrt::RawSocket::ConstructRoot, ebbrt::ethernet);
-
-  auto network =
-    ebbrt::EbbRef<ebbrt::Network>{ebbrt::ebb_manager->AllocateId()};
-  ebbrt::ebb_manager->Bind(ebbrt::LWIPNetwork::ConstructRoot, network);
-
-  network->Do();
-
-  std::cout << "Ready" << std::endl;
-
-  context.Loop(-1);
-
-  return 0;
+namespace ebbrt {
+  namespace lrt {
+    namespace config {
+      uint32_t fdt_getint32(void *fdt, int root, const char *prop);
+      /* */
+    }
+  }
 }

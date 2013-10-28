@@ -75,19 +75,19 @@ namespace ebbrt {
     };
 
     const EbbRef<ScatterData> theRDData =
-      EbbRef<ScatterData>(lrt::trans::find_static_ebb_id(STR_RDDATA));
+      EbbRef<ScatterData>(lrt::config::find_static_ebb_id(STR_RDDATA));
 
     const EbbRef<Queue> theTaskQ =
-      EbbRef<Queue>(lrt::trans::find_static_ebb_id(STR_TASKS));
+      EbbRef<Queue>(lrt::config::find_static_ebb_id(STR_TASKS));
 
     const EbbRef<Sync> theTaskSync =
-      EbbRef<Sync>(lrt::trans::find_static_ebb_id(STR_TASK_SYNC));
+      EbbRef<Sync>(lrt::config::find_static_ebb_id(STR_TASK_SYNC));
 
     const EbbRef<GatherData> theRWData =
-      EbbRef<GatherData>(lrt::trans::find_static_ebb_id(STR_RWDATA));
+      EbbRef<GatherData>(lrt::config::find_static_ebb_id(STR_RWDATA));
 
     const EbbRef<Dictionary> theHash = 
-      EbbRef<Dictionary>(lrt::trans::find_static_ebb_id(STR_HASH));
+      EbbRef<Dictionary>(lrt::config::find_static_ebb_id(STR_HASH));
   }
 }
 

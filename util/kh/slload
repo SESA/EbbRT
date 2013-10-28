@@ -1,0 +1,17 @@
+#!/bin/bash
+
+##### SESA LINUX IMAGE ##################################
+sesalnx=/home/jmcadden/sesalnx.img
+sesalnx_id=/home/jmcadden/sesalnx_id
+config_dir=/mnt/app
+root_dir=/root
+#########################################################
+
+app=$1
+config=$2
+ip=$3
+
+## Load and run app on pre-allocated instance
+scp -q -i $sesalnx_id $app  root@$ip:$root_dir/app.elf32
+scp -q -i $sesalnx_id $config  root@$ip:$root_dir/config.dtb
+xterm -e ssh -f -q -i $sesalnx_id root@$ip $config_dir/run 2> /dev/null

@@ -20,13 +20,15 @@
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Gthread/Gthread.hpp"
 #include "lrt/bare/assert.hpp"
-#include "src/lrt/bare/config.hpp"
+#include "src/lrt/config.hpp"
 
 using namespace ebbrt;
 
 bool ebbrt::gthread_active = false;
 
+#ifdef __ebbrt__
 ADD_EARLY_CONFIG_SYMBOL(Gthread, &ebbrt::Gthread::ConstructRoot)
+#endif
 
 EbbRoot*
 Gthread::ConstructRoot()

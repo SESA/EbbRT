@@ -1,0 +1,21 @@
+#!/bin/bash
+# Display information about a running application
+
+app=$1
+
+if [[ ! -d $KHCTL_BASEDIR ]]; then
+  echo "ERROR: $KHCTL_BASEDIR not found"
+  exit 1
+fi
+
+if [[ -z $app ]]; then
+  echo "USAGE: $0 <appName>"
+  exit 1
+fi
+
+if [[ $(type -p khctl ) ]]; then
+
+   declare SESA_UTIL=khctl
+fi
+
+$SESA_UTIL SESAdisplayApp $1

@@ -40,6 +40,7 @@
 #include "lwip/stats.h"
 #include "lwip/tcp_impl.h"
 #include "netif/etharp.h"
+#include "lrt/bare/assert.hpp"
 
 ebbrt::EbbRoot *ebbrt::LWIPNetwork::ConstructRoot() {
   return new SharedRoot<LWIPNetwork>();

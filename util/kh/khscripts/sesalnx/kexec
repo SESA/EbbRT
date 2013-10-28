@@ -1,0 +1,6 @@
+if [[ -f $app ]]
+then
+  kexec -t multiboot-x86 --module=$mod  -l $app
+  kexec -e
+fi
+

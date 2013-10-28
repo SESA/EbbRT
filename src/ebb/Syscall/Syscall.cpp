@@ -18,9 +18,11 @@
 #include "ebb/SharedRoot.hpp"
 #include "ebb/Syscall/Syscall.hpp"
 #include "lrt/bare/assert.hpp"
-#include "src/lrt/bare/config.hpp"
+#include "src/lrt/config.hpp"
 
+#ifdef __ebbrt__
 ADD_EARLY_CONFIG_SYMBOL(Syscall, &ebbrt::Syscall::ConstructRoot)
+#endif
 
 using namespace ebbrt;
 

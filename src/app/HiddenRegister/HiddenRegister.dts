@@ -1,0 +1,49 @@
+/dts-v1/;
+/ {
+  space_id = <0x1>;
+  multicore = <0x0>;
+  ebbrt_num_static_init = <0x6>;
+  linux_num_static_init = <0x3>;
+  ebbs
+  {
+    MemoryAllocator{
+      id = <0x1>;
+      early_init_ebbrt = <0x1>;
+      late_init_ebbrt  = <0x0>;
+      late_init_linux  = <0x0>;
+    };
+    EbbManager{
+      id = <0x2>;
+      early_init_ebbrt = <0x1>;
+      late_init_ebbrt  = <0x0>;
+      late_init_linux  = <0x1>;
+    };
+    Gthread{
+      id = <0x3>;
+      early_init_ebbrt = <0x1>;
+      late_init_ebbrt  = <0x0>;
+      late_init_linux  = <0x0>;
+    };
+    Syscall{
+      id = <0x4>;
+      early_init_ebbrt = <0x1>;
+      late_init_ebbrt  = <0x0>;
+      late_init_linux  = <0x0>;
+    };
+    Console{
+      id = <0x5>;
+      early_init_ebbrt = <0x0>;
+      late_init_ebbrt  = <0x1>;
+      late_init_linux  = <0x1>;
+    };
+    EventManager{
+      id = <0x6>;
+      early_init_ebbrt = <0x0>;
+      late_init_ebbrt  = <0x1>;
+      late_init_linux  = <0x1>;
+    };
+  };
+};
+
+
+

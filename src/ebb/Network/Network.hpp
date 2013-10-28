@@ -19,6 +19,7 @@
 #define EBBRT_EBB_NETWORK_NETWORK_HPP
 
 #include "ebb/ebb.hpp"
+#include "lrt/config.hpp"
 
 namespace ebbrt {
 class Network : public EbbRep {
@@ -33,7 +34,7 @@ protected:
   Network(EbbId id) : EbbRep{ id } {}
 };
 const EbbRef<Network> network =
-    EbbRef<Network>(lrt::trans::find_static_ebb_id("Network"));
+    EbbRef<Network>(lrt::config::find_static_ebb_id(nullptr,"Network"));
 }
 
 #endif

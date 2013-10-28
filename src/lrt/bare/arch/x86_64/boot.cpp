@@ -18,11 +18,14 @@
 #include <algorithm>
 #include <atomic>
 #include <cstring>
+#include <string>
 #include <new>
 
 #include "arch/cpu.hpp"
 #include "arch/x86_64/multiboot.hpp"
 #include "arch/x86_64/apic.hpp"
+#include "lib/fdt/libfdt.h"
+#include "lrt/bare/assert.hpp"
 #include "lrt/bare/boot.hpp"
 #include "lrt/bare/console.hpp"
 #include "lrt/event.hpp"
@@ -33,6 +36,7 @@
 
 uint32_t ebbrt::lrt::boot::smp_lock;
 const ebbrt::MultibootInformation* ebbrt::lrt::boot::multiboot_information;
+void* ebbrt::lrt::boot::fdt;
 extern "C"
 /**
  * @brief Initial architecture initialization. This acts as C++ entry upcalled
@@ -45,6 +49,13 @@ void __attribute__((noreturn))
 _init_arch(ebbrt::MultibootInformation* mbi)
 {
   ebbrt::lrt::boot::multiboot_information = mbi;
+
+  // resolve address of FDT through Multiboot interface
+  auto addr_val = static_cast<uintptr_t>(ebbrt::lrt::boot::multiboot_information->modules_address);
+  auto addr = reinterpret_cast<uint32_t*>(addr_val);
+  uint32_t mod_val = *addr;
+  ebbrt::lrt::boot::fdt = reinterpret_cast<void *>(mod_val);
+  LRT_ASSERT(( fdt_check_header(ebbrt::lrt::boot::fdt) == 0 ));
   ebbrt::lrt::boot::init();
 }
 
@@ -108,3 +119,4 @@ ebbrt::lrt::boot::init_smp(unsigned num_cores)
   access_once(smp_lock) = -1;
   _init_cpu_arch();
 }
+

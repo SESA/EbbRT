@@ -20,13 +20,3 @@
 #include "app/app.hpp"
 #include "lrt/trans.hpp"
 
-ebbrt::lrt::trans::EbbId
-ebbrt::lrt::trans::find_static_ebb_id(const char* name)
-{
-  for (unsigned i = 0; i < app::config.num_statics; ++i) {
-    if (std::strcmp(app::config.static_ebb_ids[i].name, name) == 0) {
-      return app::config.static_ebb_ids[i].id;
-    }
-  }
-  return 0;
-}

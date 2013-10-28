@@ -25,14 +25,20 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <fstream>
+#include <iostream>
 #include <mutex>
 #include <stack>
+#include <string>
 #include <unordered_map>
 
 #include "lrt/event.hpp"
+#include "lrt/event_impl.hpp"
 #include "lrt/EbbId.hpp"
 #include "lrt/Location.hpp"
 #include "lrt/trans_impl.hpp"
+
+//#include "ebb/EventManager/EventManager.hpp"
 
 namespace ebbrt {
   namespace lrt {
@@ -50,10 +56,16 @@ namespace ebbrt {
   class EbbRT {
   public:
     EbbRT();
+    EbbRT(void* config);
+    /**
+     * Configuration (flattened device tree) pointer 
+     */
+    void *fdt_;
   private:
     friend class Context;
     friend const lrt::trans::RootBinding&
     lrt::trans::initial_root_table(unsigned);
+    friend void lrt::event::_event_interrupt(uint8_t interrupt);
     friend void lrt::trans::install_miss_handler(lrt::trans::EbbRoot*);
     friend bool lrt::trans::_trans_precall(Args*,
                                            ptrdiff_t,
@@ -120,6 +132,9 @@ namespace ebbrt {
         Any currently executing events will run before the loop breaks
     */
     void Break();
+
+    /** The instance this context belongs to */
+    EbbRT& instance_;
   private:
     template<class U> friend class lrt::trans::EbbRef;
     friend void lrt::trans::cache_rep(lrt::trans::EbbId, lrt::trans::EbbRep*);
@@ -138,8 +153,6 @@ namespace ebbrt {
     friend class lrt::trans::InitRoot;
     friend lrt::event::Location lrt::event::get_location();
 
-    /** The instance this context belongs to */
-    EbbRT& instance_;
     /** The location of this context */
     lrt::event::Location location_;
     /** The local table storing per location ebb reps */

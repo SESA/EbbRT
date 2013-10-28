@@ -38,7 +38,6 @@ namespace ebbrt {
           void* ret;
         };
       };
-      EbbId find_static_ebb_id(const char* name);
     }
   }
 }

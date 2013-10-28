@@ -57,15 +57,25 @@ app_deps =
 %.pb.cc %.pb.h: %.proto
 	$(PROTOC) --proto_path=$(dir $^) --cpp_out=$(dir $^) $^
 
+
 if LRT_BARE
+
+.PRECIOUS: %.dtb %.elf32
+
+%.dtb: %.dts 
+	dtc -O dtb -o $@ $<
+
+%.elf32: % 
+	objcopy -O elf32-i386 $< $@
 
 if ARCH_X86_64
 app_linkflags += -Wl,-n,-z,max-page-size=0x1000 \
 	-Wl,-T,$(top_srcdir)/src/lrt/bare/arch/x86_64/link.ld
 
-%.iso: % util/grub.cfg
+%.iso: % %.dtb %.elf32 util/grub.cfg
 	strip -s $< -o $<.stripped
 	grub-mkrescue -o $@ -graft-points boot/ebbrt=$<.stripped \
+	boot/fdt=$<.dtb \
 	boot/grub/grub.cfg=$(top_srcdir)/util/grub.cfg
 endif
 

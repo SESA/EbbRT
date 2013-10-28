@@ -1,0 +1,181 @@
+declare app
+declare count
+declare name
+declare tap
+declare debug
+declare -i optcount=0
+declare -i barerun=0
+declare -i kexrun=0
+declare -i docker=0
+declare -i localrun=1
+
+while getopts "n:t:g:DBK" OPT
+do 
+  case $OPT in
+      ("n") name="$OPTARG"; (( optcount=optcount + 2));;
+      ("t") tap="$OPTARG"; (( optcount=optcount + 2));;
+      ("g") debug="$OPTARG"; (( optcount=optcount + 2));;
+      ("D") docker=1; localrun=0; (( optcount=optcount + 1));;
+      ("K") kexrun=1; docker=0; localrun=0; (( optcount=optcount + 1));;
+      ("B") barerun=1; kexrun=0; docker=0; localrun=0; (( optcount=optcount + 1));;
+  esac
+done
+
+shift $optcount
+app=$1
+count=$2
+if [[ -z $count ]]; then count=1; fi
+echo "Loading $count of $app"
+
+
+if [[ -z $app  || -z $count ]]
+then
+  echo "USAGE: $0 [-n name] [-t tap] [-f fcnt] [-P] <app> <count>"
+  echo "     -n  name : specify name of the job " 
+  echo "     -t  tap  : tap interface" 
+  echo "     -D       : load sesalnx with docker app" 
+  echo "     -K       : load sesalnx and kexec into bare-metal" 
+  echo "     -B       : load bare-metal instance" 
+  echo "     app      : EbbRT application to run (e.g., HelloWorld)"
+  echo "     count    : num of instances"
+  exit 1;
+fi
+
+if [[ -n $tap ]]; then 
+  export SESA_TAP=$tap
+fi
+
+if [[ -n $debug ]]; then 
+  export SESA_DEBUG=$debug
+fi
+
+# Assign a random application name if no name is given 
+if [[ -z $name ]]; then 
+  name=$app$RANDOM; 
+fi
+
+APPNAME="$name"
+echo "Application: $name"
+
+BARE_IMG=$(readlink -f ${base}/bare/src/app/$app/$app.$imgtype)
+BARE_32=$(readlink -f ${base}/bare/src/app/$app/$app.elf32)
+CONFIG=$(readlink -f ${base}/bare/src/app/$app/$app.dtb)
+FNT_IMG=$(readlink -f ${base}/ulnx/src/app/$app/$app)
+
+if [[ ! -a $BARE_IMG && $count>0 ]]; then
+  echo "ERROR: No binaries found for $app. Hint: try running ./makeapp $app"
+  exit 1
+fi
+
+# Create directory for instance config 
+appdir=$base/appdata/$APPNAME
+mkdir -p $appdir
+
+
+#################################################
+# Load single docker instance (instance count is ignored)
+#################################################
+if [[ $docker == 1 ]]; then
+  # linux vm image uses Docker to contain app dependancies 
+  # move in binary + run script
+
+  # create directory for this particular instance-type
+  instdir=$appdir; 
+  mkdir -p $instdir
+
+  cp $ulnx/src/app/$app/$app $instdir/app 
+  cp $base/scripts/docker-run $instdir/launch
+
+  # check source directory for Dockerfile
+  dockerfile=$src/util/docker/$app.dockerfile
+  if [[ ! -a $dockerfile ]]; then
+    dockerfile=$src/util/docker/default.dockerfile
+  fi
+  cp $dockerfile $instdir/Dockerfile
+
+  # Create director for copy-on-write images (if nessessary)
+  cowdir=$base/cowimgs/$APPNAME
+  mkdir -p $cowdir
+  qemu-img create -f qcow2 -b $sesalnx $cowdir/$instid.img >> /dev/null
+  FNT_IMG=$(readlink -f ${cowdir}/$instid.img)
+
+  # mount and run
+  mnt=$(readlink -f ${base}/$instdir)
+  ftcmd="$($SESA_GET -i -c $mnt $APPNAME $FNT_IMG 1)"
+  echo $ftcmd
+
+  # open serials 
+  #serials=$(echo "$ftcmd" | grep serial | while read node nn junk path; do echo $path; done)
+  #for sock in $serials; do
+  #  xterm -e socat - UNIX-CONNECT:$sock &
+  #done
+fi
+
+#################################################
+# Load bare-metal instances (kexec)
+################################################
+
+if [[ $kexrun == 1 ]]; then
+
+  # configuration volume is shared across all instances
+  instdir=$appdir; 
+  mkdir -p $instdir
+
+  # move in binaries
+  cp $bare/src/app/$app/$app.dtb $instdir/config.dtb
+  objcopy -O elf32-i386 $bare/src/app/$app/$app $instdir/app.elf32
+
+  # construct launch script
+  touch $instdir/prelaunch; chmod 755 $instdir/prelaunch
+  cat > $instdir/prelaunch << EOF
+#!/bin/bash
+app=$config_dir/app.elf32
+mod=$config_dir/config.dtb
+EOF
+
+  # write ip 
+  let max=10+$count**2 # ip timeout
+  echo "MAX=$max" >> $instdir/prelaunch 
+  cat $base/scripts/ip >> $instdir/prelaunch
+
+  # kexec
+  cat $base/scripts/kexec >> $instdir/prelaunch
+
+  # load isntances
+  for i in `seq 1 $count`; do
+    instid=$RANDOM
+
+    # TODO: configuration 
+
+    # Create director for copy-on-write images (if nessessary)
+    cowdir=$base/cowimgs/$APPNAME
+    mkdir -p $cowdir
+
+    qemu-img create -f qcow2 -b $sesalnx $cowdir/$instid.img >> /dev/null
+    FNT_IMG=$(readlink -f ${cowdir}/$instid.img)
+
+    # mount and run
+    mnt=$(readlink -f ${base}/$instdir)
+    $SESA_GET -i -c $mnt $APPNAME $FNT_IMG 1
+  done
+fi
+
+
+#################################################
+# Run bare-metal instance (direct)
+#################################################
+
+if [[ $barerun == 1 ]]; then
+  $SESA_GET -i $APPNAME $BARE_IMG $count
+fi
+
+
+#################################################
+# Run local process
+#################################################
+
+if [[ $localrun == 1 ]]; then
+  for i in `seq 1 $count`; do
+    xterm -hold -e $FNT_IMG $CONFIG $APPNAME $BARE_32 &
+  done
+fi

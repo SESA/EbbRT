@@ -167,10 +167,19 @@ ebbrt::app::start()
 #endif
 
 #ifdef __linux__
-int main()
+main(int argc, char* argv[] )
 {
-  ebbrt::EbbRT instance;
+  if(argc < 2)
+  {
+    std::cout << "Usage: dtb as first argument\n";
+    std::exit(1);
+  }
 
+  int n;
+  char *fdt = ebbrt::app::LoadConfig(argv[1], &n);
+
+  // ...fdt buffer contains the entire file...
+  ebbrt::EbbRT instance((void *)fdt);
   ebbrt::Context context{instance};
   context.Activate();
   setup();

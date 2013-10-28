@@ -36,49 +36,8 @@
 #include "sync/spinlock.hpp"
 #endif
 
-constexpr ebbrt::app::Config::InitEbb late_init_ebbs[] =
-{
-#ifdef __linux__
-  { .name = "EbbManager" },
-#endif
-  { .name = "Console" },
-  { .name = "EventManager" }
-};
 
 #ifdef __ebbrt__
-constexpr ebbrt::app::Config::InitEbb early_init_ebbs[] =
-{
-  { .name = "MemoryAllocator" },
-  { .name = "EbbManager" },
-  { .name = "Gthread" },
-  { .name = "Syscall" }
-};
-#endif
-
-constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
-  {.name = "MemoryAllocator", .id = 1},
-  {.name = "EbbManager", .id = 2},
-  {.name = "Gthread", .id = 3},
-  {.name = "Syscall", .id = 4},
-  {.name = "Console", .id = 5},
-  {.name = "EventManager", .id = 6}
-};
-
-const ebbrt::app::Config ebbrt::app::config = {
-  .space_id = 0,
-#ifdef __ebbrt__
-  .num_early_init = sizeof(early_init_ebbs) / sizeof(Config::InitEbb),
-  .early_init_ebbs = early_init_ebbs,
-#endif
-  .num_late_init = sizeof(late_init_ebbs) / sizeof(Config::InitEbb),
-  .late_init_ebbs = late_init_ebbs,
-  .num_statics = sizeof(static_ebbs) / sizeof(Config::StaticEbbId),
-  .static_ebb_ids = static_ebbs
-};
-
-#ifdef __ebbrt__
-bool ebbrt::app::multi = true;
-
 void
 ebbrt::app::start()
 {
@@ -92,26 +51,50 @@ ebbrt::app::start()
 }
 #endif
 
-#ifdef __linux__
-int main()
-{
-  ebbrt::EbbRT instance;
 
-  std::vector<std::thread> threads(std::thread::hardware_concurrency());
-  for (auto& thread : threads) {
-    thread = std::thread([&]{
-      ebbrt::Context context{instance};
-      context.Activate();
-      char str[] = "Hello Ebb\n";
-      auto buf = ebbrt::console->Alloc(sizeof(str));
-      std::memcpy(buf.data(), str, sizeof(str));
-      ebbrt::console->Write(std::move(buf));
-      context.Deactivate();
-      });
+#ifdef __linux__
+
+#include <stdlib.h>
+#include "lib/fdt/libfdt.h"
+
+
+/** this is included as a ugly kludge around our current configuration model. 
+ * i.e., we need an id to statically construct ebbs before an fdt can be
+ * parsed */
+constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
+  {.name = "EbbManager", .id = 2},
+  {.name = "Console", .id = 5},
+  {.name = "EventManager", .id = 6},
+};
+const ebbrt::app::Config ebbrt::app::config = {
+  .num_statics = sizeof(static_ebbs) / sizeof(Config::StaticEbbId),
+  .static_ebb_ids = static_ebbs
+};
+
+
+int 
+main(int argc, char* argv[] )
+{
+  if(argc < 2)
+  {
+    std::cout << "Usage: ./HelloEbb HelloEbb.dtb\n";
+    std::exit(1);
   }
-  for (auto& thread : threads) {
-    thread.join();
-  }
+
+  int n;
+  char *fdt = ebbrt::app::LoadConfig(argv[1], &n);
+
+  // ...fdt buffer contains the entire file...
+  ebbrt::EbbRT instance((void *)fdt);
+  ebbrt::Context context{instance};
+  context.Activate();
+  char str[] = "Hello Ebb\n";
+  auto buf = ebbrt::console->Alloc(sizeof(str));
+  std::memcpy(buf.data(), str, sizeof(str));
+  ebbrt::console->Write(std::move(buf));
+  context.Deactivate();
+
+  std::cout << "Sucessful run\n";
   return 0;
 }
 #endif

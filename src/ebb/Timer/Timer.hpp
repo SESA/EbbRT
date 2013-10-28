@@ -20,6 +20,7 @@
 
 #include <chrono>
 
+#include "lrt/config.hpp"
 #include "ebb/ebb.hpp"
 
 namespace ebbrt {
@@ -32,7 +33,7 @@ namespace ebbrt {
     Timer(EbbId id) : EbbRep{id} {}
   };
   const EbbRef<Timer> timer =
-    EbbRef<Timer>(lrt::trans::find_static_ebb_id("Timer"));
+    EbbRef<Timer>(lrt::config::find_static_ebb_id(nullptr,"Timer"));
 }
 
 #endif

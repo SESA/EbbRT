@@ -1,0 +1,13 @@
+#!/bin/bash
+vnc=$1
+port=$2
+
+
+if [[ -z $vnc || ! $port ]]; then
+  echo "USAGE: $0 <vnc server unix socket> <port>"
+  exit 1
+fi
+
+socat TCP-LISTEN:$port UNIX-CONNECT:$vnc &
+xterm -e vncviewer localhost:$port &
+

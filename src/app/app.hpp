@@ -21,6 +21,7 @@
 
 #include <cstring>
 #include <string>
+#include <fstream>
 #include <functional>
 #include <unordered_map>
 
@@ -36,74 +37,40 @@ namespace ebbrt {
     /* symbol table for configuration */
     // fixme, don't return root, for now needed to fill initial root table
     typedef lrt::trans::EbbRoot* (*ConfigFuncPtr)();
+
     void AddSymbol (std::string str, ConfigFuncPtr);
     /// lookup return function poitner
     ConfigFuncPtr LookupSymbol (std::string str);
-    /**
-     * Application configuration.
-     * The configuration defines which
-     * ebbrt::lrt::trans::EbbRoot%s should be constructed
-     * and which ebbrt::lrt::trans::EbbId%s are statically known.
-     */
+
+#ifdef __linux__ 
+    /* Config helped functions 
+     * TODO: Move these somewhere else e.g., into a 'filesystem misc' header
+     * */
+    char* LoadFile(char* path, int *len);
+    void SaveFile(char* ptr, int len, char* path);
+
     struct Config {
-      /** The space this node should allocate
-          ebbrt::lrt::trans::EbbId%s out of */
-      uint16_t space_id;
-
-      /**
-       * An element used to statically construct Ebbs.
-       */
-      class InitEbb {
-      public:
-        /** The id to install the root on */
-        const char* name;
-      };
-
-      /** Number of Ebbs to statically construct early
-          These Ebbs cannot rely on globally constructed objects or
-          exceptions at construction time */
-#ifdef __ebbrt__
-      size_t num_early_init;
-      const InitEbb* early_init_ebbs; // ebbs pre-memory allocator
-#endif
-      size_t num_late_init;
-      /** Array describing which Ebbs to statically construct */
-      const InitEbb* late_init_ebbs;
-      /** Size of ebbrt::app::Config::static_ebb_ids */
+      /** Size of ebbrt::app::Config::static_ebb_ids
+       * */
       size_t num_statics;
       /**
-       * Defines a statically known EbbId.
-       */
+       * * Defines a  statically known EbbId.
+       * */
       class StaticEbbId {
-      public:
-        /** Name to lookup */
-        const char* name;
-        /** The associated Id */
-        lrt::trans::EbbId id;
+        public:
+          const char* name;
+          lrt::trans::EbbId id;
       };
-      /** Array describing the statically known
-          ebbrt::lrt::trans::EbbId%s */
       const StaticEbbId* static_ebb_ids;
     };
-    /**
-     * The configuration which is statically linked in to
-     * the application.
-     * This is defined by each application.
-    */
-    extern const Config config;
 
-#ifdef __ebbrt__
     /**
-     *  Whether or not to enter ebbrt::app::start() on all cores or
-     *  just one.
-     *  This is by default weakly defined in ./lrt/boot.cpp
-     *  to false. An application can override it.
-     *
-     *  @hideinitializer
-    */
-    extern bool multi;
+     * * The configuration which is statically linked in to
+     * * the application.
+     * * This is defined by each application.
+     * */
+        extern const Config config;
 #endif
-
     /**
      * The entry point to the application.
      * Upon return the system enters the event loop and begins
