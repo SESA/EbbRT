@@ -33,10 +33,6 @@ ebbrt::app::start()
   ethernet = EbbRef<Ethernet>(ebb_manager->AllocateId());
   ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
 
-  auto network =
-    EbbRef<Network>{ebb_manager->AllocateId()};
-  ebb_manager->Bind(LWIPNetwork::ConstructRoot, network);
-
   network->InitPing();
   network->InitEcho();
 }
