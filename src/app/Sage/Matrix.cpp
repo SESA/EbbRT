@@ -49,7 +49,8 @@ ebbrt::Matrix::Matrix(EbbId id) : EbbRep(id) {
   connected_ = 0;
   config_handle->SetInt32("/ebbs/Matrix", "id", id);
   auto outptr = static_cast<const char *>(ebbrt::config_handle->GetConfig());
-  std::ofstream outfile{ "/tmp/matrixconfig", std::ofstream::binary };
+  auto tmpfilename = tmpnam(nullptr);
+  std::ofstream outfile{ tmpfilename, std::ofstream::binary };
   outfile.write(outptr, fdt_totalsize(outptr));
   outfile.close();
 
@@ -67,10 +68,11 @@ ebbrt::Matrix::Matrix(EbbId id) : EbbRep(id) {
     if (!ip.empty() && ip[ip.length() - 1] == '\n') {
       ip.erase(ip.length() - 1);
     }
-    node_allocator->Allocate(ip, bare_bin, "/tmp/matrixconfig");
+    node_allocator->Allocate(ip, bare_bin, tmpfilename);
   }
 #else
   size_ = 0;
+  matrix_initialized_ = false;
 #endif
 }
 
@@ -78,7 +80,9 @@ namespace {
 enum message_type {
   CONNECT,
   RANDOMIZE,
-  RANDOMIZE_COMPLETE
+  RANDOMIZE_COMPLETE,
+  GET,
+  GET_COMPLETE
 };
 
 struct connect_message {
@@ -88,15 +92,28 @@ struct connect_message {
 struct randomize_message {
   message_type type;
   uint32_t op_id;
-  size_t xmin;
-  size_t xmax;
-  size_t ymin;
-  size_t ymax;
+  size_t size;
+  size_t index;
 };
 
 struct randomize_complete_message {
   message_type type;
   uint32_t op_id;
+};
+
+struct get_message {
+  message_type type;
+  uint32_t op_id;
+  size_t size;
+  size_t index;
+  size_t row;
+  size_t column;
+};
+
+struct get_complete_message {
+  message_type type;
+  uint32_t op_id;
+  double val;
 };
 }
 
@@ -104,17 +121,10 @@ struct randomize_complete_message {
 ebbrt::Future<void> ebbrt::Matrix::Randomize() {
   auto op_id = op_id_++;
   auto f = [this, op_id]() {
-    size_t x = 0;
-    size_t y = 0;
+    size_t index = 0;
     for (const auto &backend : backends_) {
-      size_t x_max = std::min(x + MAX_DIM, size_);
-      size_t y_max = std::min(y + MAX_DIM, size_);
-      randomize_message msg{ RANDOMIZE, op_id, x, x_max, y, y_max };
-      x = x_max;
-      if (x == size_) {
-        y = y_max;
-        x = 0;
-      }
+      randomize_message msg{ RANDOMIZE, op_id, size_, index };
+      index++;
       auto buf = message_manager->Alloc(sizeof(msg));
       std::memcpy(buf.data(), static_cast<void *>(&msg), sizeof(msg));
       message_manager->Send(backend, ebbid_, std::move(buf));
@@ -132,11 +142,32 @@ ebbrt::Future<void> ebbrt::Matrix::Randomize() {
   }
   return it.first->second.second.GetFuture();
 }
+
+ebbrt::Future<double> ebbrt::Matrix::Get(size_t row, size_t column) {
+  auto op_id = op_id_++;
+  auto f = [this, op_id, row, column]() {
+    auto index_per_row = (size_ + (MAX_DIM - 1)) / MAX_DIM;
+    auto index = (row / MAX_DIM) * index_per_row + (column / MAX_DIM);
+    get_message msg { GET, op_id, size_, index, row % MAX_DIM, column % MAX_DIM};
+    auto buf = message_manager->Alloc(sizeof(msg));
+    std::memcpy(buf.data(), static_cast<void *>(&msg), sizeof(msg));
+    message_manager->Send(backends_[index], ebbid_, std::move(buf));
+  };
+
+  auto it = get_promise_map_.emplace(std::piecewise_construct,
+                                     std::forward_as_tuple(op_id),
+                                     std::forward_as_tuple());
+  if (completed_connect_) {
+    f();
+  } else {
+    on_connect = f;
+  }
+  return it.first->second.GetFuture();
+}
 #endif
 
 void ebbrt::Matrix::Connect() {
 #ifdef __ebbrt__
-  // FIXME: get from config
   NetworkId frontend;
   size_t pos = 0;
   int count = 0;
@@ -157,6 +188,18 @@ void ebbrt::Matrix::Connect() {
   message_manager->Send(frontend, ebbid_, std::move(buf));
 #endif
 }
+
+#ifdef __ebbrt__
+void ebbrt::Matrix::Initialize(size_t size, size_t index) {
+  auto index_per_side = (size + (MAX_DIM - 1)) / MAX_DIM;
+  auto x_index = index % index_per_side;
+  auto y_index = index / index_per_side;
+  auto x_len = std::min(size, (x_index + 1) * MAX_DIM) - x_index * MAX_DIM;
+  auto y_len = std::min(size, (y_index + 1) * MAX_DIM) - y_index * MAX_DIM;
+  matrix_ = matrix<double>(y_len, x_len);
+  matrix_initialized_ = true;
+}
+#endif
 
 void ebbrt::Matrix::HandleMessage(NetworkId from, Buffer buf) {
 #ifdef __linux__
@@ -183,6 +226,11 @@ void ebbrt::Matrix::HandleMessage(NetworkId from, Buffer buf) {
     }
     break;
   }
+  case message_type::GET_COMPLETE: {
+    auto get = reinterpret_cast<const get_complete_message *>(buf.data());
+    get_promise_map_[get->op_id].SetValue(get->val);
+    break;
+  }
   default:
     assert(0);
     break;
@@ -194,31 +242,33 @@ void ebbrt::Matrix::HandleMessage(NetworkId from, Buffer buf) {
   switch (*op) {
   case message_type::RANDOMIZE: {
     auto randomize = reinterpret_cast<const randomize_message *>(buf.data());
-    xmin_ = randomize->xmin;
-    xmax_ = randomize->xmax;
-    ymin_ = randomize->ymin;
-    ymax_ = randomize->ymax;
-    size_t x_size = xmax_ - xmin_;
-    size_t y_size = ymax_ - ymin_;
-    matrix_ = new double *[x_size];
-    for (size_t i = 0; i < x_size; ++i) {
-      matrix_[i] = new double[y_size];
+    if (!matrix_initialized_) {
+      Initialize(randomize->size, randomize->index);
     }
     char strbuf[80];
-    sprintf(strbuf, "Randomizing X: %lu -> %lu Y: %lu -> %lu\n", xmin_, xmax_,
-            ymin_, ymax_);
+    sprintf(strbuf, "Randomizing\n");
     lrt::console::write(strbuf);
     std::mt19937 gen(15);
     std::uniform_real_distribution<> dis(-1, 1);
-    for (size_t i = 0; i < x_size; ++i) {
-      for (size_t j = 0; j < y_size; ++j) {
-        matrix_[i][j] = dis(gen);
-      }
+    for (auto& elem : matrix_) {
+      elem = dis(gen);
     }
     randomize_complete_message msg{ RANDOMIZE_COMPLETE, randomize->op_id };
     auto buf = message_manager->Alloc(sizeof(msg));
     std::memcpy(buf.data(), static_cast<void *>(&msg), sizeof(msg));
 
+    message_manager->Send(from, ebbid_, std::move(buf));
+    break;
+  }
+  case message_type::GET: {
+    auto get = reinterpret_cast<const get_message *>(buf.data());
+    if (!matrix_initialized_) {
+      Initialize(get->size, get->index);
+    }
+    get_complete_message msg{ GET_COMPLETE, get->op_id,
+        matrix_(get->row,get->column)};
+    auto buf = message_manager->Alloc(sizeof(msg));
+    std::memcpy(buf.data(), static_cast<void *>(&msg), sizeof(msg));
     message_manager->Send(from, ebbid_, std::move(buf));
     break;
   }

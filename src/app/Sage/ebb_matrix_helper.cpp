@@ -70,14 +70,6 @@ void activate_context() {
 
 void deactivate_context() { context->Deactivate(); }
 
-void wait_for_future(ebbrt::Future<void> *fut) {
-  fut->Then(ebbrt::launch::async, [](ebbrt::Future<void> complete) {
-    complete.Get();
-    context->Break();
-  });
-  context->Loop(-1);
-}
-
 #else
 
 void ebbrt::app::start() {

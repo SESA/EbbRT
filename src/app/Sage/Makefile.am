@@ -76,7 +76,7 @@ CYTHON_CPPFLAGS = \
 	cython --cplus -v $(CYTHON_CPPFLAGS) $< -o $@
 
 if LRT_ULNX
-lib_LTLIBRARIES += src/app/Sage/ebb_matrix.la
+EXTRA_LTLIBRARIES += src/app/Sage/ebb_matrix.la
 
 src_app_Sage_ebb_matrix_la_SOURCES = \
 	src/app/Sage/ebb_matrix.cpp \
@@ -92,7 +92,9 @@ src_app_Sage_ebb_matrix_la_ebbs = \
 	src/ebb/Network/SocketNetwork.la
 
 src_app_Sage_ebb_matrix_la_LDFLAGS = \
-	-module
+	-module \
+	-no-undefined \
+	-rpath $(abs_builddir)
 
 src_app_Sage_ebb_matrix_la_LIBADD = \
 	$(src_app_Sage_ebb_matrix_la_ebbs) \

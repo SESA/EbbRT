@@ -7,7 +7,8 @@ cdef extern from "ebb/EventManager/Future.hpp" namespace "ebbrt":
 cdef extern from "app/Sage/ebb_matrix_helper.hpp":
     void activate_context()
     void deactivate_context()
-    void wait_for_future(Future[void]*)
+    void wait_for_future_void "wait_for_future<void>"(Future[void]*)
+    double wait_for_future_double "wait_for_future<double>"(Future[double]*)
 
 cdef extern from "inttypes.h":
     ctypedef unsigned int uint32_t
@@ -34,6 +35,7 @@ cdef extern from "ebb/EbbManager/EbbManager.hpp" namespace "ebbrt":
 cdef extern from "app/Sage/Matrix.hpp" namespace "ebbrt":
     cdef cppclass Matrix:
         Future[void] Randomize()
+        Future[double] Get(int, int)
 
 cdef extern from "app/Sage/Matrix.hpp" namespace "ebbrt::Matrix":
     EbbRoot* ConstructRoot()
@@ -60,5 +62,13 @@ cdef class EbbMatrix:
         activate_context()
         cdef Matrix* ref = deref(self.matrix)
         cdef Future[void] fut = ref.Randomize()
-        wait_for_future(&fut)
+        wait_for_future_void(&fut)
         deactivate_context()
+    def __getitem__(self, pos):
+        row,column = pos
+        activate_context()
+        cdef Matrix* ref = deref(self.matrix)
+        cdef Future[double] fut = ref.Get(row, column)
+        cdef double ret = wait_for_future_double(&fut)
+        deactivate_context()
+        return ret
