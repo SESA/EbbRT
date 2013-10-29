@@ -52,17 +52,22 @@ ebbrt::Matrix::Matrix(EbbId id) : EbbRep(id) {
   std::ofstream outfile{ "/tmp/matrixconfig", std::ofstream::binary };
   outfile.write(outptr, fdt_totalsize(outptr));
   outfile.close();
-  auto fp = popen("khinfo MatrixPool", "r");
+
+  auto pool = getenv("SAGE_POOL");
+  assert(pool != nullptr);
+  auto poolstr = std::string{"khinfo "} + pool;
+  auto fp = popen(poolstr.c_str(), "r");
   char out[1024];
+  auto bare_bin = getenv("SAGE_BIN");
+  assert(bare_bin != nullptr);
   for (size_t i = 0; i < nodes_; ++i) {
-    assert(fgets(out, 1024, fp) != nullptr);
+    auto ret = fgets(out, 1024, fp);
+    assert(ret != nullptr);
     std::string ip = out;
     if (!ip.empty() && ip[ip.length() - 1] == '\n') {
       ip.erase(ip.length() - 1);
     }
-    node_allocator->Allocate(ip, "/home/dschatz/Work/SESA/EbbRT/newbuild/bare/"
-                                 "src/app/Sage/SageMatrix.elf32",
-                             "/tmp/matrixconfig");
+    node_allocator->Allocate(ip, bare_bin, "/tmp/matrixconfig");
   }
 #else
   size_ = 0;

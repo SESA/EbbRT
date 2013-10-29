@@ -53,7 +53,6 @@ cdef class EbbMatrix:
         activate_context()
         cdef EbbManager* manager = deref(ebb_manager)
         self.matrix = <EbbRef[Matrix]>manager.AllocateId()
-        print <EbbId>self.matrix
         manager.Bind(ConstructRoot, <EbbId>self.matrix)
         SetSize(<EbbId>self.matrix, size)
         deactivate_context()

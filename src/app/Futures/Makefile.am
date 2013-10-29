@@ -35,7 +35,7 @@ src_app_Futures_Futures_linked_ebbs = $(foreach ebb,$(src_app_Futures_Futures_eb
 
 src_app_Futures_Futures_LDFLAGS = \
 	$(app_linkflags) \
-	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_libs) $(src_app_Futures_Futures_linked_ebbs))),-no-whole-archive'
+	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_linked_libs) $(src_app_Futures_Futures_linked_ebbs))),-no-whole-archive'
 
 src_app_Futures_Futures_LDADD = \
 	libebbrt.la

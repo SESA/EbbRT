@@ -39,9 +39,9 @@ bool initialized = false;
 void activate_context() {
   if (!initialized) {
     int len;
-    auto fdt = ebbrt::app::LoadFile("/home/dschatz/Work/SESA/EbbRT/newbuild/"
-                                    "ulnx/src/app/Sage/SageMatrix.dtb",
-                                    &len);
+    auto dtb = getenv("SAGE_DTB");
+    assert(dtb != nullptr);
+    auto fdt = ebbrt::app::LoadFile(dtb, &len);
     instance.reset(new ebbrt::EbbRT(fdt));
     context.reset(new ebbrt::Context(*instance));
     context->Activate();
@@ -57,9 +57,7 @@ void activate_context() {
 
     ebbrt::message_manager->StartListening();
 
-    auto mutable_fdt = ebbrt::app::LoadFile("/home/dschatz/Work/SESA/EbbRT/newbuild/"
-                                            "ulnx/src/app/Sage/SageMatrix.dtb",
-                                            &len);
+    auto mutable_fdt = ebbrt::app::LoadFile(dtb, &len);
     ebbrt::config_handle->SetConfig(mutable_fdt);
     // TODO: find this out programmatically?
     ebbrt::config_handle->SetString("/", "frontend_ip", "10.255.0.1");

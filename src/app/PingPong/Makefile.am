@@ -75,7 +75,7 @@ src_app_PingPong_PingPong_linked_ebbs = $(foreach ebb,$(src_app_PingPong_PingPon
 
 src_app_PingPong_PingPong_LDFLAGS = \
 	$(app_linkflags) \
-	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_libs) $(src_app_PingPong_PingPong_linked_ebbs))),-no-whole-archive'
+	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_linked_libs) $(src_app_PingPong_PingPong_linked_ebbs))),-no-whole-archive'
 
 src_app_PingPong_PingPong_LDADD = \
 	libebbrt.la

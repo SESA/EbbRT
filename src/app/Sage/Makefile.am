@@ -104,6 +104,7 @@ src_app_Sage_ebb_matrix_la_DEPENDENCIES = \
 	libebbrt.la \
 	$(app_deps) \
 	$(ebbrt_libs) \
+	src/app/Sage/SageMatrix.dtb \
 	$(src_app_Sage_ebb_matrix_la_ebbs)
 
 src_app_Sage_ebb_matrix_la_CPPFLAGS = \
@@ -131,8 +132,6 @@ src_app_Sage_SageMatrix_ebbs = \
 	src/ebb/Config/Fdt.la
 
 src_app_Sage_SageMatrix_linked_ebbs = $(foreach ebb,$(src_app_Sage_SageMatrix_ebbs),$(if $(filter %.la,$(ebb)),$(dir $(ebb)).libs/$(STATIC_LIBRARY_PREFIX)$(notdir $(basename $(ebb))).a,$(ebb)))
-
-ebbrt_linked_libs = $(foreach lib,$(ebbrt_libs),$(if $(filter %.la,$(lib)),$(dir $(lib)).libs/$(notdir $(basename $(lib))).a,$(lib)))
 
 src_app_Sage_SageMatrix_LDFLAGS = \
 	$(app_linkflags) \

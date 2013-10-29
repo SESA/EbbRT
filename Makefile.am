@@ -62,6 +62,7 @@ STATIC_LIBRARY_PREFIX :=
 endif
 app_linkflags =
 app_deps =
+ebbrt_linked_libs = $(foreach lib,$(ebbrt_libs),$(if $(filter %.la,$(lib)),$(dir $(lib)).libs/$(notdir $(basename $(lib))).a,$(lib)))
 
 %.pb.cc %.pb.h: %.proto
 	$(PROTOC) --proto_path=$(dir $^) --cpp_out=$(dir $^) $^

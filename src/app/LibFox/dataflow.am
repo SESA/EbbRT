@@ -39,7 +39,7 @@ src_app_LibFox_mcphoton_dataflow_linked_ebbs = $(foreach ebb,$(src_app_LibFox_mc
 
 src_app_LibFox_mcphoton_dataflow_LDFLAGS = \
 	$(app_linkflags) \
-	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_libs) $(src_app_LibFox_mcphoton_dataflow_linked_ebbs))),-no-whole-archive' \
+	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_linked_libs) $(src_app_LibFox_mcphoton_dataflow_linked_ebbs))),-no-whole-archive' \
 	-L$(PROTOBUF_LIBDIR)
 
 src_app_LibFox_mcphoton_dataflow_LDADD = \

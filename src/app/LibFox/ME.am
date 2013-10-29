@@ -50,7 +50,7 @@ src_app_LibFox_mcphotonME_linked_ebbs = $(foreach ebb,$(src_app_LibFox_mcphotonM
 
 src_app_LibFox_mcphotonME_LDFLAGS = \
 	$(app_linkflags) \
-	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_libs) $(src_app_LibFox_mcphotonME_linked_ebbs))),-no-whole-archive'
+	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_linked_libs) $(src_app_LibFox_mcphotonME_linked_ebbs))),-no-whole-archive'
 
 src_app_LibFox_mcphotonME_LDADD = \
 	libebbrt.la \
@@ -73,7 +73,7 @@ src_app_LibFox_tfoxME_linked_ebbs = $(foreach ebb,$(src_app_LibFox_tfoxME_ebbs),
 
 src_app_LibFox_tfoxME_LDFLAGS = \
 $(app_linkflags) \
--Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_libs) $(src_app_LibFox_tfoxME_linked_ebbs))),-no-whole-archive'
+-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_linked_libs) $(src_app_LibFox_tfoxME_linked_ebbs))),-no-whole-archive'
 
 src_app_LibFox_tfoxME_LDADD = \
 	libebbrt.la \
