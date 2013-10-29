@@ -16,7 +16,7 @@
 
 EXTRA_PROGRAMS += src/app/TimerTest/TimerTest
 
-src_app_TimerTest_TimerTest_SOURCES = 
+src_app_TimerTest_TimerTest_SOURCES =
 
 if LRT_ULNX
 src_app_TimerTest_TimerTest_SOURCES += \
@@ -29,26 +29,25 @@ endif
 endif
 
 src_app_TimerTest_TimerTest_ebbs = \
-	src/ebb/EbbManager/libPrimitiveEbbManager.a \
-	src/ebb/EventManager/libSimpleEventManager.a
+	src/ebb/EbbManager/PrimitiveEbbManager.la \
+	src/ebb/EventManager/SimpleEventManager.la
 
 if LRT_BARE
 src_app_TimerTest_TimerTest_ebbs += \
-	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a \
-	src/ebb/Syscall/libSyscall.a \
-	src/ebb/Gthread/libGthread.a \
-	src/ebb/Timer/libApicTimer.a
+	src/ebb/MemoryAllocator/SimpleMemoryAllocator.la \
+	src/ebb/Syscall/Syscall.la \
+	src/ebb/Gthread/Gthread.la \
+	src/ebb/Timer/ApicTimer.la
 endif
 
+src_app_TimerTest_TimerTest_linked_ebbs = $(foreach ebb,$(src_app_TimerTest_TimerTest_ebbs),$(if $(filter %.la,$(ebb)),$(dir $(ebb)).libs/$(STATIC_LIBRARY_PREFIX)$(notdir $(basename $(ebb))).a,$(ebb)))
+
 src_app_TimerTest_TimerTest_LDFLAGS = \
-	$(app_linkflags) \
-	-Wl,-whole-archive \
-	$(ebbrt_libs) \
-	$(src_app_TimerTest_TimerTest_ebbs) \
-	-Wl,-no-whole-archive
+$(app_linkflags) \
+-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_linked_libs) $(src_app_TimerTest_TimerTest_linked_ebbs))),-no-whole-archive'
 
 src_app_TimerTest_TimerTest_LDADD = \
-	libebbrt.a
+	libebbrt.la
 
 if LRT_ULNX
 src_app_TimerTest_TimerTest_LDADD += \
@@ -56,7 +55,7 @@ src_app_TimerTest_TimerTest_LDADD += \
 endif
 
 src_app_TimerTest_TimerTest_DEPENDENCIES = \
-	libebbrt.a \
+	libebbrt.la \
 	$(app_deps) \
 	$(ebbrt_libs) \
 	$(src_app_TimerTest_TimerTest_ebbs)

@@ -19,7 +19,6 @@ app_sources = \
 
 
 EXTRA_PROGRAMS =
-include src/app/ConfigTest/Makefile.am
 include src/app/Futures/Makefile.am
 include src/app/HelloEbb/Makefile.am
 include src/app/HelloRemote/Makefile.am

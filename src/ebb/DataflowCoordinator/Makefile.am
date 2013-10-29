@@ -13,16 +13,19 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LIBRARIES += \
-	src/ebb/DataflowCoordinator/libSingleDataflowCoordinator.a
+EXTRA_LTLIBRARIES += \
+	src/ebb/DataflowCoordinator/SingleDataflowCoordinator.la
 
-src_ebb_DataflowCoordinator_libSingleDataflowCoordinator_a_SOURCES = \
+src_ebb_DataflowCoordinator_SingleDataflowCoordinator_la_SOURCES = \
 	src/ebb/DataflowCoordinator/SingleDataflowCoordinator.cpp
+
+src_ebb_DataflowCoordinator_SingleDataflowCoordinator_la_LDFLAGS = \
+	-module
 
 src/ebb/DataflowCoordinator/SingleDataflowCoordinator.$(OBJEXT): \
 	src/ebb/DataflowCoordinator/SingleDataflowCoordinator.pb.h
 
-nodist_src_ebb_DataflowCoordinator_libSingleDataflowCoordinator_a_SOURCES = \
+nodist_src_ebb_DataflowCoordinator_SingleDataflowCoordinator_la_SOURCES = \
 	src/ebb/DataflowCoordinator/SingleDataflowCoordinator.pb.cc \
 	src/ebb/DataflowCoordinator/SingleDataflowCoordinator.pb.h
 

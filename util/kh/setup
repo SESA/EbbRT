@@ -1,13 +1,13 @@
 #!/bin/bash
-# setup a build tree conducive to sesa/kittyhawk utility layer usage 
- 
+# setup a build tree conducive to sesa/kittyhawk utility layer usage
+
 # Info: The setup of an EbbRT x84_64 utility build envoirnment + helper
 # scripts
 
-# Instructions: run this script from the desiref build direction, 
+# Instructions: run this script from the desiref build direction,
 # passing in the EbbRT source directory as the first argument.
-# e.g., 
-# mkdir ~/build; cd ~/build; 
+# e.g.,
+# mkdir ~/build; cd ~/build;
 # ~/EbbRT/util/setup ~/EbbRT/
 #
 
@@ -48,7 +48,7 @@ scripts=$base/scripts
 khscripts=$src/util/kh/khscripts
 #TODO: variable debug flags & optimisations
 flags='-g -O0'
-#TODO: variable boot images 
+#TODO: variable boot images
 bootimg=sesalnx
 
 # Run configuration and make for bare,ulnx platforms
@@ -91,7 +91,7 @@ ulnx=$ulnx
 bare=$bare
 imgtype=$imgtype
 EOF
-cat $khscripts/makeapp-base >> $base/makeapp 
+cat $khscripts/makeapp-base >> $base/makeapp
 
 #################################################
 # quick run script
@@ -108,13 +108,13 @@ bare=$bare
 imgtype=$imgtype
 export SESA_GET=khget
 ##### SESA LINUX IMAGE ##################################
-sesalnx=$HOME/sesalnx.img
-sesalnx_id=$HOME/sesalnx_id
+sesalnx=/opt/bin/sesalnx.img
+sesalnx_id=/opt/bin/sesalnx_id
 config_dir=/mnt/app
 share_dir=/mnt/share
 #########################################################
 EOF
-cat $khscripts/runapp-base >> $base/runapp 
+cat $khscripts/runapp-base >> $base/runapp
 
 #################################################
 # alloc (empty) instance script
@@ -131,13 +131,13 @@ bare=$bare
 imgtype=$imgtype
 export SESA_GET=khget
 ##### SESA LINUX IMAGE ##################################
-sesalnx=$HOME/sesalnx.img
-sesalnx_id=$HOME/sesalnx_id
+sesalnx=/opt/bin/sesalnx.img
+sesalnx_id=/opt/bin/sesalnx_id
 config_dir=/mnt/app
 share_dir=/mnt/share
 #########################################################
 EOF
-cat $khscripts/alloc-base >> $base/alloc 
+cat $khscripts/alloc-base >> $base/alloc
 
 #################################################
 # copy misc scripts

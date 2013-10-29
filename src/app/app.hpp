@@ -42,12 +42,12 @@ namespace ebbrt {
     /// lookup return function poitner
     ConfigFuncPtr LookupSymbol (std::string str);
 
-#ifdef __linux__ 
-    /* Config helped functions 
+#ifdef __linux__
+    /* Config helped functions
      * TODO: Move these somewhere else e.g., into a 'filesystem misc' header
      * */
-    char* LoadFile(char* path, int *len);
-    void SaveFile(char* ptr, int len, char* path);
+    char* LoadFile(const char* path, int *len);
+    void SaveFile(char* ptr, int len, const char* path);
 
     struct Config {
       /** Size of ebbrt::app::Config::static_ebb_ids

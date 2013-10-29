@@ -20,29 +20,28 @@ src_app_Futures_Futures_SOURCES = \
 	src/app/Futures/Futures.cpp
 
 src_app_Futures_Futures_ebbs = \
-	src/ebb/EbbManager/libPrimitiveEbbManager.a \
-	src/ebb/EventManager/libSimpleEventManager.a \
-	src/ebb/Console/libLocalConsole.a
+	src/ebb/EbbManager/PrimitiveEbbManager.la \
+	src/ebb/EventManager/SimpleEventManager.la \
+	src/ebb/Console/LocalConsole.la
 
 if LRT_BARE
 src_app_Futures_Futures_ebbs += \
-	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a \
-	src/ebb/Syscall/libSyscall.a \
-	src/ebb/Gthread/libGthread.a
+	src/ebb/MemoryAllocator/SimpleMemoryAllocator.la \
+	src/ebb/Syscall/Syscall.la \
+	src/ebb/Gthread/Gthread.la
 endif
+
+src_app_Futures_Futures_linked_ebbs = $(foreach ebb,$(src_app_Futures_Futures_ebbs),$(if $(filter %.la,$(ebb)),$(dir $(ebb)).libs/$(STATIC_LIBRARY_PREFIX)$(notdir $(basename $(ebb))).a,$(ebb)))
 
 src_app_Futures_Futures_LDFLAGS = \
 	$(app_linkflags) \
-	-Wl,-whole-archive \
-	$(ebbrt_libs) \
-	$(src_app_Futures_Futures_ebbs) \
-	-Wl,-no-whole-archive
+	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_linked_libs) $(src_app_Futures_Futures_linked_ebbs))),-no-whole-archive'
 
 src_app_Futures_Futures_LDADD = \
-	libebbrt.a
+	libebbrt.la
 
 src_app_Futures_Futures_DEPENDENCIES = \
-	libebbrt.a \
+	libebbrt.la \
 	$(app_deps) \
 	$(ebbrt_libs) \
 	$(src_app_Futures_Futures_ebbs)

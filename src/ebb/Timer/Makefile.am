@@ -13,14 +13,18 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LIBRARIES += \
-	src/ebb/Timer/libSimpleTimer.a
+EXTRA_LTLIBRARIES += \
+	src/ebb/Timer/SimpleTimer.la \
+	src/ebb/Timer/ApicTimer.la
 
-src_ebb_Timer_libSimpleTimer_a_SOURCES = \
+src_ebb_Timer_SimpleTimer_la_SOURCES = \
 	src/ebb/Timer/SimpleTimer.cpp
 
-EXTRA_LIBRARIES += \
-	src/ebb/Timer/libApicTimer.a
+src_ebb_Timer_SimpleTimer_la_LDFLAGS = \
+	-module
 
-src_ebb_Timer_libApicTimer_a_SOURCES = \
+src_ebb_Timer_ApicTimer_la_SOURCES = \
 	src/ebb/Timer/ApicTimer.cpp
+
+src_ebb_Timer_ApicTimer_la_LDFLAGS = \
+	-module

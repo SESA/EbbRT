@@ -50,7 +50,7 @@ ebbrt::app::start()
 #ifdef __linux__
 
 /****************************/
-// Static ebb ulnx kludge 
+// Static ebb ulnx kludge
 /****************************/
 constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
   {.name = "EbbManager", .id = 2},
@@ -71,7 +71,7 @@ main(int argc, char* argv[] )
     std::exit(1);
   }
   int n;
-  char *fdt = ebbrt::app::LoadConfig(argv[1], &n);
+  char *fdt = ebbrt::app::LoadFile(argv[1], &n);
   ebbrt::EbbRT instance((void *)fdt);
 
   std::vector<std::thread> threads(std::thread::hardware_concurrency());

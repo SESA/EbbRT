@@ -18,6 +18,8 @@
 #ifndef EBBRT_EBB_NETWORK_LWIPNETWORK_HPP
 #define EBBRT_EBB_NETWORK_LWIPNETWORK_HPP
 
+#include <queue>
+
 #include "ebb/Network/Network.hpp"
 #include "lwip/udp.h"
 

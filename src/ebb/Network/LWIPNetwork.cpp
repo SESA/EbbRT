@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 
+#include <cinttypes>
 #include <cstdarg>
 #include <iostream>
 #include <queue>
@@ -266,7 +267,7 @@ ebbrt::LWIPNetwork::RegisterUDP(uint16_t port,
         auto cb =
             reinterpret_cast<std::function<void(Buffer, NetworkId)> *>(arg);
         NetworkId id;
-        id.addr = addr->addr;
+        id.addr = ntohl(addr->addr);
         size_t len = 0;
         for (struct pbuf *q = p; q != NULL; q = q->next) {
           len += q->len;

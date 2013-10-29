@@ -28,44 +28,54 @@ TESTS = test/hello-bare.py
 endif
 endif
 
-AM_CXXFLAGS = -std=c++11 -Wall -Werror -Wno-unused-private-field
+AM_CXXFLAGS = -std=c++11 -Wall -Werror
 AM_CPPFLAGS = -iquote $(top_srcdir)/src \
 	-iquote $(top_srcdir)/src/ebb/Network/lwip-1.4.1/src/include \
 	-iquote $(top_srcdir)/src/ebb/Network/lwip-1.4.1/src/include/ipv4 \
 	-iquote $(top_srcdir)/src/ebb/Network \
 	--include $(top_builddir)/config.h
 
-lib_LIBRARIES = libebbrt.a
+#lib_LIBRARIES = libebbrt.a
+lib_LTLIBRARIES = libebbrt.la
 
-libebbrt_a_SOURCES = \
+libebbrt_la_SOURCES = \
 	$(arch_sources) \
 	$(app_sources) \
 	$(device_sources) \
 	$(ebb_sources) \
 	$(lrt_sources) \
 	$(misc_sources)
-libebbrt_a_LIBADD =
-libebbrt_a_DEPENDENCIES =
+libebbrt_la_LIBADD =
+libebbrt_la_DEPENDENCIES =
 EXTRA_DIST =
+EXTRA_LTLIBRARIES =
 EXTRA_LIBRARIES =
 CLEANFILES =
 ebbrt_libs =
-
+EMPTY :=
+SPACE := $(EMPTY) $(EMPTY)
+COMMA := ,
+if LRT_BARE
+STATIC_LIBRARY_PREFIX := lib
+else
+STATIC_LIBRARY_PREFIX :=
+endif
 app_linkflags =
 app_deps =
+ebbrt_linked_libs = $(foreach lib,$(ebbrt_libs),$(if $(filter %.la,$(lib)),$(dir $(lib)).libs/$(notdir $(basename $(lib))).a,$(lib)))
 
 %.pb.cc %.pb.h: %.proto
 	$(PROTOC) --proto_path=$(dir $^) --cpp_out=$(dir $^) $^
 
 
+%.dtb: %.dts
+	dtc -O dtb -o $@ $<
+
 if LRT_BARE
 
 .PRECIOUS: %.dtb %.elf32
 
-%.dtb: %.dts 
-	dtc -O dtb -o $@ $<
-
-%.elf32: % 
+%.elf32: %
 	objcopy -O elf32-i386 $< $@
 
 if ARCH_X86_64

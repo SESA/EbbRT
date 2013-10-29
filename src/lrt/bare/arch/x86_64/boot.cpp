@@ -119,4 +119,3 @@ ebbrt::lrt::boot::init_smp(unsigned num_cores)
   access_once(smp_lock) = -1;
   _init_cpu_arch();
 }
-

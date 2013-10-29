@@ -89,6 +89,7 @@ namespace ebbrt {
       Future<typename Flatten<typename std::result_of<F(Future<Res>)>::type>::type>
       Then(launch policy, F&& func, Future<Res> fut);
 
+      void SetValue(const Res& res);
       void SetValue(Res&& res);
 
       void SetException(std::exception_ptr eptr);
@@ -208,6 +209,8 @@ namespace ebbrt {
     std::shared_ptr<State> state_;
 
   public:
+    Future() = default;
+
     Future(const Future&) = delete;
     Future& operator=(const Future&) = delete;
 
@@ -548,6 +551,13 @@ namespace ebbrt {
     state_->SetValue(std::move(res));
   }
 
+  template <typename Res>
+  void
+  Promise<Res>::SetValue(const Res& res)
+  {
+    state_->SetValue(res);
+  }
+
   inline
   void
   Promise<void>::SetValue()
@@ -803,6 +813,17 @@ namespace ebbrt {
       return async(move_bind([](F fn, Future<void> fut) {
             return fn(std::move(fut));
           }, std::move(func), std::move(fut)));
+    }
+  }
+
+  template <typename Res>
+  void
+  __future_detail::State<Res>::SetValue(const Res& res)
+  {
+    val_ = res;
+    ready_ = true;
+    if (func_) {
+      ebbrt::event_manager->Async(std::move(func_));
     }
   }
 

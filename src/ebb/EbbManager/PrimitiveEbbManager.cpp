@@ -79,6 +79,8 @@ ebbrt::PrimitiveEbbManager::PrimitiveEbbManager(EbbId id,
      lrt::event::get_num_cores()
 #endif
      ) * get_location();
+  //KLUDGE: workaround allocating over the static ID space
+  next_free_ = std::max(next_free_, UINT32_C(20));
 }
 
 void
@@ -86,12 +88,13 @@ ebbrt::PrimitiveEbbManager::CacheRep(EbbId id, EbbRep* rep)
 {
   local_cache_rep(id, rep);
 }
-
 ebbrt::EbbId
 ebbrt::PrimitiveEbbManager::AllocateId()
 {
   return next_free_++;
 }
+
+#include <iostream>
 
 void
 ebbrt::PrimitiveEbbManager::Bind(EbbRoot* (*factory)(), EbbId id)
@@ -108,6 +111,7 @@ ebbrt::PrimitiveEbbManager::Bind(EbbRoot* (*factory)(), EbbId id)
   } else {
     //TODO: Go remote
 #ifdef __linux__
+    std::cout << "Failed on id " << id << std::endl;
     assert(0);
 #elif __ebbrt__
     LRT_ASSERT(0);

@@ -13,16 +13,25 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LIBRARIES += \
-	src/ebb/MessageManager/libEthernetMessageManager.a \
-	src/ebb/MessageManager/libMPIMessageManager.a \
-	src/ebb/MessageManager/libUDPMessageManager.a
+EXTRA_LTLIBRARIES += \
+	src/ebb/MessageManager/EthernetMessageManager.la \
+	src/ebb/MessageManager/MPIMessageManager.la \
+	src/ebb/MessageManager/UDPMessageManager.la
 
-src_ebb_MessageManager_libEthernetMessageManager_a_SOURCES = \
+src_ebb_MessageManager_EthernetMessageManager_la_SOURCES = \
 	src/ebb/MessageManager/EthernetMessageManager.cpp
 
-src_ebb_MessageManager_libMPIMessageManager_a_SOURCES = \
+src_ebb_MessageManager_EthernetMessageManager_la_LDFLAGS = \
+	-module
+
+src_ebb_MessageManager_MPIMessageManager_la_SOURCES = \
 	src/ebb/MessageManager/MPIMessageManager.cpp
 
-src_ebb_MessageManager_libUDPMessageManager_a_SOURCES = \
+src_ebb_MessageManager_MPIMessageManager_la_LDFLAGS = \
+	-module
+
+src_ebb_MessageManager_UDPMessageManager_la_SOURCES = \
 	src/ebb/MessageManager/UDPMessageManager.cpp
+
+src_ebb_MessageManager_UDPMessageManager_la_LDFLAGS = \
+	-module

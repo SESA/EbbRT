@@ -19,28 +19,27 @@ src_app_HelloWorld_HelloWorld_SOURCES = \
 	src/app/HelloWorld/HelloWorld.cpp
 
 src_app_HelloWorld_HelloWorld_ebbs = \
-	src/ebb/EbbManager/libPrimitiveEbbManager.a \
-	src/ebb/EventManager/libSimpleEventManager.a
+	src/ebb/EbbManager/PrimitiveEbbManager.la \
+	src/ebb/EventManager/SimpleEventManager.la
 
 if LRT_BARE
 src_app_HelloWorld_HelloWorld_ebbs += \
-	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a \
-	src/ebb/Syscall/libSyscall.a \
-	src/ebb/Gthread/libGthread.a
+	src/ebb/MemoryAllocator/SimpleMemoryAllocator.la \
+	src/ebb/Syscall/Syscall.la \
+	src/ebb/Gthread/Gthread.la
 endif
+
+src_app_HelloWorld_HelloWorld_linked_ebbs = $(foreach ebb,$(src_app_HelloWorld_HelloWorld_ebbs),$(if $(filter %.la,$(ebb)),$(dir $(ebb)).libs/$(STATIC_LIBRARY_PREFIX)$(notdir $(basename $(ebb))).a,$(ebb)))
 
 src_app_HelloWorld_HelloWorld_LDFLAGS = \
 	$(app_linkflags) \
-	-Wl,-whole-archive \
-	$(ebbrt_libs) \
-	$(src_app_HelloWorld_HelloWorld_ebbs) \
-	-Wl,-no-whole-archive
+	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_linked_libs) $(src_app_HelloWorld_HelloWorld_linked_ebbs))),-no-whole-archive'
 
 src_app_HelloWorld_HelloWorld_LDADD = \
-	libebbrt.a
+	libebbrt.la
 
 src_app_HelloWorld_HelloWorld_DEPENDENCIES = \
-	libebbrt.a \
+	libebbrt.la \
 	$(app_deps) \
 	$(ebbrt_libs) \
 	$(src_app_HelloWorld_HelloWorld_ebbs)

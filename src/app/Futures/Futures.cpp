@@ -176,7 +176,7 @@ main(int argc, char* argv[] )
   }
 
   int n;
-  char *fdt = ebbrt::app::LoadConfig(argv[1], &n);
+  char *fdt = ebbrt::app::LoadFile(argv[1], &n);
 
   // ...fdt buffer contains the entire file...
   ebbrt::EbbRT instance((void *)fdt);

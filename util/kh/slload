@@ -1,8 +1,8 @@
 #!/bin/bash
 
 ##### SESA LINUX IMAGE ##################################
-sesalnx=/home/jmcadden/sesalnx.img
-sesalnx_id=/home/jmcadden/sesalnx_id
+sesalnx=/opt/bin/sesalnx.img
+sesalnx_id=/opt/bin/sesalnx_id
 config_dir=/mnt/app
 root_dir=/root
 #########################################################

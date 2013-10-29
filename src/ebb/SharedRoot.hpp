@@ -24,14 +24,25 @@
 #include "sync/spinlock.hpp"
 
 namespace ebbrt {
-  template <typename T>
+  template<int ...>
+  struct seq {};
+
+  template <int N, int ...S>
+  struct gens : gens<N-1, N-1, S...> {};
+
+  template <int ...S>
+  struct gens<0, S...> {
+    typedef seq<S...> type;
+  };
+
+  template <typename T, typename... CtorArgs>
   /**
    * @brief Shared Ebb Root
    * A single ebb representaive is shared between all locations
    */
   class SharedRoot : public EbbRoot {
   public:
-    SharedRoot() : rep_{nullptr}
+    SharedRoot(CtorArgs... args) : rep_{nullptr}, tup_{std::move(args)...}
     {
     }
     /**
@@ -51,7 +62,7 @@ namespace ebbrt {
       if (rep_ == nullptr) {
         lock_.Lock();
         if (rep_ == nullptr) {
-          rep_ = new T(id);
+          call_new(id, typename gens<sizeof...(CtorArgs)>::type());
         }
         lock_.Unlock();
       }
@@ -77,10 +88,16 @@ namespace ebbrt {
       return ret;
     }
   private:
+    template<int ...S>
+    void call_new(EbbId id, seq<S...>) {
+      rep_ = new T(id, std::get<S>(tup_)...);
+    }
+
     /**
      * @brief Our single shared representative
      */
     T* rep_;
+    std::tuple<CtorArgs...> tup_;
     Spinlock lock_;
   };
 }

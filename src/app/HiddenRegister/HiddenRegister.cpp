@@ -57,7 +57,7 @@ ebbrt::app::start()
 
 #ifdef __linux__
 /****************************/
-// Static ebb ulnx kludge 
+// Static ebb ulnx kludge
 /****************************/
 constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
   {.name = "EbbManager", .id = 2},
@@ -70,7 +70,7 @@ const ebbrt::app::Config ebbrt::app::config = {
   .static_ebb_ids = static_ebbs
 };
 /****************************/
-int 
+int
 main(int argc, char* argv[] )
 {
   if(argc < 2)
@@ -80,7 +80,7 @@ main(int argc, char* argv[] )
   }
 
   int n;
-  char *fdt = ebbrt::app::LoadConfig(argv[1], &n);
+  char *fdt = ebbrt::app::LoadFile(argv[1], &n);
 
   // ...fdt buffer contains the entire file...
   ebbrt::EbbRT instance((void *)fdt);

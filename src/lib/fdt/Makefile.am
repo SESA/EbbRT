@@ -14,16 +14,15 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-EXTRA_LIBRARIES += src/lib/fdt/libfdt.a
+EXTRA_LTLIBRARIES += src/lib/fdt/libfdt.la
 
-src_lib_fdt_libfdt_a_SOURCES = \
+src_lib_fdt_libfdt_la_SOURCES = \
 	src/lib/fdt/fdt.c \
 	src/lib/fdt/fdt_ro.c \
 	src/lib/fdt/fdt_wip.c \
 	src/lib/fdt/fdt_sw.c \
 	src/lib/fdt/fdt_rw.c \
 	src/lib/fdt/fdt_strerror.c \
-	src/lib/fdt/fdt_empty_tree.c							 
+	src/lib/fdt/fdt_empty_tree.c
 
-ebbrt_libs += src/lib/fdt/libfdt.a
-
+ebbrt_libs += src/lib/fdt/libfdt.la

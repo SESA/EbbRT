@@ -13,7 +13,10 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LIBRARIES += src/ebb/PCI/libPCI.a
+EXTRA_LTLIBRARIES += src/ebb/PCI/PCI.la
 
-src_ebb_PCI_libPCI_a_SOURCES = \
+src_ebb_PCI_PCI_la_SOURCES = \
 	src/ebb/PCI/PCI.cpp
+
+src_ebb_PCI_PCI_la_LDFLAGS = \
+	-module

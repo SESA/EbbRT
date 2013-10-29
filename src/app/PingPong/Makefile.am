@@ -16,7 +16,7 @@
 
 EXTRA_PROGRAMS += src/app/PingPong/PingPong
 
-src_app_PingPong_PingPong_SOURCES = 
+src_app_PingPong_PingPong_SOURCES =
 
 if LRT_ULNX
 src_app_PingPong_PingPong_SOURCES += \
@@ -31,56 +31,54 @@ endif
 endif
 
 src_app_PingPong_PingPong_ebbs = \
-	src/ebb/EbbManager/libPrimitiveEbbManager.a \
-	src/ebb/EventManager/libSimpleEventManager.a \
-	src/ebb/Config/libFdt.a \
-	src/ebb/Console/libLocalConsole.a
+	src/ebb/EbbManager/PrimitiveEbbManager.la \
+	src/ebb/EventManager/SimpleEventManager.la \
+	src/ebb/Config/Fdt.la \
+	src/ebb/Console/LocalConsole.la
 
 if UDP
 src_app_PingPong_PingPong_ebbs += \
-	src/ebb/MessageManager/libUDPMessageManager.a
+	src/ebb/MessageManager/UDPMessageManager.la
 else
 src_app_PingPong_PingPong_ebbs += \
-	src/ebb/MessageManager/libEthernetMessageManager.a
+	src/ebb/MessageManager/EthernetMessageManager.la
 endif
 
 if LRT_ULNX
 src_app_PingPong_PingPong_ebbs += \
-	src/ebb/NodeAllocator/libKittyhawk.a
+	src/ebb/NodeAllocator/Kittyhawk.la
 if UDP
 src_app_PingPong_PingPong_ebbs += \
-	src/ebb/Network/libSocketNetwork.a
+	src/ebb/Network/SocketNetwork.la
 else
 src_app_PingPong_PingPong_ebbs += \
-	src/ebb/Ethernet/libRawSocket.a
+	src/ebb/Ethernet/RawSocket.la
 endif
 else
 if LRT_BARE
 src_app_PingPong_PingPong_ebbs += \
-	src/ebb/MemoryAllocator/libSimpleMemoryAllocator.a \
-	src/ebb/Ethernet/libVirtioNet.a \
-	src/ebb/PCI/libPCI.a \
-	src/ebb/Syscall/libSyscall.a \
-	src/ebb/Gthread/libGthread.a
+	src/ebb/MemoryAllocator/SimpleMemoryAllocator.la \
+	src/ebb/Ethernet/VirtioNet.la \
+	src/ebb/PCI/PCI.la \
+	src/ebb/Syscall/Syscall.la \
+	src/ebb/Gthread/Gthread.la
 
 if UDP
 src_app_PingPong_PingPong_ebbs += \
-	src/ebb/Timer/libApicTimer.a \
-	src/ebb/Network/libLWIPNetwork.a
+	src/ebb/Timer/ApicTimer.la \
+	src/ebb/Network/LWIPNetwork.la
 endif
 endif
 endif
 
+src_app_PingPong_PingPong_linked_ebbs = $(foreach ebb,$(src_app_PingPong_PingPong_ebbs),$(if $(filter %.la,$(ebb)),$(dir $(ebb)).libs/$(STATIC_LIBRARY_PREFIX)$(notdir $(basename $(ebb))).a,$(ebb)))
 
 src_app_PingPong_PingPong_LDFLAGS = \
 	$(app_linkflags) \
-	-Wl,-whole-archive \
-	$(ebbrt_libs) \
-	$(src_app_PingPong_PingPong_ebbs) \
-	-Wl,-no-whole-archive
+	-Wl,'-whole-archive,$(subst $(SPACE),$(COMMA),$(strip $(ebbrt_linked_libs) $(src_app_PingPong_PingPong_linked_ebbs))),-no-whole-archive'
 
 src_app_PingPong_PingPong_LDADD = \
-	libebbrt.a
+	libebbrt.la
 
 if LRT_ULNX
 src_app_PingPong_PingPong_LDADD += \
@@ -88,7 +86,7 @@ src_app_PingPong_PingPong_LDADD += \
 endif
 
 src_app_PingPong_PingPong_DEPENDENCIES = \
-	libebbrt.a \
+	libebbrt.la \
 	$(app_deps) \
 	$(ebbrt_libs) \
 	$(src_app_PingPong_PingPong_ebbs)

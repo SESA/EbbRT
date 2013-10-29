@@ -13,12 +13,14 @@
 
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-EXTRA_LIBRARIES += src/ebb/NodeAllocator/libKittyhawk.a
+EXTRA_LTLIBRARIES += src/ebb/NodeAllocator/Kittyhawk.la
 
-src_ebb_NodeAllocator_libKittyhawk_a_SOURCES = \
+src_ebb_NodeAllocator_Kittyhawk_la_SOURCES = \
 	src/ebb/NodeAllocator/NodeAllocator.cpp \
 	src/ebb/NodeAllocator/Kittyhawk.cpp
 
+src_ebb_NodeAllocator_Kittyhawk_la_LDFLAGS = \
+	-module
 #
 #EXTRA_LIBRARIES += src/ebb/NodeAllocator/libRawSocket.a
 #
