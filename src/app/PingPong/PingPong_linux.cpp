@@ -49,56 +49,22 @@ const ebbrt::app::Config ebbrt::app::config = {
 };
 /****************************/
 
-uint32_t
-fdt_getint32(void* fdt, int root, const char *prop)
-{
-  int len;
-  const unsigned char *id = (const unsigned char *)fdt_getprop(fdt, root, prop, &len);
-  assert(len == 4);
-  // machine independant byte ordering of litte-endian value
-  return ((id[3]<<0)|(id[2]<<8)|(id[1]<<16)|(id[0]<<24));
-}
+namespace {
+     unsigned const node_count = 10;
+};
 
 int 
 main(int argc, char* argv[] )
 {
   if(argc < 2)
-  {   std::cout << "Usage: <fdt binary> <freepool> <path/to/bare>\n";
+  {   std::cout << "Usage: <fdt binary> <path/to/bare>\n";
       std::exit(1);
   }
 
   int n;
-  FILE *fp;
-  char out[1024];
   char *fdt = ebbrt::app::LoadFile(argv[1], &n);
   std::string config_path  = argv[1];
-  std::string pool = argv[2];
-  std::string bin_path = argv[3];
-  std::string infocmd = "khinfo " + pool;
-
-  /* **************************************************** */
-//
-//  char *ptr = ebbrt::app::LoadFile(argv[1], &n);
-//
-//  // Lets try updating an fdt, saving it to disk and verifying it.
-//  if( fdt_check_header(ptr))
-//    std::cout << "Bad header\n";
-//
-//  std::cout << "FTD initial size: " << fdt_totalsize(ptr) << std::endl;
-//
-//  uint32_t spaceid = fdt_getint32(ptr, 0, "space_id");
-//
-//  std::cout << "Space id: " << spaceid << std::endl;
-//
-//  fdt_setprop_u32(ptr, 0, "space_id", (spaceid+1));
-//  fdt_setprop_string(ptr,0, "frontend_ip", "123.456.789");
-//
-//  std::cout << "Space id: " << fdt_getint32(ptr, 0, "space_id") << std::endl;
-//   std::ofstream outfile ("new.txt",std::ofstream::binary);
-//  // outfile.write (ptr,fdt_totalsize(ptr));
-//   outfile.close();
-//
-  /* **************************************************** */
+  std::string bin_path = argv[2];
 
   ebbrt::EbbRT instance(fdt);
   ebbrt::Context context{instance};
@@ -128,28 +94,16 @@ main(int argc, char* argv[] )
 
 
 #ifdef UDP
-  std::string tmppath = "/home/jmcadden/tmp/";
+  std::string tmppath = "/scratch/"; // Ugh..
   // update configuration
   const char *outptr = (const char *)ebbrt::config_handle->GetConfig();
-  std::string newstr = tmppath + std::to_string(spaceid);
-  std::ofstream outfile(newstr.c_str(),std::ofstream::binary);
+  std::string newconfig = tmppath + std::to_string(spaceid);
+  std::ofstream outfile(newconfig.c_str(),std::ofstream::binary);
   outfile.write (outptr,fdt_totalsize(outptr));
   outfile.close();
 
-  fp = popen(infocmd.c_str(), "r"); 
-  while (fgets(out, 1024, fp) != NULL)
-  {
-    std::string ip = out; 
-    // strip newline char
-    if (!ip.empty() && ip[ip.length()-1] == '\n') {
-      ip.erase(ip.length()-1);
-    }
-
-
-    // allocate the node
-    ebbrt::node_allocator->Allocate(ip, bin_path, newstr);
-  }
-  pclose(fp);
+  for(unsigned int i=0; i<node_count; i++)
+    ebbrt::node_allocator->Allocate(bin_path, newconfig);
 #endif
 
   context.Loop(-1);

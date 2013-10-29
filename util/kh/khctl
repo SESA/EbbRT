@@ -41,10 +41,10 @@ declare BUFFERVAR
 declare -i BUFFERTTY=1
 typeset dofunc
 
-# configurable functions
-declare  configNodes=KHconfigNodes
-declare  createCon=KHcreateCon
-declare  createConUser=KHcreateConUser
+## configurable functions
+#declare  configNodes=KHconfigNodes
+#declare  createCon=KHcreateCon
+#declare  createConUser=KHcreateConUser
 
 # SESA General
 declare -r SESAMAXNODES=${SESA_MAX_NODES:-256}
@@ -122,40 +122,39 @@ function interfaceAddr
   return 255
 }
 
-ttyRawWrite()
-{
-  local data="$1"
-  local tty="$2"
-
-  echo "$data" > $tty
-  sleep 0.05
-}
-
-writeTTY()
-{
-  local data="$1"
-  local tty="$2"
-
-  if (( $BUFFERTTY == 0 )) 
-  then 
-    ttyRawWrite "$data" $tty
-  else
-    TTYBUFFERVAR="${TTYBUFFERVAR}$data
-"
-  fi
-}
-
-getRespfile()
-{
-    echo /tmp/$$.respfile.$RANDOM
-}
-
+#
+#ttyRawWrite()
+#{
+#  local data="$1"
+#  local tty="$2"
+#
+#  echo "$data" > $tty
+#  sleep 0.05
+#}
+#
+#writeTTY()
+#{
+#  local data="$1"
+#  local tty="$2"
+#
+#  if (( $BUFFERTTY == 0 )) 
+#  then 
+#    ttyRawWrite "$data" $tty
+#  else
+#    TTYBUFFERVAR="${TTYBUFFERVAR}$data
+#"
+#  fi
+#}
+#
+#getRespfile()
+#{
+#    echo /tmp/$$.respfile.$RANDOM
+#}
 
 
 
 SESAcreateNet()
 {
-#  set -x
   local nid=$1
   local tapcmd=""
   local dir=$SESANETDIR/$nid
@@ -186,7 +185,6 @@ SESAcreateNet()
 
   vde_switch $tapcmd -d -s $dir/sock -M $dir/mgmt -p $dir/pid 
 }
-
 
 function SESAcleanAll
 {
@@ -340,9 +338,9 @@ SESAconfigNodes()
   local mntcmd=""
   local bioscmd=""
   local gdbcmd=""
+  local kernel=""
   local ram="512"
   local -i gdbport=0
-
 
   # Private network construction 
   for p in ${pnetids//,/ }
@@ -401,7 +399,7 @@ SESAconfigNodes()
       echo "$n: network_internal eth1 $mac"
     fi
 
-  # Private Networks Disabled 
+  # Private Networks Disabled... for now
   #
   #  # private network(s)
   #  for p in ${pnetids//,/ }; do
@@ -412,29 +410,31 @@ SESAconfigNodes()
   #  done
 
     # serial
-    echo "$n: serial $dir/com1"
-    srlcmd="-serial unix:$dir/com1,server,nowait"
+    echo "$n: serial $dir/serial_log"
+    srlcmd="-serial file:$dir/serial_log"
+    #srlcmd="-serial unix:$dir/com_sock,server,nowait -serial file:$dir/serial_dump"
 
     # vde 
     echo "$n: console $dir/vnc"
     concmd="-vnc unix:$dir/vnc -name $khuser:$conid:$n"
 
-    # mount 1 (sdb1) - shared
+    # mount 1 (sdb1) 
     if [[ -d $SESAMNTDIRA ]]
     then
       mntcmd="$mntcmd -drive file=fat:rw:$SESAMNTDIRA,index=1,cache=directsync,media=disk"
     fi
-    # mount 2 (sdc1) - control
+    # mount 2 (sdc1) 
     if [[ -d $SESAMNTDIRB ]]
     then
       mntcmd="$mntcmd -drive file=fat:rw:$SESAMNTDIRB,index=2,cache=directsync,media=disk"
     fi
-    # TODO: mount 3 configuration
 
-    # bios rom
-    if [[ -a $SESABIOS ]]
+    # kernel
+    if [[ -a $SESA_CONFIG ]]
     then
-      bioscmd="-bios $SESABIOS"
+      kernel="-kernel $SESA_IMG -initrd $SESA_CONFIG"
+    else
+      kernel=$SESA_IMG
     fi
 
     # gdb debug
@@ -444,8 +444,7 @@ SESAconfigNodes()
       gdbport=$gdbport+1
     fi
 
-    # instantaneously instantiate the instance!
-    $SESAEMUCMD $gdbcmd $netcmd $srlcmd $concmd -enable-kvm -m $ram -daemonize -pidfile $dir/pid $SESA_ROM $SESA_IMG $mntcmd > $dir/vnclog 2>&1
+    $SESAEMUCMD $gdbcmd $netcmd $srlcmd $concmd -enable-kvm -m $ram -daemonize -pidfile $dir/pid $kernel $mntcmd > $dir/vnclog 2>&1
   done
   return 0
 }
@@ -527,39 +526,39 @@ assignNodes()
   then
     if $createConUser $khuser $pnetid $conid $num "${nodes[*]}"
     then
-       configdesc=$($configNodes $khuser $pnetid $inet $xnet $conid $num "${nodes[*]}")
-       if (( $? == 0 ))
-       then
-          if [[ 1 ]]; then # FIXME: cleanup
-               echo "protocol: openfirmware"
-          else 
-             if [[ -n $SSH_CONNECTION ]]
-             then
-                conip=${SSH_CONNECTION% *}
-                conip=${conip##* }
-                natip=$(getNatIP)
-	        if [[ -n $natip ]]; then
-	  	  if [[ $conip = $(cat $KHXIPFILE) ]]; then
-		      conip=$natip
-		  fi
-	        fi
-	        echo $conuser@$conip
-             else
-		 for i in $(myInterfaces)
-		 do
-                     ip=$(myIPAddrs $i)
-                     if [[ -n $ip ]]
-		     then
-			 echo $conuser@$ip
-                     fi
-		 done
-             fi
-	     echo "protocol: uboot"
-         fi
-          echo "$configdesc"
-          echo "nodes: ${nodes[*]}"
-          return 0
-       fi
+      configdesc=$($configNodes $khuser $pnetid $inet $xnet $conid $num "${nodes[*]}")
+      if (( $? == 0 ))
+      then
+        if [[ 1 ]]; then # FIXME: cleanup
+          echo "Platform: qemu-system-x86_64"
+       # else 
+       #   if [[ -n $SSH_CONNECTION ]]
+       #   then
+       #     conip=${SSH_CONNECTION% *}
+       #     conip=${conip##* }
+       #     natip=$(getNatIP)
+       #     if [[ -n $natip ]]; then
+       #       if [[ $conip = $(cat $KHXIPFILE) ]]; then
+       #         conip=$natip
+       #       fi
+       #     fi
+       #     echo $conuser@$conip
+       #   else
+       #     for i in $(myInterfaces)
+       #     do
+       #       ip=$(myIPAddrs $i)
+       #       if [[ -n $ip ]]
+       #       then
+       #         echo $conuser@$ip
+       #       fi
+       #     done
+       #   fi
+       #   echo "protocol: uboot"
+        fi
+        echo "$configdesc"
+        echo "nodes: ${nodes[*]}"
+        return 0
+      fi
     fi
   fi
   return 255

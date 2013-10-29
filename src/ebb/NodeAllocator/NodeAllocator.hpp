@@ -26,7 +26,8 @@
 namespace ebbrt {
   class NodeAllocator : public EbbRep {
   public:
-    virtual void Allocate(std::string id, std::string app, std::string config) = 0;
+    virtual unsigned int Allocate(std::string app, std::string config) = 0;
+    virtual void Free(unsigned int id) = 0;
   protected:
     NodeAllocator(EbbId id) : EbbRep{id} {}
   };
