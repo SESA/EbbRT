@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 
+#include <cinttypes>
 #include <cstdarg>
 #include <iostream>
 #include <queue>
