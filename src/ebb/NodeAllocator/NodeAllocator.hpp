@@ -24,14 +24,16 @@
 #include "misc/buffer.hpp"
 
 namespace ebbrt {
-  class NodeAllocator : public EbbRep {
-  public:
-    virtual unsigned int Allocate(std::string app, std::string config) = 0;
-    virtual void Free(unsigned int id) = 0;
-  protected:
-    NodeAllocator(EbbId id) : EbbRep{id} {}
-  };
-  extern EbbRef<NodeAllocator> node_allocator;
+class NodeAllocator : public EbbRep {
+public:
+  virtual unsigned int Allocate(std::string app, std::string config,
+                                size_t num = 1) = 0;
+  virtual void Free(unsigned int id) = 0;
+
+protected:
+  NodeAllocator(EbbId id) : EbbRep{ id } {}
+};
+extern EbbRef<NodeAllocator> node_allocator;
 }
 
 #endif

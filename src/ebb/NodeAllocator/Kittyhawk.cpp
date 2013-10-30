@@ -23,39 +23,36 @@
 #include "ebb/NodeAllocator/Kittyhawk.hpp"
 #include "ebb/EventManager/EventManager.hpp"
 
-
-ebbrt::EbbRoot*
-ebbrt::Kittyhawk::ConstructRoot()
-{
+ebbrt::EbbRoot *ebbrt::Kittyhawk::ConstructRoot() {
   return new SharedRoot<Kittyhawk>();
 }
 
-ebbrt::Kittyhawk::Kittyhawk(EbbId id) : NodeAllocator{id}
-{}
+ebbrt::Kittyhawk::Kittyhawk(EbbId id) : NodeAllocator{ id } {}
 
-unsigned int
-ebbrt::Kittyhawk::Allocate(std::string app, std::string config)
-{
+
+#include <iostream>
+
+unsigned int ebbrt::Kittyhawk::Allocate(std::string app, std::string config,
+                                        size_t num) {
   // compute random tag
   unsigned int tag = rand() % UINT_MAX;
 
-  std::string loadcmd = "khget -i -d "+config+" na"+std::to_string(tag)+" "+app+" 1";
-  FILE *fp;
-  char out[1024];
+  std::string loadcmd = "khget -i -d " + config + " na" + std::to_string(tag) +
+                        " " + app + " " + std::to_string(num);
+  popen(loadcmd.c_str(), "r");
+  // FILE *fp;
+  // char out[1024];
 
-  fp = popen(loadcmd.c_str(), "r");
-  while (fgets(out, 1024, fp) != NULL)
-    printf("%s", out);
-  pclose(fp);
+  // fp = popen(loadcmd.c_str(), "r");
+  // while (fgets(out, 1024, fp) != NULL)
+  //   printf("%s", out);
+  // pclose(fp);
 
   return tag;
 }
 
-
-void 
-ebbrt::Kittyhawk::Free(unsigned int tag)
-{
-  std::string loadcmd = "khrm na"+std::to_string(tag);
+void ebbrt::Kittyhawk::Free(unsigned int tag) {
+  std::string loadcmd = "khrm na" + std::to_string(tag);
   FILE *fp;
   char out[1024];
 
@@ -63,5 +60,4 @@ ebbrt::Kittyhawk::Free(unsigned int tag)
   while (fgets(out, 1024, fp) != NULL)
     printf("%s", out);
   pclose(fp);
-
 }

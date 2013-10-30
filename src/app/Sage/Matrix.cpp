@@ -15,7 +15,9 @@
 #endif
 
 #ifdef __linux__
+namespace {
 std::unordered_map<ebbrt::EbbId, size_t> size_map;
+}
 
 void ebbrt::Matrix::SetSize(EbbId id, size_t size) { size_map[id] = size; }
 #endif
@@ -54,13 +56,9 @@ ebbrt::Matrix::Matrix(EbbId id) : EbbRep(id) {
   outfile.write(outptr, fdt_totalsize(outptr));
   outfile.close();
 
-  auto pool = getenv("SAGE_POOL");
-  assert(pool != nullptr);
   auto bare_bin = getenv("SAGE_BIN");
   assert(bare_bin != nullptr);
-  for (size_t i = 0; i < nodes_; ++i) {
-    node_allocator->Allocate(bare_bin, tmpfilename);
-  }
+  node_allocator->Allocate(bare_bin, tmpfilename, nodes_);
 #else
   size_ = 0;
   matrix_initialized_ = false;
@@ -73,7 +71,11 @@ enum message_type {
   RANDOMIZE,
   RANDOMIZE_COMPLETE,
   GET,
-  GET_COMPLETE
+  GET_COMPLETE,
+  SET,
+  SET_COMPLETE,
+  SUM,
+  SUM_COMPLETE
 };
 
 struct connect_message {
@@ -105,6 +107,34 @@ struct get_complete_message {
   message_type type;
   uint32_t op_id;
   double val;
+};
+
+struct set_message {
+  message_type type;
+  uint32_t op_id;
+  size_t size;
+  size_t index;
+  size_t row;
+  size_t column;
+  double value;
+};
+
+struct set_complete_message {
+  message_type type;
+  uint32_t op_id;
+};
+
+struct sum_message {
+  message_type type;
+  uint32_t op_id;
+  size_t size;
+  size_t index;
+};
+
+struct sum_complete_message {
+  message_type type;
+  uint32_t op_id;
+  double value;
 };
 }
 
@@ -154,6 +184,52 @@ ebbrt::Future<double> ebbrt::Matrix::Get(size_t row, size_t column) {
     on_connect = f;
   }
   return it.first->second.GetFuture();
+}
+
+ebbrt::Future<void> ebbrt::Matrix::Set(size_t row, size_t column, double value) {
+  auto op_id = op_id_++;
+  auto f = [this, op_id, row, column, value]() {
+    auto index_per_row = (size_ + (MAX_DIM - 1)) / MAX_DIM;
+    auto index = (row / MAX_DIM) * index_per_row + (column / MAX_DIM);
+    set_message msg { SET, op_id, size_, index, row % MAX_DIM, column % MAX_DIM, value};
+    auto buf = message_manager->Alloc(sizeof(msg));
+    std::memcpy(buf.data(), static_cast<void *>(&msg), sizeof(msg));
+    message_manager->Send(backends_[index], ebbid_, std::move(buf));
+  };
+
+  auto it = set_promise_map_.emplace(std::piecewise_construct,
+                                     std::forward_as_tuple(op_id),
+                                     std::forward_as_tuple());
+  if (completed_connect_) {
+    f();
+  } else {
+    on_connect = f;
+  }
+  return it.first->second.GetFuture();
+}
+
+ebbrt::Future<double> ebbrt::Matrix::Sum() {
+  auto op_id = op_id_++;
+  auto f = [this, op_id]() {
+    size_t index = 0;
+    for (const auto &backend : backends_) {
+      sum_message msg{ SUM, op_id, size_, index };
+      index++;
+      auto buf = message_manager->Alloc(sizeof(msg));
+      std::memcpy(buf.data(), static_cast<void *>(&msg), sizeof(msg));
+      message_manager->Send(backend, ebbid_, std::move(buf));
+    }
+  };
+
+  Promise<double> prom;
+  auto it = sum_promise_map_.emplace(op_id, std::tuple<size_t, double,
+                                     Promise<double> >(0, 0, Promise<double>()));
+  if (completed_connect_) {
+    f();
+  } else {
+    on_connect = f;
+  }
+  return std::get<2>(it.first->second).GetFuture();
 }
 #endif
 
@@ -222,6 +298,22 @@ void ebbrt::Matrix::HandleMessage(NetworkId from, Buffer buf) {
     get_promise_map_[get->op_id].SetValue(get->val);
     break;
   }
+  case message_type::SET_COMPLETE: {
+    auto set = reinterpret_cast<const set_complete_message *>(buf.data());
+    set_promise_map_[set->op_id].SetValue();
+    break;
+  }
+  case message_type::SUM_COMPLETE: {
+    auto sum =
+      reinterpret_cast<const sum_complete_message *>(buf.data());
+    auto &tup = sum_promise_map_[sum->op_id];
+    std::get<0>(tup)++;
+    std::get<1>(tup) += sum->value;
+    if (std::get<0>(tup) == nodes_) {
+      std::get<2>(tup).SetValue(std::get<1>(tup));
+    }
+    break;
+  }
   default:
     assert(0);
     break;
@@ -236,9 +328,9 @@ void ebbrt::Matrix::HandleMessage(NetworkId from, Buffer buf) {
     if (!matrix_initialized_) {
       Initialize(randomize->size, randomize->index);
     }
-    char strbuf[80];
-    sprintf(strbuf, "Randomizing\n");
-    lrt::console::write(strbuf);
+    // char strbuf[80];
+    // sprintf(strbuf, "Randomizing\n");
+    // lrt::console::write(strbuf);
     std::mt19937 gen(15);
     std::uniform_real_distribution<> dis(-1, 1);
     for (auto& elem : matrix_) {
@@ -258,6 +350,30 @@ void ebbrt::Matrix::HandleMessage(NetworkId from, Buffer buf) {
     }
     get_complete_message msg{ GET_COMPLETE, get->op_id,
         matrix_(get->row,get->column)};
+    auto buf = message_manager->Alloc(sizeof(msg));
+    std::memcpy(buf.data(), static_cast<void *>(&msg), sizeof(msg));
+    message_manager->Send(from, ebbid_, std::move(buf));
+    break;
+  }
+  case message_type::SET: {
+    auto set = reinterpret_cast<const set_message *>(buf.data());
+    if (!matrix_initialized_) {
+      Initialize(set->size, set->index);
+    }
+    set_complete_message msg{ SET_COMPLETE, set->op_id };
+    auto buf = message_manager->Alloc(sizeof(msg));
+    std::memcpy(buf.data(), static_cast<void *>(&msg), sizeof(msg));
+    message_manager->Send(from, ebbid_, std::move(buf));
+    matrix_(set->row,set->column) = set->value;
+    break;
+  }
+  case message_type::SUM: {
+    auto sum = reinterpret_cast<const sum_message *>(buf.data());
+    if (!matrix_initialized_) {
+      Initialize(sum->size, sum->index);
+    }
+    sum_complete_message msg{ SUM_COMPLETE, sum->op_id,
+        matrix_.sum() };
     auto buf = message_manager->Alloc(sizeof(msg));
     std::memcpy(buf.data(), static_cast<void *>(&msg), sizeof(msg));
     message_manager->Send(from, ebbid_, std::move(buf));

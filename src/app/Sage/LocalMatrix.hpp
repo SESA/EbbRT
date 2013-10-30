@@ -4,17 +4,10 @@
 #include <vector>
 
 #include "ebb/ebb.hpp"
-#ifdef __linux__
 #include "ebb/EventManager/Future.hpp"
-#endif
 
 namespace ebbrt {
-class Matrix : public EbbRep {
-  size_t size_;
-  std::vector<NetworkId> backends_;
-  size_t connected_;
-  size_t nodes_;
-#ifdef __ebbrt__
+class LocalMatrix : public EbbRep {
   template <typename T> class matrix {
     size_t rows_;
     size_t cols_;
@@ -37,33 +30,16 @@ class Matrix : public EbbRep {
 
     T sum() const { return data_.sum(); }
   };
-  void Initialize(size_t rows, size_t cols);
+  size_t size_;
   matrix<double> matrix_;
-  bool matrix_initialized_;
-#endif
-#ifdef __linux__
-  bool completed_connect_;
-  std::function<void()> on_connect;
-  uint32_t op_id_;
-  std::unordered_map<unsigned, std::pair<size_t, Promise<void> > > promise_map_;
-  std::unordered_map<unsigned, Promise<double> > get_promise_map_;
-  std::unordered_map<unsigned, Promise<void> > set_promise_map_;
-  std::unordered_map<unsigned, std::tuple<size_t, double, Promise<double> > >
-  sum_promise_map_;
-#endif
 public:
   static EbbRoot *ConstructRoot();
   static void SetSize(EbbId id, size_t size);
 
-  Matrix(EbbId id);
-#ifdef __linux__
+  LocalMatrix(EbbId id);
   virtual Future<void> Randomize();
   virtual Future<double> Get(size_t row, size_t column);
   virtual Future<void> Set(size_t row, size_t column, double value);
   virtual Future<double> Sum();
-#endif
-  virtual void Connect();
-
-  virtual void HandleMessage(NetworkId from, Buffer buf) override;
 };
 }

@@ -81,7 +81,8 @@ EXTRA_LTLIBRARIES += src/app/Sage/ebb_matrix.la
 src_app_Sage_ebb_matrix_la_SOURCES = \
 	src/app/Sage/ebb_matrix.cpp \
 	src/app/Sage/ebb_matrix_helper.cpp \
-	src/app/Sage/Matrix.cpp
+	src/app/Sage/Matrix.cpp \
+	src/app/Sage/LocalMatrix.cpp
 
 src_app_Sage_ebb_matrix_la_ebbs = \
 	src/ebb/EbbManager/PrimitiveEbbManager.la \
