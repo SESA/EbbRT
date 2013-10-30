@@ -15,7 +15,9 @@
 #endif
 
 #ifdef __linux__
+namespace {
 std::unordered_map<ebbrt::EbbId, size_t> size_map;
+}
 
 void ebbrt::Matrix::SetSize(EbbId id, size_t size) { size_map[id] = size; }
 #endif
