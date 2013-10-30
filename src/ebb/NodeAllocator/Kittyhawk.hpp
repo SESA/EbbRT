@@ -23,13 +23,14 @@
 #include "ebb/NodeAllocator/NodeAllocator.hpp"
 
 namespace ebbrt {
-  class Kittyhawk : public NodeAllocator {
-  public:
-    static EbbRoot* ConstructRoot();
-    Kittyhawk(EbbId id);
-    unsigned int Allocate(std::string app, std::string config) override;
-    void Free(unsigned int id) override;
-  };
+class Kittyhawk : public NodeAllocator {
+public:
+  static EbbRoot *ConstructRoot();
+  Kittyhawk(EbbId id);
+  unsigned int Allocate(std::string app, std::string config,
+                        size_t num = 1) override;
+  void Free(unsigned int id) override;
+};
 }
 
 #endif

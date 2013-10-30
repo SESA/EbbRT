@@ -56,13 +56,9 @@ ebbrt::Matrix::Matrix(EbbId id) : EbbRep(id) {
   outfile.write(outptr, fdt_totalsize(outptr));
   outfile.close();
 
-  auto pool = getenv("SAGE_POOL");
-  assert(pool != nullptr);
   auto bare_bin = getenv("SAGE_BIN");
   assert(bare_bin != nullptr);
-  for (size_t i = 0; i < nodes_; ++i) {
-    node_allocator->Allocate(bare_bin, tmpfilename);
-  }
+  node_allocator->Allocate(bare_bin, tmpfilename, nodes_);
 #else
   size_ = 0;
   matrix_initialized_ = false;

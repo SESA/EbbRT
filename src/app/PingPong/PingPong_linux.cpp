@@ -31,7 +31,7 @@
 #include "lib/fdt/libfdt.h"
 
 /****************************/
-// Static ebb ulnx kludge 
+// Static ebb ulnx kludge
 /****************************/
 constexpr ebbrt::app::Config::StaticEbbId static_ebbs[] = {
   {.name = "EbbManager", .id = 2},
@@ -53,7 +53,7 @@ namespace {
      unsigned const node_count = 10;
 };
 
-int 
+int
 main(int argc, char* argv[] )
 {
   if(argc < 2)
@@ -102,8 +102,7 @@ main(int argc, char* argv[] )
   outfile.write (outptr,fdt_totalsize(outptr));
   outfile.close();
 
-  for(unsigned int i=0; i<node_count; i++)
-    ebbrt::node_allocator->Allocate(bin_path, newconfig);
+  ebbrt::node_allocator->Allocate(bin_path, newconfig, node_count);
 #endif
 
   context.Loop(-1);
