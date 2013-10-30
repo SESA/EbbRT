@@ -36,7 +36,10 @@ class Matrix : public EbbRep {
     const_iterator begin() const { return &data_[0];}
     iterator end() { return &data_[rows_ * cols_];}
     const_iterator end() const { return &data_[rows_ * cols_];}
-  };
+
+    T sum() const { return data_.sum(); }
+    }
+  ;
   void Initialize(size_t rows, size_t cols);
   matrix<double> matrix_;
   bool matrix_initialized_;
@@ -49,6 +52,9 @@ class Matrix : public EbbRep {
                      std::pair<size_t, Promise<void> > > promise_map_;
   std::unordered_map<unsigned,
                      Promise<double> > get_promise_map_;
+  std::unordered_map<unsigned, Promise<void> > set_promise_map_;
+  std::unordered_map<unsigned,
+                     std::tuple<size_t, double, Promise<double> > > sum_promise_map_;
 #endif
 public:
   static EbbRoot *ConstructRoot();
@@ -58,6 +64,8 @@ public:
 #ifdef __linux__
   virtual Future<void> Randomize();
   virtual Future<double> Get(size_t row, size_t column);
+  virtual Future<void> Set(size_t row, size_t column, double value);
+  virtual Future<double> Sum();
 #elif __ebbrt__
 #endif
   virtual void Connect();
