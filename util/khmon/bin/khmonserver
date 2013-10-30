@@ -1,0 +1,61 @@
+#!/bin/bash
+#set -x
+khctltupledir=/home/kh/KHTuples/Node
+khctlnodestamp=/tmp/khnodestamp
+khmonpipe=/tmp/khmonpipe
+khmonlast=/tmp/last
+khmoncur=/tmp/cur
+typeset -i lasttime
+typeset -i curtime
+
+function listnodes
+{
+#   ls -1 > $khmoncur
+   echo "KHMON START"
+#   diff $khmonlast $khmoncur
+   ls -1 
+   echo "KHMON END"
+#   cat $khmoncur > $khmonlast
+}
+
+if [[ ! -p $khmonpipe ]]
+then
+   if [[ -e $khmonpipe ]]
+   then
+      if ! rm -rf $khmonpipe
+      then
+         echo "ERROR: $0: unable to remove $khmonpipe"
+         exit -1
+      fi
+   fi
+   mknod $khmonpipe p
+fi
+
+if [[ -e $khmonlast ]]
+then
+   rm $khmonlast
+fi
+
+touch $khmonlast
+
+if [[ -e $khmoncur ]]
+then
+  rm $khmoncur
+fi
+
+if [[ -d $khctltupledir ]]
+then
+  cd $khctltupledir
+  listnodes 
+fi
+
+while true
+do
+  read cmd arg < $khmonpipe
+  if [[ -d $khctltupledir ]] 
+  then
+    cd $khctltupledir
+    listnodes 
+  fi
+done
+

@@ -1,0 +1,163 @@
+#!/bin/bash
+#set -x
+#####################################
+#
+#  IBM Coporation 
+#  Project kittyhawk
+#
+#  khmon
+#  A crude visualization tool for 
+#  demonstrating kittyhawk state
+#  
+#####################################
+
+
+function killchildren 
+{
+  echo "killchildren : $1"
+  ppid=$1
+  if [[ -z $ppid ]]
+  then
+    ppid=$$
+  fi
+  children="$(ps --ppid $ppid -o pid --no-headings)" 
+  for pid in "$children"
+  do
+    if [[ -n $pid ]]
+    then
+      echo "killing $pid"
+      kill $pid > /dev/null 2>&1
+    fi
+  done
+}
+
+function cleanup
+{
+  echo "CLEANING UP"
+
+  if [[ -n $spid ]]
+  then
+   killchildren $spid
+   kill $spid > /dev/null 2>&1
+  fi
+
+  if [[ -n $mpid ]]
+  then
+    killchildren $mpid
+    kill $mpid > /dev/null 2>&1
+  fi
+
+  rspid=$(ssh -q root@$khmonserver ps  -A -o pid,cmd | grep 'cat /dev/bgtty1')
+  rspid=${rspid%% cat *}
+
+  rmpid=$(ssh -q root@$khmonserver ps  -A -o pid,cmd | grep 'khmonserver')
+  rmpid=${rmpid%% /bin/bash *}
+
+  if [[ -n $rspid ]]
+  then
+    echo "killing rspid=$rspid on $khmonserver"
+    ssh -q root@$khmonserver kill $rspid 
+  fi
+
+  if [[ -n $rmpid ]]
+  then
+    echo "killing rmpid=$rmpid on $khmonserver"
+    ssh -q root@$khmonserver kill $rmpid 
+  fi
+
+  killchildren
+  
+  exit
+}
+
+USAGE="$0 [kmonserver] [khdb]"
+
+export KHMON_SHELL=${KHMON_SHELL:-/bin/bash}
+statedir=${KHMON_TMPDIR:-/tmp/$USER/khmonstate}
+
+basepath=$0
+# try and figure out a lib dir from path of this scripts
+basepath=${basepath%/*}
+bindir=$basepath
+basepath=${basepath%/*}
+libdir=${basepath}/lib
+#echo basepath=$basepath bindir=$bindir libdir=$libdir statedir=$statedir
+
+khmonserver=$1
+
+if [[ -z $khmonserver ]]
+then
+   khmonserver=LOCAL
+fi
+
+if [[ $khmonserver == LOCAL ]]
+then
+  khdb=${KHMON_NODEDIR:=$2}
+  if [[ -z $khdb ]]; then
+    echo "When using LOCAL you must pass in khdb dir"
+    exit -1o
+  fi
+  statedir=$khdb/khmonstate
+  nodedir=$khdb/KHTuples/Node
+  if [[ ! -a $nodedir ]]; then
+    echo "ERROR: $nodedir does not exist"
+    exit -1
+  fi
+fi
+ 
+if [[ ! -a $statedir ]]
+then
+   if mkdir -p $statedir
+   then
+      echo "Creating $statedir for khmon state"
+   else
+      echo "ERROR: unable to create $statedir"
+      exit -1
+   fi   
+fi
+echo "Using $statedir for khmon node state"
+
+if [[ -d $libdir ]]
+then
+  export KHMON_LIBDIR=${KHMON_LIBDIR:-$libdir}
+fi
+
+if [[ -z $KHMON_LIBDIR ]]
+then
+  echo "ERROR: $0: can't file $basedir/lib so KHMON_LIBDIR needs to be set"
+  exit -1
+fi
+
+if [[ $khmonserver != LOCAL ]]
+then
+  if ! ping -c 1 $khmonserver > /dev/null 2>&1
+  then
+    echo "ERROR: Can not contact $khmonserver"
+    exit -1
+  fi
+
+  $bindir/statloop $khmonserver $statedir &
+  export spid=$(jobs -p %%)
+  disown $spid
+fi
+
+if [[ $khmonserver == LOCAL ]]; then
+  tclsh $KHMON_LIBDIR/tcl/khmon.tcl $khmonserver $statedir $nodedir
+else
+  tclsh $KHMON_LIBDIR/tcl/khmon.tcl $khmonserver $statedir &
+  export mpid=$(jobs -p %%)
+
+  trap cleanup SIGHUP 
+  trap cleanup SIGTRAP 
+  trap cleanup SIGKILL 
+  trap "" SIGCHLD
+  trap cleanup SIGQUIT 
+  trap cleanup SIGINT 
+  trap cleanup SIGABRT 
+  trap "" EXIT
+  trap "" SIGTERM
+  wait $mpid
+fi
+
+cleanup
+

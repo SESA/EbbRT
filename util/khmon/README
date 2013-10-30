@@ -1,0 +1,11 @@
+This a slight rejiggering of the khmonitor for our current ebbrt version of kh
+that allows us to visualize the state of the nodes and their dynamic changes.
+
+In theory to run it you need to give execute the main bash script via its full path
+and pass it two parameters 1) LOCAL and 2) the full path of of your khdb
+
+so after establishing your khdb via khget/khctl you should be able to 
+do something like:
+
+jappavoo@kd-sesa:~/Work/EbbRT/util$ $PWD/bin/khmon LOCAL ~/Work/EbbRT/khdb
+
