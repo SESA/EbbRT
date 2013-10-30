@@ -56,19 +56,10 @@ ebbrt::Matrix::Matrix(EbbId id) : EbbRep(id) {
 
   auto pool = getenv("SAGE_POOL");
   assert(pool != nullptr);
-  auto poolstr = std::string{"khinfo "} + pool;
-  auto fp = popen(poolstr.c_str(), "r");
-  char out[1024];
   auto bare_bin = getenv("SAGE_BIN");
   assert(bare_bin != nullptr);
   for (size_t i = 0; i < nodes_; ++i) {
-    auto ret = fgets(out, 1024, fp);
-    assert(ret != nullptr);
-    std::string ip = out;
-    if (!ip.empty() && ip[ip.length() - 1] == '\n') {
-      ip.erase(ip.length() - 1);
-    }
-    node_allocator->Allocate(ip, bare_bin, tmpfilename);
+    node_allocator->Allocate(bare_bin, tmpfilename);
   }
 #else
   size_ = 0;

@@ -8,21 +8,21 @@ declare app
 declare bootimg
 declare inet
 declare xnet
-#declare bios
 declare mnt1=0
 declare mnt2=0
+declare config=0
 declare -i count=1
 declare -i optcount=0
 
-while getopts "s:c:ixf" OPT
+while getopts "s:c:ixfd:" OPT
 do 
   case $OPT in
       ("s") mnt1="$OPTARG"; (( optcount=optcount + 2));;
       ("c") mnt2="$OPTARG"; (( optcount=optcount + 2));;
-#     ("b") bios="$OPTARG"; (( optcount=optcount + 2));;
       ("i") inet="-i"; (( optcount=optcount + 1));;
       ("x") xnet="-x"; (( optcount=optcount + 1));;
       ("f") inet='-i'; xnet='-x'; (( optcount=optcount + 1));;
+      ("d") config="$OPTARG"; (( optcount=optcount + 2));;
   esac
 done
 
@@ -33,23 +33,24 @@ bootimg=$2
 
 if [[ -z $app  || ! (-a $bootimg)]]
 then
-  echo "USAGE: khget [-s dir] [-c dir] [-f] [-i] [-x] [-b bios] <appName> <boot_img> [count] \ " 
-  echo "     -s path  : mount shared directory as FAT fs"
-  echo "     -c path  : mount config directory as FAT fs"
-#  echo "     -b path  : path to bios rom"
+  echo "USAGE: khget [-s dir] [-c dir] [-f] [-i] [-x] [-b bios] [-d path] <appName> <bootimg> [count] \ " 
+  echo "     -s path  : mount sdb directory as FAT fs"
+  echo "     -c path  : mount sdc directory as FAT fs"
   echo "     -i       : add nodes to the Internal public network" 
   echo "     -x       : add nodes to the External network" 
   echo "     -f       : enable front end, equivalent to -x -i" 
+  echo "     -d path  : configuration (device tree) binary " 
   echo "     appname  : application to get the nodes for" 
-  echo "     bootimg  : path to back-end boot image" 
+  echo "     bootimg  : path to kernel/bootimage" 
   echo "     count    : number of backend nodes, default is 1" 
   exit 1;
 fi
 
+export SESA=1
 export SESA_MNTDIR_A=$mnt1
 export SESA_MNTDIR_B=$mnt2
 export SESA_IMG=$bootimg
-export SESA=1
+export SESA_CONFIG=$config
 
 $SESA_UTIL acquireNodes $inet $xnet $app $count
 

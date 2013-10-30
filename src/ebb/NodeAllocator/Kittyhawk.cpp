@@ -17,6 +17,8 @@
 */
 
 #include <stdio.h>
+#include <cstdlib>
+#include <climits>
 #include "ebb/SharedRoot.hpp"
 #include "ebb/NodeAllocator/Kittyhawk.hpp"
 #include "ebb/EventManager/EventManager.hpp"
@@ -29,33 +31,37 @@ ebbrt::Kittyhawk::ConstructRoot()
 }
 
 ebbrt::Kittyhawk::Kittyhawk(EbbId id) : NodeAllocator{id}
+{}
+
+unsigned int
+ebbrt::Kittyhawk::Allocate(std::string app, std::string config)
 {
-  // assert if kh commands are unspecified
-  // FILE *fp;
-  // fp = popen("khget", "r");
-  // assert( fp );
-  // pclose(fp);
-}
+  // compute random tag
+  unsigned int tag = rand() % UINT_MAX;
 
-void
-ebbrt::Kittyhawk::Allocate(std::string ip, std::string app, std::string config)
-{
-  //TODO: allocate by NetworkID, translate ip into string
-
-  std::string loadcmd = "slload "+app+" "+config+" "+ip;
-
+  std::string loadcmd = "khget -i -d "+config+" na"+std::to_string(tag)+" "+app+" 1";
   FILE *fp;
   char out[1024];
 
   fp = popen(loadcmd.c_str(), "r");
   while (fgets(out, 1024, fp) != NULL)
-    printf("%s \n", out);
+    printf("%s", out);
   pclose(fp);
 
-//  fp = popen("khget -i InApp ~/EbbRT/build-tst/bare/src/app/PingPong/PingPong.iso 1", "r");
-//
-//  while (fgets(out, 1024, fp) != NULL)
-//    printf("%s \n", out);
-//
-//  pclose(fp);
+  return tag;
+}
+
+
+void 
+ebbrt::Kittyhawk::Free(unsigned int tag)
+{
+  std::string loadcmd = "khrm na"+std::to_string(tag);
+  FILE *fp;
+  char out[1024];
+
+  fp = popen(loadcmd.c_str(), "r");
+  while (fgets(out, 1024, fp) != NULL)
+    printf("%s", out);
+  pclose(fp);
+
 }
