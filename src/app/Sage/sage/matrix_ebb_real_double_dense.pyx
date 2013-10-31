@@ -67,6 +67,7 @@ cdef class PyRectangle:
 
 
 from sage.rings.real_double import RDF
+from sage.matrix.matrix_dense import Matrix_dense
 
 cimport numpy as cnumpy
 
@@ -125,6 +126,7 @@ cdef class Matrix_ebb_real_double_dense(sage.matrix.matrix_double_dense.Matrix_d
     #   * __hash__       -- always simple
     ########################################################################
     def __cinit__(self, parent, entries, copy, coerce):
+        print "ebb:__cinit__"
         global numpy
         if numpy is None:
             import numpy
@@ -133,9 +135,17 @@ cdef class Matrix_ebb_real_double_dense(sage.matrix.matrix_double_dense.Matrix_d
         self._python_dtype = float
         # TODO: Make RealDoubleElement instead of RDF for speed
         self._sage_dtype = RDF
+        # this is kludge for the moment we preallocate a numpy array for interfacing
+        # to local computation if needed.
         self.__create_matrix__()
         self.therect = <void *>new Rectangle(1,2,3,4)
         return
+
+    def __init__(self, parent, entries, copy, coerce):
+        print "ebb: __init__: initilize values if you feel like it ;-)"
+
+    cdef set_unsafe(self, Py_ssize_t i, Py_ssize_t j, object value):
+        print "set_unsafe called"
 
     cdef set_unsafe_double(self, Py_ssize_t i, Py_ssize_t j, double value):
         """
@@ -148,6 +158,10 @@ cdef class Matrix_ebb_real_double_dense(sage.matrix.matrix_double_dense.Matrix_d
         """
         self.set_unsafe(i,j,value)
 
+    cdef get_unsafe(self, Py_ssize_t i, Py_ssize_t j):
+       print "get_unsafe"	     
+       return self._sage_dtype(1)    
+ 
     cdef double get_unsafe_double(self, Py_ssize_t i, Py_ssize_t j):
         """
         Get the (i,j) entry without any type checking or bound checking.
@@ -157,7 +171,7 @@ cdef class Matrix_ebb_real_double_dense(sage.matrix.matrix_double_dense.Matrix_d
         right headers?
         """
         return self.get_unsafe(i,j)
- 
+        
     def rectGetLength(self):
         cdef Rectangle *rp = <Rectangle *>self.therect
         return rp.getLength()
@@ -165,3 +179,18 @@ cdef class Matrix_ebb_real_double_dense(sage.matrix.matrix_double_dense.Matrix_d
     def __dealloc__(self):
         cdef Rectangle *rp = <Rectangle *>self.therect
         del rp
+
+    def change_ring(self, ring):
+        print "ebb: change_ring called" 
+        print ring
+        return self
+
+    def numpy(self, dtype=None):
+        import numpy as np
+        print "ebb: numpy: this is a kludge right now need to GATHER values into our local numpy cache"
+        print dtype
+
+        if dtype is None or self._numpy_dtype == np.dtype(dtype):
+            return self._matrix_numpy.copy()
+        else:
+            return Matrix_dense.numpy(self, dtype=dtype)

@@ -54,7 +54,7 @@
 # src_app_Sage_matrix_ebb_real_double_dense_la_LIBADD = \
 # 	-lpython2.7
 
-# SAGE_ROOT = /home/jappavoo/Work/sage/sage-5.12
+SAGE_ROOT = /home/jappavoo/Work/sage/sage-5.12
 
 CYTHON_CPPFLAGS = \
 	-I $(SAGE_ROOT)/devel/sage/ \
@@ -110,8 +110,11 @@ src_app_Sage_ebb_matrix_la_DEPENDENCIES = \
 	src/app/Sage/SageMatrix.dtb \
 	$(src_app_Sage_ebb_matrix_la_ebbs)
 
+src_app_Sage_ebb_matrix_la_CXXFLAGS = \
+	-std=c++11 -Wall
 src_app_Sage_ebb_matrix_la_CPPFLAGS = \
-	$(AM_CPPFLAGS) -I /usr/include/python2.7
+	$(AM_CPPFLAGS) -I$(SAGE_ROOT)/devel/sage -I$(SAGE_ROOT)/devel/sage/sage/matrix -I$(SAGE_ROOT)/devel/sage/sage/ext -I$(SAGE_ROOT)/devel/sage/c_lib/include -I$(SAGE_ROOT)/local/lib/python/site-packages/numpy/core/include -I$(SAGE_ROOT)/local/include/python2.7
+
 endif
 
 if LRT_BARE
