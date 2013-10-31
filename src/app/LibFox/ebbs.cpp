@@ -57,8 +57,8 @@ ebbrt::fox::Hash::set(const char *key, EbbRef<ebbrt::fox::Object> o)
   TRACE;
 }
 
-void
-ebbrt::fox::Hash::get(const char * key, EbbRef<ebbrt::fox::Object> *o)
+ebbrt::lrt::trans::EbbRef<ebbrt::fox::Object>
+ebbrt::fox::Hash::get(const char * key)
 {
   TRACE;
 #if 0
@@ -71,9 +71,9 @@ ebbrt::fox::Hash::get(const char * key, EbbRef<ebbrt::fox::Object> *o)
 
   std::unordered_map<std::string,EbbRef<Object>>::const_iterator got = map.find(key);
   if ( got == map.end() )
-    *o = EbbRef<Object>(NULLID);
+    return EbbRef<Object>(NULLID);
   else
-    *o = got->second;
+    return got->second;
 }
 
 ebbrt::EbbRoot*
