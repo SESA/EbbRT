@@ -54,7 +54,7 @@
 # src_app_Sage_matrix_ebb_real_double_dense_la_LIBADD = \
 # 	-lpython2.7
 
-# SAGE_ROOT = /home/jappavoo/Work/sage/sage-5.12
+SAGE_ROOT = /home/jappavoo/Work/sage/sage-5.12
 
 CYTHON_CPPFLAGS = \
 	-I $(SAGE_ROOT)/devel/sage/ \
