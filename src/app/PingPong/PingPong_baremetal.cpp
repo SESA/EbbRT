@@ -37,11 +37,6 @@ ebbrt::app::start()
   ethernet = EbbRef<Ethernet>(ebb_manager->AllocateId());
   ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
 
-  message_manager->StartListening();
-
-  const char cbuf[] = "PING\n";
-  auto buf = message_manager->Alloc(sizeof(cbuf));
-  std::memcpy(buf.data(), cbuf, sizeof(cbuf));
   NetworkId id;
 #ifdef UDP
 
@@ -69,6 +64,12 @@ ebbrt::app::start()
   id.mac_addr[4] = 0xff;
   id.mac_addr[5] = 0xff;
 #endif
+  message_manager->StartListening();
+
+  const char cbuf[] = "PING\n";
+  auto buf = message_manager->Alloc(sizeof(cbuf));
+  std::memcpy(buf.data(), cbuf, sizeof(cbuf));
+
   //TODO: configuration needs to be resolved here
   message_manager->Send(id, lrt::config::find_static_ebb_id(nullptr,"Echo"),
                         std::move(buf));
