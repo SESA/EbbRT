@@ -1,5 +1,5 @@
 /*
-  EbbRT: Distributed, Elastic, Runtime
+  Ebb RT: Distributed, Elastic, Runtime
   Copyright (C) 2013 SESA Group, Boston University
 
   This program is free software: you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 
 namespace ebbrt {
   class UDPMessageManager : public MessageManager {
+    uint16_t port_;
   public:
     static EbbRoot* ConstructRoot();
     UDPMessageManager(EbbId id);
