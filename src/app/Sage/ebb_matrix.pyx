@@ -38,6 +38,7 @@ cdef extern from "app/Sage/Matrix.hpp" namespace "ebbrt":
         Future[double] Get(int, int)
         Future[void] Set(int, int, double)
         Future[double] Sum()
+        void Destroy()
 
 cdef extern from "app/Sage/LocalMatrix.hpp" namespace "ebbrt":
     cdef cppclass LocalMatrix:
@@ -106,6 +107,11 @@ cdef class EbbMatrix:
         for row in range(self.size):
             for column in range(self.size):
                 yield self.__getitem__((row, column))
+    def __dealloc__(self):
+        activate_context()
+        cdef Matrix* ref = deref(self.matrix)
+        ref.Destroy()
+        deactivate_context()
 
 cdef class LocalEbbMatrix:
     cdef EbbRef[LocalMatrix] matrix
@@ -151,4 +157,3 @@ cdef class LocalEbbMatrix:
         for row in range(self.size):
             for column in range(self.size):
                 yield self.__getitem__((row, column))
-

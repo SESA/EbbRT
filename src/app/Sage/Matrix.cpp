@@ -58,7 +58,7 @@ ebbrt::Matrix::Matrix(EbbId id) : EbbRep(id) {
 
   auto bare_bin = getenv("SAGE_BIN");
   assert(bare_bin != nullptr);
-  node_allocator->Allocate(bare_bin, tmpfilename, nodes_);
+  alloc_tag_ = node_allocator->Allocate(bare_bin, tmpfilename, nodes_);
 #else
   size_ = 0;
   matrix_initialized_ = false;
@@ -230,6 +230,10 @@ ebbrt::Future<double> ebbrt::Matrix::Sum() {
     on_connect = f;
   }
   return std::get<2>(it.first->second).GetFuture();
+}
+
+void ebbrt::Matrix::Destroy() {
+  node_allocator->Free(alloc_tag_);
 }
 #endif
 
