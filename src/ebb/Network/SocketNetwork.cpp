@@ -58,7 +58,7 @@ void ebbrt::SocketNetwork::InitEcho() { assert(0); }
 
 #include <iostream>
 
-void
+uint16_t
 ebbrt::SocketNetwork::RegisterUDP(uint16_t port,
                                   std::function<void(Buffer, NetworkId)> cb) {
   int fd;
@@ -77,6 +77,14 @@ ebbrt::SocketNetwork::RegisterUDP(uint16_t port,
     perror("bind failed");
     throw std::runtime_error("Bind failed");
   }
+
+  socklen_t addr_len = sizeof(addr);
+  if (getsockname(fd, (struct sockaddr *)&addr, &addr_len) < 0) {
+    perror("getsockname failed");
+    throw std::runtime_error("Getsockname failed");
+  }
+
+  auto ret = ntohs(addr.sin_port);
 
   auto interrupt = event_manager->AllocateInterrupt([=]() {
     const constexpr size_t UDP_PACKET_SIZE = 65535;
@@ -99,6 +107,7 @@ ebbrt::SocketNetwork::RegisterUDP(uint16_t port,
   });
 
   event_manager->RegisterFD(fd, EPOLLIN, interrupt);
+  return ret;
 }
 
 void ebbrt::SocketNetwork::SendUDP(Buffer buffer, NetworkId to, uint16_t port) {

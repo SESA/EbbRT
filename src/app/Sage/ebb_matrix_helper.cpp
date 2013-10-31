@@ -55,13 +55,14 @@ void activate_context() {
         ebbrt::EbbRef<ebbrt::Config>(ebbrt::ebb_manager->AllocateId());
     ebbrt::ebb_manager->Bind(ebbrt::Fdt::ConstructRoot, ebbrt::config_handle);
 
-    ebbrt::message_manager->StartListening();
-
     auto mutable_fdt = ebbrt::app::LoadFile(dtb, &len);
     ebbrt::config_handle->SetConfig(mutable_fdt);
     // TODO: find this out programmatically?
     ebbrt::config_handle->SetString("/", "frontend_ip", "10.255.0.1");
     ebbrt::config_handle->SetInt32("/", "space_id", 1);
+
+    ebbrt::message_manager->StartListening();
+
     initialized = true;
   } else {
     context->Activate();
@@ -79,14 +80,14 @@ void ebbrt::app::start() {
   ethernet = EbbRef<Ethernet>(ebb_manager->AllocateId());
   ebb_manager->Bind(VirtioNet::ConstructRoot, ethernet);
 
-  message_manager->StartListening();
-
   ebbrt::config_handle =
     ebbrt::EbbRef<ebbrt::Config>(ebbrt::ebb_manager->AllocateId());
   ebbrt::ebb_manager->Bind(ebbrt::Fdt::ConstructRoot, ebbrt::config_handle);
   config_handle->SetConfig(lrt::boot::fdt);
 
   // FIXME: get from config
+  message_manager->StartListening();
+
   auto id = ebbrt::config_handle->GetInt32("/ebbs/Matrix", "id");
   auto matrix = EbbRef<Matrix>(id);
   matrix->Connect();

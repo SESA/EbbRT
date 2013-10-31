@@ -253,7 +253,7 @@ extern "C" void echo_init();
 
 void ebbrt::LWIPNetwork::InitEcho() { echo_init(); }
 
-void
+uint16_t
 ebbrt::LWIPNetwork::RegisterUDP(uint16_t port,
                                 std::function<void(Buffer, NetworkId)> cb) {
   auto udp_pcb = udp_new();
@@ -285,6 +285,7 @@ ebbrt::LWIPNetwork::RegisterUDP(uint16_t port,
         (*cb)(Buffer(buf, len), id);
       },
       heap_cb);
+  return port;
 }
 
 void ebbrt::LWIPNetwork::SendUDP(Buffer buffer, NetworkId to, uint16_t port) {

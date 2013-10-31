@@ -5,6 +5,7 @@
   ebbrt_num_static_init = <0x9>;
   linux_num_static_init = <0x4>;
   frontend_ip = "000.000.000.000";
+  frontend_port = <0x0>;
   ebbs
   {
     MemoryAllocator{

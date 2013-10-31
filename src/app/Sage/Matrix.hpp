@@ -45,6 +45,7 @@ class Matrix : public EbbRep {
   bool completed_connect_;
   std::function<void()> on_connect;
   uint32_t op_id_;
+  int alloc_tag_;
   std::unordered_map<unsigned, std::pair<size_t, Promise<void> > > promise_map_;
   std::unordered_map<unsigned, Promise<double> > get_promise_map_;
   std::unordered_map<unsigned, Promise<void> > set_promise_map_;
@@ -61,6 +62,7 @@ public:
   virtual Future<double> Get(size_t row, size_t column);
   virtual Future<void> Set(size_t row, size_t column, double value);
   virtual Future<double> Sum();
+  virtual void Destroy();
 #endif
   virtual void Connect();
 

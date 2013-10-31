@@ -63,6 +63,15 @@ extern int lwip_printf(const char *fmt, ...);
 
 #define LWIP_PLATFORM_ASSERT(x) do { } while (1)
 
+static inline unsigned long long rdtsc(void)
+{
+  unsigned hi, lo;
+  asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
+  return ((unsigned long long) lo | ((unsigned long long) hi) << 32);
+}
+
+#define LWIP_RAND() rdtsc()
+
 #ifdef __cplusplus
 }
 #endif

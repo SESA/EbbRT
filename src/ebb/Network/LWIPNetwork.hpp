@@ -32,10 +32,12 @@ public:
 
   virtual void InitPing() override;
   virtual void InitEcho() override;
-  virtual void RegisterUDP(uint16_t port,
-                           std::function<void(Buffer, NetworkId)> cb) override;
+  virtual uint16_t
+  RegisterUDP(uint16_t port,
+              std::function<void(Buffer, NetworkId)> cb) override;
   virtual void SendUDP(Buffer buffer, NetworkId to, uint16_t port) override;
   virtual void EmptyQueue();
+
 private:
   virtual void RecvPacket(Buffer buffer);
 

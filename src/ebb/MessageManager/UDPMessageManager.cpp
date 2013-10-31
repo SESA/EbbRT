@@ -18,12 +18,11 @@
 
 #include "app/app.hpp"
 #include "ebb/SharedRoot.hpp"
+#include "ebb/Config/Config.hpp"
 #include "ebb/MessageManager/UDPMessageManager.hpp"
 #include "ebb/Network/Network.hpp"
 
-namespace {
-constexpr uint16_t MESSAGE_MANAGER_PORT = 43201;
-}
+#include "arch/inet.hpp"
 
 ebbrt::EbbRoot *ebbrt::UDPMessageManager::ConstructRoot() {
   return new SharedRoot<UDPMessageManager>;
@@ -54,16 +53,23 @@ ebbrt::Buffer ebbrt::UDPMessageManager::Alloc(size_t size) {
 
 void ebbrt::UDPMessageManager::Send(NetworkId to, EbbId id, Buffer buffer) {
   auto buf = buffer - sizeof(MessageHeader);
-  auto msg_header = reinterpret_cast<MessageHeader*>(buf.data());
+  auto msg_header = reinterpret_cast<MessageHeader *>(buf.data());
   msg_header->ebb = id;
 
-  network->SendUDP(std::move(buf), to, MESSAGE_MANAGER_PORT);
+  network->SendUDP(std::move(buf), to, port_);
 }
 
 void ebbrt::UDPMessageManager::StartListening() {
-  network->RegisterUDP(MESSAGE_MANAGER_PORT, [](Buffer buffer, NetworkId from) {
+  auto f = [](Buffer buffer, NetworkId from) {
     auto msg_header = reinterpret_cast<const MessageHeader *>(buffer.data());
     auto ebb = EbbRef<EbbRep>{ msg_header->ebb };
     ebb->HandleMessage(from, buffer + sizeof(MessageHeader));
-  });
+  };
+#ifdef __linux__
+  port_ = network->RegisterUDP(0, std::move(f));
+  config_handle->SetInt32("/", "frontend_port", port_);
+#elif __ebbrt__
+  port_ = config_handle->GetInt32("/", "frontend_port");
+  network->RegisterUDP(port_, std::move(f));
+#endif
 }
