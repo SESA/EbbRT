@@ -1,0 +1,18 @@
+[submodule "baremetal/ext/acpica"]
+	path = baremetal/ext/acpica
+	url = https://github.com/SESA/EbbRT-ACPICA.git
+[submodule "baremetal/ext/boost"]
+	path = baremetal/ext/boost
+	url = https://github.com/SESA/EbbRT-boost.git
+[submodule "baremetal/ext/lwip"]
+	path = baremetal/ext/lwip
+	url = https://github.com/SESA/EbbRT-lwip.git
+[submodule "baremetal/ext/capnp"]
+	path = baremetal/ext/capnp
+	url = https://github.com/SESA/EbbRT-capnp.git
+[submodule "baremetal/ext/toolchain"]
+	path = baremetal/ext/toolchain
+	url = https://github.com/SESA/EbbRT-Toolchain.git
+[submodule "baremetal/ext/tbb"]
+	path = baremetal/ext/tbb
+	url = https://github.com/SESA/EbbRT-tbb

@@ -1,0 +1,286 @@
+diff -rupN newlib-2.0.0/config.sub newlib-2.0.0-patched/config.sub
+--- newlib-2.0.0/config.sub	2012-12-07 19:02:34.000000000 -0500
++++ newlib-2.0.0-patched/config.sub	2013-12-11 19:36:03.026605293 -0500
+@@ -1360,6 +1360,7 @@ case $os in
+ 	      | -sym* | -kopensolaris* \
+ 	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
+ 	      | -aos* | -aros* \
++	      | -ebbrt* \
+ 	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
+ 	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
+ 	      | -hiux* | -386bsd* | -knetbsd* | -mirbsd* | -netbsd* \
+diff -rupN newlib-2.0.0/newlib/configure.host newlib-2.0.0-patched/newlib/configure.host
+--- newlib-2.0.0/newlib/configure.host	2012-12-04 16:43:20.000000000 -0500
++++ newlib-2.0.0-patched/newlib/configure.host	2013-12-12 09:16:10.485946760 -0500
+@@ -393,6 +393,13 @@ case "${host}" in
+   d30v*)
+ 	sys_dir=
+ 	;;
++  *-*-ebbrt*)
++	newlib_cflags="${newlib_cflags} -DREENTRANT_SYSCALLS_PROVIDED"
++	newlib_cflags="${newlib_cflags} -DMISSING_SYSCALL_NAMES"
++	newlib_cflags="${newlib_cflags} -DMALLOC_PROVIDED"
++	sys_dir=ebbrt
++	have_crt0="no"
++	;;
+   epiphany-*-*)
+ 	sys_dir=epiphany
+ 	# crt0 is provided by libgloss.
+diff -rupN newlib-2.0.0/newlib/libc/include/sys/config.h newlib-2.0.0-patched/newlib/libc/include/sys/config.h
+--- newlib-2.0.0/newlib/libc/include/sys/config.h	2012-09-26 16:06:47.000000000 -0400
++++ newlib-2.0.0-patched/newlib/libc/include/sys/config.h	2013-12-11 19:39:04.228998769 -0500
+@@ -84,7 +84,7 @@
+ /* in other words, go32 */
+ #define _FLOAT_RET double
+ #endif
+-#if defined(__linux__) || defined(__RDOS__)
++#if defined(__linux__) || defined(__RDOS__) || defined(__ebbrt__)
+ /* we want the reentrancy structure to be returned by a function */
+ #define __DYNAMIC_REENT__
+ #define HAVE_GETDATE
+diff -rupN newlib-2.0.0/newlib/libc/sys/configure.in newlib-2.0.0-patched/newlib/libc/sys/configure.in
+--- newlib-2.0.0/newlib/libc/sys/configure.in	2012-02-21 17:34:31.000000000 -0500
++++ newlib-2.0.0-patched/newlib/libc/sys/configure.in	2013-12-11 19:39:41.716997626 -0500
+@@ -27,6 +27,7 @@ if test -n "${sys_dir}"; then
+ 	arm) AC_CONFIG_SUBDIRS(arm) ;;
+ 	d10v) AC_CONFIG_SUBDIRS(d10v) ;;
+ 	decstation) AC_CONFIG_SUBDIRS(decstation) ;;
++	ebbrt) AC_CONFIG_SUBDIRS(ebbrt) ;;
+ 	epiphany) AC_CONFIG_SUBDIRS(epiphany) ;;
+ 	h8300hms) AC_CONFIG_SUBDIRS(h8300hms) ;;
+ 	h8500hms) AC_CONFIG_SUBDIRS(h8500hms) ;;
+diff -rupN newlib-2.0.0/newlib/libc/sys/ebbrt/configure.in newlib-2.0.0-patched/newlib/libc/sys/ebbrt/configure.in
+--- newlib-2.0.0/newlib/libc/sys/ebbrt/configure.in	1969-12-31 19:00:00.000000000 -0500
++++ newlib-2.0.0-patched/newlib/libc/sys/ebbrt/configure.in	2013-12-11 19:41:34.744994180 -0500
+@@ -0,0 +1,7 @@
++AC_PREREQ(2.59)
++AC_INIT([newlib], [NEWLIB_VERSION])
++AC_CONFIG_SRCDIR([syscalls.c])
++AC_CONFIG_AUX_DIR(../../../..)
++NEWLIB_CONFIGURE(../../..)
++AC_CONFIG_FILES([Makefile])
++AC_OUTPUT
+diff -rupN newlib-2.0.0/newlib/libc/sys/ebbrt/Makefile.am newlib-2.0.0-patched/newlib/libc/sys/ebbrt/Makefile.am
+--- newlib-2.0.0/newlib/libc/sys/ebbrt/Makefile.am	1969-12-31 19:00:00.000000000 -0500
++++ newlib-2.0.0-patched/newlib/libc/sys/ebbrt/Makefile.am	2013-12-11 19:40:55.320995382 -0500
+@@ -0,0 +1,12 @@
++AUTOMAKE_OPTIONS = cygnus
++INCLUDES = $(NEWLIB_CFLAGS) $(CROSS_CFLAGS) $(TARGET_CFLAGS)
++AM_CCASFLAGS = $(INCLUDES)
++
++noinst_LIBRARIES = lib.a
++
++lib_a_SOURCES = syscalls.c sys/lock.h
++lib_a_CCASFLAGS = $(AM_CCASFLAGS)
++lib_a_CFLAGS = $(AM_CFLAGS)
++
++ACLOCAL_AMFLAGS = -I ../../..
++CONFIG_STATUS_DEPENDENCIES = $(newlib_basedir)/configure.host
+diff -rupN newlib-2.0.0/newlib/libc/sys/ebbrt/sys/lock.h newlib-2.0.0-patched/newlib/libc/sys/ebbrt/sys/lock.h
+--- newlib-2.0.0/newlib/libc/sys/ebbrt/sys/lock.h	1969-12-31 19:00:00.000000000 -0500
++++ newlib-2.0.0-patched/newlib/libc/sys/ebbrt/sys/lock.h	2013-12-11 19:42:27.636992568 -0500
+@@ -0,0 +1,33 @@
++#ifndef __SYS_LOCK_H__
++#define __SYS_LOCK_H__
++
++typedef void *_LOCK_T;
++typedef void *_LOCK_RECURSIVE_T;
++
++extern void ebbrt_newlib_lock_init(_LOCK_T *);
++extern void ebbrt_newlib_lock_init_recursive(_LOCK_RECURSIVE_T *);
++extern void ebbrt_newlib_lock_close(_LOCK_T *);
++extern void ebbrt_newlib_lock_close_recursive(_LOCK_RECURSIVE_T *);
++extern void ebbrt_newlib_lock_acquire(_LOCK_T *);
++extern void ebbrt_newlib_lock_acquire_recursive(_LOCK_RECURSIVE_T *);
++extern int ebbrt_newlib_lock_try_acquire(_LOCK_T *);
++extern int ebbrt_newlib_lock_try_acquire_recursive(_LOCK_RECURSIVE_T *);
++extern void ebbrt_newlib_lock_release(_LOCK_T *);
++extern void ebbrt_newlib_lock_release_recursive(_LOCK_RECURSIVE_T *);
++
++#define __LOCK_INIT(class,lock) \
++class _LOCK_T lock;
++#define __LOCK_INIT_RECURSIVE(class,lock) \
++class _LOCK_RECURSIVE_T lock;
++#define __lock_init(lock) ebbrt_newlib_lock_init(&lock)
++#define __lock_init_recursive(lock) ebbrt_newlib_lock_init_recursive(&lock)
++#define __lock_close(lock) ebbrt_newlib_lock_close(&lock)
++#define __lock_close_recursive(lock) ebbrt_newlib_lock_close_recursive(&lock)
++#define __lock_acquire(lock) ebbrt_newlib_lock_acquire(&lock)
++#define __lock_acquire_recursive(lock) ebbrt_newlib_lock_acquire_recursive(&lock)
++#define __lock_try_acquire(lock) ebbrt_newlib_lock_try_acquire(&lock)
++#define __lock_try_acquire_recursive(lock) ebbrt_newlib_lock_try_acquire_recursive(&lock)
++#define __lock_release(lock) ebbrt_newlib_lock_release(&lock)
++#define __lock_release_recursive(lock) ebbrt_newlib_lock_release_recursive(&lock)
++
++#endif /* __SYS_LOCK_H__ */
+diff -rupN newlib-2.0.0/newlib/libc/sys/ebbrt/syscalls.c newlib-2.0.0-patched/newlib/libc/sys/ebbrt/syscalls.c
+--- newlib-2.0.0/newlib/libc/sys/ebbrt/syscalls.c	1969-12-31 19:00:00.000000000 -0500
++++ newlib-2.0.0-patched/newlib/libc/sys/ebbrt/syscalls.c	2013-12-11 19:43:04.984991429 -0500
+@@ -0,0 +1,167 @@
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <sys/fcntl.h>
++#include <sys/times.h>
++#include <sys/errno.h>
++#include <sys/time.h>
++#include <stdarg.h>
++#include <stdio.h>
++#include <errno.h>
++
++
++extern int ebbrt_newlib_exit(int);
++extern int ebbrt_newlib_execve(char *, char **, char **);
++extern int ebbrt_newlib_getpid(void);
++extern int ebbrt_newlib_fork(void);
++extern int ebbrt_newlib_kill(int, int);
++extern int ebbrt_newlib_wait(int *);
++extern int ebbrt_newlib_isatty(int);
++extern int ebbrt_newlib_close(int);
++extern int ebbrt_newlib_link(char *, char *);
++extern int ebbrt_newlib_lseek(int, int, int);
++extern int ebbrt_newlib_open(const char *, int, va_list);
++extern int ebbrt_newlib_read(int, char *, int);
++extern int ebbrt_newlib_fstat(int, struct stat *);
++extern int ebbrt_newlib_stat(const char *, struct stat *);
++extern int ebbrt_newlib_unlink(char *);
++extern int ebbrt_newlib_write(int, char *, int);
++extern void* ebbrt_newlib_malloc(size_t);
++extern void ebbrt_newlib_free(void*);
++extern void* ebbrt_newlib_realloc(void*, size_t);
++extern void* ebbrt_newlib_calloc(size_t, size_t);
++extern void* ebbrt_newlib_memalign(size_t, size_t);
++extern int ebbrt_newlib_gettimeofday(struct timeval *, void *);
++
++int _exit(int val)
++{
++  return ebbrt_newlib_exit(val);
++}
++
++int execve(char *name, char **argv, char **env)
++{
++  return ebbrt_newlib_execve(name, argv, env);
++}
++
++int getpid(void)
++{
++  return ebbrt_newlib_getpid();
++}
++
++int fork(void)
++{
++  return ebbrt_newlib_fork();
++}
++
++int kill(int pid, int sig)
++{
++  return ebbrt_newlib_kill(pid, sig);
++}
++
++int wait(int *status)
++{
++  return ebbrt_newlib_wait(status);
++}
++
++int isatty(int fd)
++{
++  return ebbrt_newlib_isatty(fd);
++}
++
++int close(int file)
++{
++  return ebbrt_newlib_close(file);
++}
++
++int link(char *old, char *new)
++{
++  return ebbrt_newlib_link(old, new);
++}
++
++int lseek(int file, int ptr, int dir)
++{
++  return ebbrt_newlib_lseek(file, ptr, dir);
++}
++
++int open(const char *name, int flags, ...)
++{
++  va_list args;
++  int ret;
++  va_start(args, flags);
++  ret = ebbrt_newlib_open(name, flags, args);
++  va_end(args);
++  return ret;
++}
++
++int read(int file, char *ptr, int len)
++{
++  return ebbrt_newlib_read(file, ptr, len);
++}
++
++int fstat(int file, struct stat *st)
++{
++  return ebbrt_newlib_fstat(file, st);
++}
++
++int stat(const char *file, struct stat *st)
++{
++  return ebbrt_newlib_stat(file, st);
++}
++
++int unlink(char *name)
++{
++  return ebbrt_newlib_unlink(name);
++}
++
++int write(int file, char *ptr, int len)
++{
++  return ebbrt_newlib_write(file, ptr, len);
++}
++
++void* malloc(size_t size) {
++  return ebbrt_newlib_malloc(size);
++}
++
++void* _malloc_r(struct _reent *r, size_t size) {
++  return malloc(size);
++}
++
++void free(void* ptr) {
++  return ebbrt_newlib_free(ptr);
++}
++
++void _free_r(struct _reent *r, void *ptr) {
++  return free(ptr);
++}
++
++void* realloc(void* ptr, size_t size) {
++  return ebbrt_newlib_realloc(ptr, size);
++}
++
++void* _realloc_r(struct _reent *r, void* ptr, size_t size)
++{
++  return realloc(ptr, size);
++}
++
++void* calloc(size_t num, size_t size) {
++  return ebbrt_newlib_calloc(num, size);
++}
++
++
++void* _calloc_r(struct _reent *r, size_t num, size_t size){
++  return calloc(num, size);
++}
++
++void* memalign(size_t alignment, size_t size) {
++  return ebbrt_newlib_memalign(alignment, size);
++}
++
++void* _memalign_r(struct _reent *r, size_t alignment, size_t size) {
++  return memalign(alignment, size);
++}
++
++
++int gettimeofday(struct timeval *p, void *z)
++{
++  return ebbrt_newlib_gettimeofday(p, z);
++}
++
