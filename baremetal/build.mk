@@ -75,6 +75,8 @@ capnp_objects = $(patsubst $(baremetal)/%.c++, %.o, $(capnp_sources))
 kj_sources := $(shell find $(baremetal)/ext/capnp/src/kj -type f -name '*.c++')
 kj_objects = $(patsubst $(baremetal)/%.c++, %.o, $(kj_sources))
 
+$(kj_objects): CXXFLAGS += -Wno-unused-variable
+
 all: ebbrt.iso
 
 $(CXX_OBJECTS): $(CAPNP_OBJECTS)
