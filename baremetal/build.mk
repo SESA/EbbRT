@@ -3,7 +3,7 @@ VPATH = $(baremetal) $(common)
 
 CXX = $(baremetal)/ext/toolchain/bin/x86_64-pc-ebbrt-g++
 CC = $(baremetal)/ext/toolchain/bin/x86_64-pc-ebbrt-gcc
-CAPNP = $(baremetal)/ext/capnp/bin/capnp
+CAPNP = capnp
 
 INCLUDES = -I $(baremetal)/src/include
 INCLUDES += -I $(baremetal)/../common/src/include
