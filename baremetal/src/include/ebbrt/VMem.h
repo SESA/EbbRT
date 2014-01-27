@@ -37,8 +37,7 @@ class Pte {
     auto mask = (0x8000000000000fff | static_cast<uint64_t>(large) << 12);
     raw_ = (raw_ & mask) | addr;
   }
-  void Set(uint64_t phys_addr,
-           bool large,
+  void Set(uint64_t phys_addr, bool large,
            unsigned permissions = kPermRead | kPermWrite | kPermExec) {
     raw_ = 0;
     SetPresent(permissions != 0);
@@ -80,19 +79,15 @@ inline uint64_t Canonical(uint64_t addr) {
 extern Pte page_table_root;
 
 template <typename Found_Entry_Func, typename Empty_Entry_Func>
-void TraversePageTable(Pte& entry,
-                       uint64_t virt_start,
-                       uint64_t virt_end,
-                       uint64_t base_virt,
-                       size_t level,
-                       Found_Entry_Func found,
+void TraversePageTable(Pte &entry, uint64_t virt_start, uint64_t virt_end,
+                       uint64_t base_virt, size_t level, Found_Entry_Func found,
                        Empty_Entry_Func empty) {
   if (!entry.Present())
     if (!empty(entry))
       return;
 
   --level;
-  auto pt = reinterpret_cast<Pte*>(entry.Addr(false));
+  auto pt = reinterpret_cast<Pte *>(entry.Addr(false));
   auto step = UINT64_C(1) << (12 + level * 9);
   auto idx_begin = PtIndex(std::max(virt_start, base_virt), level);
   auto base_virt_end = Canonical(base_virt + step * 512 - 1);
@@ -103,8 +98,8 @@ void TraversePageTable(Pte& entry,
         virt_end >= base_virt + step) {
       found(pt[idx], base_virt, level);
     } else {
-      TraversePageTable(
-          pt[idx], virt_start, virt_end, base_virt, level, found, empty);
+      TraversePageTable(pt[idx], virt_start, virt_end, base_virt, level, found,
+                        empty);
     }
     base_virt = Canonical(base_virt + step);
   }

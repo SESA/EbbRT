@@ -8,7 +8,7 @@
 namespace ebbrt {
 struct LocalEntry {
   LocalEntry() : ref(nullptr) {}
-  void* ref;
+  void *ref;
 };
 }  // namespace ebbrt
 

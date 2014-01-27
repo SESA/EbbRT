@@ -46,11 +46,17 @@ typedef uintptr_t mem_ptr_t;
 
 extern void lwip_printf(const char *fmt, ...);
 
-#define LWIP_PLATFORM_DIAG(x) do {lwip_printf x;} while (0)
+#define LWIP_PLATFORM_DIAG(x)                                                  \
+  do {                                                                         \
+    lwip_printf x;                                                             \
+  } while (0)
 
 extern void lwip_assert(const char *fmt, ...);
 
-#define LWIP_PLATFORM_ASSERT(x) do { lwip_assert(x); } while (1)
+#define LWIP_PLATFORM_ASSERT(x)                                                \
+  do {                                                                         \
+    lwip_assert(x);                                                            \
+  } while (1)
 
 extern uint32_t lwip_rand();
 

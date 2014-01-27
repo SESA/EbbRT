@@ -20,7 +20,7 @@ namespace ebbrt {
 class EbbAllocator : public CacheAligned {
  public:
   static void Init();
-  static EbbAllocator& HandleFault(EbbId id);
+  static EbbAllocator &HandleFault(EbbId id);
   EbbAllocator();
   EbbId AllocateLocal();
 

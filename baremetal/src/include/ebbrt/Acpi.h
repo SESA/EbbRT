@@ -6,7 +6,9 @@
 #define BAREMETAL_SRC_INCLUDE_EBBRT_ACPI_H_
 
 namespace ebbrt {
-namespace acpi { void BootInit(); }
+namespace acpi {
+void BootInit();
+}
 }
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_ACPI_H_

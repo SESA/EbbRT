@@ -9,13 +9,15 @@
 #include <ebbrt/Debug.h>
 #include <ebbrt/ExplicitlyConstructed.h>
 
-namespace { ebbrt::ExplicitlyConstructed<ebbrt::EbbAllocator> the_allocator; }
+namespace {
+ebbrt::ExplicitlyConstructed<ebbrt::EbbAllocator> the_allocator;
+}
 
 void ebbrt::EbbAllocator::Init() { the_allocator.construct(); }
 
-ebbrt::EbbAllocator& ebbrt::EbbAllocator::HandleFault(EbbId id) {
+ebbrt::EbbAllocator &ebbrt::EbbAllocator::HandleFault(EbbId id) {
   kassert(id == kEbbAllocatorId);
-  auto& ref = *the_allocator;
+  auto &ref = *the_allocator;
   EbbRef<EbbAllocator>::CacheRef(id, ref);
   return ref;
 }

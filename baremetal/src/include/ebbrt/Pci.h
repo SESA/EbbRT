@@ -77,7 +77,7 @@ class Device;
 
 class Bar {
  public:
-  Bar(Device& dev, uint32_t bar_val, uint8_t idx);
+  Bar(Device &dev, uint32_t bar_val, uint8_t idx);
   ~Bar();
   bool Is64() const;
   void Map();
@@ -99,7 +99,7 @@ class Bar {
 
   uint64_t addr_;
   size_t size_;
-  void* vaddr_;
+  void *vaddr_;
   bool mmio_;
   bool is_64_;
   bool prefetchable_;
@@ -110,7 +110,7 @@ class Device : public Function {
   Device(uint8_t bus, uint8_t device, uint8_t func);
 
   bool MsixEnabled() const;
-  Bar& GetBar(uint8_t idx);
+  Bar &GetBar(uint8_t idx);
   bool MsixEnable();
   void MsixMaskEntry(size_t idx);
   void MsixUnmaskEntry(size_t idx);
@@ -184,7 +184,7 @@ class Device : public Function {
   friend class Bar;
 };
 
-void RegisterProbe(std::function<bool(Device&)> probe);
+void RegisterProbe(std::function<bool(Device &)> probe);
 
 void LoadDrivers();
 }  // namespace pci

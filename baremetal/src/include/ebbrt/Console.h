@@ -8,7 +8,7 @@
 namespace ebbrt {
 namespace console {
 void Init() noexcept;
-void Write(const char* str) noexcept;
+void Write(const char *str) noexcept;
 }
 }
 

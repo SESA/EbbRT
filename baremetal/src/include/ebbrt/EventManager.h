@@ -31,11 +31,11 @@ class EventManager {
   EventManager();
 
   static void Init();
-  static EventManager& HandleFault(EbbId id);
+  static EventManager &HandleFault(EbbId id);
 
   void SpawnLocal(std::function<void()> func);
-  void SaveContext(EventContext& context);
-  void ActivateContext(const EventContext& context);
+  void SaveContext(EventContext &context);
+  void ActivateContext(const EventContext &context);
   uint8_t AllocateVector(std::function<void()> func);
 
  private:
@@ -53,7 +53,7 @@ class EventManager {
   std::atomic<uint8_t> vector_idx_;
 
   friend void ebbrt::idt::EventInterrupt(int num);
-  friend void ebbrt::Main(ebbrt::MultibootInformation* mbi);
+  friend void ebbrt::Main(ebbrt::MultibootInformation *mbi);
   friend void ebbrt::smp::SmpMain();
 };
 

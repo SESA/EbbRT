@@ -34,8 +34,8 @@ struct CpuidBit {
   uint32_t leaf;
   uint8_t reg;
   uint32_t bit;
-  bool ebbrt::cpuid::Features::* flag;
-  VendorId* vendor_id;
+  bool ebbrt::cpuid::Features::*flag;
+  VendorId *vendor_id;
 };
 
 CpuidBit cpuid_bits[] = {
@@ -52,7 +52,7 @@ ebbrt::cpuid::Features ebbrt::cpuid::features;
 
 void ebbrt::cpuid::Init() {
   for (size_t i = 0; i < nr_cpuid_bits; ++i) {
-    const auto& bit = cpuid_bits[i];
+    const auto &bit = cpuid_bits[i];
     auto vals = Cpuid(bit.leaf & 0xf0000000);
     if (bit.vendor_id) {
       if (vals.ebx != bit.vendor_id->ebx || vals.ecx != bit.vendor_id->ecx ||

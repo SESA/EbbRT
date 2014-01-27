@@ -56,11 +56,11 @@ struct MultibootMemoryRegion {
   static const constexpr uint32_t kBadMemory = 5;
 
   template <typename F>
-  static void ForEachRegion(const void* buffer, uint32_t size, F f) {
-    auto end_addr = static_cast<const char*>(buffer) + size;
-    auto p = static_cast<const char*>(buffer);
+  static void ForEachRegion(const void *buffer, uint32_t size, F f) {
+    auto end_addr = static_cast<const char *>(buffer) + size;
+    auto p = static_cast<const char *>(buffer);
     while (p < end_addr) {
-      auto region = reinterpret_cast<const MultibootMemoryRegion*>(p);
+      auto region = reinterpret_cast<const MultibootMemoryRegion *>(p);
       f(*region);
       p += region->size_ + 4;
     }

@@ -37,15 +37,17 @@
 #include <ebbrt/VMem.h>
 #include <ebbrt/VMemAllocator.h>
 
-namespace { bool started_once = false; }
+namespace {
+bool started_once = false;
+}
 
 // for c++ runtime
 extern char __eh_frame_start[];
-extern "C" void __register_frame(void* frame);
-void* __dso_handle;
+extern "C" void __register_frame(void *frame);
+void *__dso_handle;
 
 extern "C"
-    __attribute__((noreturn)) void ebbrt::Main(MultibootInformation* mbi) {
+    __attribute__((noreturn)) void ebbrt::Main(MultibootInformation *mbi) {
   console::Init();
 
   /* If by chance we reboot back into the kernel, panic */
@@ -60,7 +62,7 @@ extern "C"
   clock::Init();
   pic::Disable();
   // bring up the first cpu structure early
-  auto& cpu = Cpu::Create();
+  auto &cpu = Cpu::Create();
   cpu.set_acpi_id(0);
   cpu.set_apic_id(0);
   cpu.Init();
@@ -72,7 +74,7 @@ extern "C"
   auto kend_addr = reinterpret_cast<uint64_t>(kend);
   const constexpr uint64_t initial_map_end =
       1 << 30;  // we only map 1 gb initially
-  e820::ForEachUsableRegion([ = ](e820::Entry entry) {
+  e820::ForEachUsableRegion([=](e820::Entry entry) {
     if (entry.addr() + entry.length() <= kend_addr)
       return;
 
@@ -89,7 +91,7 @@ extern "C"
 
   vmem::EnableRuntimePageTable();
 
-  e820::ForEachUsableRegion([ = ](e820::Entry entry) {
+  e820::ForEachUsableRegion([=](e820::Entry entry) {
     if (entry.addr() + entry.length() < initial_map_end)
       return;
 

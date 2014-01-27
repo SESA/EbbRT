@@ -14,14 +14,14 @@ namespace ebbrt {
 const constexpr size_t cache_size = 64;
 
 struct alignas(cache_size) CacheAligned {
-  void* operator new(size_t size) {
+  void *operator new(size_t size) {
     auto ret = memalign(cache_size, size);
     if (ret == nullptr) {
       throw std::bad_alloc();
     }
     return ret;
   }
-  void operator delete(void * p) { free(p); }
+  void operator delete(void *p) { free(p); }
 };
 }  // namespace ebbrt
 

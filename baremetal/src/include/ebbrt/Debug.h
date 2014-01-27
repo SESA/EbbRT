@@ -12,11 +12,11 @@
 #include <ebbrt/Preprocessor.h>
 
 namespace ebbrt {
-void kvprintf(const char* __restrict format, va_list va);
-void kprintf(const char* __restrict format, ...);
+void kvprintf(const char *__restrict format, va_list va);
+void kprintf(const char *__restrict format, ...);
 
 template <typename... Args>
-__attribute__((noreturn)) void kabort(const Args& ... args) {
+__attribute__((noreturn)) void kabort(const Args &... args) {
   kprintf(args...);
   kabort();
 }
@@ -32,27 +32,27 @@ template <> __attribute__((noreturn)) inline void kabort() {
   }
 }
 
-#define UNIMPLEMENTED()                                        \
-  do {                                                         \
-    ebbrt::kabort("%s: unimplemented\n", __PRETTY_FUNCTION__); \
+#define UNIMPLEMENTED()                                                        \
+  do {                                                                         \
+    ebbrt::kabort("%s: unimplemented\n", __PRETTY_FUNCTION__);                 \
   } while (0)
 
 #ifndef NDEBUG
-#define kassert(expr)                                          \
-  do {                                                         \
-    if (!(expr)) {                                             \
-      ebbrt::kabort("Assertion failed: " __FILE__              \
-                    ", line " STR2(__LINE__) ": " #expr "\n"); \
-    }                                                          \
+#define kassert(expr)                                                          \
+  do {                                                                         \
+    if (!(expr)) {                                                             \
+      ebbrt::kabort("Assertion failed: " __FILE__                              \
+                    ", line " STR2(__LINE__) ": " #expr "\n");                 \
+    }                                                                          \
   } while (0)
 #else
-#define kassert(expr)    \
-  do {                   \
-    (void) sizeof(expr); \
+#define kassert(expr)                                                          \
+  do {                                                                         \
+    (void)sizeof(expr);                                                        \
   } while (0)
 #endif
 
-template <typename... Args> void kbugon(bool expr, const Args& ... args) {
+template <typename... Args> void kbugon(bool expr, const Args &... args) {
   if (expr) {
     kabort(args...);
   }

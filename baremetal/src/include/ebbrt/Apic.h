@@ -16,9 +16,7 @@ const constexpr uint8_t kDeliveryNmi = 4;
 const constexpr uint8_t kDeliveryInit = 5;
 const constexpr uint8_t kDeliveryStartup = 6;
 
-void Ipi(uint8_t apic_id,
-         uint8_t vector,
-         bool level = true,
+void Ipi(uint8_t apic_id, uint8_t vector, bool level = true,
          uint8_t delivery_mode = kDeliveryFixed);
 uint32_t GetId();
 void Eoi();

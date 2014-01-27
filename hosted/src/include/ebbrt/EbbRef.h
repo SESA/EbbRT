@@ -14,21 +14,21 @@ template <class T> class EbbRef {
  public:
   constexpr explicit EbbRef(EbbId id) : ebbid_(id) {}
 
-  T* operator->() const {
+  T *operator->() const {
     if (active_context == nullptr) {
       throw std::runtime_error("Cannot invoke Ebb without active context");
     }
     auto local_entry = active_context->GetLocalEntry(ebbid_);
-    auto lref = static_cast<T*>(local_entry.ref);
+    auto lref = static_cast<T *>(local_entry.ref);
     if (lref == nullptr) {
       lref = &(T::HandleFault(ebbid_));
     }
     return lref;
   }
 
-  static void CacheRef(EbbId id, T& ref) {
+  static void CacheRef(EbbId id, T &ref) {
     LocalEntry le;
-    le.ref = static_cast<void*>(&ref);
+    le.ref = static_cast<void *>(&ref);
     active_context->SetLocalEntry(id, le);
   }
 

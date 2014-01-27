@@ -9,7 +9,7 @@ namespace ebbrt {
 struct MultibootInformation;
 
 extern "C"
-    __attribute__((noreturn)) void Main(ebbrt::MultibootInformation* mbi);
+    __attribute__((noreturn)) void Main(ebbrt::MultibootInformation *mbi);
 }
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_MAIN_H_

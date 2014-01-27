@@ -25,10 +25,7 @@ void ebbrt::Runtime::Initialize() {
   } else {
     std::unique_lock<std::mutex> lock(init_lock_);
     if (!initialized_) {
-      init_cv_.wait(lock,
-                    [&] {
-        return initialized_;
-      });
+      init_cv_.wait(lock, [&] { return initialized_; });
     }
   }
 }

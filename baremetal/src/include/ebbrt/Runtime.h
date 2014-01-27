@@ -6,7 +6,9 @@
 #define BAREMETAL_SRC_INCLUDE_EBBRT_RUNTIME_H_
 
 namespace ebbrt {
-namespace runtime { void Init(); }
+namespace runtime {
+void Init();
+}
 }
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_RUNTIME_H_

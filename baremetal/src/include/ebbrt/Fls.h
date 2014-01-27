@@ -6,9 +6,7 @@
 #define BAREMETAL_SRC_INCLUDE_EBBRT_FLS_H_
 
 namespace ebbrt {
-inline unsigned Fls(uint64_t word) {
-  return 63 - __builtin_clzll(word);
-}
+inline unsigned Fls(uint64_t word) { return 63 - __builtin_clzll(word); }
 }
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_FLS_H_

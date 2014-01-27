@@ -153,11 +153,11 @@ class Cpu {
   Cpu(size_t index, uint8_t acpi_id, uint8_t apic_id)
       : index_(index), acpi_id_(acpi_id), apic_id_(apic_id) {}
 
-  static Cpu& Create();
-  static Cpu& GetMine() { return *my_cpu_tls_; }
+  static Cpu &Create();
+  static Cpu &GetMine() { return *my_cpu_tls_; }
   static Nid GetMyNode() { return GetMine().nid(); }
-  static Cpu* GetByIndex(size_t index);
-  static Cpu* GetByApicId(size_t apic_id);
+  static Cpu *GetByIndex(size_t index);
+  static Cpu *GetByApicId(size_t apic_id);
   static size_t Count();
   void Init();
   operator size_t() const { return index_; }
@@ -171,7 +171,7 @@ class Cpu {
   void SetEventStack(uintptr_t top_of_stack);
 
   static char boot_interrupt_stack_[pmem::kPageSize];
-  static thread_local Cpu* my_cpu_tls_;
+  static thread_local Cpu *my_cpu_tls_;
   AlignedTss atss_;
   Gdt gdt_;
   size_t index_;

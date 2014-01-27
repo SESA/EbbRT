@@ -28,7 +28,7 @@ class Timer : public MulticoreEbbStatic<Timer> {
   uint64_t ticks_per_us_;
   std::multimap<std::chrono::nanoseconds,
                 std::tuple<std::function<void()>, std::chrono::microseconds> >
-      timers_;
+  timers_;
 };
 
 const constexpr auto timer = EbbRef<Timer>(Timer::static_id);

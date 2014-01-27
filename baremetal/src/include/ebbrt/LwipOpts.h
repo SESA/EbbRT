@@ -85,7 +85,7 @@
 // what you're doing
 #define TCP_KEEPIDLE_DEFAULT 10000UL  // Default KEEPALIVE timer in
                                       // milliseconds
-#define TCP_KEEPINTVL_DEFAULT \
+#define TCP_KEEPINTVL_DEFAULT                                                  \
   2000UL  // Default Time between KEEPALIVE probes in milliseconds
 #define TCP_KEEPCNT_DEFAULT 9U  // Default Counter for KEEPALIVE probes
 

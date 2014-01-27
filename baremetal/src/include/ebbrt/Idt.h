@@ -38,24 +38,24 @@ struct ExceptionFrame {
 void Init();
 void Load();
 extern "C" __attribute__((noreturn)) void EventInterrupt(int num);
-extern "C" void NmiInterrupt(ExceptionFrame* ef);
-extern "C" void DivideErrorException(ExceptionFrame* ef);
-extern "C" void DebugException(ExceptionFrame* ef);
-extern "C" void BreakpointException(ExceptionFrame* ef);
-extern "C" void OverflowException(ExceptionFrame* ef);
-extern "C" void BoundRangeExceededException(ExceptionFrame* ef);
-extern "C" void InvalidOpcodeException(ExceptionFrame* ef);
-extern "C" void DeviceNotAvailableException(ExceptionFrame* ef);
-extern "C" void DoubleFaultException(ExceptionFrame* ef);
-extern "C" void InvalidTssException(ExceptionFrame* ef);
-extern "C" void SegmentNotPresent(ExceptionFrame* ef);
-extern "C" void StackFaultException(ExceptionFrame* ef);
-extern "C" void GeneralProtectionException(ExceptionFrame* ef);
-extern "C" void PageFaultException(ExceptionFrame* ef);
-extern "C" void X87FpuFloatingPointError(ExceptionFrame* ef);
-extern "C" void AlignmentCheckException(ExceptionFrame* ef);
-extern "C" void MachineCheckException(ExceptionFrame* ef);
-extern "C" void SimdFloatingPointException(ExceptionFrame* ef);
+extern "C" void NmiInterrupt(ExceptionFrame *ef);
+extern "C" void DivideErrorException(ExceptionFrame *ef);
+extern "C" void DebugException(ExceptionFrame *ef);
+extern "C" void BreakpointException(ExceptionFrame *ef);
+extern "C" void OverflowException(ExceptionFrame *ef);
+extern "C" void BoundRangeExceededException(ExceptionFrame *ef);
+extern "C" void InvalidOpcodeException(ExceptionFrame *ef);
+extern "C" void DeviceNotAvailableException(ExceptionFrame *ef);
+extern "C" void DoubleFaultException(ExceptionFrame *ef);
+extern "C" void InvalidTssException(ExceptionFrame *ef);
+extern "C" void SegmentNotPresent(ExceptionFrame *ef);
+extern "C" void StackFaultException(ExceptionFrame *ef);
+extern "C" void GeneralProtectionException(ExceptionFrame *ef);
+extern "C" void PageFaultException(ExceptionFrame *ef);
+extern "C" void X87FpuFloatingPointError(ExceptionFrame *ef);
+extern "C" void AlignmentCheckException(ExceptionFrame *ef);
+extern "C" void MachineCheckException(ExceptionFrame *ef);
+extern "C" void SimdFloatingPointException(ExceptionFrame *ef);
 }  // namespace idt
 }  // namespace ebbrt
 

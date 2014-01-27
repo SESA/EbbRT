@@ -9,15 +9,15 @@
 
 namespace ebbrt {
 enum : EbbId {
-    kPageAllocatorId,
-    kGpAllocatorId,
-    kLocalIdMapId,
-    kEbbAllocatorId,
-    kEventManagerId,
-    kVMemAllocatorId,
-    kTimerId,
-    kNetworkManagerId,
-    FIRST_FREE_ID
+  kPageAllocatorId,
+  kGpAllocatorId,
+  kLocalIdMapId,
+  kEbbAllocatorId,
+  kEventManagerId,
+  kVMemAllocatorId,
+  kTimerId,
+  kNetworkManagerId,
+  FIRST_FREE_ID
 };
 }  // namespace ebbrt
 

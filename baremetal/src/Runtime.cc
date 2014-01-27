@@ -13,9 +13,9 @@
 namespace {
 class MutableBufferListMessageReader : public capnp::MessageReader {
  public:
-  MutableBufferListMessageReader(const ebbrt::MutableBufferList& l,
-                                 capnp::ReaderOptions options =
-                                     capnp::ReaderOptions())
+  MutableBufferListMessageReader(
+      const ebbrt::MutableBufferList &l,
+      capnp::ReaderOptions options = capnp::ReaderOptions())
       : MessageReader(options), l_(l) {}
 
   virtual kj::ArrayPtr<const capnp::word> getSegment(uint id) override {
@@ -28,12 +28,12 @@ class MutableBufferListMessageReader : public capnp::MessageReader {
     ebbrt::kbugon(it->size() % sizeof(capnp::word) != 0,
                   "buffer must be word aligned\n");
     return kj::ArrayPtr<const capnp::word>(
-        static_cast<const capnp::word*>(it->addr()),
+        static_cast<const capnp::word *>(it->addr()),
         it->size() / sizeof(capnp::word));
   }
 
  private:
-  const ebbrt::MutableBufferList& l_;
+  const ebbrt::MutableBufferList &l_;
 };
 }  // namespace
 

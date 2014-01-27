@@ -42,15 +42,14 @@ class PageRange {
   Nid nid_;
 };
 
-inline bool operator<(const PageRange& lhs, const PageRange& rhs) noexcept {
+inline bool operator<(const PageRange &lhs, const PageRange &rhs) noexcept {
   return lhs.start() < rhs.start();
 }
 
 typedef boost::intrusive::set<  // NOLINT
-    PageRange,
-    boost::intrusive::member_hook<PageRange,
-                                  boost::intrusive::set_member_hook<>,
-                                  &PageRange::member_hook> > FreePageTree;
+    PageRange, boost::intrusive::member_hook<
+                   PageRange, boost::intrusive::set_member_hook<>,
+                   &PageRange::member_hook> > FreePageTree;
 extern ExplicitlyConstructed<FreePageTree> free_pages;
 
 template <typename F> void ReleaseFreePages(F f) {

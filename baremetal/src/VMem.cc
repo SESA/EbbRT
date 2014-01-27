@@ -23,28 +23,25 @@ void ebbrt::vmem::EarlyMapMemory(uint64_t addr, uint64_t length) {
   auto aligned_length =
       align::Up(length + (addr - aligned_addr), pmem::kPageSize);
 
-  TraversePageTable(page_table_root,
-                    aligned_addr,
-                    aligned_addr + aligned_length,
-                    0,
-                    4,
-                    [ = ](Pte & entry, uint64_t base_virt, size_t level) {
-    if (entry.Present()) {
-      kassert(entry.Addr(level > 0) == base_virt);
-      return;
-    }
-    entry.Set(base_virt, level > 0);
-    std::atomic_thread_fence(std::memory_order_release);
-    asm volatile("invlpg (%[addr])" : : [addr] "r"(base_virt) : "memory");
-  },
-                    [ = ](Pte & entry) {
-    auto page = early_page_allocator::AllocatePage();
-    auto page_addr = page.ToAddr();
-    new (reinterpret_cast<void*>(page_addr)) Pte[512];
+  TraversePageTable(
+      page_table_root, aligned_addr, aligned_addr + aligned_length, 0, 4,
+      [=](Pte &entry, uint64_t base_virt, size_t level) {
+        if (entry.Present()) {
+          kassert(entry.Addr(level > 0) == base_virt);
+          return;
+        }
+        entry.Set(base_virt, level > 0);
+        std::atomic_thread_fence(std::memory_order_release);
+        asm volatile("invlpg (%[addr])" : : [addr] "r"(base_virt) : "memory");
+      },
+      [=](Pte &entry) {
+        auto page = early_page_allocator::AllocatePage();
+        auto page_addr = page.ToAddr();
+        new (reinterpret_cast<void *>(page_addr)) Pte[512];
 
-    entry.SetNormal(page_addr);
-    return true;
-  });
+        entry.SetNormal(page_addr);
+        return true;
+      });
 }
 
 void ebbrt::vmem::EarlyUnmapMemory(uint64_t addr, uint64_t length) {
@@ -52,42 +49,35 @@ void ebbrt::vmem::EarlyUnmapMemory(uint64_t addr, uint64_t length) {
   auto aligned_length =
       align::Up(length + (addr - aligned_addr), pmem::kPageSize);
 
-  TraversePageTable(page_table_root,
-                    aligned_addr,
-                    aligned_addr + aligned_length,
-                    0,
-                    4,
-                    [ = ](Pte & entry, uint64_t base_virt, size_t level) {
-    kassert(entry.Present());
-    entry.SetPresent(false);
-    std::atomic_thread_fence(std::memory_order_release);
-    asm volatile("invlpg (%[addr])" : : [addr] "r"(base_virt) : "memory");
-  },
-                    [ = ](Pte & entry) {
-    kprintf("Asked to unmap memory that wasn't mapped!\n");
-    kabort();
-    return false;
-  });
+  TraversePageTable(
+      page_table_root, aligned_addr, aligned_addr + aligned_length, 0, 4,
+      [=](Pte &entry, uint64_t base_virt, size_t level) {
+        kassert(entry.Present());
+        entry.SetPresent(false);
+        std::atomic_thread_fence(std::memory_order_release);
+        asm volatile("invlpg (%[addr])" : : [addr] "r"(base_virt) : "memory");
+      },
+      [=](Pte &entry) {
+        kprintf("Asked to unmap memory that wasn't mapped!\n");
+        kabort();
+        return false;
+      });
 }
 
 void ebbrt::vmem::MapMemory(Pfn vfn, Pfn pfn, uint64_t length) {
   auto pte_root = Pte(ReadCr3());
   auto vaddr = vfn.ToAddr();
-  TraversePageTable(pte_root,
-                    vaddr,
-                    vaddr + length,
-                    0,
-                    4,
-                    [ = ](Pte & entry, uint64_t base_virt, size_t level) {
-    kassert(!entry.Present());
-    entry.Set(pfn.ToAddr() + (base_virt - vaddr), level > 0);
-    std::atomic_thread_fence(std::memory_order_release);
-  },
-                    [](Pte & entry) {
+  TraversePageTable(pte_root, vaddr, vaddr + length, 0, 4,
+                    [=](Pte &entry, uint64_t base_virt, size_t level) {
+                      kassert(!entry.Present());
+                      entry.Set(pfn.ToAddr() + (base_virt - vaddr), level > 0);
+                      std::atomic_thread_fence(std::memory_order_release);
+                    },
+                    [](Pte &entry) {
     auto page = page_allocator->Alloc();
     kbugon(page == Pfn::None());
     auto page_addr = page.ToAddr();
-    new (reinterpret_cast<void*>(page_addr)) Pte[512];
+    new (reinterpret_cast<void *>(page_addr)) Pte[512];
     entry.SetNormal(page_addr);
     return true;
   });
@@ -103,14 +93,13 @@ void ebbrt::vmem::ApInit(size_t index) {
   EnableRuntimePageTable();
   Pte ap_pte_root;
   auto nid = Cpu::GetByIndex(index)->nid();
-  auto& p_allocator = PageAllocator::allocators[nid.val()];
+  auto &p_allocator = PageAllocator::allocators[nid.val()];
   auto page = p_allocator.Alloc(0, nid);
   kbugon(page == Pfn::None(),
          "Failed to allocate page for initial page tables\n");
   auto page_addr = page.ToAddr();
-  std::memcpy(reinterpret_cast<void*>(page_addr),
-              reinterpret_cast<void*>(page_table_root.Addr(false)),
-              4096);
+  std::memcpy(reinterpret_cast<void *>(page_addr),
+              reinterpret_cast<void *>(page_table_root.Addr(false)), 4096);
   ap_pte_root.SetNormal(page_addr);
 
   asm volatile("mov %[page_table], %%cr3" : : [page_table] "r"(ap_pte_root));

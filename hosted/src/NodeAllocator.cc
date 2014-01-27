@@ -14,19 +14,19 @@ namespace bai = boost::asio::ip;
 
 namespace {
 struct array_ptr_wrapper {
-  explicit array_ptr_wrapper(const kj::ArrayPtr<const capnp::word>* aptr)
+  explicit array_ptr_wrapper(const kj::ArrayPtr<const capnp::word> *aptr)
       : aptr_(aptr) {}
 
-  const kj::ArrayPtr<const capnp::word>* aptr_;
+  const kj::ArrayPtr<const capnp::word> *aptr_;
 
-  bool operator==(const array_ptr_wrapper& rhs) { return aptr_ == rhs.aptr_; }
-  bool operator!=(const array_ptr_wrapper& rhs) { return !(*this == rhs); }
-  array_ptr_wrapper& operator++() {
+  bool operator==(const array_ptr_wrapper &rhs) { return aptr_ == rhs.aptr_; }
+  bool operator!=(const array_ptr_wrapper &rhs) { return !(*this == rhs); }
+  array_ptr_wrapper &operator++() {
     aptr_++;
     return *this;
   }
-  const boost::asio::const_buffer& operator*() {
-    return boost::asio::buffer(static_cast<const void*>(aptr_->begin()),
+  const boost::asio::const_buffer &operator*() {
+    return boost::asio::buffer(static_cast<const void *>(aptr_->begin()),
                                aptr_->size() * sizeof(capnp::word));
   }
 };
@@ -63,7 +63,7 @@ ebbrt::NodeAllocator::session::session(bai::tcp::socket socket)
   auto size = builder.totalSize().wordCount * sizeof(capnp::word);
   auto segments = message->getSegmentsForOutput();
   socket_.async_send(aptr_to_cbs(segments),
-                     [message, size](const boost::system::error_code & error,
+                     [message, size](const boost::system::error_code &error,
                                      std::size_t /*bytes_transferred*/) {
     delete message;
     if (error) {
@@ -85,8 +85,7 @@ ebbrt::NodeAllocator::NodeAllocator()
 }
 
 void ebbrt::NodeAllocator::DoAccept() {
-  acceptor_.async_accept(socket_,
-                         [this](boost::system::error_code ec) {
+  acceptor_.async_accept(socket_, [this](boost::system::error_code ec) {
     if (!ec) {
       std::make_shared<session>(std::move(socket_));
     }

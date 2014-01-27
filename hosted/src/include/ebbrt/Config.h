@@ -7,6 +7,8 @@
 
 #include <string>
 
-namespace ebbrt { const constexpr char* frontend_ip = "10.128.128.1"; }
+namespace ebbrt {
+const constexpr char *frontend_ip = "10.128.128.1";
+}
 
 #endif  // HOSTED_SRC_INCLUDE_EBBRT_CONFIG_H_

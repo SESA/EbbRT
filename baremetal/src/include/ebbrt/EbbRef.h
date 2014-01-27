@@ -15,17 +15,17 @@ template <class T> class EbbRef {
   constexpr explicit EbbRef(EbbId id)
       : ref_(trans::kVMemStart + sizeof(LocalEntry) * id) {}
 
-  T* operator->() const {
-    auto lref = *reinterpret_cast<T**>(ref_);
+  T *operator->() const {
+    auto lref = *reinterpret_cast<T **>(ref_);
     if (lref == nullptr) {
       auto id = (ref_ - trans::kVMemStart) / sizeof(LocalEntry);
       lref = &(T::HandleFault(id));
     }
     return lref;
   }
-  static void CacheRef(EbbId id, T& ref) {
-    auto le = reinterpret_cast<LocalEntry*>(trans::kVMemStart +
-                                            sizeof(LocalEntry) * id);
+  static void CacheRef(EbbId id, T &ref) {
+    auto le = reinterpret_cast<LocalEntry *>(trans::kVMemStart +
+                                             sizeof(LocalEntry) * id);
     le->ref = &ref;
   }
 

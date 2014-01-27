@@ -16,7 +16,7 @@ ebbrt::Timer::Timer() {
     kassert(!timers_.empty());
     while (!timers_.empty() && timers_.begin()->first <= now) {
       // we assume timers are repeating so we add the next one
-      auto& kv = *timers_.begin();
+      auto &kv = *timers_.begin();
       auto it =
           timers_.emplace(std::piecewise_construct,
                           std::forward_as_tuple(now + std::get<1>(kv.second)),
@@ -80,7 +80,6 @@ void ebbrt::Timer::Start(std::chrono::microseconds timeout,
     SetTimer(timeout);
   }
 
-  timers_.emplace(std::piecewise_construct,
-                  std::forward_as_tuple(when),
+  timers_.emplace(std::piecewise_construct, std::forward_as_tuple(when),
                   std::forward_as_tuple(std::move(f), timeout));
 }

@@ -11,7 +11,7 @@
 #include <ebbrt/EarlyPageAllocator.h>
 
 boost::container::static_vector<ebbrt::numa::Node, ebbrt::numa::kMaxNodes>
-    ebbrt::numa::nodes;
+ebbrt::numa::nodes;
 
 namespace {
 const constexpr size_t kMaxLocalApic = 256;
@@ -23,11 +23,11 @@ std::array<int32_t, ebbrt::numa::kMaxNodes> node_to_pxm_map;
 }
 
 void ebbrt::numa::Init() {
-  for (auto& numa_node : nodes) {
+  for (auto &numa_node : nodes) {
     std::sort(numa_node.memblocks.begin(), numa_node.memblocks.end());
-    for (auto& memblock : numa_node.memblocks) {
-      early_page_allocator::SetNidRange(
-          memblock.start, memblock.end, memblock.nid);
+    for (auto &memblock : numa_node.memblocks) {
+      early_page_allocator::SetNidRange(memblock.start, memblock.end,
+                                        memblock.nid);
     }
     if (numa_node.memblocks.empty()) {
       numa_node.pfn_start = Pfn::None();
@@ -64,8 +64,7 @@ void ebbrt::numa::MapApicToNode(size_t apic_id, Nid nid) {
   p->set_nid(nid);
 }
 
-void ebbrt::numa::AddMemBlock(ebbrt::Nid nid,
-                              ebbrt::Pfn start,
+void ebbrt::numa::AddMemBlock(ebbrt::Nid nid, ebbrt::Pfn start,
                               ebbrt::Pfn end) {
   nodes[nid.val()].memblocks.emplace_back(start, end, nid);
 }

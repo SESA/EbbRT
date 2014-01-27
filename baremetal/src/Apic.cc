@@ -14,9 +14,7 @@ void ebbrt::apic::Init() {
   msr::Write(msr::kX2apicSvr, 0x100);
 }
 
-void ebbrt::apic::Ipi(uint8_t apic_id,
-                      uint8_t vector,
-                      bool level,
+void ebbrt::apic::Ipi(uint8_t apic_id, uint8_t vector, bool level,
                       uint8_t delivery_mode) {
   auto val = (uint64_t(apic_id) << 32) | (uint64_t(level) << 14) |
              (uint64_t(delivery_mode) << 8) | vector;

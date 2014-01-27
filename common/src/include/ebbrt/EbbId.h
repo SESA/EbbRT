@@ -7,6 +7,8 @@
 
 #include <cstdint>
 
-namespace ebbrt { typedef uint32_t EbbId; }
+namespace ebbrt {
+typedef uint32_t EbbId;
+}
 
 #endif  // COMMON_SRC_INCLUDE_EBBRT_EBBID_H_

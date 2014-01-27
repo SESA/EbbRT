@@ -6,7 +6,9 @@
 #define BAREMETAL_SRC_INCLUDE_EBBRT_PIC_H_
 
 namespace ebbrt {
-namespace pic { void Disable(); }
+namespace pic {
+void Disable();
+}
 }
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_PIC_H_

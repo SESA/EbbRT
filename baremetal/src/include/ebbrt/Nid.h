@@ -15,39 +15,39 @@ class Nid {
   static constexpr Nid Any() { return Nid(-2); }
 
   int val() const noexcept { return val_; }
+
  private:
   int val_;
 };
 
-inline bool operator==(const Nid& lhs, const Nid& rhs) {
+inline bool operator==(const Nid &lhs, const Nid &rhs) {
   return lhs.val() == rhs.val();
 }
 
-inline bool operator!=(const Nid& lhs, const Nid& rhs) {
+inline bool operator!=(const Nid &lhs, const Nid &rhs) {
   return !operator==(lhs, rhs);
 }
 
-inline bool operator<(const Nid& lhs, const Nid& rhs) {
+inline bool operator<(const Nid &lhs, const Nid &rhs) {
   return lhs.val() < rhs.val();
 }
 
-inline bool operator>(const Nid& lhs, const Nid& rhs) {
+inline bool operator>(const Nid &lhs, const Nid &rhs) {
   return operator<(rhs, lhs);
 }
 
-inline bool operator<=(const Nid& lhs, const Nid& rhs) {
+inline bool operator<=(const Nid &lhs, const Nid &rhs) {
   return !operator>(lhs, rhs);
 }
 
-inline bool operator>=(const Nid& lhs, const Nid& rhs) {
+inline bool operator>=(const Nid &lhs, const Nid &rhs) {
   return !operator<(lhs, rhs);
 }
 
-inline size_t operator-(const Nid& lhs, const Nid& rhs) {
+inline size_t operator-(const Nid &lhs, const Nid &rhs) {
   return lhs.val() - rhs.val();
 }
 
 }  // namespace ebbrt
-
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_NID_H_

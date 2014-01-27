@@ -6,9 +6,9 @@
 #include <ebbrt/ContextActivation.h>
 #include <ebbrt/Runtime.h>
 
-thread_local ebbrt::Context* ebbrt::active_context;
+thread_local ebbrt::Context *ebbrt::active_context;
 
-ebbrt::Context::Context(Runtime& runtime) : runtime_(runtime) {
+ebbrt::Context::Context(Runtime &runtime) : runtime_(runtime) {
   index_ = runtime.indices_.fetch_add(1, std::memory_order_relaxed);
   {
     ContextActivation activation(*this);

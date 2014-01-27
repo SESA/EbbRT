@@ -15,7 +15,7 @@
 #include <ebbrt/MemMap.h>
 
 boost::container::static_vector<ebbrt::PageAllocator, ebbrt::numa::kMaxNodes>
-    ebbrt::PageAllocator::allocators;
+ebbrt::PageAllocator::allocators;
 
 void ebbrt::PageAllocator::Init() {
   for (unsigned i = 0; i < numa::nodes.size(); ++i) {
@@ -60,9 +60,9 @@ void ebbrt::PageAllocator::EarlyFreePage(Pfn start, size_t order, Nid nid) {
   page->data.order = order;
 }
 
-ebbrt::PageAllocator& ebbrt::PageAllocator::HandleFault(EbbId id) {
+ebbrt::PageAllocator &ebbrt::PageAllocator::HandleFault(EbbId id) {
   kassert(id == kPageAllocatorId);
-  auto& allocator = allocators[Cpu::GetMyNode().val()];
+  auto &allocator = allocators[Cpu::GetMyNode().val()];
   EbbRef<PageAllocator>::CacheRef(id, allocator);
   return allocator;
 }
@@ -72,10 +72,10 @@ ebbrt::PageAllocator::PageAllocator(Nid nid) : nid_(nid) {}
 ebbrt::Pfn ebbrt::PageAllocator::AllocLocal(size_t order) {
   std::lock_guard<SpinLock> lock(lock_);
 
-  FreePage* fp = nullptr;
+  FreePage *fp = nullptr;
   auto this_order = order;
   while (this_order <= kMaxOrder) {
-    auto& list = free_page_lists[this_order];
+    auto &list = free_page_lists[this_order];
     if (!list.empty()) {
       fp = &list.front();
       list.pop_front();
@@ -128,7 +128,7 @@ void ebbrt::PageAllocator::Free(Pfn pfn, size_t order) {
       break;
     }
     // Buddy is free, remove it from the buddy system
-    auto entry = reinterpret_cast<FreePage*>(buddy.ToAddr());
+    auto entry = reinterpret_cast<FreePage *>(buddy.ToAddr());
     auto it = free_page_lists[order].iterator_to(*entry);
     free_page_lists[order].erase(it);
     order++;

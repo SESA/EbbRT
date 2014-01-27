@@ -10,8 +10,8 @@
 #ifndef ASSEMBLY
 namespace ebbrt {
 namespace smp {
-  void Init();
-  extern "C" __attribute__((noreturn)) void SmpMain();
+void Init();
+extern "C" __attribute__((noreturn)) void SmpMain();
 }
 }
 #endif

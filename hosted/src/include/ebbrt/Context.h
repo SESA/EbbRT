@@ -16,30 +16,26 @@
 namespace ebbrt {
 class Runtime;
 class Context {
-  Runtime& runtime_;
+  Runtime &runtime_;
   size_t index_;
   std::unordered_map<EbbId, LocalEntry> local_table_;
 
   friend class Runtime;
 
  public:
-  explicit Context(Runtime& runtime);
-  Context(Context&&) = default;
-  Context& operator=(Context&&) = default;
+  explicit Context(Runtime &runtime);
+  Context(Context &&) = default;
+  Context &operator=(Context &&) = default;
   void Activate();
   void Deactivate();
   void Run();
-  LocalEntry GetLocalEntry(EbbId id) {
-    return local_table_[id];
-  }
-  void SetLocalEntry(EbbId id, LocalEntry le) {
-    local_table_[id] = le;
-  }
+  LocalEntry GetLocalEntry(EbbId id) { return local_table_[id]; }
+  void SetLocalEntry(EbbId id, LocalEntry le) { local_table_[id] = le; }
 
   boost::asio::io_service io_service_;
 };
 
-extern thread_local Context* active_context;
+extern thread_local Context *active_context;
 }  // namespace ebbrt
 
 #endif  // HOSTED_SRC_INCLUDE_EBBRT_CONTEXT_H_

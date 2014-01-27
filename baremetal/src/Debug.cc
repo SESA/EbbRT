@@ -10,7 +10,7 @@ void ebbrt::kvprintf(const char *__restrict format, va_list va) {
   va_list va2;
   va_copy(va2, va);
   auto len = vsnprintf(nullptr, 0, format, va);
-  char buffer[len + 1]; // NOLINT
+  char buffer[len + 1];  // NOLINT
   vsnprintf(buffer, len + 1, format, va2);
   console::Write(buffer);
 }
