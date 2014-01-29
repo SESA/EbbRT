@@ -23,7 +23,9 @@
 #include <ebbrt/LocalIdMap.h>
 #include <ebbrt/MemMap.h>
 #include <ebbrt/Multiboot.h>
+#ifdef __EBBRT_CONFIG_NETWORKING__
 #include <ebbrt/Net.h>
+#endif
 #include <ebbrt/Numa.h>
 #include <ebbrt/PageAllocator.h>
 #include <ebbrt/Pic.h>
@@ -41,6 +43,8 @@
 namespace {
 bool started_once = false;
 }
+
+extern void appmain(char *cmdline) __attribute__((weak));
 
 // for c++ runtime
 extern char __eh_frame_start[];
@@ -70,6 +74,16 @@ extern "C"
 
   e820::Init(mbi);
   e820::PrintMap();
+
+  char *cmdLine = NULL;
+  uint32_t cmdLineLen = 0;
+  if (mbi->has_command_line_==1) {
+    // clearly have to do the right thing here...make a copy of
+    // of the command line;
+    cmdLine = reinterpret_cast<char *>(mbi->command_line_);
+    while (cmdLine[cmdLineLen] != 0) cmdLineLen++;
+  }
+
   early_page_allocator::Init();
   multiboot::Reserve(mbi);
   boot_fdt::Init(mbi);
@@ -115,19 +129,31 @@ extern "C"
   VMemAllocator::Init();
   EventManager::Init();
 
-  event_manager->SpawnLocal([]() {
+  event_manager->SpawnLocal([=]() {
     // Enable exceptions
     __register_frame(__eh_frame_start);
     apic::Init();
     Timer::Init();
     smp::Init();
+#ifdef __EBBRT_CONFIG_NETWORKING__
     NetworkManager::Init();
     pci::Init();
     pci::RegisterProbe(VirtioNetDriver::Probe);
     pci::LoadDrivers();
     network_manager->AcquireIPAddress();
     runtime::Init();
+#endif
+
     kprintf("System initialization complete\n");
+
+    if (appmain) {
+      event_manager->SpawnLocal([=]() {
+	  appmain(cmdLine);
+	} );
+    } else {
+      kprintf("No app main found...\n");
+    }
+
   });
 
   event_manager->StartProcessingEvents();
