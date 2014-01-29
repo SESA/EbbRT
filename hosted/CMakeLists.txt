@@ -15,6 +15,9 @@ include_directories(${TBB_INCLUDE_DIRS})
 find_package(Capnp REQUIRED)
 include_directories(${CAPNP_INCLUDE_DIRS})
 
+find_package(Fdt REQUIRED)
+include_directories(${FDT_INCLUDE_DIRS})
+
 file(GLOB CapnpFiles "${CMAKE_SOURCE_DIR}/../common/src/*.capnp")
 CAPNP_GENERATE_CPP(CapnpSources CapnpHeaders ${CapnpFiles})
 
