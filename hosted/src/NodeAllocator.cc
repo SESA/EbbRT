@@ -2,6 +2,8 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
+#include <fdt.h>
+
 #include <capnp/message.h>
 
 #include <ebbrt/Config.h>
@@ -46,7 +48,7 @@ class aptr_to_cbs {
 };
 }  // namespace
 
-ebbrt::NodeAllocator::session::session(bai::tcp::socket socket)
+ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket)
     : socket_(std::move(socket)) {
   std::cout << "New connection" << std::endl;
   auto message = new capnp::MallocMessageBuilder();
@@ -87,12 +89,13 @@ ebbrt::NodeAllocator::NodeAllocator()
 void ebbrt::NodeAllocator::DoAccept() {
   acceptor_.async_accept(socket_, [this](boost::system::error_code ec) {
     if (!ec) {
-      std::make_shared<session>(std::move(socket_));
+      std::make_shared<Session>(std::move(socket_));
     }
     DoAccept();
   });
 }
 
 void ebbrt::NodeAllocator::AllocateNode() {
+  
   std::cout << "Allocate node" << std::endl;
 }

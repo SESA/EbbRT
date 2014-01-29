@@ -13,25 +13,26 @@
 
 namespace ebbrt {
 class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
-  std::atomic<uint16_t> node_index_;
-  boost::asio::ip::tcp::acceptor acceptor_;
-  boost::asio::ip::tcp::socket socket_;
+ public:
+  NodeAllocator();
+  void AllocateNode();
 
-  class session : public std::enable_shared_from_this<session> {
+ private:
+  class Session : public std::enable_shared_from_this<Session> {
    public:
-    explicit session(boost::asio::ip::tcp::socket socket);
+    explicit Session(boost::asio::ip::tcp::socket socket);
 
    private:
     boost::asio::ip::tcp::socket socket_;
   };
 
-  friend class session;
-
   void DoAccept();
 
- public:
-  NodeAllocator();
-  void AllocateNode();
+  std::atomic<uint16_t> node_index_;
+  boost::asio::ip::tcp::acceptor acceptor_;
+  boost::asio::ip::tcp::socket socket_;
+
+  friend class Session;
 };
 const constexpr auto node_allocator = EbbRef<NodeAllocator>(kNodeAllocatorId);
 }  // namespace ebbrt
