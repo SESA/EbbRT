@@ -16,7 +16,7 @@ INCLUDES += -I $(baremetal)/ext/capnp/include
 INCLUDES += -I $(baremetal)/ext/fdt/include
 INCLUDES += -iquote $(baremetal)/ext/lwip/include/ipv4/
 
-CPPFLAGS = -U ebbrt -MD -MT $@ -MP $(optflags) -Wall -Werror \
+CPPFLAGS = -U ebbrt -MD -MT $@ -MP $(optflags) $(ebbrt_config)  -Wall -Werror \
 	-fno-stack-protector $(INCLUDES)
 CXXFLAGS = -std=gnu++11
 CFLAGS = -std=gnu99
@@ -82,13 +82,11 @@ $(kj_objects): CXXFLAGS += -Wno-unused-variable
 fdt_sources := $(shell find $(baremetal)/ext/fdt -type f -name '*.c')
 fdt_objects := $(patsubst $(baremetal)/%.c, %.o, $(fdt_sources))
 
-all: ebbrt.iso
-
 $(CXX_OBJECTS): $(CAPNP_OBJECTS)
 
-.PRECIOUS: $(CAPNP_GENS)
+.PRECIOUS: $(CAPNP_GENS) $(capnp_objects) $(ASM_OBJECTS) %.elf %.elf.stripped 
 
-.PHONY: all clean
+.PHONY: clean
 
 .SUFFIXES:
 
@@ -97,17 +95,17 @@ mkrescue = grub-mkrescue -o $@ -graft-points boot/ebbrt=$< \
 	boot/grub/grub.cfg=$(baremetal)/misc/grub.cfg
 
 
-ebbrt.iso: ebbrt.elf.stripped
+%.iso: %.elf.stripped
 	$(call quiet, $(mkrescue), MKRESCUE $@)
 
-ebbrt.elf.stripped: ebbrt.elf
+%.elf.stripped: %.elf
 	$(call quiet, $(strip), STRIP $@)
 
-ebbrt.elf32: ebbrt.elf.stripped
+ %.elf32: %.elf
 	$(call quiet,objcopy -O elf32-i386 $< $@, OBJCOPY $@)
 
 LDFLAGS := -Wl,-n,-z,max-page-size=0x1000 $(optflags)
-ebbrt.elf: $(objects) src/ebbrt.ld
+%.elf: $(app_objects) $(objects) src/ebbrt.ld
 	$(call quiet, $(CXX) $(LDFLAGS) -o $@ $(objects) \
 		-T $(baremetal)/src/ebbrt.ld $(runtime_objects), LD $@)
 
@@ -145,3 +143,5 @@ clean:
 	$(q-build-s)
 
 -include $(shell find -name '*.d')
+
+.DEFAULT_GOAL := 
