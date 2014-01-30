@@ -106,7 +106,7 @@ mkrescue = grub-mkrescue -o $@ -graft-points boot/ebbrt=$< \
 
 LDFLAGS := -Wl,-n,-z,max-page-size=0x1000 $(optflags)
 %.elf: $(app_objects) $(objects) src/ebbrt.ld
-	$(call quiet, $(CXX) $(LDFLAGS) -o $@ $(objects) \
+	$(call quiet, $(CXX) $(LDFLAGS) -o $@ $(app_objects) $(objects) \
 		-T $(baremetal)/src/ebbrt.ld $(runtime_objects), LD $@)
 
 clean:
