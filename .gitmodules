@@ -19,3 +19,7 @@
 [submodule "baremetal/ext/fdt"]
 	path = baremetal/ext/fdt
 	url = https://github.com/SESA/EbbRT-fdt.git
+[submodule "contrib/jappavoo"]
+	path = contrib/jappavoo
+	url = git@github.com:jappavoo/ebbrt-contrib.git
+	branch = master
