@@ -18,14 +18,14 @@ template <typename T, typename S> constexpr T Up(T val, S alignment) {
   return Down(val + alignment - 1, alignment);
 }
 
-template <class T, typename S> T *Down(T *ptr, S alignment) {
+template <class T, typename S> T* Down(T* ptr, S alignment) {
   auto val = reinterpret_cast<uintptr_t>(ptr);
-  return reinterpret_cast<T *>(Down(val, alignment));
+  return reinterpret_cast<T*>(Down(val, alignment));
 }
 
-template <class T, typename S> T *Up(T *ptr, S alignment) {
+template <class T, typename S> T* Up(T* ptr, S alignment) {
   auto val = reinterpret_cast<uintptr_t>(ptr);
-  return reinterpret_cast<T *>(Up(val, alignment));
+  return reinterpret_cast<T*>(Up(val, alignment));
 }
 }  // namespace align
 }  // namespace ebbrt

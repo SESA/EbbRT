@@ -54,9 +54,9 @@ void PciWrite32(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset,
   ebbrt::io::Out32(kPciDataPort, val);
 }
 
-ebbrt::ExplicitlyConstructed<std::vector<ebbrt::pci::Device> > devices;
+ebbrt::ExplicitlyConstructed<std::vector<ebbrt::pci::Device>> devices;
 ebbrt::ExplicitlyConstructed<
-    std::vector<std::function<bool(ebbrt::pci::Device &)> > > driver_probes;
+    std::vector<std::function<bool(ebbrt::pci::Device&)>>> driver_probes;
 
 void EnumerateBus(uint8_t bus) {
   for (auto device = 0; device < 32; ++device) {
@@ -102,13 +102,13 @@ void ebbrt::pci::Init() {
   EnumerateAllBuses();
 }
 
-void ebbrt::pci::RegisterProbe(std::function<bool(pci::Device &)> probe) {
+void ebbrt::pci::RegisterProbe(std::function<bool(pci::Device&)> probe) {
   driver_probes->emplace_back(std::move(probe));
 }
 
 void ebbrt::pci::LoadDrivers() {
-  for (auto &dev : *devices) {
-    for (auto &probe : *driver_probes) {
+  for (auto& dev : *devices) {
+    for (auto& probe : *driver_probes) {
       if (probe(dev))
         break;
     }
@@ -186,7 +186,7 @@ void ebbrt::pci::Function::DumpAddress() const {
   kprintf("%u:%u:%u\n", bus_, device_, func_);
 }
 
-ebbrt::pci::Bar::Bar(pci::Device &dev, uint32_t bar_val, uint8_t idx)
+ebbrt::pci::Bar::Bar(pci::Device& dev, uint32_t bar_val, uint8_t idx)
     : vaddr_(nullptr), is_64_(false), prefetchable_(false) {
   mmio_ = !(bar_val & kIoSpaceFlag);
   if (mmio_) {
@@ -233,15 +233,15 @@ void ebbrt::pci::Bar::Map() {
 
   auto npages = align::Up(size_, pmem::kPageSize) >> pmem::kPageShift;
   auto page = vmem_allocator->Alloc(npages);
-  vaddr_ = reinterpret_cast<void *>(page.ToAddr());
+  vaddr_ = reinterpret_cast<void*>(page.ToAddr());
   kbugon(page == Pfn::None(), "Failed to allocate virtual pages for mmio\n");
   vmem::MapMemory(page, Pfn::Down(addr_), size_);
 }
 
 uint8_t ebbrt::pci::Bar::Read8(size_t offset) {
   if (mmio_) {
-    auto addr = static_cast<void *>(static_cast<char *>(vaddr_) + offset);
-    return *static_cast<volatile uint8_t *>(addr);
+    auto addr = static_cast<void*>(static_cast<char*>(vaddr_) + offset);
+    return *static_cast<volatile uint8_t*>(addr);
   } else {
     return io::In8(addr_ + offset);
   }
@@ -249,8 +249,8 @@ uint8_t ebbrt::pci::Bar::Read8(size_t offset) {
 
 uint16_t ebbrt::pci::Bar::Read16(size_t offset) {
   if (mmio_) {
-    auto addr = static_cast<void *>(static_cast<char *>(vaddr_) + offset);
-    return *static_cast<volatile uint16_t *>(addr);
+    auto addr = static_cast<void*>(static_cast<char*>(vaddr_) + offset);
+    return *static_cast<volatile uint16_t*>(addr);
   } else {
     return io::In16(addr_ + offset);
   }
@@ -258,8 +258,8 @@ uint16_t ebbrt::pci::Bar::Read16(size_t offset) {
 
 uint32_t ebbrt::pci::Bar::Read32(size_t offset) {
   if (mmio_) {
-    auto addr = static_cast<void *>(static_cast<char *>(vaddr_) + offset);
-    return *static_cast<volatile uint32_t *>(addr);
+    auto addr = static_cast<void*>(static_cast<char*>(vaddr_) + offset);
+    return *static_cast<volatile uint32_t*>(addr);
   } else {
     return io::In32(addr_ + offset);
   }
@@ -267,8 +267,8 @@ uint32_t ebbrt::pci::Bar::Read32(size_t offset) {
 
 void ebbrt::pci::Bar::Write8(size_t offset, uint8_t val) {
   if (mmio_) {
-    auto addr = static_cast<void *>(static_cast<char *>(vaddr_) + offset);
-    *static_cast<volatile uint8_t *>(addr) = val;
+    auto addr = static_cast<void*>(static_cast<char*>(vaddr_) + offset);
+    *static_cast<volatile uint8_t*>(addr) = val;
   } else {
     io::Out8(addr_ + offset, val);
   }
@@ -276,8 +276,8 @@ void ebbrt::pci::Bar::Write8(size_t offset, uint8_t val) {
 
 void ebbrt::pci::Bar::Write16(size_t offset, uint16_t val) {
   if (mmio_) {
-    auto addr = static_cast<void *>(static_cast<char *>(vaddr_) + offset);
-    *static_cast<volatile uint16_t *>(addr) = val;
+    auto addr = static_cast<void*>(static_cast<char*>(vaddr_) + offset);
+    *static_cast<volatile uint16_t*>(addr) = val;
   } else {
     io::Out16(addr_ + offset, val);
   }
@@ -285,8 +285,8 @@ void ebbrt::pci::Bar::Write16(size_t offset, uint16_t val) {
 
 void ebbrt::pci::Bar::Write32(size_t offset, uint32_t val) {
   if (mmio_) {
-    auto addr = static_cast<void *>(static_cast<char *>(vaddr_) + offset);
-    *static_cast<volatile uint32_t *>(addr) = val;
+    auto addr = static_cast<void*>(static_cast<char*>(vaddr_) + offset);
+    *static_cast<volatile uint32_t*>(addr) = val;
   } else {
     io::Out32(addr_ + offset, val);
   }
@@ -337,7 +337,7 @@ void ebbrt::pci::Device::MsixSetControl(uint16_t control) {
 
 bool ebbrt::pci::Device::MsixEnabled() const { return msix_bar_idx_ != -1; }
 
-ebbrt::pci::Bar &ebbrt::pci::Device::GetBar(uint8_t idx) {
+ebbrt::pci::Bar& ebbrt::pci::Device::GetBar(uint8_t idx) {
   if (!bars_[idx])
     throw std::runtime_error("BAR does not exist\n");
 
@@ -360,7 +360,7 @@ bool ebbrt::pci::Device::MsixEnable() {
   kprintf("MSIX - %u entries at BAR%u:%lx\n", msix_table_size_, msix_bar_idx_,
           msix_table_offset_);
 
-  auto &msix_bar = GetBar(msix_bar_idx_);
+  auto& msix_bar = GetBar(msix_bar_idx_);
   msix_bar.Map();
 
   DisableInt();
@@ -387,7 +387,7 @@ void ebbrt::pci::Device::MsixMaskEntry(size_t idx) {
   if (idx >= msix_table_size_)
     return;
 
-  auto &msix_bar = GetBar(msix_bar_idx_);
+  auto& msix_bar = GetBar(msix_bar_idx_);
   auto offset =
       msix_table_offset_ + idx * kMsixTableEntrySize + kMsixTableEntryControl;
   auto ctrl = msix_bar.Read32(offset);
@@ -402,7 +402,7 @@ void ebbrt::pci::Device::MsixUnmaskEntry(size_t idx) {
   if (idx >= msix_table_size_)
     return;
 
-  auto &msix_bar = GetBar(msix_bar_idx_);
+  auto& msix_bar = GetBar(msix_bar_idx_);
   auto offset =
       msix_table_offset_ + idx * kMsixTableEntrySize + kMsixTableEntryControl;
   auto ctrl = msix_bar.Read32(offset);
@@ -412,7 +412,7 @@ void ebbrt::pci::Device::MsixUnmaskEntry(size_t idx) {
 
 void ebbrt::pci::Device::SetMsixEntry(size_t entry, uint8_t vector,
                                       uint8_t dest) {
-  auto &msix_bar = GetBar(msix_bar_idx_);
+  auto& msix_bar = GetBar(msix_bar_idx_);
   auto offset = msix_table_offset_ + entry * kMsixTableEntrySize;
   msix_bar.Write32(offset + kMsixTableEntryAddr, 0xFEE00000);
   msix_bar.Write32(offset + kMsixTableEntryData, vector);

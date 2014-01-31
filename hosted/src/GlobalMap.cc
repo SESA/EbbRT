@@ -25,7 +25,7 @@ void ebbrt::GlobalMap::DoAccept() {
 }
 
 std::pair<uint16_t, uint32_t> ebbrt::GlobalMap::GetAddress() {
-  const auto &endpoint = acceptor_.local_endpoint();
+  const auto& endpoint = acceptor_.local_endpoint();
   return std::make_pair(endpoint.port(), endpoint.address().to_v4().to_ulong());
 }
 

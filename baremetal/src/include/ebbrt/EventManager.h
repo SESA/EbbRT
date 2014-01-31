@@ -31,11 +31,11 @@ class EventManager {
   EventManager();
 
   static void Init();
-  static EventManager &HandleFault(EbbId id);
+  static EventManager& HandleFault(EbbId id);
 
   void SpawnLocal(std::function<void()> func);
-  void SaveContext(EventContext &context);
-  void ActivateContext(const EventContext &context);
+  void SaveContext(EventContext& context);
+  void ActivateContext(const EventContext& context);
   uint8_t AllocateVector(std::function<void()> func);
 
  private:
@@ -48,12 +48,12 @@ class EventManager {
 
   Pfn stack_;
   std::stack<Pfn> free_stacks_;
-  std::stack<std::function<void()> > tasks_;
-  std::unordered_map<uint8_t, std::function<void()> > vector_map_;
+  std::stack<std::function<void()>> tasks_;
+  std::unordered_map<uint8_t, std::function<void()>> vector_map_;
   std::atomic<uint8_t> vector_idx_;
 
   friend void ebbrt::idt::EventInterrupt(int num);
-  friend void ebbrt::Main(ebbrt::MultibootInformation *mbi);
+  friend void ebbrt::Main(ebbrt::multiboot::Information* mbi);
   friend void ebbrt::smp::SmpMain();
 };
 

@@ -59,9 +59,47 @@ _fpu_control_word:
 boot_stack_top = .
 
 .text
+.align 4        
 .globl start32
 start32:
+        cli
+        cmpl $0x2BADB002, %eax //Multiboot Magic
+        jne start32.no_multiboot
 	mov %ebx, %edi
+
+        //setup stack
+        lea boot_stack_top, %esp
+        mov $0, %ebp
+
+        //detect if we can cpuid
+        //see if we can flip the id bit in flags
+	pushf //store flags register
+	pop %eax //pop it into eax
+	mov %eax, %ecx //store into ecx
+	xor $(1 << 21), %eax //flip the ID bit
+	push %eax //store onto stack
+	popf //restore flags register
+	pushf //store flags register
+	pop %eax //pop it into eax
+	push %ecx //push ecx
+	popf //restores flags to original value
+	xor %eax, %ecx //should be non-zero if we flipped it
+	jz start32.no_cpuid
+
+	//we can call cpuid
+	//do we have extended features cpuid?
+	mov $0x80000000, %eax
+	cpuid
+	cmp $0x80000001, %eax
+	jb start32.no_ext_features
+
+	//we have extended features
+	//do we have long mode?
+	mov $0x80000001, %eax
+	cpuid
+	test $(1 << 29), %edx
+	jz start32.no_long_mode        
+        
 	//enable PAE and SSE
 	mov $0x628, %eax
 	mov %eax, %cr4
@@ -72,8 +110,9 @@ start32:
         //set long mode
         mov $0xC0000080, %ecx //EFER MSR
 	mov $0x900, %eax //NXE + LME
+        mov $0, %edx
         wrmsr
-
+        
 	mov $0x80010023, %eax //set page bit and FPU
 	mov %eax, %cr0
 
@@ -82,7 +121,21 @@ start32:
 
 	lgdt gdt_desc
 	ljmp $8, $start64
+
+start32.no_multiboot:
+        jmp start32.no_multiboot
+
+start32.no_cpuid:
+        jmp start32.no_cpuid
+
+start32.no_ext_features:
+        jmp start32.no_ext_features
+
+start32.no_long_mode:
+        jmp start32.no_long_mode
+
 .code64
+.align 4        
 start64:
 	.cfi_startproc simple
 	.cfi_def_cfa %rsp, 0

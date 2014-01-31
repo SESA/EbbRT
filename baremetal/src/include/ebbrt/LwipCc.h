@@ -44,14 +44,14 @@ typedef uintptr_t mem_ptr_t;
 #define PACK_STRUCT_BEGIN
 #define PACK_STRUCT_END
 
-extern void lwip_printf(const char *fmt, ...);
+extern void lwip_printf(const char* fmt, ...);
 
 #define LWIP_PLATFORM_DIAG(x)                                                  \
   do {                                                                         \
     lwip_printf x;                                                             \
   } while (0)
 
-extern void lwip_assert(const char *fmt, ...);
+extern void lwip_assert(const char* fmt, ...);
 
 #define LWIP_PLATFORM_ASSERT(x)                                                \
   do {                                                                         \

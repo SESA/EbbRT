@@ -27,7 +27,7 @@ class Timer : public MulticoreEbbStatic<Timer> {
 
   uint64_t ticks_per_us_;
   std::multimap<std::chrono::nanoseconds,
-                std::tuple<std::function<void()>, std::chrono::microseconds> >
+                std::tuple<std::function<void()>, std::chrono::microseconds>>
   timers_;
 };
 

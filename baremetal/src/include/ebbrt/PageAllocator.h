@@ -25,7 +25,7 @@ class PageAllocator : public CacheAligned {
   explicit PageAllocator(Nid nid);
 
   static void Init();
-  static PageAllocator &HandleFault(EbbId id);
+  static PageAllocator& HandleFault(EbbId id);
   Pfn Alloc(size_t order = 0, Nid nid = Cpu::GetMyNode());
   void Free(Pfn pfn, size_t order = 0);
 
@@ -40,15 +40,15 @@ class PageAllocator : public CacheAligned {
   typedef boost::intrusive::list<  // NOLINT
       FreePage, boost::intrusive::member_hook<
                     FreePage, boost::intrusive::list_member_hook<>,
-                    &FreePage::member_hook_> > FreePageList;
+                    &FreePage::member_hook_>> FreePageList;
 
   static inline Pfn PfnToBuddy(Pfn pfn, size_t order) {
     return Pfn(pfn.val() ^ (1 << order));
   }
 
-  static inline FreePage *PfnToFreePage(Pfn pfn) {
+  static inline FreePage* PfnToFreePage(Pfn pfn) {
     auto addr = pfn.ToAddr();
-    return new (reinterpret_cast<void *>(addr)) FreePage();
+    return new (reinterpret_cast<void*>(addr)) FreePage();
   }
 
   static void EarlyFreePage(Pfn start, size_t order, Nid nid);

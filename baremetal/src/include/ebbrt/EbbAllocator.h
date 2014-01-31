@@ -12,6 +12,7 @@
 
 #include <ebbrt/CacheAligned.h>
 #include <ebbrt/EbbRef.h>
+#include <ebbrt/Runtime.h>
 #include <ebbrt/StaticIds.h>
 #include <ebbrt/SpinLock.h>
 #include <ebbrt/Trans.h>
@@ -20,7 +21,7 @@ namespace ebbrt {
 class EbbAllocator : public CacheAligned {
  public:
   static void Init();
-  static EbbAllocator &HandleFault(EbbId id);
+  static EbbAllocator& HandleFault(EbbId id);
   EbbAllocator();
   EbbId AllocateLocal();
 
@@ -29,8 +30,9 @@ class EbbAllocator : public CacheAligned {
 
   SpinLock lock_;
   boost::icl::interval_set<EbbId> free_ids_;
+  boost::icl::interval_set<EbbId> free_global_ids_;
 
-  friend void ebbrt::runtime_init();
+  friend void ebbrt::runtime::Init();
 };
 
 constexpr auto ebb_allocator = EbbRef<EbbAllocator>(kEbbAllocatorId);

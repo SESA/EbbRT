@@ -8,10 +8,10 @@
 namespace ebbrt {
 class Context;
 class ContextActivation {
-  Context &c_;
+  Context& c_;
 
  public:
-  explicit ContextActivation(Context &c);
+  explicit ContextActivation(Context& c);
   ~ContextActivation();
 };
 }  // namespace ebbrt

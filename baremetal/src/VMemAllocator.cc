@@ -23,13 +23,13 @@ void ebbrt::VMemAllocator::Init() {
       std::make_pair(kVMemAllocatorId, boost::any(std::ref(*rep))));
 }
 
-ebbrt::VMemAllocator &ebbrt::VMemAllocator::HandleFault(EbbId id) {
+ebbrt::VMemAllocator& ebbrt::VMemAllocator::HandleFault(EbbId id) {
   kassert(id == kVMemAllocatorId);
   LocalIdMap::ConstAccessor accessor;
   auto found = local_id_map->Find(accessor, id);
   kassert(found);
   auto ref =
-      boost::any_cast<std::reference_wrapper<VMemAllocator> >(accessor->second);
+      boost::any_cast<std::reference_wrapper<VMemAllocator>>(accessor->second);
   EbbRef<VMemAllocator>::CacheRef(id, ref.get());
   return ref;
 }
@@ -45,7 +45,7 @@ ebbrt::VMemAllocator::Alloc(size_t npages,
                             std::unique_ptr<PageFaultHandler> pf_handler) {
   std::lock_guard<SpinLock> lock(lock_);
   for (auto it = regions_.begin(); it != regions_.end(); ++it) {
-    const auto &begin = it->first;
+    const auto& begin = it->first;
     auto end = it->second.end();
     if (!it->second.IsFree() || end - begin < npages)
       continue;
@@ -69,7 +69,7 @@ ebbrt::VMemAllocator::Alloc(size_t npages,
          npages);
 }
 
-void ebbrt::VMemAllocator::HandlePageFault(idt::ExceptionFrame *ef) {
+void ebbrt::VMemAllocator::HandlePageFault(idt::ExceptionFrame* ef) {
   std::lock_guard<SpinLock> lock(lock_);
   auto fault_addr = ReadCr2();
   auto it = regions_.lower_bound(Pfn::Down(fault_addr));
@@ -78,6 +78,6 @@ void ebbrt::VMemAllocator::HandlePageFault(idt::ExceptionFrame *ef) {
   it->second.HandleFault(ef, fault_addr);
 }
 
-extern "C" void ebbrt::idt::PageFaultException(ExceptionFrame *ef) {
+extern "C" void ebbrt::idt::PageFaultException(ExceptionFrame* ef) {
   vmem_allocator->HandlePageFault(ef);
 }

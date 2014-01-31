@@ -10,7 +10,8 @@
 #include <cstdint>
 
 namespace ebbrt {
-struct MultibootInformation {
+namespace multiboot {
+struct Information {
   struct {
     uint32_t has_mem_ : 1;
     uint32_t has_boot_device_ : 1;
@@ -48,7 +49,7 @@ struct MultibootInformation {
   uint32_t vbe_interface_length_;
 };
 
-struct MultibootMemoryRegion {
+struct MemoryRegion {
   static const constexpr uint32_t kRamType = 1;
   static const constexpr uint32_t kReservedUnusable = 2;
   static const constexpr uint32_t kAcpiReclaimable = 3;
@@ -56,11 +57,11 @@ struct MultibootMemoryRegion {
   static const constexpr uint32_t kBadMemory = 5;
 
   template <typename F>
-  static void ForEachRegion(const void *buffer, uint32_t size, F f) {
-    auto end_addr = static_cast<const char *>(buffer) + size;
-    auto p = static_cast<const char *>(buffer);
+  static void ForEachRegion(const void* buffer, uint32_t size, F f) {
+    auto end_addr = static_cast<const char*>(buffer) + size;
+    auto p = static_cast<const char*>(buffer);
     while (p < end_addr) {
-      auto region = reinterpret_cast<const MultibootMemoryRegion *>(p);
+      auto region = reinterpret_cast<const MemoryRegion*>(p);
       f(*region);
       p += region->size_ + 4;
     }
@@ -71,6 +72,16 @@ struct MultibootMemoryRegion {
   uint64_t length_;
   uint32_t type_;
 } __attribute__((packed));
+
+struct Module {
+  uint32_t start;
+  uint32_t end;
+  uint32_t string;  // NOLINT
+  uint32_t reserved;
+};
+
+void Reserve(Information* mbi);
+}  // namespace multiboot
 }  // namespace ebbrt
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_MULTIBOOT_H_

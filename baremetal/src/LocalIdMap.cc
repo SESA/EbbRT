@@ -12,21 +12,21 @@ ebbrt::ExplicitlyConstructed<ebbrt::LocalIdMap> the_map;
 
 void ebbrt::LocalIdMap::Init() { the_map.construct(); }
 
-ebbrt::LocalIdMap &ebbrt::LocalIdMap::HandleFault(EbbId id) {
+ebbrt::LocalIdMap& ebbrt::LocalIdMap::HandleFault(EbbId id) {
   kassert(id == kLocalIdMapId);
-  auto &ref = *the_map;
+  auto& ref = *the_map;
   EbbRef<LocalIdMap>::CacheRef(id, ref);
   return ref;
 }
 
-bool ebbrt::LocalIdMap::Insert(const ValueType &value) {
+bool ebbrt::LocalIdMap::Insert(const ValueType& value) {
   return map_.insert(value);
 }
 
-bool ebbrt::LocalIdMap::Find(ConstAccessor &result, const EbbId &key) const {
+bool ebbrt::LocalIdMap::Find(ConstAccessor& result, const EbbId& key) const {
   return map_.find(result, key);
 }
 
-bool ebbrt::LocalIdMap::Find(Accessor &result, const EbbId &key) {
+bool ebbrt::LocalIdMap::Find(Accessor& result, const EbbId& key) {
   return map_.find(result, key);
 }

@@ -4,7 +4,7 @@ Language:        Cpp
 AccessModifierOffset: -1
 ConstructorInitializerIndentWidth: 4
 AlignEscapedNewlinesLeft: false
-AlignTrailingComments: true
+AlignTrailingComments: false
 AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
@@ -29,10 +29,10 @@ PenaltyBreakString: 1000
 PenaltyBreakFirstLessLess: 120
 PenaltyExcessCharacter: 1000000
 PenaltyReturnTypeOnItsOwnLine: 60
-PointerBindsToType: false
+PointerBindsToType: true
 SpacesBeforeTrailingComments: 2
 Cpp11BracedListStyle: false
-Standard:        Cpp03
+Standard:        Cpp11
 IndentWidth:     2
 TabWidth:        8
 UseTab:          Never

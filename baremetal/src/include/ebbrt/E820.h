@@ -50,41 +50,41 @@ class Entry {
   uint32_t type_;
 };
 
-inline bool operator==(const Entry &lhs, const Entry &rhs) {
+inline bool operator==(const Entry& lhs, const Entry& rhs) {
   return lhs.addr() == rhs.addr();
 }
 
-inline bool operator!=(const Entry &lhs, const Entry &rhs) {
+inline bool operator!=(const Entry& lhs, const Entry& rhs) {
   return !operator==(lhs, rhs);
 }
 
-inline bool operator<(const Entry &lhs, const Entry &rhs) {
+inline bool operator<(const Entry& lhs, const Entry& rhs) {
   return lhs.addr() < rhs.addr();
 }
 
-inline bool operator>(const Entry &lhs, const Entry &rhs) {
+inline bool operator>(const Entry& lhs, const Entry& rhs) {
   return operator<(rhs, lhs);
 }
 
-inline bool operator<=(const Entry &lhs, const Entry &rhs) {
+inline bool operator<=(const Entry& lhs, const Entry& rhs) {
   return !operator>(lhs, rhs);
 }
 
-inline bool operator>=(const Entry &lhs, const Entry &rhs) {
+inline bool operator>=(const Entry& lhs, const Entry& rhs) {
   return !operator<(lhs, rhs);
 }
 
 const constexpr size_t kMaxEntries = 128;
 extern boost::container::static_vector<Entry, kMaxEntries> map;
 
-void Init(MultibootInformation *mbi);
+void Init(multiboot::Information* mbi);
 
 void PrintMap();
 
 void Reserve(uint64_t addr, uint64_t length);
 
 template <typename F> void ForEachUsableRegion(F f) {
-  std::for_each(std::begin(map), std::end(map), [=](const Entry &entry) {
+  std::for_each(std::begin(map), std::end(map), [=](const Entry& entry) {
     if (entry.type() == Entry::kTypeRam) {
       f(entry);
     }

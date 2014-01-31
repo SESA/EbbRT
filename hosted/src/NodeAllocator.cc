@@ -2,11 +2,15 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
+#include <fstream>
+
 #include <libfdt.h>
 
+#include <boost/filesystem.hpp>
 #include <capnp/message.h>
 
 #include <ebbrt/Config.h>
+#include <ebbrt/Fdt.h>
 #include <ebbrt/GlobalMap.h>
 #include <ebbrt/NodeAllocator.h>
 
@@ -16,19 +20,19 @@ namespace bai = boost::asio::ip;
 
 namespace {
 struct array_ptr_wrapper {
-  explicit array_ptr_wrapper(const kj::ArrayPtr<const capnp::word> *aptr)
+  explicit array_ptr_wrapper(const kj::ArrayPtr<const capnp::word>* aptr)
       : aptr_(aptr) {}
 
-  const kj::ArrayPtr<const capnp::word> *aptr_;
+  const kj::ArrayPtr<const capnp::word>* aptr_;
 
-  bool operator==(const array_ptr_wrapper &rhs) { return aptr_ == rhs.aptr_; }
-  bool operator!=(const array_ptr_wrapper &rhs) { return !(*this == rhs); }
-  array_ptr_wrapper &operator++() {
+  bool operator==(const array_ptr_wrapper& rhs) { return aptr_ == rhs.aptr_; }
+  bool operator!=(const array_ptr_wrapper& rhs) { return !(*this == rhs); }
+  array_ptr_wrapper& operator++() {
     aptr_++;
     return *this;
   }
-  const boost::asio::const_buffer &operator*() {
-    return boost::asio::buffer(static_cast<const void *>(aptr_->begin()),
+  const boost::asio::const_buffer& operator*() {
+    return boost::asio::buffer(static_cast<const void*>(aptr_->begin()),
                                aptr_->size() * sizeof(capnp::word));
   }
 };
@@ -37,14 +41,13 @@ class aptr_to_cbs {
  public:
   typedef boost::asio::const_buffer value_type;
   typedef array_ptr_wrapper const_iterator;
-  explicit aptr_to_cbs(
-      kj::ArrayPtr<const kj::ArrayPtr<const capnp::word> > aptr)
+  explicit aptr_to_cbs(kj::ArrayPtr<const kj::ArrayPtr<const capnp::word>> aptr)
       : aptr_(aptr) {}
   const_iterator begin() const { return array_ptr_wrapper(aptr_.begin()); }
   const_iterator end() const { return array_ptr_wrapper(aptr_.end()); }
 
  private:
-  kj::ArrayPtr<const kj::ArrayPtr<const capnp::word> > aptr_;
+  kj::ArrayPtr<const kj::ArrayPtr<const capnp::word>> aptr_;
 };
 }  // namespace
 
@@ -65,7 +68,7 @@ ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket)
   auto size = builder.totalSize().wordCount * sizeof(capnp::word);
   auto segments = message->getSegmentsForOutput();
   socket_.async_send(aptr_to_cbs(segments),
-                     [message, size](const boost::system::error_code &error,
+                     [message, size](const boost::system::error_code& error,
                                      std::size_t /*bytes_transferred*/) {
     delete message;
     if (error) {
@@ -96,6 +99,38 @@ void ebbrt::NodeAllocator::DoAccept() {
 }
 
 void ebbrt::NodeAllocator::AllocateNode() {
-  
+  auto fdt = Fdt();
+  fdt.BeginNode("/");
+  fdt.BeginNode("runtime");
+  auto address = acceptor_.local_endpoint().address().to_v4().to_bytes();
+  fdt.CreateProperty("address", reinterpret_cast<const char*>(address.data()),
+                     sizeof(address));
+  auto port = acceptor_.local_endpoint().port();
+  fdt.CreateProperty("port", port);
+  fdt.EndNode();
+  fdt.EndNode();
+  fdt.Finish();
+
+  // Write Fdt
+  auto dir = boost::filesystem::temp_directory_path() / "ebbrt";
+  auto fname = dir / boost::filesystem::unique_path();
+  if (boost::filesystem::exists(fname)) {
+    throw std::runtime_error("Failed to create unique temporary file name");
+  }
+
+  // TODO(dschatz): make this asynchronous?
+  boost::filesystem::create_directories(dir);
+  std::ofstream outfile(fname.native());
+  const char* fdt_addr = fdt.GetAddr();
+  size_t fdt_size = fdt.GetSize();
+  outfile.write(fdt_addr, fdt_size);
+  outfile.flush();
+  if (!outfile.good()) {
+    throw std::runtime_error("Failed to write fdt");
+  }
+
+  // file should flush here
+  std::cout << "Fdt written to " << fname.native() << std::endl;
+
   std::cout << "Allocate node" << std::endl;
 }

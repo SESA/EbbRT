@@ -16,7 +16,7 @@
 
 extern char smpboot[];
 extern char smpboot_end[];
-extern char *smp_stack_free;
+extern char* smp_stack_free;
 
 namespace {
 ebbrt::ExplicitlyConstructed<ebbrt::SpinBarrier> smp_barrier;
@@ -25,19 +25,19 @@ ebbrt::ExplicitlyConstructed<ebbrt::SpinBarrier> smp_barrier;
 void ebbrt::smp::Init() {
   smp_barrier.construct(Cpu::Count());
   tls::SmpInit();
-  char *stack_list = 0;
+  char* stack_list = 0;
   auto num_aps = Cpu::Count() - 1;
   for (size_t i = 0; i < num_aps; i++) {
     auto pfn = page_allocator->Alloc();
     kbugon(pfn == Pfn::None(), "Failed to allocate smp stack!\n");
     auto addr = pfn.ToAddr();
     kbugon(addr >= 1 << 30, "Stack will not be accessible by APs!\n");
-    *reinterpret_cast<char **>(addr) = stack_list;
-    stack_list = reinterpret_cast<char *>(addr);
+    *reinterpret_cast<char**>(addr) = stack_list;
+    stack_list = reinterpret_cast<char*>(addr);
   }
   vmem::MapMemory(Pfn::Down(SMP_START_ADDRESS), Pfn::Down(SMP_START_ADDRESS));
   smp_stack_free = stack_list;
-  std::copy(smpboot, smpboot_end, reinterpret_cast<char *>(SMP_START_ADDRESS));
+  std::copy(smpboot, smpboot_end, reinterpret_cast<char*>(SMP_START_ADDRESS));
   // TODO(dschatz): unmap memory
 
   for (size_t i = 1; i < Cpu::Count(); ++i) {

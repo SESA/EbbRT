@@ -17,6 +17,7 @@ enum : EbbId {
   kVMemAllocatorId,
   kTimerId,
   kNetworkManagerId,
+  kGlobalIdMapId,
   FIRST_FREE_ID
 };
 }  // namespace ebbrt

@@ -6,7 +6,7 @@ SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 list(APPEND CMAKE_CXX_FLAGS
      "-std=c++0x -Wall -Werror ${CMAKE_CXX_FLAGS}")
 
-find_package(Boost 1.53.0 REQUIRED COMPONENTS system)
+find_package(Boost 1.53.0 REQUIRED COMPONENTS filesystem system)
 include_directories(${Boost_INCLUDE_DIRS})
 
 find_package(TBB REQUIRED)
@@ -31,5 +31,6 @@ add_library(EbbRT
   ${CMAKE_SOURCE_DIR}/src/GlobalMap.cc
   ${CMAKE_SOURCE_DIR}/src/NodeAllocator.cc
   ${CMAKE_SOURCE_DIR}/src/Runtime.cc
+  ${CMAKE_SOURCE_DIR}/../common/src/Fdt.cc
   ${CapnpSources}
 )

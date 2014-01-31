@@ -23,12 +23,12 @@ class VMemAllocator : CacheAligned {
  public:
   class PageFaultHandler {
    public:
-    virtual void HandleFault(idt::ExceptionFrame *, uintptr_t) = 0;
+    virtual void HandleFault(idt::ExceptionFrame*, uintptr_t) = 0;
     virtual ~PageFaultHandler() {}
   };
 
   static void Init();
-  static VMemAllocator &HandleFault(EbbId id);
+  static VMemAllocator& HandleFault(EbbId id);
 
   Pfn Alloc(size_t npages,
             std::unique_ptr<PageFaultHandler> pf_handler = nullptr);
@@ -38,7 +38,7 @@ class VMemAllocator : CacheAligned {
    public:
     explicit Region(Pfn addr) : end_(addr) {}
     bool IsFree() const { return !static_cast<bool>(page_fault_handler_); }
-    void HandleFault(idt::ExceptionFrame *ef, uintptr_t addr) {
+    void HandleFault(idt::ExceptionFrame* ef, uintptr_t addr) {
       kbugon(IsFree(), "Fault on a free region!\n");
       page_fault_handler_->HandleFault(ef, addr);
     }
@@ -54,12 +54,12 @@ class VMemAllocator : CacheAligned {
   };
 
   VMemAllocator();
-  void HandlePageFault(idt::ExceptionFrame *ef);
+  void HandlePageFault(idt::ExceptionFrame* ef);
 
   SpinLock lock_;
-  std::map<Pfn, Region, std::greater<Pfn> > regions_;
+  std::map<Pfn, Region, std::greater<Pfn>> regions_;
 
-  friend void ebbrt::idt::PageFaultException(ExceptionFrame *ef);
+  friend void ebbrt::idt::PageFaultException(ExceptionFrame* ef);
 };
 
 constexpr auto vmem_allocator = EbbRef<VMemAllocator>(kVMemAllocatorId);

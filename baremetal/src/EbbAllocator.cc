@@ -15,9 +15,9 @@ ebbrt::ExplicitlyConstructed<ebbrt::EbbAllocator> the_allocator;
 
 void ebbrt::EbbAllocator::Init() { the_allocator.construct(); }
 
-ebbrt::EbbAllocator &ebbrt::EbbAllocator::HandleFault(EbbId id) {
+ebbrt::EbbAllocator& ebbrt::EbbAllocator::HandleFault(EbbId id) {
   kassert(id == kEbbAllocatorId);
-  auto &ref = *the_allocator;
+  auto& ref = *the_allocator;
   EbbRef<EbbAllocator>::CacheRef(id, ref);
   return ref;
 }
@@ -34,4 +34,12 @@ ebbrt::EbbId ebbrt::EbbAllocator::AllocateLocal() {
   auto ret = boost::icl::first(free_ids_);
   free_ids_.erase(ret);
   return ret;
+}
+
+void ebbrt::EbbAllocator::SetIdSpace(uint16_t space) {
+  auto id_start = space << 16;
+  auto id_end = ((space + 1) << 16) - 1;
+  kprintf("Allocating Global EbbIds from %x - %x\n", id_start, id_end);
+  auto start_ids = boost::icl::interval<EbbId>::type(id_start, id_end);
+  free_global_ids_.insert(std::move(start_ids));
 }

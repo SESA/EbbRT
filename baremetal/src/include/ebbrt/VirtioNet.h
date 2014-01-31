@@ -14,11 +14,11 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
  public:
   static const constexpr uint16_t kDeviceId = 0x1000;
 
-  explicit VirtioNetDriver(pci::Device &dev);
+  explicit VirtioNetDriver(pci::Device& dev);
 
   static uint32_t GetDriverFeatures();
   void Send(ConstBufferList list) override;
-  const std::array<char, 6> &GetMacAddress() override;
+  const std::array<char, 6>& GetMacAddress() override;
 
  private:
   void FillRxRing();
@@ -41,7 +41,7 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
   };
   VirtioNetHeader empty_header_;
   std::array<char, 6> mac_addr_;
-  NetworkManager::Interface *itf_;
+  NetworkManager::Interface* itf_;
 };
 }  // namespace ebbrt
 

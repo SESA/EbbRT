@@ -22,7 +22,7 @@ struct Memblock {
   Nid nid;
 };
 
-inline bool operator<(const Memblock &lhs, const Memblock &rhs) noexcept {
+inline bool operator<(const Memblock& lhs, const Memblock& rhs) noexcept {
   return lhs.start < rhs.start;
 }
 

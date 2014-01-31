@@ -11,10 +11,10 @@
 boost::container::static_vector<ebbrt::e820::Entry, ebbrt::e820::kMaxEntries>
 ebbrt::e820::map;
 
-void ebbrt::e820::Init(MultibootInformation *mbi) {
-  MultibootMemoryRegion::ForEachRegion(
-      reinterpret_cast<const void *>(mbi->memory_map_address_),
-      mbi->memory_map_length_, [](const MultibootMemoryRegion &mmregion) {
+void ebbrt::e820::Init(multiboot::Information* mbi) {
+  multiboot::MemoryRegion::ForEachRegion(
+      reinterpret_cast<const void*>(mbi->memory_map_address_),
+      mbi->memory_map_length_, [](const multiboot::MemoryRegion& mmregion) {
         map.emplace_back(mmregion.base_address_, mmregion.length_,
                          mmregion.type_);
       });
@@ -24,7 +24,7 @@ void ebbrt::e820::Init(MultibootInformation *mbi) {
 
 void ebbrt::e820::PrintMap() {
   kprintf("e820::map:\n");
-  std::for_each(std::begin(map), std::end(map), [](const Entry &entry) {
+  std::for_each(std::begin(map), std::end(map), [](const Entry& entry) {
     kprintf("%#018" PRIx64 "-%#018" PRIx64 " ", entry.addr(),
             entry.addr() + entry.length() - 1);
     switch (entry.type()) {

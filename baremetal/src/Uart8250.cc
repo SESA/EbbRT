@@ -54,7 +54,7 @@ void WriteLocked(char c) {
 }
 }
 
-void ebbrt::console::Write(const char *str) noexcept {
+void ebbrt::console::Write(const char* str) noexcept {
   std::lock_guard<SpinLock> lock(*console_lock);
   while (*str != '\0') {
     WriteLocked(*str++);

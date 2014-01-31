@@ -10,7 +10,7 @@ namespace {
 boost::container::static_vector<ebbrt::Cpu, ebbrt::Cpu::kMaxCpus> cpus;
 }
 
-thread_local ebbrt::Cpu *ebbrt::Cpu::my_cpu_tls_;
+thread_local ebbrt::Cpu* ebbrt::Cpu::my_cpu_tls_;
 
 char ebbrt::Cpu::boot_interrupt_stack_[ebbrt::pmem::kPageSize];
 
@@ -36,21 +36,21 @@ void ebbrt::Cpu::SetEventStack(uintptr_t top_of_stack) {
   atss_.tss.SetIstEntry(2, top_of_stack);
 }
 
-ebbrt::Cpu *ebbrt::Cpu::GetByIndex(size_t index) {
+ebbrt::Cpu* ebbrt::Cpu::GetByIndex(size_t index) {
   if (index > cpus.size() - 1) {
     return nullptr;
   }
   return &cpus[index];
 }
 
-ebbrt::Cpu &ebbrt::Cpu::Create() {
+ebbrt::Cpu& ebbrt::Cpu::Create() {
   cpus.emplace_back(cpus.size(), 0, 0);
   return cpus[cpus.size() - 1];
 }
 
-ebbrt::Cpu *ebbrt::Cpu::GetByApicId(size_t apic_id) {
+ebbrt::Cpu* ebbrt::Cpu::GetByApicId(size_t apic_id) {
   auto it = std::find_if(cpus.begin(), cpus.end(),
-                         [=](const Cpu &c) { return c.apic_id() == apic_id; });
+                         [=](const Cpu& c) { return c.apic_id() == apic_id; });
   if (it == cpus.end())
     return nullptr;
   return &(*it);

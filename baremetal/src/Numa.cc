@@ -23,9 +23,9 @@ std::array<int32_t, ebbrt::numa::kMaxNodes> node_to_pxm_map;
 }
 
 void ebbrt::numa::Init() {
-  for (auto &numa_node : nodes) {
+  for (auto& numa_node : nodes) {
     std::sort(numa_node.memblocks.begin(), numa_node.memblocks.end());
-    for (auto &memblock : numa_node.memblocks) {
+    for (auto& memblock : numa_node.memblocks) {
       early_page_allocator::SetNidRange(memblock.start, memblock.end,
                                         memblock.nid);
     }

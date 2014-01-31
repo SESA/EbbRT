@@ -23,7 +23,7 @@ namespace ebbrt {
 
 template <typename VirtType> class VirtioDriver {
  public:
-  static bool Probe(pci::Device &dev) {
+  static bool Probe(pci::Device& dev) {
     if (dev.GetVendorId() == kVirtioVendorId &&
         dev.GetDeviceId() == VirtType::kDeviceId) {
       dev.DumpAddress();
@@ -56,7 +56,7 @@ template <typename VirtType> class VirtioDriver {
 
   class VRing {
    public:
-    VRing(VirtioDriver<VirtType> &driver, uint16_t qsize, size_t idx)
+    VRing(VirtioDriver<VirtType>& driver, uint16_t qsize, size_t idx)
         : driver_(driver), idx_(idx), qsize_(qsize), free_head_(0),
           free_count_(qsize_) {
       auto sz =
@@ -66,21 +66,21 @@ template <typename VirtType> class VirtioDriver {
       auto order = Fls(sz - 1) - pmem::kPageShift + 1;
       auto page = page_allocator->Alloc(order);
       kbugon(page == Pfn::None(), "virtio: page allocation failed");
-      addr_ = reinterpret_cast<void *>(page.ToAddr());
+      addr_ = reinterpret_cast<void*>(page.ToAddr());
       memset(addr_, 0, sz);
 
-      desc_ = static_cast<Desc *>(addr_);
-      avail_ = static_cast<Avail *>(static_cast<void *>(
-          static_cast<char *>(addr_) + qsize_ * sizeof(Desc)));
-      auto avail_ring_end = static_cast<void *>(&avail_->ring[qsize_]);
+      desc_ = static_cast<Desc*>(addr_);
+      avail_ = static_cast<Avail*>(static_cast<void*>(
+          static_cast<char*>(addr_) + qsize_ * sizeof(Desc)));
+      auto avail_ring_end = static_cast<void*>(&avail_->ring[qsize_]);
       used_event_ =
-          reinterpret_cast<std::atomic<volatile uint16_t> *>(avail_ring_end);
-      auto avail_end = static_cast<char *>(avail_ring_end) + sizeof(uint16_t);
-      auto next_addr = align::Up(static_cast<void *>(avail_end), 4096);
-      used_ = static_cast<Used *>(next_addr);
-      auto used_ring_end = static_cast<void *>(&used_->ring[qsize_]);
+          reinterpret_cast<std::atomic<volatile uint16_t>*>(avail_ring_end);
+      auto avail_end = static_cast<char*>(avail_ring_end) + sizeof(uint16_t);
+      auto next_addr = align::Up(static_cast<void*>(avail_end), 4096);
+      used_ = static_cast<Used*>(next_addr);
+      auto used_ring_end = static_cast<void*>(&used_->ring[qsize_]);
       avail_event_ =
-          reinterpret_cast<std::atomic<volatile uint16_t> *>(used_ring_end);
+          reinterpret_cast<std::atomic<volatile uint16_t>*>(used_ring_end);
 
       for (unsigned i = 0; i < qsize_; ++i)
         desc_[i].next = i + 1;
@@ -88,7 +88,7 @@ template <typename VirtType> class VirtioDriver {
       desc_[qsize_ - 1].next = 0;
     }
 
-    void *addr() { return addr_; }
+    void* addr() { return addr_; }
 
     size_t num_free_descriptors() { return free_count_; }
 
@@ -101,7 +101,7 @@ template <typename VirtType> class VirtioDriver {
       auto avail_idx = orig_idx;
       for (auto it = begin; it < end; ++it) {
         ++count;
-        auto &buf_list = *it;
+        auto& buf_list = *it;
         if (buf_list.empty())
           continue;
 
@@ -112,12 +112,12 @@ template <typename VirtType> class VirtioDriver {
         free_count_ -= buf_list.size();
         uint16_t last_desc = free_head_;
         uint16_t head = free_head_;
-        for (auto &buf : buf_list) {
+        for (auto& buf : buf_list) {
           // for each buffer in this list, write it to a descriptor
-          void *addr;
+          void* addr;
           size_t size;
           std::tie(addr, size) = buf.release();
-          auto &desc = desc_[free_head_];
+          auto& desc = desc_[free_head_];
           desc.addr = reinterpret_cast<uint64_t>(addr);
           desc.len = static_cast<uint32_t>(size);
           desc.flags |= Desc::Write | Desc::Next;
@@ -161,10 +161,10 @@ template <typename VirtType> class VirtioDriver {
       free_count_ -= bufs.size();
       uint16_t last_desc = free_head_;
       uint16_t head = free_head_;
-      for (auto &buf : bufs) {
+      for (auto& buf : bufs) {
         auto addr = buf.addr();
         auto size = buf.size();
-        auto &desc = desc_[free_head_];
+        auto& desc = desc_[free_head_];
         desc.addr = reinterpret_cast<uint64_t>(addr);
         desc.len = size;
         desc.flags |= Desc::Next;
@@ -193,7 +193,7 @@ template <typename VirtType> class VirtioDriver {
       buf_references_.emplace(head, std::move(bufs));
     }
 
-    template <typename F> void ProcessUsedBuffers(F &&f) {
+    template <typename F> void ProcessUsedBuffers(F&& f) {
       // future interrupts on this queue are implicitly disabled by our use of
       // the event index. We only get an interrupt when the new index crosses
       // the
@@ -214,18 +214,18 @@ template <typename VirtType> class VirtioDriver {
           // otherwise the device did give us another used descriptor chain and
           // we must process it before enabling interrupts again.
         }
-        auto &elem = used_->ring[used_index];
+        auto& elem = used_->ring[used_index];
         MutableBufferList list;
-        Desc *descriptor = &desc_[elem.id];
-        list.emplace_front(reinterpret_cast<void *>(descriptor->addr),
+        Desc* descriptor = &desc_[elem.id];
+        list.emplace_front(reinterpret_cast<void*>(descriptor->addr),
                            descriptor->len);
         auto it = list.begin();
         auto len = 1;
         while (descriptor->flags & Desc::Next) {
           ++len;
           descriptor = &desc_[descriptor->next];
-          it = list.emplace_after(
-              it, reinterpret_cast<void *>(descriptor->addr), descriptor->len);
+          it = list.emplace_after(it, reinterpret_cast<void*>(descriptor->addr),
+                                  descriptor->len);
         }
         f(std::move(list), elem.len);
         // add the descriptor chain to the free list
@@ -258,9 +258,9 @@ template <typename VirtType> class VirtioDriver {
           // otherwise the device did give us another used descriptor chain and
           // we must process it before enabling interrupts again.
         }
-        auto &elem = used_->ring[used_index];
+        auto& elem = used_->ring[used_index];
         buf_references_.erase(elem.id);
-        Desc *descriptor = &desc_[elem.id];
+        Desc* descriptor = &desc_[elem.id];
         auto len = 1;
         while (descriptor->flags & Desc::Next) {
           ++len;
@@ -312,21 +312,21 @@ template <typename VirtType> class VirtioDriver {
       UsedElem ring[];
     };
 
-    VirtioDriver<VirtType> &driver_;
+    VirtioDriver<VirtType>& driver_;
     size_t idx_;
-    void *addr_;
-    Desc *desc_;
-    Avail *avail_;
-    Used *used_;
-    std::atomic<volatile uint16_t> *avail_event_;
-    std::atomic<volatile uint16_t> *used_event_;
+    void* addr_;
+    Desc* desc_;
+    Avail* avail_;
+    Used* used_;
+    std::atomic<volatile uint16_t>* avail_event_;
+    std::atomic<volatile uint16_t>* used_event_;
     uint16_t qsize_;
     uint16_t free_head_;
     uint16_t free_count_;
     std::unordered_map<uint16_t, ConstBufferList> buf_references_;
   };
 
-  explicit VirtioDriver(pci::Device &dev) : dev_(dev), bar0_(dev.GetBar(0)) {
+  explicit VirtioDriver(pci::Device& dev) : dev_(dev), bar0_(dev.GetBar(0)) {
     dev_.SetBusMaster(true);
     auto msix = dev_.MsixEnable();
     kbugon(!msix, "Virtio without msix is unsupported\n");
@@ -340,7 +340,7 @@ template <typename VirtType> class VirtioDriver {
     SetupFeatures();
   }
 
-  VRing &GetQueue(size_t index) { return queues_[index]; }
+  VRing& GetQueue(size_t index) { return queues_[index]; }
 
   void AddDeviceStatus(uint8_t status) {
     auto s = GetDeviceStatus();
@@ -383,7 +383,7 @@ template <typename VirtType> class VirtioDriver {
 
   uint16_t GetQueueSize() { return ConfigRead16(kQueueSize); }
 
-  void SetQueueAddr(void *addr) {
+  void SetQueueAddr(void* addr) {
     auto addr_val = reinterpret_cast<uintptr_t>(addr);
     addr_val >>= kQueueAddressShift;
     kassert(addr_val <= std::numeric_limits<uint32_t>::max());
@@ -425,8 +425,8 @@ template <typename VirtType> class VirtioDriver {
     SetGuestFeatures(subset);
   }
 
-  pci::Device &dev_;
-  pci::Bar &bar0_;
+  pci::Device& dev_;
+  pci::Bar& bar0_;
 
   std::vector<VRing> queues_;
 };

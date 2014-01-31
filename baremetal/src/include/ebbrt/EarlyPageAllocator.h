@@ -15,6 +15,7 @@
 namespace ebbrt {
 namespace early_page_allocator {
 void Init();
+void ReserveRange(uint64_t begin, uint64_t length);
 void FreeMemoryRange(uint64_t begin, uint64_t length, Nid nid = Nid::Any());
 Pfn AllocatePage(unsigned int npages = 1, Nid nid = Nid::Any());
 void FreePage(Pfn start, Pfn end, Nid nid = Nid::Any());
@@ -42,14 +43,14 @@ class PageRange {
   Nid nid_;
 };
 
-inline bool operator<(const PageRange &lhs, const PageRange &rhs) noexcept {
+inline bool operator<(const PageRange& lhs, const PageRange& rhs) noexcept {
   return lhs.start() < rhs.start();
 }
 
 typedef boost::intrusive::set<  // NOLINT
     PageRange, boost::intrusive::member_hook<
                    PageRange, boost::intrusive::set_member_hook<>,
-                   &PageRange::member_hook> > FreePageTree;
+                   &PageRange::member_hook>> FreePageTree;
 extern ExplicitlyConstructed<FreePageTree> free_pages;
 
 template <typename F> void ReleaseFreePages(F f) {

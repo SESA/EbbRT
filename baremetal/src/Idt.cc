@@ -113,7 +113,7 @@ extern "C" __attribute__((noreturn)) void ebbrt::idt::EventInterrupt(int num) {
 }
 
 namespace {
-void PrintExceptionFrame(ebbrt::idt::ExceptionFrame *ef) {
+void PrintExceptionFrame(ebbrt::idt::ExceptionFrame* ef) {
   ebbrt::kprintf("SS: %#018" PRIx64 " RSP: %#018" PRIx64 "\n", ef->ss, ef->rsp);
   ebbrt::kprintf("FLAGS: %#018" PRIx64 "\n",
                  ef->rflags);  // TODO(Dschatz): print out actual meaning
@@ -139,10 +139,10 @@ void PrintExceptionFrame(ebbrt::idt::ExceptionFrame *ef) {
 }
 }  // namespace
 
-extern "C" void ebbrt::idt::NmiInterrupt(ExceptionFrame *ef) { kabort(); }
+extern "C" void ebbrt::idt::NmiInterrupt(ExceptionFrame* ef) { kabort(); }
 
 #define UNHANDLED_INTERRUPT(name)                                              \
-  extern "C" void ebbrt::idt::name(ExceptionFrame *ef) {                       \
+  extern "C" void ebbrt::idt::name(ExceptionFrame* ef) {                       \
     kprintf("%s\n", __PRETTY_FUNCTION__);                                      \
     PrintExceptionFrame(ef);                                                   \
     kabort();                                                                  \

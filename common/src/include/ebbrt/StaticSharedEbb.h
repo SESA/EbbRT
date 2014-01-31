@@ -11,7 +11,7 @@ namespace ebbrt {
 template <class T> class StaticSharedEbb {
  public:
   static void Init() {}
-  static T &HandleFault(EbbId id) {
+  static T& HandleFault(EbbId id) {
     static T rep;
     EbbRef<T>::CacheRef(id, rep);
     return rep;

@@ -12,11 +12,11 @@
 #include <ebbrt/Preprocessor.h>
 
 namespace ebbrt {
-void kvprintf(const char *__restrict format, va_list va);
-void kprintf(const char *__restrict format, ...);
+void kvprintf(const char* __restrict format, va_list va);
+void kprintf(const char* __restrict format, ...);
 
 template <typename... Args>
-__attribute__((noreturn)) void kabort(const Args &... args) {
+__attribute__((noreturn)) void kabort(const Args&... args) {
   kprintf(args...);
   kabort();
 }
@@ -52,7 +52,7 @@ template <> __attribute__((noreturn)) inline void kabort() {
   } while (0)
 #endif
 
-template <typename... Args> void kbugon(bool expr, const Args &... args) {
+template <typename... Args> void kbugon(bool expr, const Args&... args) {
   if (expr) {
     kabort(args...);
   }

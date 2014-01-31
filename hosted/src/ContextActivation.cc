@@ -5,7 +5,7 @@
 #include <ebbrt/Context.h>
 #include <ebbrt/ContextActivation.h>
 
-ebbrt::ContextActivation::ContextActivation(Context &c) : c_(c) {
+ebbrt::ContextActivation::ContextActivation(Context& c) : c_(c) {
   c.Activate();
 }
 

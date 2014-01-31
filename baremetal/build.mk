@@ -13,6 +13,7 @@ INCLUDES += -I $(baremetal)/ext/boost/include
 INCLUDES += -I $(baremetal)/ext/lwip/include
 INCLUDES += -I $(baremetal)/ext/tbb/include
 INCLUDES += -I $(baremetal)/ext/capnp/include
+INCLUDES += -I $(baremetal)/ext/fdt/include
 INCLUDES += -iquote $(baremetal)/ext/lwip/include/ipv4/
 
 CPPFLAGS = -U ebbrt -MD -MT $@ -MP $(optflags) -Wall -Werror \
@@ -52,6 +53,7 @@ objects += $(tbb_objects)
 objects += $(lwip_objects)
 objects += $(capnp_objects)
 objects += $(kj_objects)
+objects += $(fdt_objects)
 
 tbb_sources := $(shell find $(baremetal)/ext/tbb -type f -name '*.cpp')
 tbb_objects = $(patsubst $(baremetal)/%.cpp, %.o, $(tbb_sources))
@@ -77,6 +79,9 @@ kj_objects = $(patsubst $(baremetal)/%.c++, %.o, $(kj_sources))
 
 $(kj_objects): CXXFLAGS += -Wno-unused-variable
 
+fdt_sources := $(shell find $(baremetal)/ext/fdt -type f -name '*.c')
+fdt_objects := $(patsubst $(baremetal)/%.c, %.o, $(fdt_sources))
+
 all: ebbrt.iso
 
 $(CXX_OBJECTS): $(CAPNP_OBJECTS)
@@ -98,8 +103,8 @@ ebbrt.iso: ebbrt.elf.stripped
 ebbrt.elf.stripped: ebbrt.elf
 	$(call quiet, $(strip), STRIP $@)
 
-# ebbrt.elf32: ebbrt.elf
-# 	$(call quiet,objcopy -O elf32-i386 $< $@, OBJCOPY $@)
+ebbrt.elf32: ebbrt.elf.stripped
+	$(call quiet,objcopy -O elf32-i386 $< $@, OBJCOPY $@)
 
 LDFLAGS := -Wl,-n,-z,max-page-size=0x1000 $(optflags)
 ebbrt.elf: $(objects) src/ebbrt.ld

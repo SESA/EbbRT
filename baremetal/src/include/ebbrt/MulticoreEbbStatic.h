@@ -16,7 +16,7 @@ template <typename T> class MulticoreEbbStatic {
   static void Init() {
     local_id_map->Insert(std::make_pair(T::static_id, RepMap()));
   }
-  static T &HandleFault(EbbId id) {
+  static T& HandleFault(EbbId id) {
     kassert(id == T::static_id);
     {
       // acquire read only to find rep
@@ -43,7 +43,7 @@ template <typename T> class MulticoreEbbStatic {
   }
 
  private:
-  typedef boost::container::flat_map<size_t, T *> RepMap;
+  typedef boost::container::flat_map<size_t, T*> RepMap;
 };
 }  // namespace ebbrt
 

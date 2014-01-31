@@ -25,9 +25,9 @@ class Pfn {
     return Pfn(pfn);
   }
 
-  static Pfn Up(void *addr) { return Up(reinterpret_cast<uintptr_t>(addr)); }
+  static Pfn Up(void* addr) { return Up(reinterpret_cast<uintptr_t>(addr)); }
 
-  static Pfn Down(void *addr) {
+  static Pfn Down(void* addr) {
     return Down(reinterpret_cast<uintptr_t>(addr));
   }
 
@@ -36,14 +36,14 @@ class Pfn {
 
   template <typename T,
             class = typename std::enable_if<std::is_integral<T>::value>::type>
-  Pfn &operator+=(const T &rhs) {
+  Pfn& operator+=(const T& rhs) {
     val_ += rhs;
     return *this;
   }
 
   template <typename T,
             class = typename std::enable_if<std::is_integral<T>::value>::type>
-  Pfn &operator-=(const T &rhs) {
+  Pfn& operator-=(const T& rhs) {
     val_ -= rhs;
     return *this;
   }
@@ -52,31 +52,31 @@ class Pfn {
   uintptr_t val_;
 };
 
-inline bool operator==(const Pfn &lhs, const Pfn &rhs) {
+inline bool operator==(const Pfn& lhs, const Pfn& rhs) {
   return lhs.val() == rhs.val();
 }
 
-inline bool operator!=(const Pfn &lhs, const Pfn &rhs) {
+inline bool operator!=(const Pfn& lhs, const Pfn& rhs) {
   return !operator==(lhs, rhs);
 }
 
-inline bool operator<(const Pfn &lhs, const Pfn &rhs) {
+inline bool operator<(const Pfn& lhs, const Pfn& rhs) {
   return lhs.val() < rhs.val();
 }
 
-inline bool operator>(const Pfn &lhs, const Pfn &rhs) {
+inline bool operator>(const Pfn& lhs, const Pfn& rhs) {
   return operator<(rhs, lhs);
 }
 
-inline bool operator<=(const Pfn &lhs, const Pfn &rhs) {
+inline bool operator<=(const Pfn& lhs, const Pfn& rhs) {
   return !operator>(lhs, rhs);
 }
 
-inline bool operator>=(const Pfn &lhs, const Pfn &rhs) {
+inline bool operator>=(const Pfn& lhs, const Pfn& rhs) {
   return !operator<(lhs, rhs);
 }
 
-inline size_t operator-(const Pfn &lhs, const Pfn &rhs) {
+inline size_t operator-(const Pfn& lhs, const Pfn& rhs) {
   return lhs.val() - rhs.val();
 }
 
@@ -97,7 +97,7 @@ Pfn operator-(Pfn lhs, T npages) {
 
 namespace std {
 template <> struct hash<ebbrt::Pfn> {
-  size_t operator()(const ebbrt::Pfn &x) const {
+  size_t operator()(const ebbrt::Pfn& x) const {
     return hash<uintptr_t>()(x.val());
   }
 };

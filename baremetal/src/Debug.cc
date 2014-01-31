@@ -6,7 +6,7 @@
 
 #include <ebbrt/Console.h>
 
-void ebbrt::kvprintf(const char *__restrict format, va_list va) {
+void ebbrt::kvprintf(const char* __restrict format, va_list va) {
   va_list va2;
   va_copy(va2, va);
   auto len = vsnprintf(nullptr, 0, format, va);
@@ -14,7 +14,7 @@ void ebbrt::kvprintf(const char *__restrict format, va_list va) {
   vsnprintf(buffer, len + 1, format, va2);
   console::Write(buffer);
 }
-void ebbrt::kprintf(const char *__restrict format, ...) {
+void ebbrt::kprintf(const char* __restrict format, ...) {
   va_list ap;
   va_start(ap, format);
   kvprintf(format, ap);

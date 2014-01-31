@@ -13,7 +13,7 @@
 #include <ebbrt/Msr.h>
 
 struct ThreadControlBlock {
-  ThreadControlBlock *self;
+  ThreadControlBlock* self;
 };
 
 extern char tcb0[];
@@ -23,18 +23,18 @@ extern char tls_end[];
 void ebbrt::tls::Init() {
   auto tls_size = tls_end - tls_start;
   std::copy(tls_start, tls_end, tcb0);
-  auto p = reinterpret_cast<ThreadControlBlock *>(tcb0 + tls_size);
+  auto p = reinterpret_cast<ThreadControlBlock*>(tcb0 + tls_size);
   p->self = p;
 
   msr::Write(msr::kIa32FsBase, reinterpret_cast<uint64_t>(p));
 }
 
 namespace {
-boost::container::static_vector<void *, ebbrt::Cpu::kMaxCpus> tls_ptrs;
+boost::container::static_vector<void*, ebbrt::Cpu::kMaxCpus> tls_ptrs;
 }
 
 void ebbrt::tls::SmpInit() {
-  tls_ptrs.emplace_back(static_cast<void *>(tcb0));
+  tls_ptrs.emplace_back(static_cast<void*>(tcb0));
   auto tls_size = align::Up(tls_end - tls_start + 8, 64);
   for (size_t i = 1; i < Cpu::Count(); ++i) {
     auto nid = Cpu::GetByIndex(i)->nid();
@@ -45,10 +45,10 @@ void ebbrt::tls::SmpInit() {
 }
 
 void ebbrt::tls::ApInit(size_t index) {
-  auto tcb = static_cast<char *>(tls_ptrs[index]);
+  auto tcb = static_cast<char*>(tls_ptrs[index]);
   std::copy(tls_start, tls_end, tcb);
   auto tls_size = tls_end - tls_start;
-  auto p = reinterpret_cast<ThreadControlBlock *>(tcb + tls_size);
+  auto p = reinterpret_cast<ThreadControlBlock*>(tcb + tls_size);
   p->self = p;
 
   msr::Write(msr::kIa32FsBase, reinterpret_cast<uint64_t>(p));

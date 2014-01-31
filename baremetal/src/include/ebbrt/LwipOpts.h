@@ -84,7 +84,7 @@
 // Keepalive values, compliant with RFC 1122. Don't change this unless you know
 // what you're doing
 #define TCP_KEEPIDLE_DEFAULT 10000UL  // Default KEEPALIVE timer in
-                                      // milliseconds
+// milliseconds
 #define TCP_KEEPINTVL_DEFAULT                                                  \
   2000UL  // Default Time between KEEPALIVE probes in milliseconds
 #define TCP_KEEPCNT_DEFAULT 9U  // Default Counter for KEEPALIVE probes

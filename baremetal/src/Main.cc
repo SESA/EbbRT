@@ -10,6 +10,7 @@
 
 #include <ebbrt/Acpi.h>
 #include <ebbrt/Apic.h>
+#include <ebbrt/BootFdt.h>
 #include <ebbrt/Console.h>
 #include <ebbrt/Clock.h>
 #include <ebbrt/Cpuid.h>
@@ -43,11 +44,11 @@ bool started_once = false;
 
 // for c++ runtime
 extern char __eh_frame_start[];
-extern "C" void __register_frame(void *frame);
-void *__dso_handle;
+extern "C" void __register_frame(void* frame);
+void* __dso_handle;
 
 extern "C"
-    __attribute__((noreturn)) void ebbrt::Main(MultibootInformation *mbi) {
+    __attribute__((noreturn)) void ebbrt::Main(multiboot::Information* mbi) {
   console::Init();
 
   /* If by chance we reboot back into the kernel, panic */
@@ -62,7 +63,7 @@ extern "C"
   clock::Init();
   pic::Disable();
   // bring up the first cpu structure early
-  auto &cpu = Cpu::Create();
+  auto& cpu = Cpu::Create();
   cpu.set_acpi_id(0);
   cpu.set_apic_id(0);
   cpu.Init();
@@ -70,6 +71,8 @@ extern "C"
   e820::Init(mbi);
   e820::PrintMap();
   early_page_allocator::Init();
+  multiboot::Reserve(mbi);
+  boot_fdt::Init(mbi);
   extern char kend[];
   auto kend_addr = reinterpret_cast<uint64_t>(kend);
   const constexpr uint64_t initial_map_end =

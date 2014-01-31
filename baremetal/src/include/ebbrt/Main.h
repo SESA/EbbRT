@@ -5,11 +5,12 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_MAIN_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_MAIN_H_
 
+#include <ebbrt/Multiboot.h>
+
 namespace ebbrt {
-struct MultibootInformation;
 
 extern "C"
-    __attribute__((noreturn)) void Main(ebbrt::MultibootInformation *mbi);
+    __attribute__((noreturn)) void Main(ebbrt::multiboot::Information* mbi);
 }
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_MAIN_H_

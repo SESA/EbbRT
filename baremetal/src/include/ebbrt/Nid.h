@@ -20,31 +20,31 @@ class Nid {
   int val_;
 };
 
-inline bool operator==(const Nid &lhs, const Nid &rhs) {
+inline bool operator==(const Nid& lhs, const Nid& rhs) {
   return lhs.val() == rhs.val();
 }
 
-inline bool operator!=(const Nid &lhs, const Nid &rhs) {
+inline bool operator!=(const Nid& lhs, const Nid& rhs) {
   return !operator==(lhs, rhs);
 }
 
-inline bool operator<(const Nid &lhs, const Nid &rhs) {
+inline bool operator<(const Nid& lhs, const Nid& rhs) {
   return lhs.val() < rhs.val();
 }
 
-inline bool operator>(const Nid &lhs, const Nid &rhs) {
+inline bool operator>(const Nid& lhs, const Nid& rhs) {
   return operator<(rhs, lhs);
 }
 
-inline bool operator<=(const Nid &lhs, const Nid &rhs) {
+inline bool operator<=(const Nid& lhs, const Nid& rhs) {
   return !operator>(lhs, rhs);
 }
 
-inline bool operator>=(const Nid &lhs, const Nid &rhs) {
+inline bool operator>=(const Nid& lhs, const Nid& rhs) {
   return !operator<(lhs, rhs);
 }
 
-inline size_t operator-(const Nid &lhs, const Nid &rhs) {
+inline size_t operator-(const Nid& lhs, const Nid& rhs) {
   return lhs.val() - rhs.val();
 }
 

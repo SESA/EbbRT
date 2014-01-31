@@ -13,13 +13,13 @@
 #include <ebbrt/PageAllocator.h>
 #include <ebbrt/VMem.h>
 
-typedef boost::container::flat_map<size_t, ebbrt::EventManager *> RepMap;
+typedef boost::container::flat_map<size_t, ebbrt::EventManager*> RepMap;
 
 void ebbrt::EventManager::Init() {
   local_id_map->Insert(std::make_pair(kEventManagerId, RepMap()));
 }
 
-ebbrt::EventManager &ebbrt::EventManager::HandleFault(EbbId id) {
+ebbrt::EventManager& ebbrt::EventManager::HandleFault(EbbId id) {
   kassert(id == kEventManagerId);
   {
     // Acquire read only to find rep
@@ -51,12 +51,12 @@ const constexpr size_t kStackPages = 2048;  // 8 MB stack
 class EventStackFaultHandler : public ebbrt::VMemAllocator::PageFaultHandler {
  public:
   EventStackFaultHandler() = default;
-  EventStackFaultHandler(const EventStackFaultHandler &) = delete;
-  EventStackFaultHandler &operator=(const EventStackFaultHandler &) = delete;
+  EventStackFaultHandler(const EventStackFaultHandler&) = delete;
+  EventStackFaultHandler& operator=(const EventStackFaultHandler&) = delete;
   ~EventStackFaultHandler() {
     ebbrt::kbugon(!mappings_.empty(), "Free stack pages!\n");
   }
-  void HandleFault(ebbrt::idt::ExceptionFrame *ef,
+  void HandleFault(ebbrt::idt::ExceptionFrame* ef,
                    uintptr_t faulted_address) override {
     auto page = ebbrt::Pfn::Down(faulted_address);
     auto it = mappings_.find(page);
@@ -87,16 +87,16 @@ void ebbrt::EventManager::StartProcessingEvents() {
 }
 
 void ebbrt::EventManager::CallProcess(uintptr_t mgr) {
-  auto pmgr = reinterpret_cast<EventManager *>(mgr);
+  auto pmgr = reinterpret_cast<EventManager*>(mgr);
   pmgr->Process();
 }
 
 namespace {
-void InvokeFunction(std::function<void()> &f) {
+void InvokeFunction(std::function<void()>& f) {
   try {
     f();
   }
-  catch (std::exception &e) {
+  catch (std::exception& e) {
     ebbrt::kabort("Unhandled exception caught: %s\n", e.what());
   }
   catch (...) {
@@ -154,9 +154,9 @@ void ebbrt::EventManager::SpawnLocal(std::function<void()> func) {
 extern "C" void
 SaveContextAndSwitch(uintptr_t first_param, uintptr_t stack,
                      void (*func)(uintptr_t),
-                     ebbrt::EventManager::EventContext &context);
+                     ebbrt::EventManager::EventContext& context);
 
-void ebbrt::EventManager::SaveContext(EventContext &context) {
+void ebbrt::EventManager::SaveContext(EventContext& context) {
   context.stack = stack_;
   stack_ = AllocateStack();
   auto stack_top = (stack_ + kStackPages).ToAddr();
@@ -166,9 +166,9 @@ void ebbrt::EventManager::SaveContext(EventContext &context) {
 }
 
 extern "C" void
-ActivateContextAndReturn(const ebbrt::EventManager::EventContext &context);
+ActivateContextAndReturn(const ebbrt::EventManager::EventContext& context);
 
-void ebbrt::EventManager::ActivateContext(const EventContext &context) {
+void ebbrt::EventManager::ActivateContext(const EventContext& context) {
   SpawnLocal([this, context]() {
     free_stacks_.push(stack_);
     stack_ = context.stack;
@@ -188,7 +188,7 @@ void ebbrt::EventManager::ProcessInterrupt(int num) {
   apic::Eoi();
   auto it = vector_map_.find(num);
   if (it != vector_map_.end()) {
-    auto &f = it->second;
+    auto& f = it->second;
     InvokeFunction(f);
   }
   Process();
