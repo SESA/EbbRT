@@ -16,6 +16,9 @@
 #include <ebbrt/Gthread.h>
 #include <ebbrt/VMem.h>
 
+#include <ebbrt/Cpu.h>
+#include <atomic>
+
 extern "C" int ebbrt_newlib_exit(int val) {
   UNIMPLEMENTED();
   return 0;
@@ -130,11 +133,23 @@ extern "C" int ebbrt_newlib_gettimeofday(struct timeval* p, void* z) {
   return 0;
 }
 
-typedef void* _LOCK_T;
-typedef void* _LOCK_RECURSIVE_T;
+struct RLock {
+  static const constexpr uint32_t kNoOwner = -1;
+  uint32_t owner;
+  uint32_t count;
+};
 
-extern "C" void ebbrt_newlib_lock_init_recursive(_LOCK_RECURSIVE_T* lock) {
-  UNIMPLEMENTED();
+typedef void *_LOCK_T;
+typedef void *_LOCK_RECURSIVE_T;
+#define STATIC_ASSERT(COND,MSG) typedef char static_assertion_##MSG[(COND)?1:-1]
+
+STATIC_ASSERT((sizeof(struct RLock)==sizeof(void *)), sizeof_RLock_not_sizeof_void_ptr);
+STATIC_ASSERT(ebbrt::Cpu::kMaxCpus < ((uint64_t)(1ULL<<32)), uint32_not_enough_for_max_cpus);
+
+extern "C" void ebbrt_newlib_lock_init_recursive(_LOCK_RECURSIVE_T *lock) {
+  RLock *l = (struct RLock *)lock;
+  l->owner = RLock::kNoOwner;
+  l->count = 0;
 }
 
 extern "C" void ebbrt_newlib_lock_close_recursive(_LOCK_RECURSIVE_T* lock) {
@@ -149,14 +164,35 @@ ebbrt_newlib_lock_try_acquire_recursive(_LOCK_RECURSIVE_T* lock) {
   return 0;
 }
 
-extern "C" void ebbrt_newlib_lock_acquire_recursive(_LOCK_RECURSIVE_T* lock) {
-  UNIMPLEMENTED();
+extern "C" void ebbrt_newlib_lock_acquire_recursive(_LOCK_RECURSIVE_T *lock) {
+  RLock *l = (struct RLock *)lock;
+  uint32_t me = ebbrt::Cpu::GetMine();
+  uint32_t old;
+
+ retry:
+  old = __sync_val_compare_and_swap(&(l->owner), RLock::kNoOwner, me);
+  if (old != RLock::kNoOwner && old != me) goto retry;
+  l->count++;
+  return;
 }
 
 extern "C" void ebbrt_newlib_lock_release(_LOCK_RECURSIVE_T* lock) {
   UNIMPLEMENTED();
 }
 
-extern "C" void ebbrt_newlib_lock_release_recursive(_LOCK_RECURSIVE_T* lock) {
-  UNIMPLEMENTED();
+extern "C" void ebbrt_newlib_lock_release_recursive(_LOCK_RECURSIVE_T *lock) {
+  RLock *l = (struct RLock *)lock;
+  uint32_t me = ebbrt::Cpu::GetMine();
+  uint32_t old;
+
+  kassert(l->owner==me); kassert(l->count>0);
+
+  l->count--;
+  // don't completely know the semantics of this machine so using an syned atomic to be sure
+  // waiters are informed.
+  if (l->count == 0) old = __sync_val_compare_and_swap(&(l->owner), me, RLock::kNoOwner);
+
+  kassert(old==me);
+
+  return;
 }
