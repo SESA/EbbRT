@@ -41,6 +41,7 @@
 #include <ebbrt/VirtioNet.h>
 #include <ebbrt/VMem.h>
 #include <ebbrt/VMemAllocator.h>
+#include <ebbrt/Argv.h>
 
 namespace {
 bool started_once = false;
@@ -79,15 +80,11 @@ extern "C"
   e820::Init(mbi);
   e820::PrintMap();
 
-  char *cmdLine = NULL;
-  uint32_t cmdLineLen = 0;
   if (mbi->has_command_line_==1) {
-    // clearly have to do the right thing here...make a copy of
-    // of the command line;
-    cmdLine = reinterpret_cast<char *>(mbi->command_line_);
-    while (cmdLine[cmdLineLen] != 0) cmdLineLen++;
+    const char *cmdLine = reinterpret_cast<char *>(mbi->command_line_);
+    ebbrt::argv::Init(cmdLine);
   }
-
+  
   early_page_allocator::Init();
   multiboot::Reserve(mbi);
   boot_fdt::Init(mbi);
@@ -160,7 +157,7 @@ extern "C"
     kprintf("System initialization complete\n");
 
     if (appmain) {
-      event_manager->SpawnLocal([=]() { appmain(cmdLine); });
+      event_manager->SpawnLocal([=]() { appmain(); });
     } else {
       kprintf("No app main found...\n");
     }
