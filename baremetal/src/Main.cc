@@ -20,6 +20,7 @@
 #include <ebbrt/EbbAllocator.h>
 #include <ebbrt/EventManager.h>
 #include <ebbrt/GeneralPurposeAllocator.h>
+#include <ebbrt/GlobalIdMap.h>
 #include <ebbrt/LocalIdMap.h>
 #include <ebbrt/MemMap.h>
 #include <ebbrt/Multiboot.h>
@@ -126,6 +127,7 @@ extern "C"
     pci::RegisterProbe(VirtioNetDriver::Probe);
     pci::LoadDrivers();
     network_manager->AcquireIPAddress();
+    GlobalIdMap::Init();
     runtime::Init();
     kprintf("System initialization complete\n");
   });

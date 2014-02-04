@@ -65,15 +65,25 @@ err_t EthOutput(struct netif* netif, struct pbuf* p) {
 #endif
 
   ebbrt::ConstBufferList l;
-  for (struct pbuf* q = p; q != nullptr; q = q->next) {
-    if (q->next == nullptr) {
-      l.emplace_front(q->payload, q->len, [=](const void*) { pbuf_free(p); });
-    } else {
-      l.emplace_front(q->payload, q->len, [](const void*) {});
-    }
+  if (p == nullptr)
+    return ERR_OK;
+
+  auto ptr = std::malloc(p->len);
+  if (ptr == nullptr)
+    throw std::bad_alloc();
+  std::memcpy(ptr, p->payload, p->len);
+  l.emplace_front(ptr, p->len);
+  auto it = l.begin();
+  for (struct pbuf* q = p->next; q != nullptr; q = q->next) {
+    auto ptr = std::malloc(q->len);
+    if (ptr == nullptr)
+      throw std::bad_alloc();
+
+    std::memcpy(ptr, q->payload, q->len);
+    it = l.emplace_after(it, ptr, q->len,
+                         [](const void* p) { free(const_cast<void*>(p)); });
   }
   itf->Send(std::move(l));
-  pbuf_ref(p);
 
 #if ETH_PAD_SIZE
   pbuf_header(p, ETH_PAD_SIZE);
@@ -143,7 +153,7 @@ void ebbrt::NetworkManager::Interface::ReceivePacket(MutableBuffer buf,
     ptr = static_cast<void*>(static_cast<char*>(ptr) + q->len);
   }
 
-  netif_.input(p, &netif_);
+  event_manager->SpawnLocal([p, this]() { netif_.input(p, &netif_); });
 }
 
 extern "C" void lwip_printf(const char* fmt, ...) {

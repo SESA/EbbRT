@@ -8,7 +8,9 @@
 #include <atomic>
 #include <cstdint>
 #include <limits>
+#include <list>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <ebbrt/Align.h>
@@ -199,6 +201,7 @@ template <typename VirtType> class VirtioDriver {
       // the
       // event index.
       auto used_index = used_event_->load(std::memory_order_relaxed);
+      std::list<std::pair<MutableBufferList, size_t>> list;
       while (1) {
         if (used_index == used_->idx.load(std::memory_order_relaxed)) {
           // Ok we have processed all used buffers, set the event index to
@@ -209,31 +212,37 @@ template <typename VirtType> class VirtioDriver {
           std::atomic_thread_fence(std::memory_order_seq_cst);
 
           if (used_index == used_->idx.load(std::memory_order_relaxed))
-            return;
+            break;
 
           // otherwise the device did give us another used descriptor chain and
           // we must process it before enabling interrupts again.
         }
         auto& elem = used_->ring[used_index];
-        MutableBufferList list;
+        list.emplace_back();
+        auto& l = list.back().first;
         Desc* descriptor = &desc_[elem.id];
-        list.emplace_front(reinterpret_cast<void*>(descriptor->addr),
-                           descriptor->len);
-        auto it = list.begin();
+        l.emplace_front(reinterpret_cast<void*>(descriptor->addr),
+                        descriptor->len);
+        auto it = l.begin();
         auto len = 1;
         while (descriptor->flags & Desc::Next) {
           ++len;
           descriptor = &desc_[descriptor->next];
-          it = list.emplace_after(it, reinterpret_cast<void*>(descriptor->addr),
-                                  descriptor->len);
+          it = l.emplace_after(it, reinterpret_cast<void*>(descriptor->addr),
+                               descriptor->len);
         }
-        f(std::move(list), elem.len);
+        list.back().second = elem.len;
+        // f(std::move(list), elem.len);
         // add the descriptor chain to the free list
         descriptor->next = free_head_;
         free_head_ = elem.id;
         free_count_ += len;
 
         ++used_index;
+      }
+
+      for (auto& p : list) {
+        f(std::move(p.first), p.second);
       }
     }
 

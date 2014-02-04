@@ -62,8 +62,8 @@ ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket)
       node_allocator->node_index_.fetch_add(1, std::memory_order_relaxed);
   builder.setEbbIdSpace(index);
   auto addr = global_map->GetAddress();
-  builder.setGlobalMapPort(ntohs(addr.first));
-  builder.setGlobalMapAddress(ntohl(addr.second));
+  builder.setGlobalMapPort(addr.first);
+  builder.setGlobalMapAddress(addr.second);
 
   auto size = builder.totalSize().wordCount * sizeof(capnp::word);
   auto segments = message->getSegmentsForOutput();

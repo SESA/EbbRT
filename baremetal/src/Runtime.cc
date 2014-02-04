@@ -59,8 +59,11 @@ void ebbrt::runtime::Init() {
       auto info = message.getRoot<RuntimeInfo>();
 
       ebb_allocator->SetIdSpace(info.getEbbIdSpace());
-      global_id_map->Init(htons(info.getGlobalMapPort()),
-                          htonl(info.getGlobalMapAddress()));
+      kprintf("%x:%d\n", info.getGlobalMapAddress(), info.getGlobalMapPort());
+      global_id_map->Connect(info.getGlobalMapAddress(),
+                             info.getGlobalMapPort());
+      // global_id_map->Connect(htons(info.getGlobalMapPort()),
+      //                        htonl(info.getGlobalMapAddress()));
       event_manager->ActivateContext(context);
     }
   });

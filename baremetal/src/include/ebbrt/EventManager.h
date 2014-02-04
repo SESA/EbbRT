@@ -10,6 +10,7 @@
 
 #include <ebbrt/Isr.h>
 #include <ebbrt/Main.h>
+#include <ebbrt/MoveLambda.h>
 #include <ebbrt/Smp.h>
 #include <ebbrt/Trans.h>
 #include <ebbrt/VMemAllocator.h>
@@ -33,10 +34,10 @@ class EventManager {
   static void Init();
   static EventManager& HandleFault(EbbId id);
 
-  void SpawnLocal(std::function<void()> func);
+  void SpawnLocal(ebbrt::MovableFunction<void()> func);
   void SaveContext(EventContext& context);
   void ActivateContext(const EventContext& context);
-  uint8_t AllocateVector(std::function<void()> func);
+  uint8_t AllocateVector(MovableFunction<void()> func);
 
  private:
   void StartProcessingEvents() __attribute__((noreturn));
@@ -48,8 +49,8 @@ class EventManager {
 
   Pfn stack_;
   std::stack<Pfn> free_stacks_;
-  std::stack<std::function<void()>> tasks_;
-  std::unordered_map<uint8_t, std::function<void()>> vector_map_;
+  std::stack<MovableFunction<void()>> tasks_;
+  std::unordered_map<uint8_t, MovableFunction<void()>> vector_map_;
   std::atomic<uint8_t> vector_idx_;
 
   friend void ebbrt::idt::EventInterrupt(int num);

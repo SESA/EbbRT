@@ -92,7 +92,7 @@ void ebbrt::EventManager::CallProcess(uintptr_t mgr) {
 }
 
 namespace {
-void InvokeFunction(std::function<void()>& f) {
+void InvokeFunction(ebbrt::MovableFunction<void()>& f) {
   try {
     f();
   }
@@ -147,7 +147,7 @@ ebbrt::EventManager::EventManager() : vector_idx_(32) {
   stack_ = AllocateStack();
 }
 
-void ebbrt::EventManager::SpawnLocal(std::function<void()> func) {
+void ebbrt::EventManager::SpawnLocal(MovableFunction<void()> func) {
   tasks_.emplace(std::move(func));
 }
 
@@ -178,7 +178,7 @@ void ebbrt::EventManager::ActivateContext(const EventContext& context) {
   });
 }
 
-uint8_t ebbrt::EventManager::AllocateVector(std::function<void()> func) {
+uint8_t ebbrt::EventManager::AllocateVector(MovableFunction<void()> func) {
   auto vec = vector_idx_.fetch_add(1, std::memory_order_relaxed);
   vector_map_.emplace(vec, std::move(func));
   return vec;
