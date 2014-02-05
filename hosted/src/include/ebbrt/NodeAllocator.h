@@ -5,6 +5,8 @@
 #ifndef HOSTED_SRC_INCLUDE_EBBRT_NODEALLOCATOR_H_
 #define HOSTED_SRC_INCLUDE_EBBRT_NODEALLOCATOR_H_
 
+#include <string>
+
 #include <boost/asio.hpp>
 
 #include <ebbrt/EbbRef.h>
@@ -15,20 +17,24 @@ namespace ebbrt {
 class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
  public:
   NodeAllocator();
-  void AllocateNode();
+
+  void AllocateNode(std::string binary_path);
 
  private:
   class Session : public std::enable_shared_from_this<Session> {
    public:
-    explicit Session(boost::asio::ip::tcp::socket socket);
+    explicit Session(boost::asio::ip::tcp::socket socket, uint32_t net_addr);
 
    private:
     boost::asio::ip::tcp::socket socket_;
+    uint32_t net_addr_;
   };
 
   void DoAccept();
 
   std::atomic<uint16_t> node_index_;
+  int network_id_;
+  uint32_t net_addr_;
   boost::asio::ip::tcp::acceptor acceptor_;
   boost::asio::ip::tcp::socket socket_;
 

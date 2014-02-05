@@ -9,7 +9,6 @@
 #include <boost/filesystem.hpp>
 #include <capnp/message.h>
 
-#include <ebbrt/Config.h>
 #include <ebbrt/Fdt.h>
 #include <ebbrt/GlobalMap.h>
 #include <ebbrt/NodeAllocator.h>
@@ -51,8 +50,9 @@ class aptr_to_cbs {
 };
 }  // namespace
 
-ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket)
-    : socket_(std::move(socket)) {
+ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket,
+                                       uint32_t net_addr)
+    : socket_(std::move(socket)), net_addr_(net_addr) {
   std::cout << "New connection" << std::endl;
   auto message = new capnp::MallocMessageBuilder();
   auto builder = message->initRoot<RuntimeInfo>();
@@ -61,9 +61,8 @@ ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket)
   auto index =
       node_allocator->node_index_.fetch_add(1, std::memory_order_relaxed);
   builder.setEbbIdSpace(index);
-  auto addr = global_map->GetAddress();
-  builder.setGlobalMapPort(addr.first);
-  builder.setGlobalMapAddress(addr.second);
+  builder.setGlobalMapPort(global_map->GetPort());
+  builder.setGlobalMapAddress(net_addr_);
 
   auto size = builder.totalSize().wordCount * sizeof(capnp::word);
   auto segments = message->getSegmentsForOutput();
@@ -78,33 +77,46 @@ ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket)
 }
 
 ebbrt::NodeAllocator::NodeAllocator()
-    : node_index_(2),
-      acceptor_(
-          active_context->io_service_,
-          bai::tcp::endpoint(bai::address_v4::from_string(frontend_ip), 0)),
+    : node_index_(2), acceptor_(active_context->io_service_,
+                                bai::tcp::endpoint(bai::tcp::v4(), 0)),
       socket_(active_context->io_service_) {
-  std::cout << "Node Allocator bound to "
-            << acceptor_.local_endpoint().address() << ":"
-            << acceptor_.local_endpoint().port() << std::endl;
+  // TODO(dschatz): fix this hard coded name
+  auto f = popen("/opt/khpy/kh network", "r");
+  if (f == nullptr) {
+    throw std::runtime_error("popen failed");
+  }
+
+  std::string str;
+  char line[100];
+  while (fgets(line, 100, f) != nullptr) {
+    str += line;
+  }
+  uint8_t ip0, ip1, ip2, ip3;
+  sscanf(str.c_str(), "%d\n%hhu.%hhu.%hhu.%hhu\n", &network_id_, &ip0, &ip1,
+         &ip2, &ip3);
+  pclose(f);
+  net_addr_ = ip0 << 24 | ip1 << 16 | ip2 << 8 | ip3;
+  std::cout << "Node Allocator bound to " << static_cast<int>(ip0) << "."
+            << static_cast<int>(ip1) << "." << static_cast<int>(ip2) << "."
+            << static_cast<int>(ip3) << ":" << acceptor_.local_endpoint().port()
+            << std::endl;
   DoAccept();
 }
 
 void ebbrt::NodeAllocator::DoAccept() {
   acceptor_.async_accept(socket_, [this](boost::system::error_code ec) {
     if (!ec) {
-      std::make_shared<Session>(std::move(socket_));
+      std::make_shared<Session>(std::move(socket_), net_addr_);
     }
     DoAccept();
   });
 }
 
-void ebbrt::NodeAllocator::AllocateNode() {
+void ebbrt::NodeAllocator::AllocateNode(std::string binary_path) {
   auto fdt = Fdt();
   fdt.BeginNode("/");
   fdt.BeginNode("runtime");
-  auto address = acceptor_.local_endpoint().address().to_v4().to_bytes();
-  fdt.CreateProperty("address", reinterpret_cast<const char*>(address.data()),
-                     sizeof(address));
+  fdt.CreateProperty("address", net_addr_);
   auto port = acceptor_.local_endpoint().port();
   fdt.CreateProperty("port", port);
   fdt.EndNode();
@@ -132,5 +144,10 @@ void ebbrt::NodeAllocator::AllocateNode() {
   // file should flush here
   std::cout << "Fdt written to " << fname.native() << std::endl;
 
-  std::cout << "Allocate node" << std::endl;
+  char network[100];
+  snprintf(network, sizeof(network), "%d", network_id_);
+  std::string command = "/opt/khpy/kh alloc " + std::string(network) + " " +
+                        binary_path + " " + fname.native();
+  std::cout << "executing " << command << std::endl;
+  system(command.c_str());
 }

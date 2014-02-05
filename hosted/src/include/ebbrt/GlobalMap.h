@@ -28,7 +28,7 @@ class GlobalMap : public StaticSharedEbb<GlobalMap> {
   friend class session;
 
   void DoAccept();
-  std::pair<uint16_t, uint32_t> GetAddress();
+  uint16_t GetPort();
   friend class NodeAllocator;
 
  public:

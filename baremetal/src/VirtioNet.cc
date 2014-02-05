@@ -20,8 +20,11 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
     mac_addr_[i] = DeviceConfigRead8(i);
   }
 
-  kprintf("Mac Address: %02X:%02X:%02X:%02X:%02X:%02X\n", mac_addr_[0],
-          mac_addr_[1], mac_addr_[2], mac_addr_[3], mac_addr_[4], mac_addr_[5]);
+  kprintf(
+      "Mac Address: %02X:%02X:%02X:%02X:%02X:%02X\n",
+      static_cast<uint8_t>(mac_addr_[0]), static_cast<uint8_t>(mac_addr_[1]),
+      static_cast<uint8_t>(mac_addr_[2]), static_cast<uint8_t>(mac_addr_[3]),
+      static_cast<uint8_t>(mac_addr_[4]), static_cast<uint8_t>(mac_addr_[5]));
 
   FillRxRing();
 

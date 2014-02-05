@@ -2,15 +2,13 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
-#include <ebbrt/Config.h>
 #include <ebbrt/GlobalMap.h>
 
 namespace bai = boost::asio::ip;
 
 ebbrt::GlobalMap::GlobalMap()
-    : acceptor_(
-          active_context->io_service_,
-          bai::tcp::endpoint(bai::address_v4::from_string(frontend_ip), 0)),
+    : acceptor_(active_context->io_service_,
+                bai::tcp::endpoint(bai::address_v4(), 0)),
       socket_(active_context->io_service_) {
   DoAccept();
 }
@@ -24,9 +22,9 @@ void ebbrt::GlobalMap::DoAccept() {
   });
 }
 
-std::pair<uint16_t, uint32_t> ebbrt::GlobalMap::GetAddress() {
+uint16_t ebbrt::GlobalMap::GetPort() {
   const auto& endpoint = acceptor_.local_endpoint();
-  return std::make_pair(endpoint.port(), endpoint.address().to_v4().to_ulong());
+  return endpoint.port();
 }
 
 ebbrt::GlobalMap::session::session(bai::tcp::socket socket)

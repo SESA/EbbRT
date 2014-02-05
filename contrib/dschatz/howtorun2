@@ -1,0 +1,13 @@
+qemu-system-x86_64 \
+-m 2G \
+-numa node,cpus=0,mem=1G \
+-numa node,cpus=1,mem=1G \
+-smp sockets=2 \
+-cpu host \
+-gdb tcp::1235 \
+-enable-kvm \
+-nographic \
+-net nic,model=virtio \
+-net vde,sock=/tmp/vde_switch0 \
+-kernel ebbrt.elf32 \
+-initrd /tmp/ebbrt/e0ef-d022-d1c2-e32f
