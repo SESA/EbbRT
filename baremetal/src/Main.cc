@@ -47,6 +47,8 @@ bool started_once = false;
 extern char __eh_frame_start[];
 extern "C" void __register_frame(void* frame);
 void* __dso_handle;
+extern void (*start_ctors[])();
+extern void (*end_ctors[])();
 
 extern "C"
     __attribute__((noreturn)) void ebbrt::Main(multiboot::Information* mbi) {
@@ -74,6 +76,7 @@ extern "C"
   early_page_allocator::Init();
   multiboot::Reserve(mbi);
   boot_fdt::Init(mbi);
+  vmem::Init();
   extern char kend[];
   auto kend_addr = reinterpret_cast<uint64_t>(kend);
   const constexpr uint64_t initial_map_end =
@@ -129,6 +132,10 @@ extern "C"
     network_manager->AcquireIPAddress();
     GlobalIdMap::Init();
     runtime::Init();
+    // run global ctors
+    for (unsigned i = 0; i < (end_ctors - start_ctors); ++i) {
+      start_ctors[i]();
+    }
     kprintf("System initialization complete\n");
   });
 

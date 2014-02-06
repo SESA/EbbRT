@@ -150,7 +150,7 @@ ebbrt_newlib_lock_try_acquire_recursive(_LOCK_RECURSIVE_T* lock) {
 }
 
 extern "C" void ebbrt_newlib_lock_acquire_recursive(_LOCK_RECURSIVE_T* lock) {
-  UNIMPLEMENTED();
+  // UNIMPLEMENTED();
 }
 
 extern "C" void ebbrt_newlib_lock_release(_LOCK_RECURSIVE_T* lock) {
@@ -158,5 +158,5 @@ extern "C" void ebbrt_newlib_lock_release(_LOCK_RECURSIVE_T* lock) {
 }
 
 extern "C" void ebbrt_newlib_lock_release_recursive(_LOCK_RECURSIVE_T* lock) {
-  UNIMPLEMENTED();
+  // UNIMPLEMENTED();
 }

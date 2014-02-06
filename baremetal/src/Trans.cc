@@ -16,7 +16,7 @@
 void ebbrt::trans::Init() {
   auto page = early_page_allocator::AllocatePage(1, Cpu::GetMyNode());
   vmem::TraversePageTable(
-      vmem::page_table_root, kVMemStart, kVMemStart + pmem::kPageSize, 0, 4,
+      vmem::GetPageTableRoot(), kVMemStart, kVMemStart + pmem::kPageSize, 0, 4,
       [=](vmem::Pte& entry, uint64_t base_virt, size_t level) {
         kassert(!entry.Present());
         entry.Set(page.ToAddr() + (base_virt - kVMemStart), level > 0);

@@ -16,7 +16,11 @@
 #include <ebbrt/EarlyPageAllocator.h>
 #include <ebbrt/PageAllocator.h>
 
-ebbrt::vmem::Pte ebbrt::vmem::page_table_root;
+namespace {
+ebbrt::ExplicitlyConstructed<ebbrt::vmem::Pte> page_table_root;
+}
+
+void ebbrt::vmem::Init() { page_table_root.construct(); }
 
 void ebbrt::vmem::EarlyMapMemory(uint64_t addr, uint64_t length) {
   auto aligned_addr = align::Down(addr, pmem::kPageSize);
@@ -24,7 +28,7 @@ void ebbrt::vmem::EarlyMapMemory(uint64_t addr, uint64_t length) {
       align::Up(length + (addr - aligned_addr), pmem::kPageSize);
 
   TraversePageTable(
-      page_table_root, aligned_addr, aligned_addr + aligned_length, 0, 4,
+      GetPageTableRoot(), aligned_addr, aligned_addr + aligned_length, 0, 4,
       [=](Pte& entry, uint64_t base_virt, size_t level) {
         if (entry.Present()) {
           kassert(entry.Addr(level > 0) == base_virt);
@@ -50,7 +54,7 @@ void ebbrt::vmem::EarlyUnmapMemory(uint64_t addr, uint64_t length) {
       align::Up(length + (addr - aligned_addr), pmem::kPageSize);
 
   TraversePageTable(
-      page_table_root, aligned_addr, aligned_addr + aligned_length, 0, 4,
+      GetPageTableRoot(), aligned_addr, aligned_addr + aligned_length, 0, 4,
       [=](Pte& entry, uint64_t base_virt, size_t level) {
         kassert(entry.Present());
         entry.SetPresent(false);
@@ -86,7 +90,7 @@ void ebbrt::vmem::MapMemory(Pfn vfn, Pfn pfn, uint64_t length) {
 void ebbrt::vmem::EnableRuntimePageTable() {
   asm volatile("mov %[page_table], %%cr3"
                :
-               : [page_table] "r"(page_table_root));
+               : [page_table] "r"(GetPageTableRoot()));
 }
 
 void ebbrt::vmem::ApInit(size_t index) {
@@ -99,8 +103,10 @@ void ebbrt::vmem::ApInit(size_t index) {
          "Failed to allocate page for initial page tables\n");
   auto page_addr = page.ToAddr();
   std::memcpy(reinterpret_cast<void*>(page_addr),
-              reinterpret_cast<void*>(page_table_root.Addr(false)), 4096);
+              reinterpret_cast<void*>(GetPageTableRoot().Addr(false)), 4096);
   ap_pte_root.SetNormal(page_addr);
 
   asm volatile("mov %[page_table], %%cr3" : : [page_table] "r"(ap_pte_root));
 }
+
+ebbrt::vmem::Pte& ebbrt::vmem::GetPageTableRoot() { return *page_table_root; }

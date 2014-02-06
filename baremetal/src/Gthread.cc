@@ -40,7 +40,7 @@ extern "C" int ebbrt_gthread_once(__gthread_once_t* once, void (*func)(void)) {
 }
 
 extern "C" int ebbrt_gthread_key_create(__gthread_key_t*, void (*)(void*)) {
-  UNIMPLEMENTED();
+  // UNIMPLEMENTED();
   return 0;
 }
 

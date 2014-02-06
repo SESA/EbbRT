@@ -76,8 +76,6 @@ inline uint64_t Canonical(uint64_t addr) {
   return (int64_t(addr) << 16) >> 16;
 }
 
-extern Pte page_table_root;
-
 template <typename Found_Entry_Func, typename Empty_Entry_Func>
 void TraversePageTable(Pte& entry, uint64_t virt_start, uint64_t virt_end,
                        uint64_t base_virt, size_t level, Found_Entry_Func found,
@@ -105,11 +103,15 @@ void TraversePageTable(Pte& entry, uint64_t virt_start, uint64_t virt_end,
   }
 }
 
+void Init();
 void EnableRuntimePageTable();
 void EarlyMapMemory(uint64_t addr, uint64_t length);
 void EarlyUnmapMemory(uint64_t addr, uint64_t length);
 void MapMemory(Pfn vfn, Pfn pfn, uint64_t length = pmem::kPageSize);
 void ApInit(size_t index);
+
+Pte& GetPageTableRoot();
+
 }  // namespace vmem
 }  // namespace ebbrt
 

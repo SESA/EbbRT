@@ -41,7 +41,8 @@ SECTIONS
 
         .ctors BLOCK(4K) : ALIGN(4K) {
                start_ctors = .;
-               *(SORT_BY_INIT_PRIORITY(.ctors.*))
+               /* KEEP(*(SORT_BY_INIT_PRIORITY(.ctors.*))) */
+               KEEP(*(SORT(.ctors)))
                end_ctors = .;
         }
 
