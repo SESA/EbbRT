@@ -96,7 +96,7 @@ template <typename FuncType> class MovableFunction {};
 template <typename ReturnType, typename... ParamTypes>
 class MovableFunction<ReturnType(ParamTypes...)> {
  public:
-  MovableFunction() = delete;
+  MovableFunction() = default;
   template <typename F>
   MovableFunction(F&& f)
       : ptr_(new MovableFunctionImp<F, ReturnType, ParamTypes...>(
@@ -109,6 +109,7 @@ class MovableFunction<ReturnType(ParamTypes...)> {
   template <typename... Args> auto operator()(Args&&... args) -> ReturnType {
     return ptr_->CallFunc(std::forward<Args>(args)...);
   }
+  explicit operator bool() const { return static_cast<bool>(ptr_); }
 
  private:
   std::unique_ptr<MovableFunctionBase<ReturnType, ParamTypes...>> ptr_;

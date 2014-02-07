@@ -151,6 +151,10 @@ ebbrt::EventManager::EventManager()
   stack_ = AllocateStack();
 }
 
+void ebbrt::EventManager::Spawn(MovableFunction<void()> func) {
+  SpawnLocal(std::move(func));
+}
+
 void ebbrt::EventManager::SpawnLocal(MovableFunction<void()> func) {
   tasks_.emplace(std::move(func));
 }

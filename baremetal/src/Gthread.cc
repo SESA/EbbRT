@@ -11,7 +11,6 @@
 #include <ebbrt/Debug.h>
 #include <ebbrt/EventManager.h>
 #include <ebbrt/Gthread.h>
-#include <ebbrt/GthreadKey.h>
 #include <ebbrt/SpinLock.h>
 
 extern "C" void ebbrt_gthread_mutex_init(__gthread_mutex_t* mutex) {

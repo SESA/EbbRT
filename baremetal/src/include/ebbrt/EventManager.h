@@ -35,6 +35,7 @@ class EventManager {
   static void Init();
   static EventManager& HandleFault(EbbId id);
 
+  void Spawn(ebbrt::MovableFunction<void()> func);
   void SpawnLocal(ebbrt::MovableFunction<void()> func);
   void SaveContext(EventContext& context);
   void ActivateContext(const EventContext& context);
