@@ -29,6 +29,10 @@ template <class T> class EbbRef {
     le->ref = &ref;
   }
 
+  operator EbbId() const {
+    return (ref_ - trans::kVMemStart) / sizeof(LocalEntry);
+  }
+
  private:
   uintptr_t ref_;
 };

@@ -120,6 +120,7 @@ process:
   if (!tasks_.empty()) {
     auto f = std::move(tasks_.top());
     tasks_.pop();
+    active_event_id_ = next_event_id_++;
     InvokeFunction(f);
     // if we had a task to execute, then we go to the top again
     goto process;
@@ -143,7 +144,10 @@ ebbrt::Pfn ebbrt::EventManager::AllocateStack() {
       kStackPages, std::unique_ptr<EventStackFaultHandler>(fault_handler));
 }
 
-ebbrt::EventManager::EventManager() : vector_idx_(32) {
+static_assert(ebbrt::Cpu::kMaxCpus <= 256, "adjust event id calculation");
+
+ebbrt::EventManager::EventManager()
+    : vector_idx_(32), next_event_id_(Cpu::GetMine() << 24) {
   stack_ = AllocateStack();
 }
 
@@ -158,6 +162,7 @@ SaveContextAndSwitch(uintptr_t first_param, uintptr_t stack,
 
 void ebbrt::EventManager::SaveContext(EventContext& context) {
   context.stack = stack_;
+  context.event_id = active_event_id_;
   stack_ = AllocateStack();
   auto stack_top = (stack_ + kStackPages).ToAddr();
   Cpu::GetMine().SetEventStack(stack_top);
@@ -172,6 +177,7 @@ void ebbrt::EventManager::ActivateContext(const EventContext& context) {
   SpawnLocal([this, context]() {
     free_stacks_.push(stack_);
     stack_ = context.stack;
+    active_event_id_ = context.event_id;
     auto stack_top = (context.stack + kStackPages).ToAddr();
     Cpu::GetMine().SetEventStack(stack_top);
     ActivateContextAndReturn(context);
@@ -189,7 +195,10 @@ void ebbrt::EventManager::ProcessInterrupt(int num) {
   auto it = vector_map_.find(num);
   if (it != vector_map_.end()) {
     auto& f = it->second;
+    active_event_id_ = next_event_id_++;
     InvokeFunction(f);
   }
   Process();
 }
+
+uint32_t ebbrt::EventManager::GetEventId() { return active_event_id_; }

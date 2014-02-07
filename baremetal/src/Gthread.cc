@@ -6,9 +6,13 @@
 #include <cstring>
 #include <cstdint>
 #include <cerrno>
+#include <mutex>
 
 #include <ebbrt/Debug.h>
+#include <ebbrt/EventManager.h>
 #include <ebbrt/Gthread.h>
+#include <ebbrt/GthreadKey.h>
+#include <ebbrt/SpinLock.h>
 
 extern "C" void ebbrt_gthread_mutex_init(__gthread_mutex_t* mutex) {
   auto flag = reinterpret_cast<std::atomic_flag*>(mutex);
@@ -33,14 +37,15 @@ extern "C" int ebbrt_gthread_once(__gthread_once_t* once, void (*func)(void)) {
     func();
     flag->store(2, std::memory_order_release);
   } else {
-    ebbrt::kbugon(flag->load(std::memory_order_consume) != 2,
+    ebbrt::kbugon(flag->load(std::memory_order_consume) == 1,
                   "gthread_once busy!\n");
+    kassert(flag->load(std::memory_order_consume) == 2);
   }
   return 0;
 }
 
-extern "C" int ebbrt_gthread_key_create(__gthread_key_t*, void (*)(void*)) {
-  // UNIMPLEMENTED();
+extern "C" int ebbrt_gthread_key_create(__gthread_key_t* key,
+                                        void (*dtor)(void*)) {
   return 0;
 }
 
@@ -70,15 +75,13 @@ ebbrt_gthread_recursive_mutex_destroy(__gthread_recursive_mutex_t* mutex) {
 }
 
 extern "C" int ebbrt_gthread_mutex_lock(__gthread_mutex_t* mutex) {
-  auto flag = reinterpret_cast<std::atomic_flag*>(mutex);
-  ebbrt::kbugon(flag->test_and_set(std::memory_order_acquire),
-                "lock is busy!\n");
+  ebbrt::kbugon(!ebbrt_gthread_mutex_trylock(mutex), "lock is busy!\n");
   return 0;
 }
 
 extern "C" int ebbrt_gthread_mutex_trylock(__gthread_mutex_t* mutex) {
-  UNIMPLEMENTED();
-  return 0;
+  auto flag = reinterpret_cast<std::atomic_flag*>(mutex);
+  return !flag->test_and_set();
 }
 
 extern "C" int ebbrt_gthread_mutex_unlock(__gthread_mutex_t* mutex) {
@@ -87,21 +90,51 @@ extern "C" int ebbrt_gthread_mutex_unlock(__gthread_mutex_t* mutex) {
   return 0;
 }
 
+namespace {
+struct RecursiveLock {
+  uint32_t event_id;
+  uint16_t count;
+  ebbrt::SpinLock spinlock;
+};
+static_assert(sizeof(RecursiveLock) <= sizeof(void*),
+              "RecursiveLock size mismatch");
+}
+
 extern "C" int
 ebbrt_gthread_recursive_mutex_trylock(__gthread_recursive_mutex_t* mutex) {
-  UNIMPLEMENTED();
-  return 0;
+  auto lock = static_cast<RecursiveLock*>(static_cast<void*>(mutex));
+
+  std::lock_guard<ebbrt::SpinLock> l(lock->spinlock);
+
+  if (lock->count == UINT16_MAX) {
+    return false;
+  }
+
+  if (lock->count == 0) {
+    lock->event_id = ebbrt::event_manager->GetEventId();
+    lock->count++;
+    return true;
+  }
+
+  if (lock->event_id == ebbrt::event_manager->GetEventId()) {
+    lock->count++;
+    return true;
+  }
+  return false;
 }
 
 extern "C" int
 ebbrt_gthread_recursive_mutex_lock(__gthread_recursive_mutex_t* mutex) {
-  UNIMPLEMENTED();
+  ebbrt::kbugon(!ebbrt_gthread_recursive_mutex_trylock(mutex),
+                "recursive_mutex_lock is busy!\n");
   return 0;
 }
 
 extern "C" int
 ebbrt_gthread_recursive_mutex_unlock(__gthread_recursive_mutex_t* mutex) {
-  UNIMPLEMENTED();
+  auto lock = static_cast<RecursiveLock*>(static_cast<void*>(mutex));
+  std::lock_guard<ebbrt::SpinLock> l(lock->spinlock);
+  lock->count--;
   return 0;
 }
 

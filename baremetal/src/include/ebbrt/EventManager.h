@@ -27,6 +27,7 @@ class EventManager {
     uint64_t r13;
     uint64_t r14;
     uint64_t r15;
+    uint32_t event_id;
     Pfn stack;
   };
   EventManager();
@@ -38,6 +39,7 @@ class EventManager {
   void SaveContext(EventContext& context);
   void ActivateContext(const EventContext& context);
   uint8_t AllocateVector(MovableFunction<void()> func);
+  uint32_t GetEventId();
 
  private:
   void StartProcessingEvents() __attribute__((noreturn));
@@ -52,6 +54,8 @@ class EventManager {
   std::stack<MovableFunction<void()>> tasks_;
   std::unordered_map<uint8_t, MovableFunction<void()>> vector_map_;
   std::atomic<uint8_t> vector_idx_;
+  uint32_t active_event_id_;
+  uint32_t next_event_id_;
 
   friend void ebbrt::idt::EventInterrupt(int num);
   friend void ebbrt::Main(ebbrt::multiboot::Information* mbi);

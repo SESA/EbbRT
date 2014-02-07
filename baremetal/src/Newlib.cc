@@ -150,7 +150,10 @@ ebbrt_newlib_lock_try_acquire_recursive(_LOCK_RECURSIVE_T* lock) {
 }
 
 extern "C" void ebbrt_newlib_lock_acquire_recursive(_LOCK_RECURSIVE_T* lock) {
-  // UNIMPLEMENTED();
+  auto glock =
+      static_cast<__gthread_recursive_mutex_t*>(static_cast<void*>(lock));
+  auto ret = ebbrt_gthread_recursive_mutex_lock(glock);
+  ebbrt::kbugon(ret != 0, "lock acquisition failed!\n");
 }
 
 extern "C" void ebbrt_newlib_lock_release(_LOCK_RECURSIVE_T* lock) {
@@ -158,5 +161,8 @@ extern "C" void ebbrt_newlib_lock_release(_LOCK_RECURSIVE_T* lock) {
 }
 
 extern "C" void ebbrt_newlib_lock_release_recursive(_LOCK_RECURSIVE_T* lock) {
-  // UNIMPLEMENTED();
+  auto glock =
+      static_cast<__gthread_recursive_mutex_t*>(static_cast<void*>(lock));
+  auto ret = ebbrt_gthread_recursive_mutex_unlock(glock);
+  ebbrt::kbugon(ret != 0, "unlock failed!\n");
 }

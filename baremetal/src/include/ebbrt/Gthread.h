@@ -6,6 +6,7 @@
 #define BAREMETAL_SRC_INCLUDE_EBBRT_GTHREAD_H_
 
 // DO NOT CHANGE: they are defined in gcc's source tree like this
+
 typedef void* __gthread_key_t;
 typedef void* __gthread_once_t;
 typedef void* __gthread_mutex_t;
