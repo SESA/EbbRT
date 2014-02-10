@@ -103,6 +103,17 @@ ebbrt::NodeAllocator::NodeAllocator()
   DoAccept();
 }
 
+ebbrt::NodeAllocator:: ~NodeAllocator()
+{
+
+  std::cout << "Node Allocator destructor! " << std::endl;
+  char network[100];
+  snprintf(network, sizeof(network), "%d", network_id_);
+  std::string command = "/opt/khpy/kh rmnet " + std::string(network); 
+  std::cout << "executing " << command << std::endl;
+  system(command.c_str());
+}
+
 void ebbrt::NodeAllocator::DoAccept() {
   acceptor_.async_accept(socket_, [this](boost::system::error_code ec) {
     if (!ec) {
@@ -124,7 +135,7 @@ void ebbrt::NodeAllocator::AllocateNode(std::string binary_path) {
   fdt.Finish();
 
   // Write Fdt
-  auto dir = boost::filesystem::temp_directory_path() / "ebbrt";
+  auto dir = boost::filesystem::temp_directory_path();
   auto fname = dir / boost::filesystem::unique_path();
   if (boost::filesystem::exists(fname)) {
     throw std::runtime_error("Failed to create unique temporary file name");

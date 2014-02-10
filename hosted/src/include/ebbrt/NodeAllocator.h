@@ -17,6 +17,7 @@ namespace ebbrt {
 class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
  public:
   NodeAllocator();
+  ~NodeAllocator();
 
   void AllocateNode(std::string binary_path);
 
