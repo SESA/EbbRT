@@ -1,6 +1,8 @@
 #!/bin/bash
 #set -x
 
+# To enable this Git hook, copy file to: <Your-Repo>/.git/hooks/pre-commit
+
 git diff --full-index --binary > /tmp/stash.$$
 git stash -q --keep-index
 
@@ -14,14 +16,13 @@ do
     if [ $? -ne 0 ]; then
         echo "$file is not clang-formatted"
         let RESULT=1
-        break
+        continue
     fi
     $GIT_ROOT/contrib/dschatz/cpplint.py \
-        --filter=-runtime/references,-build/include_order,-readability/streams 
-    "$GIT_ROOT/$file"
+        --filter=-runtime/references,-build/include_order,-readability/streams "$GIT_ROOT/$file"
     if [ $? -ne 0 ]; then
         let RESULT=1
-        break
+        continue
     fi
 done < <(git diff --cached --name-status --diff-filter=ACM | \
     grep -P '\.((cc)|(h))$')
