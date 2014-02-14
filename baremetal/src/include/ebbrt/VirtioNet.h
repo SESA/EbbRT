@@ -17,7 +17,7 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
   explicit VirtioNetDriver(pci::Device& dev);
 
   static uint32_t GetDriverFeatures();
-  void Send(ConstBufferList list) override;
+  void Send(std::shared_ptr<const Buffer> buf) override;
   const std::array<char, 6>& GetMacAddress() override;
 
  private:

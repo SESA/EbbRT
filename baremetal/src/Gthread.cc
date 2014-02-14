@@ -13,6 +13,16 @@
 #include <ebbrt/Gthread.h>
 #include <ebbrt/SpinLock.h>
 
+namespace {
+struct RecursiveLock {
+  uint32_t event_id;
+  uint16_t count;
+  ebbrt::SpinLock spinlock;
+};
+static_assert(sizeof(RecursiveLock) <= sizeof(void*),
+              "RecursiveLock size mismatch");
+}
+
 extern "C" void ebbrt_gthread_mutex_init(__gthread_mutex_t* mutex) {
   auto flag = reinterpret_cast<std::atomic_flag*>(mutex);
   flag->clear();
@@ -20,7 +30,9 @@ extern "C" void ebbrt_gthread_mutex_init(__gthread_mutex_t* mutex) {
 
 extern "C" void
 ebbrt_gthread_recursive_mutex_init(__gthread_recursive_mutex_t* mutex) {
-  UNIMPLEMENTED();
+  auto lock = static_cast<RecursiveLock*>(static_cast<void*>(mutex));
+  lock->count = 0;
+  lock->spinlock.unlock();
 }
 
 extern "C" int ebbrt_gthread_active_p(void) { return true; }
@@ -89,16 +101,6 @@ extern "C" int ebbrt_gthread_mutex_unlock(__gthread_mutex_t* mutex) {
   return 0;
 }
 
-namespace {
-struct RecursiveLock {
-  uint32_t event_id;
-  uint16_t count;
-  ebbrt::SpinLock spinlock;
-};
-static_assert(sizeof(RecursiveLock) <= sizeof(void*),
-              "RecursiveLock size mismatch");
-}
-
 extern "C" int
 ebbrt_gthread_recursive_mutex_trylock(__gthread_recursive_mutex_t* mutex) {
   auto lock = static_cast<RecursiveLock*>(static_cast<void*>(mutex));
@@ -138,11 +140,10 @@ ebbrt_gthread_recursive_mutex_unlock(__gthread_recursive_mutex_t* mutex) {
 }
 
 extern "C" void ebbrt_gthread_cond_init(__gthread_cond_t* cond) {
-  UNIMPLEMENTED();
+  // UNIMPLEMENTED();
 }
 
 extern "C" int ebbrt_gthread_cond_broadcast(__gthread_cond_t* cond) {
-  UNIMPLEMENTED();
   return 0;
 }
 

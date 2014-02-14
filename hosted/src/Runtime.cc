@@ -4,8 +4,9 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include <ebbrt/Context.h>
 #include <ebbrt/EbbAllocator.h>
-#include <ebbrt/GlobalMap.h>
+#include <ebbrt/EventManager.h>
 #include <ebbrt/LocalIdMap.h>
+#include <ebbrt/Messenger.h>
 #include <ebbrt/NodeAllocator.h>
 #include <ebbrt/Runtime.h>
 
@@ -31,8 +32,9 @@ void ebbrt::Runtime::Initialize() {
 }
 
 void ebbrt::Runtime::DoInitialization() {
+  EventManager::Init();
   LocalIdMap::Init();
   EbbAllocator::Init();
-  GlobalMap::Init();
+  Messenger::Init();
   NodeAllocator::Init();
 }

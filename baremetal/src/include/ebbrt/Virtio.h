@@ -103,18 +103,16 @@ template <typename VirtType> class VirtioDriver {
       auto avail_idx = orig_idx;
       for (auto it = begin; it < end; ++it) {
         ++count;
-        auto& buf_list = *it;
-        if (buf_list.empty())
-          continue;
+        auto& buf_chain = *it;
 
-        if (buf_list.size() > free_count_)
+        if (buf_chain.length() > free_count_)
           return it;
 
         // allocate the free descriptors
-        free_count_ -= buf_list.size();
+        free_count_ -= buf_chain.length();
         uint16_t last_desc = free_head_;
         uint16_t head = free_head_;
-        for (auto& buf : buf_list) {
+        for (auto& buf : buf_chain) {
           // for each buffer in this list, write it to a descriptor
           void* addr;
           size_t size;
@@ -157,14 +155,14 @@ template <typename VirtType> class VirtioDriver {
       return end;
     }
 
-    void AddReadableBuffer(ConstBufferList bufs) {
-      kbugon(free_count_ < bufs.size());
+    void AddReadableBuffer(std::shared_ptr<const Buffer> bufs) {
+      kbugon(free_count_ < bufs->length());
 
-      free_count_ -= bufs.size();
+      free_count_ -= bufs->length();
       uint16_t last_desc = free_head_;
       uint16_t head = free_head_;
-      for (auto& buf : bufs) {
-        auto addr = buf.addr();
+      for (auto& buf : *bufs) {
+        auto addr = buf.data();
         auto size = buf.size();
         auto& desc = desc_[free_head_];
         desc.addr = reinterpret_cast<uint64_t>(addr);
@@ -201,7 +199,7 @@ template <typename VirtType> class VirtioDriver {
       // the
       // event index.
       auto used_index = used_event_->load(std::memory_order_relaxed);
-      std::list<std::pair<MutableBufferList, size_t>> list;
+      std::list<Buffer> list;
       while (1) {
         if (used_index == used_->idx.load(std::memory_order_relaxed)) {
           // Ok we have processed all used buffers, set the event index to
@@ -218,21 +216,17 @@ template <typename VirtType> class VirtioDriver {
           // we must process it before enabling interrupts again.
         }
         auto& elem = used_->ring[used_index];
-        list.emplace_back();
-        auto& l = list.back().first;
         Desc* descriptor = &desc_[elem.id];
-        l.emplace_front(reinterpret_cast<void*>(descriptor->addr),
-                        descriptor->len);
-        auto it = l.begin();
+        list.emplace_front(reinterpret_cast<void*>(descriptor->addr),
+                           descriptor->len);
+        auto& buf = list.front();
         auto len = 1;
         while (descriptor->flags & Desc::Next) {
           ++len;
           descriptor = &desc_[descriptor->next];
-          it = l.emplace_after(it, reinterpret_cast<void*>(descriptor->addr),
-                               descriptor->len);
+          buf.emplace_back(reinterpret_cast<void*>(descriptor->addr),
+                           descriptor->len);
         }
-        list.back().second = elem.len;
-        // f(std::move(list), elem.len);
         // add the descriptor chain to the free list
         descriptor->next = free_head_;
         free_head_ = elem.id;
@@ -241,8 +235,8 @@ template <typename VirtType> class VirtioDriver {
         ++used_index;
       }
 
-      for (auto& p : list) {
-        f(std::move(p.first), p.second);
+      for (auto& b : list) {
+        f(std::move(b));
       }
     }
 
@@ -332,7 +326,7 @@ template <typename VirtType> class VirtioDriver {
     uint16_t qsize_;
     uint16_t free_head_;
     uint16_t free_count_;
-    std::unordered_map<uint16_t, ConstBufferList> buf_references_;
+    std::unordered_map<uint16_t, std::shared_ptr<const Buffer>> buf_references_;
   };
 
   explicit VirtioDriver(pci::Device& dev) : dev_(dev), bar0_(dev.GetBar(0)) {

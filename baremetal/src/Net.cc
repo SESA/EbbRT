@@ -64,7 +64,6 @@ err_t EthOutput(struct netif* netif, struct pbuf* p) {
   pbuf_header(p, -ETH_PAD_SIZE);
 #endif
 
-  ebbrt::ConstBufferList l;
   if (p == nullptr)
     return ERR_OK;
 
@@ -72,18 +71,17 @@ err_t EthOutput(struct netif* netif, struct pbuf* p) {
   if (ptr == nullptr)
     throw std::bad_alloc();
   std::memcpy(ptr, p->payload, p->len);
-  l.emplace_front(ptr, p->len);
-  auto it = l.begin();
+  auto b = std::make_shared<ebbrt::Buffer>(
+      ptr, p->len, [](void* p, size_t len) { free(p); });
   for (struct pbuf* q = p->next; q != nullptr; q = q->next) {
     auto ptr = std::malloc(q->len);
     if (ptr == nullptr)
       throw std::bad_alloc();
 
     std::memcpy(ptr, q->payload, q->len);
-    it = l.emplace_after(it, ptr, q->len,
-                         [](const void* p) { free(const_cast<void*>(p)); });
+    b->emplace_back(ptr, q->len, [](void* p, size_t len) { free(p); });
   }
-  itf->Send(std::move(l));
+  itf->Send(std::move(b));
 
 #if ETH_PAD_SIZE
   pbuf_header(p, ETH_PAD_SIZE);
@@ -130,18 +128,19 @@ const std::array<char, 6>& ebbrt::NetworkManager::Interface::MacAddress() {
   return ether_dev_.GetMacAddress();
 }
 
-void ebbrt::NetworkManager::Interface::Send(ConstBufferList l) {
-  ether_dev_.Send(std::move(l));
+void ebbrt::NetworkManager::Interface::Send(std::shared_ptr<const Buffer> b) {
+  ether_dev_.Send(std::move(b));
 }
 
-void ebbrt::NetworkManager::Interface::ReceivePacket(MutableBuffer buf,
-                                                     uint32_t len) {
+void ebbrt::NetworkManager::Interface::Receive(Buffer buf) {
+  kbugon(buf.length() > 1, "Handle chained buffer\n");
+  auto len = buf.total_size();
   // FIXME: We should avoid this copy
   auto p = pbuf_alloc(PBUF_LINK, len + ETH_PAD_SIZE, PBUF_POOL);
 
-  kbugon(p == nullptr, "Failed to allocate pbuf");
+  kbugon(p == nullptr, "Failed to allocate pbuf\n");
 
-  auto ptr = buf.addr();
+  auto ptr = buf.data();
   bool first = true;
   for (auto q = p; q != nullptr; q = q->next) {
     auto add = 0;
@@ -168,6 +167,7 @@ extern "C" void lwip_assert(const char* fmt, ...) {
   va_start(ap, fmt);
   ebbrt::kvprintf(fmt, ap);
   va_end(ap);
+  ebbrt::kprintf("\n");
   ebbrt::kabort();
 }
 
@@ -178,51 +178,82 @@ u32_t sys_now() {
              ebbrt::clock::Time()).count();
 }
 
-ebbrt::NetworkManager::TcpPcb::TcpPcb() {
-  pcb_ = tcp_new();
-  if (pcb_ == nullptr) {
+void ebbrt::NetworkManager::TcpPcb::Deleter(struct tcp_pcb* object) {
+  if (object != nullptr)
+    tcp_close(object);
+}
+
+ebbrt::NetworkManager::TcpPcb::TcpPcb()
+    : pcb_(nullptr, &Deleter), sent_(0), next_(0) {
+  auto pcb = tcp_new();
+  if (pcb == nullptr) {
     throw std::bad_alloc();
   }
-  tcp_arg(pcb_, static_cast<void*>(this));
+  pcb_ =
+      std::unique_ptr<struct tcp_pcb, void (*)(struct tcp_pcb*)>(pcb, &Deleter);
+  tcp_arg(pcb_.get(), static_cast<void*>(this));
 }
 
-ebbrt::NetworkManager::TcpPcb::TcpPcb(struct tcp_pcb* pcb) : pcb_(pcb) {
-  tcp_arg(pcb_, static_cast<void*>(this));
+ebbrt::NetworkManager::TcpPcb::TcpPcb(struct tcp_pcb* pcb)
+    : pcb_(pcb, &Deleter), sent_(0), next_(0) {
+  tcp_arg(pcb_.get(), static_cast<void*>(this));
+  tcp_sent(pcb_.get(), SentHandler);
 }
 
-ebbrt::NetworkManager::TcpPcb::~TcpPcb() {
-  if (pcb_ != nullptr)
-    tcp_abort(pcb_);
+ebbrt::NetworkManager::TcpPcb::TcpPcb(TcpPcb&& other)
+    : pcb_(std::move(other.pcb_)),
+      accept_callback_(std::move(other.accept_callback_)),
+      connect_promise_(std::move(other.connect_promise_)),
+      receive_callback_(std::move(other.receive_callback_)),
+      sent_(std::move(other.sent_)), next_(std::move(other.next_)),
+      ack_map_(std::move(other.ack_map_)) {
+  tcp_arg(pcb_.get(), static_cast<void*>(this));
+}
+
+ebbrt::NetworkManager::TcpPcb& ebbrt::NetworkManager::TcpPcb::
+operator=(TcpPcb&& other) {
+  pcb_ = std::move(other.pcb_);
+  accept_callback_ = std::move(other.accept_callback_);
+  connect_promise_ = std::move(other.connect_promise_);
+  receive_callback_ = std::move(other.receive_callback_);
+  sent_ = std::move(other.sent_);
+  next_ = std::move(other.next_);
+  ack_map_ = std::move(other.ack_map_);
+
+  tcp_arg(pcb_.get(), static_cast<void*>(this));
+
+  return *this;
 }
 
 void ebbrt::NetworkManager::TcpPcb::Bind(uint16_t port) {
-  auto ret = tcp_bind(pcb_, IP_ADDR_ANY, port);
+  auto ret = tcp_bind(pcb_.get(), IP_ADDR_ANY, port);
   if (ret != ERR_OK) {
     throw std::runtime_error("Bind failed\n");
   }
 }
 
 void ebbrt::NetworkManager::TcpPcb::Listen() {
-  auto pcb = tcp_listen(pcb_);
+  auto pcb = tcp_listen(pcb_.get());
   if (pcb == NULL) {
     throw std::bad_alloc();
   }
-  pcb_ = pcb;
+  pcb_.release();
+  pcb_.reset(pcb);
 }
 
 void
 ebbrt::NetworkManager::TcpPcb::Accept(std::function<void(TcpPcb)> callback) {
   accept_callback_ = std::move(callback);
-  tcp_accept(pcb_, Accept_Handler);
+  tcp_accept(pcb_.get(), Accept_Handler);
 }
 
-void ebbrt::NetworkManager::TcpPcb::Connect(struct ip_addr* ip, uint16_t port,
-                                            std::function<void()> callback) {
-  connect_callback_ = std::move(callback);
-  auto err = tcp_connect(pcb_, ip, port, Connect_Handler);
+ebbrt::Future<void> ebbrt::NetworkManager::TcpPcb::Connect(struct ip_addr* ip,
+                                                           uint16_t port) {
+  auto err = tcp_connect(pcb_.get(), ip, port, Connect_Handler);
   if (err != ERR_OK) {
     throw std::bad_alloc();
   }
+  return connect_promise_.GetFuture();
 }
 
 err_t ebbrt::NetworkManager::TcpPcb::Accept_Handler(void* arg,
@@ -231,7 +262,7 @@ err_t ebbrt::NetworkManager::TcpPcb::Accept_Handler(void* arg,
   kassert(err == ERR_OK);
   auto listening_pcb = static_cast<TcpPcb*>(arg);
   listening_pcb->accept_callback_(TcpPcb(newpcb));
-  tcp_accepted(listening_pcb->pcb_);
+  tcp_accepted(listening_pcb->pcb_.get());
   return ERR_OK;
 }
 
@@ -240,15 +271,15 @@ err_t ebbrt::NetworkManager::TcpPcb::Connect_Handler(void* arg,
                                                      err_t err) {
   kassert(err == ERR_OK);
   auto pcb_s = static_cast<TcpPcb*>(arg);
-  kassert(pcb_s->pcb_ == pcb);
-  pcb_s->connect_callback_();
+  kassert(pcb_s->pcb_.get() == pcb);
+  pcb_s->connect_promise_.SetValue();
   return ERR_OK;
 }
 
-void ebbrt::NetworkManager::TcpPcb::Receive(
-    std::function<void(MutableBufferList)> callback) {
+void
+ebbrt::NetworkManager::TcpPcb::Receive(std::function<void(Buffer)> callback) {
   receive_callback_ = std::move(callback);
-  tcp_recv(pcb_, Receive_Handler);
+  tcp_recv(pcb_.get(), Receive_Handler);
 }
 
 err_t ebbrt::NetworkManager::TcpPcb::Receive_Handler(void* arg,
@@ -257,19 +288,48 @@ err_t ebbrt::NetworkManager::TcpPcb::Receive_Handler(void* arg,
                                                      err_t err) {
   kassert(err == ERR_OK);
   auto pcb_s = static_cast<TcpPcb*>(arg);
-  kassert(pcb_s->pcb_ == pcb);
-  MutableBufferList l;
+  kassert(pcb_s->pcb_.get() == pcb);
   if (p == nullptr) {
-    pcb_s->receive_callback_(std::move(l));
+    pcb_s->receive_callback_(Buffer(nullptr, 0));
   } else {
-    l.emplace_front(p->payload, p->len, [p](void* pointer) { pbuf_free(p); });
-    auto it = l.begin();
+    auto b = Buffer(p->payload, p->len,
+                    [p](void* pointer, size_t sz) { pbuf_free(p); });
     for (auto q = p->next; q != nullptr; q = q->next) {
-      it = l.emplace_after(it, q->payload, q->len,
-                           [q](void* pointer) { pbuf_free(q); });
+      b.emplace_back(q->payload, q->len,
+                     [q](void* pointer, size_t sz) { pbuf_free(q); });
     }
-    pcb_s->receive_callback_(std::move(l));
-    tcp_recved(pcb_s->pcb_, p->tot_len);
+    tcp_recved(pcb_s->pcb_.get(), p->tot_len);
+    pcb_s->receive_callback_(std::move(b));
   }
   return ERR_OK;
 }  // NOLINT
+
+ebbrt::Future<void>
+ebbrt::NetworkManager::TcpPcb::Send(std::shared_ptr<const Buffer> data) {
+  for (auto& buf : *data) {
+    auto sz = buf.size();
+    kassert(sz <= UINT16_MAX);
+    auto err = tcp_write(pcb_.get(), const_cast<void*>(buf.data()), sz,
+                         TCP_WRITE_FLAG_COPY);
+    kassert(err == ERR_OK);
+  }
+  next_ += data->total_size();
+  auto p =
+      ack_map_.emplace(std::piecewise_construct, std::forward_as_tuple(next_),
+                       std::forward_as_tuple());
+  return p.first->second.GetFuture();
+}
+
+err_t ebbrt::NetworkManager::TcpPcb::SentHandler(void* arg, struct tcp_pcb* pcb,
+                                                 uint16_t len) {
+  auto pcb_s = static_cast<TcpPcb*>(arg);
+  kassert(pcb_s->pcb_.get() == pcb);
+  pcb_s->sent_ += len;
+  for (auto it = pcb_s->ack_map_.begin();
+       it != pcb_s->ack_map_.upper_bound(pcb_s->sent_); ++it) {
+    it->second.SetValue();
+  }
+  pcb_s->ack_map_.erase(pcb_s->ack_map_.begin(),
+                        pcb_s->ack_map_.upper_bound(pcb_s->sent_));
+  return ERR_OK;
+}

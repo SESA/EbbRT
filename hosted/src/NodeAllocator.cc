@@ -10,7 +10,7 @@
 #include <capnp/message.h>
 
 #include <ebbrt/Fdt.h>
-#include <ebbrt/GlobalMap.h>
+#include <ebbrt/Messenger.h>
 #include <ebbrt/NodeAllocator.h>
 
 #include <RuntimeInfo.capnp.h>
@@ -61,14 +61,13 @@ ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket,
   auto index =
       node_allocator->node_index_.fetch_add(1, std::memory_order_relaxed);
   builder.setEbbIdSpace(index);
-  builder.setGlobalMapPort(global_map->GetPort());
-  builder.setGlobalMapAddress(net_addr_);
+  builder.setMessengerPort(messenger->GetPort());
+  builder.setGlobalIdMapAddress(net_addr_);
 
-  auto size = builder.totalSize().wordCount * sizeof(capnp::word);
   auto segments = message->getSegmentsForOutput();
   socket_.async_send(aptr_to_cbs(segments),
-                     [message, size](const boost::system::error_code& error,
-                                     std::size_t /*bytes_transferred*/) {
+                     [message](const boost::system::error_code& error,
+                               std::size_t /*bytes_transferred*/) {
     delete message;
     if (error) {
       throw std::runtime_error("Node allocator failed to configure node");

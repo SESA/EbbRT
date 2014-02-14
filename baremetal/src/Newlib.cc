@@ -107,9 +107,13 @@ extern "C" void* ebbrt_newlib_realloc(void*, size_t) {
   return nullptr;
 }
 
-extern "C" void* ebbrt_newlib_calloc(size_t, size_t) {
-  UNIMPLEMENTED();
-  return nullptr;
+extern "C" void* ebbrt_newlib_calloc(size_t num, size_t size) {
+  auto p = ebbrt_newlib_malloc(num * size);
+  if (p == nullptr)
+    return p;
+
+  std::memset(p, 0, num * size);
+  return p;
 }
 
 extern "C" void* ebbrt_newlib_memalign(size_t alignment, size_t size) {

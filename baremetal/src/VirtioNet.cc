@@ -30,11 +30,10 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
 
   auto rcv_vector = event_manager->AllocateVector([this]() {
     auto& rcv_queue = GetQueue(0);
-    rcv_queue.ProcessUsedBuffers([this](MutableBufferList list, size_t len) {
-      kassert(list.size() == 1);
-      list.front() += sizeof(VirtioNetHeader);
-      itf_->ReceivePacket(std::move(list.front()),
-                          len - sizeof(VirtioNetHeader));
+    rcv_queue.ProcessUsedBuffers([this](Buffer b) {
+      kassert(b.length() == 1);
+      b += sizeof(VirtioNetHeader);
+      itf_->Receive(std::move(b));
     });
     if (rcv_queue.num_free_descriptors() * 2 >= rcv_queue.Size()) {
       FillRxRing();
@@ -56,10 +55,11 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
 void ebbrt::VirtioNetDriver::FillRxRing() {
   auto& rcv_queue = GetQueue(0);
   auto num_bufs = rcv_queue.num_free_descriptors();
-  auto bufs = std::vector<MutableBufferList>(num_bufs);
+  auto bufs = std::vector<Buffer>();
+  bufs.reserve(num_bufs);
 
-  for (auto& buf_list : bufs) {
-    buf_list.emplace_front(2048);
+  for (size_t i = 0; i < num_bufs; ++i) {
+    bufs.emplace_back(2048);
   }
 
   auto it = rcv_queue.AddWritableBuffers(bufs.begin(), bufs.end());
@@ -70,15 +70,16 @@ uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
   return 1 << kMac | 1 << kMrgRxbuf;
 }
 
-void ebbrt::VirtioNetDriver::Send(ConstBufferList bufs) {
-  bufs.emplace_front(static_cast<const void*>(&empty_header_),
-                     sizeof(empty_header_));
+void ebbrt::VirtioNetDriver::Send(std::shared_ptr<const Buffer> buf) {
+  auto b = std::make_shared<Buffer>(static_cast<void*>(&empty_header_),
+                                    sizeof(empty_header_));
+  b->append(std::move(std::const_pointer_cast<Buffer>(buf)));
 
   auto& send_queue = GetQueue(1);
-  kbugon(send_queue.num_free_descriptors() < bufs.size(),
+  kbugon(send_queue.num_free_descriptors() < b->length(),
          "Must queue a packet, no more room\n");
 
-  send_queue.AddReadableBuffer(std::move(bufs));
+  send_queue.AddReadableBuffer(std::move(b));
 }
 
 const std::array<char, 6>& ebbrt::VirtioNetDriver::GetMacAddress() {

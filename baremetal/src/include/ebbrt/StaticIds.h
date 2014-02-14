@@ -6,10 +6,11 @@
 #define BAREMETAL_SRC_INCLUDE_EBBRT_STATICIDS_H_
 
 #include <ebbrt/EbbId.h>
+#include <ebbrt/GlobalStaticIds.h>
 
 namespace ebbrt {
 enum : EbbId {
-  kPageAllocatorId,
+  kPageAllocatorId = kFirstLocalId,
   kGpAllocatorId,
   kLocalIdMapId,
   kEbbAllocatorId,
@@ -17,9 +18,11 @@ enum : EbbId {
   kVMemAllocatorId,
   kTimerId,
   kNetworkManagerId,
-  kGlobalIdMapId,
-  FIRST_FREE_ID
+  kMessengerId,
+  kFirstFreeId
 };
+
+static_assert(kFirstFreeId < kFirstStaticUserId, "Id clash!");
 }  // namespace ebbrt
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_STATICIDS_H_

@@ -2,8 +2,8 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
-#ifndef BAREMETAL_SRC_INCLUDE_EBBRT_FUTURE_H_
-#define BAREMETAL_SRC_INCLUDE_EBBRT_FUTURE_H_
+#ifndef COMMON_SRC_INCLUDE_EBBRT_FUTURE_H_
+#define COMMON_SRC_INCLUDE_EBBRT_FUTURE_H_
 
 #include <atomic>
 #include <exception>
@@ -341,6 +341,36 @@ Future<typename Flatten<Res>::type> flatten(Future<Future<Res>> fut) {
   return flatten(std::move(ret));
 }
 
+inline Future<void> flatten(Future<Future<void>> fut) {
+  auto p = Promise<void>();
+  auto ret = p.GetFuture();
+  fut.Then(MoveBind([](Promise<void> prom, Future<Future<void>> fut) {
+                      Future<void> inner;
+                      try {
+                        inner = std::move(fut.Get());
+                      }
+                      catch (...) {
+                        prom.SetException(std::current_exception());
+                        return;
+                      }
+
+                      inner.Then(
+                          MoveBind([](Promise<void> prom, Future<void> fut) {
+                                     try {
+                                       fut.Get();
+                                       prom.SetValue();
+                                     }
+                                     catch (...) {
+                                       prom.SetException(
+                                           std::current_exception());
+                                     }
+                                   },
+                                   std::move(prom)));
+                    },
+                    std::move(p)));
+  return ret;
+}
+
 // Non void return async implementation
 template <typename F, typename... Args>
 typename std::enable_if<
@@ -552,6 +582,8 @@ __future_detail::State<Res>::ThenHelp(Launch policy, F&& func,
       // helper sets function to be called
       auto prom = Promise<result_type>();
       auto ret = prom.GetFuture();
+      if (func_)
+        throw std::runtime_error("Multiple thens on a future!");
       func_ = MoveBind([](Promise<result_type> prom, Future<Res> fut, F fn) {
                          try {
                            prom.SetValue(fn(std::move(fut)));
@@ -595,6 +627,8 @@ __future_detail::State<void>::ThenHelp(Launch policy, F&& func,
       // helper sets function to be called
       auto prom = Promise<result_type>();
       auto ret = prom.GetFuture();
+      if (func_)
+        throw std::runtime_error("Multiple thens on a future!");
       func_ = MoveBind([](Promise<result_type> prom, Future<void> fut, F fn) {
                          try {
                            prom.SetValue(fn(std::move(fut)));
@@ -639,6 +673,8 @@ __future_detail::State<Res>::ThenHelp(Launch policy, F&& func,
       // helper sets function to be called
       auto prom = Promise<result_type>();
       auto ret = prom.GetFuture();
+      if (func_)
+        throw std::runtime_error("Multiple thens on a future!");
       func_ = MoveBind([](Promise<result_type> prom, Future<Res> fut, F fn) {
                          try {
                            fn(std::move(fut));
@@ -684,6 +720,8 @@ __future_detail::State<void>::ThenHelp(Launch policy, F&& func,
       // helper sets function to be called
       auto prom = Promise<result_type>();
       auto ret = prom.GetFuture();
+      if (func_)
+        throw std::runtime_error("Multiple thens on a future!");
       func_ = MoveBind([](Promise<result_type> prom, Future<void> fut, F fn) {
                          try {
                            fn(std::move(fut));
@@ -786,4 +824,4 @@ template <typename Res> bool __future_detail::State<Res>::Ready() const {
 inline bool __future_detail::State<void>::Ready() const { return ready_; }
 }  // namespace ebbrt
 
-#endif  // BAREMETAL_SRC_INCLUDE_EBBRT_FUTURE_H_
+#endif  // COMMON_SRC_INCLUDE_EBBRT_FUTURE_H_

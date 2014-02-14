@@ -6,16 +6,19 @@
 #define HOSTED_SRC_INCLUDE_EBBRT_STATICIDS_H_
 
 #include <ebbrt/EbbId.h>
+#include <ebbrt/GlobalStaticIds.h>
 
 namespace ebbrt {
 enum : EbbId {
-  kLocalIdMapId,
+  kLocalIdMapId = kFirstLocalId,
   kEbbAllocatorId,
   kNetworkManagerId,
   kNodeAllocatorId,
+  kMessengerId,
+  kEventManagerId,
   kGlobalMapId,
   kFirstFreeId
 };
-}
+}  // namespace ebbrt
 
 #endif  // HOSTED_SRC_INCLUDE_EBBRT_STATICIDS_H_

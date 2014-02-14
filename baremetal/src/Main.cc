@@ -2,8 +2,6 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
-#include <ebbrt/Future.h>
-
 #include <ebbrt/Main.h>
 
 #include <cstdarg>
@@ -25,6 +23,7 @@
 #include <ebbrt/GlobalIdMap.h>
 #include <ebbrt/LocalIdMap.h>
 #include <ebbrt/MemMap.h>
+#include <ebbrt/Messenger.h>
 #include <ebbrt/Multiboot.h>
 #include <ebbrt/Net.h>
 #include <ebbrt/Numa.h>
@@ -132,14 +131,21 @@ extern "C"
     pci::RegisterProbe(VirtioNetDriver::Probe);
     pci::LoadDrivers();
     network_manager->AcquireIPAddress();
-    GlobalIdMap::Init();
+    Messenger::Init();
     runtime::Init();
     // run global ctors
     for (unsigned i = 0; i < (end_ctors - start_ctors); ++i) {
       start_ctors[i]();
     }
     kprintf("System initialization complete\n");
+    global_id_map->Get(kFirstStaticUserId).Then([](Future<Buffer> val) {
+      kprintf(static_cast<const char*>(val.Get().data()));
+    });
+    // auto f = global_id_map->Get(kFirstStaticUserId);
+    // f.Then([](Future<std::string> val) {
+    //   kprintf(val.Get().c_str());
+    //   kprintf("\n");
+    // });
   });
-
   event_manager->StartProcessingEvents();
 }

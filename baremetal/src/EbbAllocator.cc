@@ -24,7 +24,7 @@ ebbrt::EbbAllocator& ebbrt::EbbAllocator::HandleFault(EbbId id) {
 
 ebbrt::EbbAllocator::EbbAllocator() {
   auto start_ids =
-      boost::icl::interval<EbbId>::type(FIRST_FREE_ID, (1 << 16) - 1);
+      boost::icl::interval<EbbId>::type(kFirstFreeId, kFirstStaticUserId - 1);
   free_ids_.insert(std::move(start_ids));
 }
 
