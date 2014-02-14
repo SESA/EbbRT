@@ -25,19 +25,20 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   class Session : public std::enable_shared_from_this<Session> {
    public:
     explicit Session(boost::asio::ip::tcp::socket socket, uint32_t net_addr);
+    void Start();
 
    private:
     boost::asio::ip::tcp::socket socket_;
     uint32_t net_addr_;
   };
 
-  void DoAccept();
+  void DoAccept(std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor,
+                std::shared_ptr<boost::asio::ip::tcp::socket> socket);
 
   std::atomic<uint16_t> node_index_;
   int network_id_;
   uint32_t net_addr_;
-  boost::asio::ip::tcp::acceptor acceptor_;
-  boost::asio::ip::tcp::socket socket_;
+  uint16_t port_;
 
   friend class Session;
 };

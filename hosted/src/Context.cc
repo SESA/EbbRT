@@ -24,3 +24,13 @@ void ebbrt::Context::Run() {
   ContextActivation active(*this);
   io_service_.run();
 }
+
+void ebbrt::Context::RunOne() {
+  ContextActivation active(*this);
+  io_service_.run_one();
+}
+
+void ebbrt::Context::PollOne() {
+  ContextActivation active(*this);
+  io_service_.poll_one();
+}

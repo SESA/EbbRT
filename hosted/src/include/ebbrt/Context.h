@@ -29,6 +29,8 @@ class Context {
   void Activate();
   void Deactivate();
   void Run();
+  void RunOne();
+  void PollOne();
   LocalEntry GetLocalEntry(EbbId id) { return local_table_[id]; }
   void SetLocalEntry(EbbId id, LocalEntry le) { local_table_[id] = le; }
 

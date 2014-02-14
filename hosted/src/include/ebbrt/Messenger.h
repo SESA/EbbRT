@@ -33,9 +33,11 @@ class Messenger : public StaticSharedEbb<Messenger> {
   Future<void> Send(NetworkId to, std::shared_ptr<const Buffer> data);
 
  private:
-  class Session {
+  class Session : public std::enable_shared_from_this<Session> {
    public:
     explicit Session(boost::asio::ip::tcp::socket socket);
+
+    void Start();
     Future<void> Send(std::shared_ptr<const Buffer> data);
 
    private:
@@ -49,13 +51,13 @@ class Messenger : public StaticSharedEbb<Messenger> {
     boost::asio::ip::tcp::socket socket_;
   };
 
-  void DoAccept();
+  void DoAccept(std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor,
+                std::shared_ptr<boost::asio::ip::tcp::socket> socket);
   uint16_t GetPort();
 
-  boost::asio::ip::tcp::acceptor acceptor_;
-  boost::asio::ip::tcp::socket socket_;
+  uint16_t port_;
   std::mutex m_;
-  std::unordered_map<uint32_t, Future<Session>> connection_map_;
+  std::unordered_map<uint32_t, Future<std::weak_ptr<Session>>> connection_map_;
 
   friend class Session;
   friend class NodeAllocator;

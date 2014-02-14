@@ -17,42 +17,11 @@
 
 namespace bai = boost::asio::ip;
 
-namespace {
-struct array_ptr_wrapper {
-  explicit array_ptr_wrapper(const kj::ArrayPtr<const capnp::word>* aptr)
-      : aptr_(aptr) {}
-
-  const kj::ArrayPtr<const capnp::word>* aptr_;
-
-  bool operator==(const array_ptr_wrapper& rhs) { return aptr_ == rhs.aptr_; }
-  bool operator!=(const array_ptr_wrapper& rhs) { return !(*this == rhs); }
-  array_ptr_wrapper& operator++() {
-    aptr_++;
-    return *this;
-  }
-  const boost::asio::const_buffer& operator*() {
-    return boost::asio::buffer(static_cast<const void*>(aptr_->begin()),
-                               aptr_->size() * sizeof(capnp::word));
-  }
-};
-
-class aptr_to_cbs {
- public:
-  typedef boost::asio::const_buffer value_type;
-  typedef array_ptr_wrapper const_iterator;
-  explicit aptr_to_cbs(kj::ArrayPtr<const kj::ArrayPtr<const capnp::word>> aptr)
-      : aptr_(aptr) {}
-  const_iterator begin() const { return array_ptr_wrapper(aptr_.begin()); }
-  const_iterator end() const { return array_ptr_wrapper(aptr_.end()); }
-
- private:
-  kj::ArrayPtr<const kj::ArrayPtr<const capnp::word>> aptr_;
-};
-}  // namespace
-
 ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket,
                                        uint32_t net_addr)
-    : socket_(std::move(socket)), net_addr_(net_addr) {
+    : socket_(std::move(socket)), net_addr_(net_addr) {}
+
+void ebbrt::NodeAllocator::Session::Start() {
   std::cout << "New connection" << std::endl;
   auto message = new capnp::MallocMessageBuilder();
   auto builder = message->initRoot<RuntimeInfo>();
@@ -65,9 +34,16 @@ ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket,
   builder.setGlobalIdMapAddress(net_addr_);
 
   auto segments = message->getSegmentsForOutput();
-  socket_.async_send(aptr_to_cbs(segments),
-                     [message](const boost::system::error_code& error,
-                               std::size_t /*bytes_transferred*/) {
+  std::vector<boost::asio::const_buffer> bufs;
+  bufs.reserve(segments.size());
+  for (auto& segment : segments) {
+    bufs.emplace_back(static_cast<const void*>(segment.begin()),
+                      segment.size() * sizeof(capnp::word));
+  }
+  auto self(shared_from_this());
+  socket_.async_send(std::move(bufs),
+                     [message, self](const boost::system::error_code& error,
+                                     std::size_t /*bytes_transferred*/) {
     delete message;
     if (error) {
       throw std::runtime_error("Node allocator failed to configure node");
@@ -75,10 +51,10 @@ ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket,
   });
 }
 
-ebbrt::NodeAllocator::NodeAllocator()
-    : node_index_(2), acceptor_(active_context->io_service_,
-                                bai::tcp::endpoint(bai::tcp::v4(), 0)),
-      socket_(active_context->io_service_) {
+ebbrt::NodeAllocator::NodeAllocator() : node_index_(2) {
+  auto acceptor = std::make_shared<bai::tcp::acceptor>(
+      active_context->io_service_, bai::tcp::endpoint(bai::tcp::v4(), 0));
+  auto socket = std::make_shared<bai::tcp::socket>(active_context->io_service_);
   // TODO(dschatz): fix this hard coded name
   auto f = popen("/opt/khpy/kh network", "r");
   if (f == nullptr) {
@@ -95,31 +71,32 @@ ebbrt::NodeAllocator::NodeAllocator()
          &ip2, &ip3);
   pclose(f);
   net_addr_ = ip0 << 24 | ip1 << 16 | ip2 << 8 | ip3;
+  port_ = acceptor->local_endpoint().port();
   std::cout << "Node Allocator bound to " << static_cast<int>(ip0) << "."
             << static_cast<int>(ip1) << "." << static_cast<int>(ip2) << "."
-            << static_cast<int>(ip3) << ":" << acceptor_.local_endpoint().port()
-            << std::endl;
-  DoAccept();
+            << static_cast<int>(ip3) << ":" << port_ << std::endl;
+  DoAccept(std::move(acceptor), std::move(socket));
 }
 
-ebbrt::NodeAllocator:: ~NodeAllocator()
-{
-
+ebbrt::NodeAllocator::~NodeAllocator() {
   std::cout << "Node Allocator destructor! " << std::endl;
   char network[100];
   snprintf(network, sizeof(network), "%d", network_id_);
-  std::string command = "/opt/khpy/kh rmnet " + std::string(network); 
+  std::string command = "/opt/khpy/kh rmnet " + std::string(network);
   std::cout << "executing " << command << std::endl;
   system(command.c_str());
 }
 
-void ebbrt::NodeAllocator::DoAccept() {
-  acceptor_.async_accept(socket_, [this](boost::system::error_code ec) {
-    if (!ec) {
-      std::make_shared<Session>(std::move(socket_), net_addr_);
-    }
-    DoAccept();
-  });
+void
+ebbrt::NodeAllocator::DoAccept(std::shared_ptr<bai::tcp::acceptor> acceptor,
+                               std::shared_ptr<bai::tcp::socket> socket) {
+  acceptor->async_accept(
+      *socket, [this, acceptor, socket](boost::system::error_code ec) {
+        if (!ec) {
+          std::make_shared<Session>(std::move(*socket), net_addr_)->Start();
+          DoAccept(std::move(acceptor), std::move(socket));
+        }
+      });
 }
 
 void ebbrt::NodeAllocator::AllocateNode(std::string binary_path) {
@@ -127,7 +104,7 @@ void ebbrt::NodeAllocator::AllocateNode(std::string binary_path) {
   fdt.BeginNode("/");
   fdt.BeginNode("runtime");
   fdt.CreateProperty("address", net_addr_);
-  auto port = acceptor_.local_endpoint().port();
+  auto port = port_;
   fdt.CreateProperty("port", port);
   fdt.EndNode();
   fdt.EndNode();
