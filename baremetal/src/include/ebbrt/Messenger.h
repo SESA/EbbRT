@@ -39,6 +39,7 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
       if (it == connection_map_.end()) {
         // we don't have a pending connection, start one
         NetworkManager::TcpPcb pcb;
+        pcb.Receive([this](Buffer b) { Receive(std::move(b)); });
         auto f = pcb.Connect(&to.ip, port_);
         auto f2 =
             f.Then(MoveBind([](NetworkManager::TcpPcb pcb, Future<void> f) {
@@ -47,12 +48,12 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
                               return pcb;
                             },
                             std::move(pcb)));
-        connection_map_.emplace(to.ip.addr, std::move(f2));
+        connection_map_.emplace(to.ip.addr, std::move(f2.Share()));
       }
     }
     return connection_map_[to.ip.addr].Then(
         MoveBind([](std::shared_ptr<const Buffer> data,
-                    Future<NetworkManager::TcpPcb> f) {
+                    SharedFuture<NetworkManager::TcpPcb> f) {
                    kprintf("Sending %d\n", data->total_size());
                    auto buf = Buffer(sizeof(Header));
                    auto h = static_cast<Header*>(buf.data());
@@ -63,14 +64,16 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
                  std::move(data)));
   }
 
+  void Receive(Buffer b);
+
  private:
   void StartListening(uint16_t port);
 
   static uint16_t port_;
   NetworkManager::TcpPcb tcp_;
   ebbrt::SpinLock lock_;
-  // FIXME: This should be a shared future!
-  std::unordered_map<uint32_t, Future<NetworkManager::TcpPcb>> connection_map_;
+  std::unordered_map<uint32_t, SharedFuture<NetworkManager::TcpPcb>>
+  connection_map_;
 
   friend void ebbrt::runtime::Init();
 };

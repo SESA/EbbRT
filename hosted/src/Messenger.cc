@@ -31,7 +31,7 @@ ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to,
 
   return connection_map_[ip].Then(
       MoveBind([](std::shared_ptr<const Buffer> data,
-                  Future<std::weak_ptr<Session>> f) {
+                  SharedFuture<std::weak_ptr<Session>> f) {
                  return f.Get().lock()->Send(std::move(data));
                },
                std::move(data)));
@@ -51,7 +51,7 @@ void ebbrt::Messenger::DoAccept(
           auto session = std::make_shared<Session>(std::move(*socket));
           session->Start();
           connection_map_.emplace(addr, MakeReadyFuture<std::weak_ptr<Session>>(
-                                            std::move(session)));
+                                            std::move(session)).Share());
           DoAccept(std::move(acceptor), std::move(socket));
         }
       });
