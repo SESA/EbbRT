@@ -9,11 +9,11 @@ struct Header {
   uint32_t segment_sizes[0];
 };
 
-ebbrt::Buffer ebbrt::AppendHeader(ebbrt::BufferMessageBuilder builder) {
+ebbrt::Buffer ebbrt::AppendHeader(ebbrt::BufferMessageBuilder& builder) {
   auto segs = builder.getSegmentsForOutput();
   auto nsegs = segs.size();
   auto header_size = align::Up(4 + 4 * nsegs, 8);
-  auto header_buf = Buffer(header_size);
+  auto header_buf = Buffer(header_size, true);
   auto h = static_cast<Header*>(header_buf.data());
   h->num_segments = nsegs;
   unsigned i = 0;

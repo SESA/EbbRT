@@ -67,7 +67,7 @@ class BufferMessageReader : public capnp::MessageReader {
   std::vector<kj::ArrayPtr<const capnp::word>> segments_;
 };
 
-Buffer AppendHeader(BufferMessageBuilder builder);
+Buffer AppendHeader(BufferMessageBuilder& builder);
 }  // namespace ebbrt
 
 #endif  // COMMON_SRC_INCLUDE_EBBRT_CAPNPMESSAGE_H_

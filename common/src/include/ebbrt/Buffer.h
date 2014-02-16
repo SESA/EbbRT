@@ -17,9 +17,13 @@ class Buffer {
   Buffer()
       : next_(nullptr), buffer_(nullptr), free_(nullptr), total_size_(0),
         size_(0), offset_(0), length_(0) {}
-  explicit Buffer(size_t size)
+  explicit Buffer(size_t size, bool zero_memory = false)
       : next_(nullptr), total_size_(size), size_(size), offset_(0), length_(1) {
-    buffer_ = std::malloc(size);
+    if (zero_memory) {
+      buffer_ = std::calloc(1, size);
+    } else {
+      buffer_ = std::malloc(size);
+    }
     if (buffer_ == nullptr)
       throw std::bad_alloc();
     free_ = [](void* ptr, size_t size) { std::free(ptr); };  // NOLINT

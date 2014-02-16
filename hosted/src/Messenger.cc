@@ -28,27 +28,13 @@ ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to,
           "UNIMPLEMENTED Messenger::Send create connection");
     }
   }
-  // return connection_map_[ip].Then(
-  //     MoveBind([](std::shared_ptr<const Buffer> data,
-  //                 Future<Session> f) {
-  //                return f.Get().Send(std::move(data));
-  //              },
-  //              std::move(data)));
 
-  // connection_map_[ip].Then(MoveBind([](std::shared_ptr<const Buffer> data,
-  //                                      Future<Session> f) {
-  //                                     f.Get().Send(std::move(data));
-  //                                   },
-  //                                   std::move(data)));
-  // return MakeReadyFuture<void>();
-
-  connection_map_[ip].Then(MoveBind([](std::shared_ptr<const Buffer> data,
-                                       Future<std::weak_ptr<Session>> f) {
-                                      return f.Get().lock()->Send(
-                                          std::move(data));
-                                    },
-                                    std::move(data)));
-  return MakeReadyFuture<void>();
+  return connection_map_[ip].Then(
+      MoveBind([](std::shared_ptr<const Buffer> data,
+                  Future<std::weak_ptr<Session>> f) {
+                 return f.Get().lock()->Send(std::move(data));
+               },
+               std::move(data)));
 }
 
 void ebbrt::Messenger::DoAccept(
@@ -110,6 +96,7 @@ ebbrt::Messenger::Session::Send(std::shared_ptr<const Buffer> data) {
   auto p = new Promise<void>();
   auto ret = p->GetFuture();
   auto self(shared_from_this());
+
   boost::asio::async_write(
       socket_, BufferToCBS(std::move(buf)),
       [p, self](boost::system::error_code ec, std::size_t /*length*/) {
@@ -151,10 +138,9 @@ void ebbrt::Messenger::Session::ReadMessage() {
       [this, buf, size, self](const boost::system::error_code& ec,
                               std::size_t /*length*/) {
         if (!ec) {
-          // global_id_map->HandleMessage(
-          //     NetworkId(socket_.remote_endpoint().address().to_v4()),
-          //     Buffer(buf, length, [](void* p, size_t sz) { free(p); }));
-          free(buf);
+          global_id_map->HandleMessage(
+              NetworkId(socket_.remote_endpoint().address().to_v4()),
+              Buffer(buf, size, [](void* p, size_t sz) { free(p); }));
         }
         ReadHeader();
       });

@@ -21,11 +21,8 @@ void ebbrt::GlobalIdMap::HandleMessage(Messenger::NetworkId nid, Buffer buf) {
   switch (request.which()) {
   case global_id_map_message::Request::Which::GET_REQUEST: {
     auto get_request = request.getGetRequest();
-
-    auto m = new capnp::MallocMessageBuilder();
-    auto builder = m->initRoot<global_id_map_message::Reply>();
-    // BufferMessageBuilder message;
-    // auto builder = message.initRoot<global_id_map_message::Reply>();
+    BufferMessageBuilder message;
+    auto builder = message.initRoot<global_id_map_message::Reply>();
     auto get_builder = builder.initGetReply();
     get_builder.setMessageId(get_request.getMessageId());
     auto ebbid = get_request.getEbbId();
@@ -37,15 +34,8 @@ void ebbrt::GlobalIdMap::HandleMessage(Messenger::NetworkId nid, Buffer buf) {
       get_builder.setData(reader);
     }
 
-    auto segs = m->getSegmentsForOutput();
-    assert(segs.size() == 1);
-    auto buf = std::make_shared<const Buffer>(
-        const_cast<void*>(static_cast<const void*>(segs.front().begin())),
-        segs.front().size() * sizeof(capnp::word));
-    messenger->Send(nid, std::move(buf));
-    // auto b = AppendHeader(std::move(message));
-    // messenger->Send(
-    //     nid, std::make_shared<const Buffer>(std::move(message.GetBuffer())));
+    auto b = AppendHeader(message);
+    messenger->Send(nid, std::make_shared<const Buffer>(std::move(b)));
 
     break;
   }
