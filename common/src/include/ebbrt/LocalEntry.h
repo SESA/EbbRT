@@ -5,11 +5,16 @@
 #ifndef COMMON_SRC_INCLUDE_EBBRT_LOCALENTRY_H_
 #define COMMON_SRC_INCLUDE_EBBRT_LOCALENTRY_H_
 
+#include <ebbrt/EbbId.h>
+
 namespace ebbrt {
 struct LocalEntry {
   LocalEntry() : ref(nullptr) {}
   void* ref;
 };
+
+LocalEntry GetLocalEntry(EbbId id);
+void SetLocalEntry(EbbId id, LocalEntry le);
 }  // namespace ebbrt
 
 #endif  // COMMON_SRC_INCLUDE_EBBRT_LOCALENTRY_H_

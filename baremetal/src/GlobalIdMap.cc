@@ -14,7 +14,8 @@ namespace {
 uint32_t frontend_ip;
 }
 
-ebbrt::GlobalIdMap::GlobalIdMap() : val_(0) {}
+ebbrt::GlobalIdMap::GlobalIdMap()
+    : Messagable<GlobalIdMap>(kGlobalIdMapId), val_(0) {}
 
 void ebbrt::GlobalIdMap::SetAddress(uint32_t addr) { frontend_ip = addr; }
 
@@ -54,13 +55,13 @@ ebbrt::Future<std::string> ebbrt::GlobalIdMap::Get(EbbId id) {
   }
   header_buf.emplace_back(std::move(buf));
 
-  messenger->Send(Messenger::NetworkId(frontend_ip),
-                  std::make_shared<const Buffer>(std::move(header_buf)));
+  SendMessage(Messenger::NetworkId(frontend_ip),
+              std::make_shared<const Buffer>(std::move(header_buf)));
 
   return p.GetFuture();
 }
 
-void ebbrt::GlobalIdMap::HandleMessage(Messenger::NetworkId nid, Buffer b) {
+void ebbrt::GlobalIdMap::ReceiveMessage(Messenger::NetworkId nid, Buffer b) {
   auto reader = BufferMessageReader(std::move(b));
   auto reply = reader.getRoot<global_id_map_message::Reply>();
 

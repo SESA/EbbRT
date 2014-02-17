@@ -30,9 +30,16 @@ class Messenger : public StaticSharedEbb<Messenger> {
 
   Messenger();
 
-  Future<void> Send(NetworkId to, std::shared_ptr<const Buffer> data);
+  Future<void> Send(NetworkId to, EbbId id, uint64_t type_code,
+                    std::shared_ptr<const Buffer> data);
 
  private:
+  struct Header {
+    uint64_t length;
+    uint64_t type_code;
+    EbbId id;
+  };
+
   class Session : public std::enable_shared_from_this<Session> {
    public:
     explicit Session(boost::asio::ip::tcp::socket socket);
@@ -41,9 +48,6 @@ class Messenger : public StaticSharedEbb<Messenger> {
     Future<void> Send(std::shared_ptr<const Buffer> data);
 
    private:
-    struct Header {
-      uint64_t size;
-    };
     void ReadHeader();
     void ReadMessage();
 

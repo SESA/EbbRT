@@ -14,9 +14,12 @@
 #include <ebbrt/StaticSharedEbb.h>
 
 namespace ebbrt {
+
 class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
   struct Header {
     uint64_t length;
+    uint64_t type_code;
+    EbbId id;
   };
 
  public:
@@ -32,39 +35,8 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
 
   Messenger();
 
-  Future<void> Send(NetworkId to, std::shared_ptr<const Buffer> data) {
-    {
-      std::lock_guard<SpinLock> lock(lock_);
-      auto it = connection_map_.find(to.ip.addr);
-      if (it == connection_map_.end()) {
-        // we don't have a pending connection, start one
-        NetworkManager::TcpPcb pcb;
-        pcb.Receive([this](NetworkManager::TcpPcb& t,
-                           Buffer b) { Receive(t, std::move(b)); });
-        auto f = pcb.Connect(&to.ip, port_);
-        auto f2 =
-            f.Then(MoveBind([](NetworkManager::TcpPcb pcb, Future<void> f) {
-                              kprintf("Connected\n");
-                              f.Get();
-                              return pcb;
-                            },
-                            std::move(pcb)));
-        connection_map_.emplace(to.ip.addr, std::move(f2.Share()));
-      }
-    }
-    return connection_map_[to.ip.addr].Then(
-        MoveBind([](std::shared_ptr<const Buffer> data,
-                    SharedFuture<NetworkManager::TcpPcb> f) {
-                   kprintf("Sending %d\n", data->total_size());
-                   auto buf = Buffer(sizeof(Header));
-                   auto h = static_cast<Header*>(buf.data());
-                   h->length = data->total_size();
-                   buf.append(std::move(std::const_pointer_cast<Buffer>(data)));
-                   f.Get().Send(std::make_shared<const Buffer>(std::move(buf)));
-                 },
-                 std::move(data)));
-  }
-
+  Future<void> Send(NetworkId nid, EbbId id, uint64_t type_code,
+                    std::shared_ptr<const Buffer> data);
   void Receive(NetworkManager::TcpPcb& t, Buffer b);
 
  private:
@@ -80,6 +52,7 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
 };
 
 constexpr auto messenger = EbbRef<Messenger>(kMessengerId);
+
 }  // namespace ebbrt
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_MESSENGER_H_

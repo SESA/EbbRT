@@ -17,8 +17,10 @@ ebbrt::Messenger::Messenger() {
   DoAccept(std::move(acceptor), std::move(socket));
 }
 
-ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to,
+ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to, EbbId id,
+                                           uint64_t type_code,
                                            std::shared_ptr<const Buffer> data) {
+  // make sure we have a pending connection
   auto ip = to.ip_.to_ulong();
   {
     std::lock_guard<std::mutex> lock(m_);
@@ -29,12 +31,19 @@ ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to,
     }
   }
 
+  // construct header
+  auto buf = std::make_shared<Buffer>(sizeof(Header));
+  auto h = static_cast<Header*>(buf->data());
+  h->length = data->total_size();
+  h->type_code = type_code;
+  h->id = id;
+  buf->append(std::move(std::const_pointer_cast<Buffer>(data)));
   return connection_map_[ip].Then(
       MoveBind([](std::shared_ptr<const Buffer> data,
                   SharedFuture<std::weak_ptr<Session>> f) {
                  return f.Get().lock()->Send(std::move(data));
                },
-               std::move(data)));
+               std::move(buf)));
 }
 
 void ebbrt::Messenger::DoAccept(
@@ -89,16 +98,12 @@ class BufferToCBS {
 
 ebbrt::Future<void>
 ebbrt::Messenger::Session::Send(std::shared_ptr<const Buffer> data) {
-  auto buf = std::make_shared<Buffer>(sizeof(Header));
-  auto h = static_cast<Header*>(buf->data());
-  h->size = data->total_size();
-  buf->append(std::move(std::const_pointer_cast<Buffer>(data)));
   auto p = new Promise<void>();
   auto ret = p->GetFuture();
   auto self(shared_from_this());
 
   boost::asio::async_write(
-      socket_, BufferToCBS(std::move(buf)),
+      socket_, BufferToCBS(std::move(data)),
       [p, self](boost::system::error_code ec, std::size_t /*length*/) {
         if (!ec) {
           p->SetValue();
@@ -121,7 +126,7 @@ void ebbrt::Messenger::Session::ReadHeader() {
 }
 
 void ebbrt::Messenger::Session::ReadMessage() {
-  auto size = header_.size;
+  auto size = header_.length;
   if (size <= 0) {
     throw std::runtime_error("Request to read undersized message!");
   }
@@ -138,7 +143,8 @@ void ebbrt::Messenger::Session::ReadMessage() {
       [this, buf, size, self](const boost::system::error_code& ec,
                               std::size_t /*length*/) {
         if (!ec) {
-          global_id_map->HandleMessage(
+          auto& ref = GetMessagableRef(header_.id, header_.type_code);
+          ref.ReceiveMessageInternal(
               NetworkId(socket_.remote_endpoint().address().to_v4()),
               Buffer(buf, size, [](void* p, size_t sz) { free(p); }));
         }

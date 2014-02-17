@@ -12,20 +12,22 @@
 #include <ebbrt/CacheAligned.h>
 #include <ebbrt/EbbRef.h>
 #include <ebbrt/Future.h>
-#include <ebbrt/Messenger.h>
+#include <ebbrt/Message.h>
 #include <ebbrt/Net.h>
 #include <ebbrt/StaticIds.h>
 #include <ebbrt/StaticSharedEbb.h>
 #include <ebbrt/Runtime.h>
 
 namespace ebbrt {
-class GlobalIdMap : public StaticSharedEbb<GlobalIdMap>, public CacheAligned {
+class GlobalIdMap : public StaticSharedEbb<GlobalIdMap>,
+                    public CacheAligned,
+                    public Messagable<GlobalIdMap> {
  public:
   GlobalIdMap();
 
   Future<std::string> Get(EbbId id);
 
-  void HandleMessage(Messenger::NetworkId nid, Buffer buf);
+  void ReceiveMessage(Messenger::NetworkId nid, Buffer buf);
 
  private:
   static void SetAddress(uint32_t addr);

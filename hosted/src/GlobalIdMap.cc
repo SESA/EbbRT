@@ -8,13 +8,15 @@
 
 #include "GlobalIdMessage.capnp.h"  //NOLINT
 
+ebbrt::GlobalIdMap::GlobalIdMap() : Messagable<GlobalIdMap>(kGlobalIdMapId) {}
+
 ebbrt::Future<void> ebbrt::GlobalIdMap::Set(EbbId id, std::string data) {
   std::lock_guard<std::mutex> lock(m_);
   map_[id] = std::move(data);
   return MakeReadyFuture<void>();
 }
 
-void ebbrt::GlobalIdMap::HandleMessage(Messenger::NetworkId nid, Buffer buf) {
+void ebbrt::GlobalIdMap::ReceiveMessage(Messenger::NetworkId nid, Buffer buf) {
   auto reader = BufferMessageReader(std::move(buf));
   auto request = reader.getRoot<global_id_map_message::Request>();
 
@@ -35,7 +37,7 @@ void ebbrt::GlobalIdMap::HandleMessage(Messenger::NetworkId nid, Buffer buf) {
     }
 
     auto b = AppendHeader(message);
-    messenger->Send(nid, std::make_shared<const Buffer>(std::move(b)));
+    SendMessage(nid, std::make_shared<const Buffer>(std::move(b)));
 
     break;
   }

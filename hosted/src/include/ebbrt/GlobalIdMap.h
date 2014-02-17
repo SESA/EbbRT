@@ -11,16 +11,19 @@
 #include <ebbrt/Buffer.h>
 #include <ebbrt/EbbRef.h>
 #include <ebbrt/Future.h>
-#include <ebbrt/Messenger.h>
+#include <ebbrt/Message.h>
 #include <ebbrt/StaticIds.h>
 #include <ebbrt/StaticSharedEbb.h>
 
 namespace ebbrt {
-class GlobalIdMap : public StaticSharedEbb<GlobalIdMap> {
+class GlobalIdMap : public StaticSharedEbb<GlobalIdMap>,
+                    public CacheAligned,
+                    public Messagable<GlobalIdMap> {
  public:
+  GlobalIdMap();
   Future<void> Set(EbbId id, std::string data);
 
-  void HandleMessage(Messenger::NetworkId nid, Buffer buf);
+  void ReceiveMessage(Messenger::NetworkId nid, Buffer buf);
 
  private:
   std::mutex m_;
