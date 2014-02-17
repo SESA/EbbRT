@@ -39,7 +39,8 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
       if (it == connection_map_.end()) {
         // we don't have a pending connection, start one
         NetworkManager::TcpPcb pcb;
-        pcb.Receive([this](Buffer b) { Receive(std::move(b)); });
+        pcb.Receive([this](NetworkManager::TcpPcb& t,
+                           Buffer b) { Receive(t, std::move(b)); });
         auto f = pcb.Connect(&to.ip, port_);
         auto f2 =
             f.Then(MoveBind([](NetworkManager::TcpPcb pcb, Future<void> f) {
@@ -64,7 +65,7 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
                  std::move(data)));
   }
 
-  void Receive(Buffer b);
+  void Receive(NetworkManager::TcpPcb& t, Buffer b);
 
  private:
   void StartListening(uint16_t port);

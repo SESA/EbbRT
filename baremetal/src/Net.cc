@@ -276,8 +276,8 @@ err_t ebbrt::NetworkManager::TcpPcb::Connect_Handler(void* arg,
   return ERR_OK;
 }
 
-void
-ebbrt::NetworkManager::TcpPcb::Receive(std::function<void(Buffer)> callback) {
+void ebbrt::NetworkManager::TcpPcb::Receive(
+    std::function<void(TcpPcb&, Buffer)> callback) {
   receive_callback_ = std::move(callback);
   tcp_recv(pcb_.get(), Receive_Handler);
 }
@@ -290,7 +290,7 @@ err_t ebbrt::NetworkManager::TcpPcb::Receive_Handler(void* arg,
   auto pcb_s = static_cast<TcpPcb*>(arg);
   kassert(pcb_s->pcb_.get() == pcb);
   if (p == nullptr) {
-    pcb_s->receive_callback_(Buffer(nullptr, 0));
+    pcb_s->receive_callback_(*pcb_s, Buffer(nullptr, 0));
   } else {
     auto b = Buffer(p->payload, p->len,
                     [p](void* pointer, size_t sz) { pbuf_free(p); });
@@ -298,8 +298,8 @@ err_t ebbrt::NetworkManager::TcpPcb::Receive_Handler(void* arg,
       b.emplace_back(q->payload, q->len,
                      [q](void* pointer, size_t sz) { pbuf_free(q); });
     }
+    pcb_s->receive_callback_(*pcb_s, std::move(b));
     tcp_recved(pcb_s->pcb_.get(), p->tot_len);
-    pcb_s->receive_callback_(std::move(b));
   }
   return ERR_OK;
 }  // NOLINT
@@ -332,4 +332,8 @@ err_t ebbrt::NetworkManager::TcpPcb::SentHandler(void* arg, struct tcp_pcb* pcb,
   pcb_s->ack_map_.erase(pcb_s->ack_map_.begin(),
                         pcb_s->ack_map_.upper_bound(pcb_s->sent_));
   return ERR_OK;
+}
+
+ip_addr_t ebbrt::NetworkManager::TcpPcb::GetRemoteAddress() const {
+  return pcb_->remote_ip;
 }

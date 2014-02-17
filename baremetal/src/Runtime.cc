@@ -52,7 +52,7 @@ void ebbrt::runtime::Init() {
   ip_addr_t addr;
   addr.addr = htonl(ip);
   EventManager::EventContext context;
-  pcb->Receive([pcb, &context](Buffer b) {
+  pcb->Receive([pcb, &context](NetworkManager::TcpPcb& t, Buffer b) {
     if (b.data() == nullptr) {
       delete pcb;
     } else {

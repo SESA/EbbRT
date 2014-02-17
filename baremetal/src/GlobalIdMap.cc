@@ -26,7 +26,7 @@ struct Header {
 };
 }
 
-ebbrt::Future<ebbrt::Buffer> ebbrt::GlobalIdMap::Get(EbbId id) {
+ebbrt::Future<std::string> ebbrt::GlobalIdMap::Get(EbbId id) {
   lock_.lock();
   auto v = val_++;
   auto& p = map_[v];
@@ -58,4 +58,26 @@ ebbrt::Future<ebbrt::Buffer> ebbrt::GlobalIdMap::Get(EbbId id) {
                   std::make_shared<const Buffer>(std::move(header_buf)));
 
   return p.GetFuture();
+}
+
+void ebbrt::GlobalIdMap::HandleMessage(Messenger::NetworkId nid, Buffer b) {
+  auto reader = BufferMessageReader(std::move(b));
+  auto reply = reader.getRoot<global_id_map_message::Reply>();
+
+  switch (reply.which()) {
+  case global_id_map_message::Reply::Which::GET_REPLY: {
+    auto get_reply = reply.getGetReply();
+    auto mid = get_reply.getMessageId();
+    auto it = map_.find(mid);
+    kassert(it != map_.end());
+    auto data = get_reply.getData();
+    it->second.SetValue(
+        std::string(reinterpret_cast<const char*>(data.begin()), data.size()));
+    break;
+  }
+  case global_id_map_message::Reply::Which::SET_REPLY: {
+    throw std::runtime_error("UNIMPLEMENTED Set Reply");
+    break;
+  }
+  }
 }

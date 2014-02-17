@@ -138,14 +138,8 @@ extern "C"
       start_ctors[i]();
     }
     kprintf("System initialization complete\n");
-    global_id_map->Get(kFirstStaticUserId).Then([](Future<Buffer> val) {
-      kprintf(static_cast<const char*>(val.Get().data()));
-    });
-    // auto f = global_id_map->Get(kFirstStaticUserId);
-    // f.Then([](Future<std::string> val) {
-    //   kprintf(val.Get().c_str());
-    //   kprintf("\n");
-    // });
+    global_id_map->Get(kFirstStaticUserId)
+        .Then([](Future<std::string> val) { kprintf(val.Get().c_str()); });
   });
   event_manager->StartProcessingEvents();
 }

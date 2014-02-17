@@ -50,11 +50,12 @@ class NetworkManager {
     TcpPcb(TcpPcb&&);
 
     TcpPcb& operator=(TcpPcb&&);
+    ip_addr_t GetRemoteAddress() const;
     void Bind(uint16_t port);
     void Listen();
     void Accept(std::function<void(TcpPcb)> callback);
     Future<void> Connect(struct ip_addr* ipaddr, uint16_t port);
-    void Receive(std::function<void(Buffer)> callback);
+    void Receive(std::function<void(TcpPcb&, Buffer)> callback);
     Future<void> Send(std::shared_ptr<const Buffer> data);
 
    private:
@@ -70,7 +71,7 @@ class NetworkManager {
     std::unique_ptr<struct tcp_pcb, void (*)(struct tcp_pcb*)> pcb_;
     std::function<void(TcpPcb)> accept_callback_;
     Promise<void> connect_promise_;
-    std::function<void(Buffer)> receive_callback_;
+    std::function<void(TcpPcb&, Buffer)> receive_callback_;
     uint64_t sent_;
     uint64_t next_;
     std::map<uint64_t, Promise<void>> ack_map_;

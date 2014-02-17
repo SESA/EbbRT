@@ -5,6 +5,7 @@
 #include <ebbrt/Messenger.h>
 
 #include <ebbrt/Debug.h>
+#include <ebbrt/GlobalIdMap.h>
 
 uint16_t ebbrt::Messenger::port_;
 
@@ -19,7 +20,7 @@ void ebbrt::Messenger::StartListening(uint16_t port) {
   });
 }
 
-void ebbrt::Messenger::Receive(Buffer b) {
+void ebbrt::Messenger::Receive(NetworkManager::TcpPcb& t, Buffer b) {
   kbugon(b.length() > 1, "handle multiple length buffer\n");
   kbugon(b.size() < sizeof(Header), "buffer too small\n");
   auto p = b.GetDataPointer();
@@ -27,4 +28,8 @@ void ebbrt::Messenger::Receive(Buffer b) {
   kprintf("Received %d\n", length);
   kbugon(b.size() < (sizeof(Header) + length),
          "Did not receive complete message\n");
+  // consume header
+  b += sizeof(Header);
+  global_id_map->HandleMessage(NetworkId(ntohl(t.GetRemoteAddress().addr)),
+                               std::move(b));
 }
