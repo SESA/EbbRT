@@ -10,7 +10,9 @@
 
 #include <ebbrt/Acpi.h>
 #include <ebbrt/Apic.h>
+#ifdef __EBBRT_ENABLE_FDT__
 #include <ebbrt/BootFdt.h>
+#endif
 #include <ebbrt/Console.h>
 #include <ebbrt/Clock.h>
 #include <ebbrt/Cpuid.h>
@@ -20,19 +22,23 @@
 #include <ebbrt/EbbAllocator.h>
 #include <ebbrt/EventManager.h>
 #include <ebbrt/GeneralPurposeAllocator.h>
+#ifdef __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
 #include <ebbrt/GlobalIdMap.h>
+#endif
 #include <ebbrt/LocalIdMap.h>
 #include <ebbrt/MemMap.h>
 #include <ebbrt/Messenger.h>
 #include <ebbrt/Multiboot.h>
-#ifdef __EBBRT_CONFIG_NETWORKING__
+#ifdef __EBBRT_ENABLE_NETWORKING__
 #include <ebbrt/Net.h>
 #endif
 #include <ebbrt/Numa.h>
 #include <ebbrt/PageAllocator.h>
 #include <ebbrt/Pic.h>
 #include <ebbrt/Pci.h>
+#ifdef __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
 #include <ebbrt/Runtime.h>
+#endif
 #include <ebbrt/SlabAllocator.h>
 #include <ebbrt/Smp.h>
 #include <ebbrt/Timer.h>
@@ -41,13 +47,15 @@
 #include <ebbrt/VirtioNet.h>
 #include <ebbrt/VMem.h>
 #include <ebbrt/VMemAllocator.h>
-#include <ebbrt/Argv.h>
+// jmcadden: disabled argv support
+//#include <ebbrt/Argv.h>
 
 namespace {
 bool started_once = false;
 }
 
-extern void appmain(char *cmdline) __attribute__((weak));
+// jmcadden: disabled argv support
+extern void appmain() __attribute__((weak));
 
 // for c++ runtime
 extern char __eh_frame_start[];
@@ -80,14 +88,17 @@ extern "C"
   e820::Init(mbi);
   e820::PrintMap();
 
-  if (mbi->has_command_line_==1) {
-    const char *cmdLine = reinterpret_cast<char *>(mbi->command_line_);
-    ebbrt::argv::Init(cmdLine);
-  }
+  // jmcadden: disabled argv support 
+  //if (mbi->has_command_line_==1) {
+  // const char *cmdLine = reinterpret_cast<char *>(mbi->command_line_);
+  // ebbrt::argv::Init(cmdLine);
+  //}
   
   early_page_allocator::Init();
   multiboot::Reserve(mbi);
+#ifdef __EBBRT_ENABLE_FDT__
   boot_fdt::Init(mbi);
+#endif
   vmem::Init();
   extern char kend[];
   auto kend_addr = reinterpret_cast<uint64_t>(kend);
@@ -137,25 +148,22 @@ extern "C"
     apic::Init();
     Timer::Init();
     smp::Init();
-#ifdef __EBBRT_CONFIG_NETWORKING__
+#ifdef __EBBRT_ENABLE_NETWORKING__
     NetworkManager::Init();
     pci::Init();
     pci::RegisterProbe(VirtioNetDriver::Probe);
     pci::LoadDrivers();
     network_manager->AcquireIPAddress();
+#ifdef __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
     Messenger::Init();
     runtime::Init();
+#endif
+#endif
     // run global ctors
     for (unsigned i = 0; i < (end_ctors - start_ctors); ++i) {
       start_ctors[i]();
     }
     kprintf("System initialization complete\n");
-    global_id_map->Get(kFirstStaticUserId)
-        .Then([](Future<std::string> val) { kprintf(val.Get().c_str()); });
-#endif
-
-    kprintf("System initialization complete\n");
-
     if (appmain) {
       event_manager->SpawnLocal([=]() { appmain(); });
     } else {
