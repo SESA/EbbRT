@@ -47,14 +47,11 @@
 #include <ebbrt/VirtioNet.h>
 #include <ebbrt/VMem.h>
 #include <ebbrt/VMemAllocator.h>
-// jmcadden: disabled argv support
-//#include <ebbrt/Argv.h>
 
 namespace {
 bool started_once = false;
 }
 
-// jmcadden: disabled argv support
 extern void appmain() __attribute__((weak));
 
 // for c++ runtime
@@ -88,12 +85,6 @@ extern "C"
   e820::Init(mbi);
   e820::PrintMap();
 
-  // jmcadden: disabled argv support 
-  //if (mbi->has_command_line_==1) {
-  // const char *cmdLine = reinterpret_cast<char *>(mbi->command_line_);
-  // ebbrt::argv::Init(cmdLine);
-  //}
-  
   early_page_allocator::Init();
   multiboot::Reserve(mbi);
 #ifdef __EBBRT_ENABLE_FDT__
