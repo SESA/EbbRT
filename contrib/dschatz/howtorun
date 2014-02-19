@@ -1,12 +1,1 @@
-qemu-system-x86_64 \
--m 2G \
--numa node,cpus=0,mem=1G \
--numa node,cpus=1,mem=1G \
--smp sockets=2 \
--cpu host \
--gdb tcp::1235 \
--enable-kvm \
--nographic \
--net nic,model=virtio \
--net vde,sock=/tmp/vde_switch0 \
--cdrom ebbrt.iso
+g++ -g3 -std=c++11 -I /home/dschatz/Work/SESA/EbbRT/hosted/src/include/ -I /home/dschatz/Work/SESA/EbbRT/common/src/include/ test.cpp libEbbRT.a -lboost_filesystem -lboost_system -lcapnp -lkj -lfdt -pthread -o test

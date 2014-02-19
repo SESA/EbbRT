@@ -1,4 +1,3 @@
-#include <cstdlib>
 #include <signal.h>
 
 #include <ebbrt/Context.h>
@@ -8,26 +7,17 @@
 #include <ebbrt/NodeAllocator.h>
 #include <ebbrt/Runtime.h>
 
-std::atomic<bool> quit;
-
-void clean_exit(int)
-{
-  quit = true;
-}
-
 int main() {
-  quit = false;
-  // enforce safe cleanup on CTRL+c
-  struct sigaction sa;
-  memset( &sa, 0, sizeof(sa) );
-  sa.sa_handler = clean_exit;
-  sigfillset(&sa.sa_mask);
-  sigaction(SIGINT,&sa,NULL);
-
   ebbrt::Runtime runtime;
   ebbrt::Context c(runtime);
+  boost::asio::signal_set sig(c.io_service_, SIGINT);
   {
     ebbrt::ContextActivation activation(c);
+
+    // ensure clean quit on ctrl-c
+    sig.async_wait([&c](const boost::system::error_code& ec,
+                        int signal_number) { c.io_service_.stop(); });
+
     ebbrt::global_id_map->Set(ebbrt::kFirstStaticUserId, "test\n").Then([](
         ebbrt::Future<void> f) {
       f.Get();
@@ -35,9 +25,7 @@ int main() {
           "/home/dschatz/Work/SESA/EbbRT/baremetal/build/debug/ebbrt.elf32");
     });
   }
-  while (!quit) {
-    c.PollOne();
-  }
+  c.Run();
 
   return 0;
 }
