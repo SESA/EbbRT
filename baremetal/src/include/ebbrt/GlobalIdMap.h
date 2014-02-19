@@ -13,7 +13,6 @@
 #include <ebbrt/EbbRef.h>
 #include <ebbrt/Future.h>
 #include <ebbrt/Message.h>
-#include <ebbrt/Net.h>
 #include <ebbrt/StaticIds.h>
 #include <ebbrt/StaticSharedEbb.h>
 #include <ebbrt/Runtime.h>
@@ -32,7 +31,6 @@ class GlobalIdMap : public StaticSharedEbb<GlobalIdMap>,
  private:
   static void SetAddress(uint32_t addr);
 
-  NetworkManager::TcpPcb tcp_;
   ebbrt::SpinLock lock_;
   std::unordered_map<uint64_t, Promise<std::string>> map_;
   uint64_t val_;
