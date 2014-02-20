@@ -52,7 +52,7 @@ namespace {
 bool started_once = false;
 }
 
-extern void appmain() __attribute__((weak));
+extern void AppMain() __attribute__((weak));
 
 // for c++ runtime
 extern char __eh_frame_start[];
@@ -155,8 +155,8 @@ extern "C"
       start_ctors[i]();
     }
     kprintf("System initialization complete\n");
-    if (appmain) {
-      event_manager->SpawnLocal([=]() { appmain(); });
+    if (AppMain) {
+      event_manager->SpawnLocal([=]() { AppMain(); });
     } else {
       kprintf("No app main found...\n");
     }
