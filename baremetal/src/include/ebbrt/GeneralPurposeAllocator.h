@@ -56,7 +56,7 @@ class GeneralPurposeAllocator : public CacheAligned {
   void* Alloc(size_t size, Nid nid = Cpu::GetMyNode()) {
     Indexer<0, sizes_in...> i;
     auto index = i(size);
-    kbugon(index == -1, "Attempt to allocate %zu bytes not supported\n", size);
+    kbugon(index == -1, "Attempt to allocate %u bytes not supported\n", size);
     auto ret = allocators_[index]->Alloc(nid);
     kbugon(ret == nullptr,
            "Failed to allocate from this NUMA node, should try others\n");
