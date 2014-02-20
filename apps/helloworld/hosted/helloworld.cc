@@ -16,7 +16,13 @@
 
 int main(int argc, char** argv) {
   auto bindir = boost::filesystem::system_complete(argv[0]).parent_path() /
-                "../../../baremetal/build/debug/hello_world_bm.elf32";
+                "../../../baremetal/build/" /
+#ifdef NDEBUG
+                "release"
+#else
+                "debug"
+#endif
+                / "/hello_world_bm.elf32";
 
   ebbrt::Runtime runtime;
   ebbrt::Context c(runtime);

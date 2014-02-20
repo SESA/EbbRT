@@ -99,6 +99,7 @@ kj_sources := $(shell find $(EBBRT_BAREMETAL_PATH)/ext/capnp/src/kj -type f -nam
 kj_objects := $(patsubst $(EBBRT_BAREMETAL_PATH)/%.c++, %.o, $(kj_sources))
 
 $(kj_objects): EBBRT_CXXFLAGS += -Wno-unused-variable
+$(kj_objects): EBBRT_CPPFLAGS := $(filter-out -flto,$(EBBRT_CPPFLAGS))
 
 fdt_sources := $(shell find $(EBBRT_BAREMETAL_PATH)/ext/fdt -type f -name '*.c')
 fdt_objects := $(patsubst $(EBBRT_BAREMETAL_PATH)/%.c, %.o, $(fdt_sources))
