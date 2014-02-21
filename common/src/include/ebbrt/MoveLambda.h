@@ -36,7 +36,7 @@ template <typename F, typename... BoundArgs> class MoveLambda {
       F(typename std::remove_reference<BoundArgs>::type..., CallArgs...)>::type
   operator()(CallArgs&&... call_args) {
     return call(typename gens<sizeof...(BoundArgs)>::type(),
-                std::forward<CallArgs...>(call_args)...);
+                std::forward<CallArgs>(call_args)...);
   }
 
  private:
@@ -71,7 +71,7 @@ MoveLambda<F, BoundArgs...> MoveBind(F&& f, BoundArgs&&... args) {
 template <typename ReturnType, typename... ParamTypes>
 class MovableFunctionBase {
  public:
-  virtual ReturnType CallFunc(ParamTypes&&... p) = 0;
+  virtual ReturnType CallFunc(ParamTypes... p) = 0;
 };
 
 template <typename F, typename ReturnType, typename... ParamTypes>
@@ -83,8 +83,25 @@ class MovableFunctionImp
   explicit MovableFunctionImp(base_type<F> f) : f_(std::move(f)) {}
 
   MovableFunctionImp& operator=(const MovableFunctionImp&) = delete;
-  ReturnType CallFunc(ParamTypes&&... p) override {
-    return f_(std::forward<ParamTypes>(p)...);
+  ReturnType CallFunc(ParamTypes... p) override {
+    return f_(std::move<ParamTypes>(p)...);
+  }
+
+ private:
+  base_type<F> f_;
+};
+
+template <typename F, typename... ParamTypes>
+class MovableFunctionImp<F, void, ParamTypes...> : public MovableFunctionBase<
+                                                       void, ParamTypes...> {
+ public:
+  MovableFunctionImp() = delete;
+  MovableFunctionImp(const MovableFunctionImp&) = delete;
+  explicit MovableFunctionImp(base_type<F> f) : f_(std::move(f)) {}
+
+  MovableFunctionImp& operator=(const MovableFunctionImp&) = delete;
+  void CallFunc(ParamTypes... p) override {
+    f_(std::forward<ParamTypes>(p)...);
   }
 
  private:
@@ -113,6 +130,28 @@ class MovableFunction<ReturnType(ParamTypes...)> {
 
  private:
   std::unique_ptr<MovableFunctionBase<ReturnType, ParamTypes...>> ptr_;
+};
+
+template <typename... ParamTypes> class MovableFunction<void(ParamTypes...)> {
+ public:
+  MovableFunction() = default;
+  MovableFunction(std::nullptr_t) : ptr_() {}
+  template <typename F>
+  MovableFunction(F&& f)
+      : ptr_(new MovableFunctionImp<F, void, ParamTypes...>(
+            std::forward<F>(f))) {}
+  MovableFunction(const MovableFunction&) = delete;
+  MovableFunction(MovableFunction&& other) = default;
+
+  MovableFunction& operator=(const MovableFunction&) = delete;
+  MovableFunction& operator=(MovableFunction&& other) = default;
+  template <typename... Args> void operator()(Args&&... args) {
+    ptr_->CallFunc(std::forward<Args>(args)...);
+  }
+  explicit operator bool() const { return static_cast<bool>(ptr_); }
+
+ private:
+  std::unique_ptr<MovableFunctionBase<void, ParamTypes...>> ptr_;
 };
 }  // namespace ebbrt
 

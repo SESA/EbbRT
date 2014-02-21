@@ -7,9 +7,10 @@
 
 #include <cstddef>
 #include <cstdlib>
-#include <functional>
 #include <memory>
 #include <utility>
+
+#include <ebbrt/MoveLambda.h>
 
 namespace ebbrt {
 class Buffer {
@@ -28,7 +29,7 @@ class Buffer {
       throw std::bad_alloc();
     free_ = [](void* ptr, size_t size) { std::free(ptr); };  // NOLINT
   }
-  Buffer(void* p, size_t size, std::function<void(void*, size_t)> f = nullptr)
+  Buffer(void* p, size_t size, MovableFunction<void(void*, size_t)> f = nullptr)
       : next_(nullptr), buffer_(p), free_(std::move(f)), total_size_(size),
         size_(size), offset_(0), length_(1) {}
   Buffer(const Buffer&) = delete;
@@ -71,7 +72,7 @@ class Buffer {
  private:
   std::shared_ptr<Buffer> next_;
   void* buffer_;
-  std::function<void(void*, size_t)> free_;
+  MovableFunction<void(void*, size_t)> free_;
   size_t total_size_;
   size_t size_;
   size_t offset_;
