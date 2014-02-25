@@ -7,6 +7,7 @@ EBBRT_CONFIG := $(FILE_PATH)/../config.h
 EBBRT_TARGET := hello_world_bm
 
 EBBRT_APP_OBJECTS := \
-	hello_world_bm.o
+	hello_world_bm.o \
+	Printer.o
 
 include ../../../../../baremetal/build.mk

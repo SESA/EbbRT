@@ -72,10 +72,15 @@ ebbrt::VMemAllocator::Alloc(size_t npages,
 void ebbrt::VMemAllocator::HandlePageFault(idt::ExceptionFrame* ef) {
   std::lock_guard<SpinLock> lock(lock_);
   auto fault_addr = ReadCr2();
-  auto it = regions_.lower_bound(Pfn::Down(fault_addr));
-  kbugon(it == regions_.end() || it->second.end() < Pfn::Up(fault_addr),
-         "Could not find region for faulting address!\n");
-  it->second.HandleFault(ef, fault_addr);
+
+  if (fault_addr >= trans::kVMemStart) {
+    trans::HandleFault(ef, fault_addr);
+  } else {
+    auto it = regions_.lower_bound(Pfn::Down(fault_addr));
+    kbugon(it == regions_.end() || it->second.end() < Pfn::Up(fault_addr),
+           "Could not find region for faulting address!\n");
+    it->second.HandleFault(ef, fault_addr);
+  }
 }
 
 extern "C" void ebbrt::idt::PageFaultException(ExceptionFrame* ef) {

@@ -42,13 +42,15 @@ SECTIONS
         .ctors BLOCK(4K) : ALIGN(4K) {
                start_ctors = .;
                /* KEEP(*(SORT_BY_INIT_PRIORITY(.ctors.*))) */
-               KEEP(*(SORT(.ctors)))
+               KEEP(*(SORT(.ctors.*)))
+               KEEP(*(.ctors))
                end_ctors = .;
         }
 
         .dtors BLOCK(4K) : ALIGN(4K) {
                start_dtors = .;
-               *(SORT_BY_INIT_PRIORITY(.dtors.*))
+               KEEP(*(SORT(.dtors.*)))
+               KEEP(*(.dtors))
                end_dtors = .;
         }
 

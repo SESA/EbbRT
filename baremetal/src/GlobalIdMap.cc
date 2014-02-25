@@ -10,6 +10,8 @@
 
 #include <ebbrt/GlobalIdMessage.capnp.h>
 
+EBBRT_PUBLISH_TYPE(ebbrt, GlobalIdMap);
+
 namespace {
 uint32_t frontend_ip;
 }

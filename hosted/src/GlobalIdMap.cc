@@ -8,6 +8,8 @@
 
 #include "GlobalIdMessage.capnp.h"  //NOLINT
 
+EBBRT_PUBLISH_TYPE(ebbrt, GlobalIdMap);
+
 ebbrt::GlobalIdMap::GlobalIdMap() : Messagable<GlobalIdMap>(kGlobalIdMapId) {}
 
 ebbrt::Future<void> ebbrt::GlobalIdMap::Set(EbbId id, std::string data) {

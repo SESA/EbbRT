@@ -34,6 +34,7 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
 
   void DoAccept(std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor,
                 std::shared_ptr<boost::asio::ip::tcp::socket> socket);
+  uint32_t GetNetAddr();
 
   std::atomic<uint16_t> node_index_;
   int network_id_;
@@ -41,6 +42,7 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   uint16_t port_;
 
   friend class Session;
+  friend class Messenger;
 };
 const constexpr auto node_allocator = EbbRef<NodeAllocator>(kNodeAllocatorId);
 }  // namespace ebbrt

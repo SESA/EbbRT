@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <cstring>
 
+#include <ebbrt/Idt.h>
+
 namespace ebbrt {
 namespace trans {
 // last 2^32 bits of virtual address space are reserved for translation tables
@@ -15,6 +17,7 @@ const constexpr uintptr_t kVMemStart = 0xFFFFFFFF00000000;
 
 void Init();
 void ApInit(size_t index);
+void HandleFault(idt::ExceptionFrame* ef, uintptr_t fault_addr);
 }
 }
 

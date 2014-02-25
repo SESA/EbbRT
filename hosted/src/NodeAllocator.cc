@@ -22,7 +22,6 @@ ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket,
     : socket_(std::move(socket)), net_addr_(net_addr) {}
 
 void ebbrt::NodeAllocator::Session::Start() {
-  std::cout << "New connection" << std::endl;
   auto message = new capnp::MallocMessageBuilder();
   auto builder = message->initRoot<RuntimeInfo>();
 
@@ -138,3 +137,5 @@ void ebbrt::NodeAllocator::AllocateNode(std::string binary_path) {
   std::cout << "executing " << command << std::endl;
   system(command.c_str());
 }
+
+uint32_t ebbrt::NodeAllocator::GetNetAddr() { return net_addr_; }

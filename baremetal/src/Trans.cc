@@ -60,3 +60,11 @@ void ebbrt::trans::ApInit(size_t index) {
         return true;
       });
 }
+
+void ebbrt::trans::HandleFault(idt::ExceptionFrame* ef, uintptr_t fault_addr) {
+  auto vpage = ebbrt::Pfn::Down(fault_addr);
+  auto backing_page = ebbrt::page_allocator->Alloc();
+  kbugon(backing_page == ebbrt::Pfn::None(),
+         "Failed to allocate page for translation system\n");
+  ebbrt::vmem::MapMemory(vpage, backing_page);
+}

@@ -2,15 +2,11 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
+#ifndef APPS_HELLOWORLD_STATICEBBIDS_H_
+#define APPS_HELLOWORLD_STATICEBBIDS_H_
 
-#include <ebbrt/Debug.h>
+#include <ebbrt/StaticIds.h>
 
-#include "Printer.h"
+enum : ebbrt::EbbId { kPrinterEbbId = ebbrt::kFirstStaticUserId };
 
-void AppMain() {
-  ebbrt::kprintf("Hello World\n");
-  // bool x = true;
-  // while (x)
-  //   ;
-  printer->Print("Hello World\n");
-}
+#endif  // APPS_HELLOWORLD_STATICEBBIDS_H_

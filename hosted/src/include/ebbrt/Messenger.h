@@ -22,6 +22,13 @@ class Messenger : public StaticSharedEbb<Messenger> {
    public:
     explicit NetworkId(boost::asio::ip::address_v4 ip) : ip_(std::move(ip)) {}
 
+    std::string ToBytes() {
+      auto a = ip_.to_bytes();
+      return std::string(reinterpret_cast<char*>(a.data()), a.size());
+    }
+
+    std::string ToString() { return ip_.to_string(); }
+
    private:
     boost::asio::ip::address_v4 ip_;
 
@@ -32,6 +39,7 @@ class Messenger : public StaticSharedEbb<Messenger> {
 
   Future<void> Send(NetworkId to, EbbId id, uint64_t type_code,
                     std::shared_ptr<const Buffer> data);
+  NetworkId LocalNetworkId();
 
  private:
   struct Header {

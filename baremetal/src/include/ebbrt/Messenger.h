@@ -26,6 +26,13 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
   class NetworkId {
    public:
     explicit NetworkId(uint32_t ip_h) { ip.addr = htonl(ip_h); }
+    explicit NetworkId(std::string str) {
+      if (str.size() != 4)
+        throw std::runtime_error(
+            "Cannot build NetworkId from string, size mismatch");
+
+      ip.addr = *reinterpret_cast<const uint32_t*>(str.data());
+    }
 
    private:
     struct ip_addr ip;

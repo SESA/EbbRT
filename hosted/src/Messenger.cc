@@ -3,6 +3,7 @@
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include <ebbrt/Messenger.h>
+#include <ebbrt/NodeAllocator.h>
 
 #include <ebbrt/GlobalIdMap.h>
 
@@ -131,8 +132,6 @@ void ebbrt::Messenger::Session::ReadMessage() {
     throw std::runtime_error("Request to read undersized message!");
   }
 
-  std::cout << size << std::endl;
-
   auto buf = malloc(size);
   if (buf == nullptr)
     throw std::bad_alloc();
@@ -150,4 +149,9 @@ void ebbrt::Messenger::Session::ReadMessage() {
         }
         ReadHeader();
       });
+}
+
+ebbrt::Messenger::NetworkId ebbrt::Messenger::LocalNetworkId() {
+  auto net_addr = node_allocator->GetNetAddr();
+  return NetworkId(boost::asio::ip::address_v4(net_addr));
 }
