@@ -20,7 +20,8 @@ ebbrt::Future<void> Printer::Init() {
 void Printer::Print(std::string str) {}
 
 void Printer::ReceiveMessage(ebbrt::Messenger::NetworkId nid,
-                             ebbrt::Buffer buffer) {
-  auto output = std::string(static_cast<char*>(buffer.data()), buffer.size());
+                             std::unique_ptr<ebbrt::IOBuf>&& buffer) {
+  auto output = std::string(reinterpret_cast<const char*>(buffer->Data()),
+                            buffer->Length());
   std::cout << nid.ToString() << ": " << output;
 }

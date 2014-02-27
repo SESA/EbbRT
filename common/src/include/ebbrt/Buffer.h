@@ -5,198 +5,237 @@
 #ifndef COMMON_SRC_INCLUDE_EBBRT_BUFFER_H_
 #define COMMON_SRC_INCLUDE_EBBRT_BUFFER_H_
 
-#include <cstddef>
-#include <cstdlib>
+#include <cstring>
 #include <memory>
-#include <utility>
 
-#include <ebbrt/MoveLambda.h>
+#include <boost/iterator/iterator_facade.hpp>
 
 namespace ebbrt {
-class Buffer {
+namespace detail {
+// Is T a unique_ptr<> to a standard-layout type
+template <class T, class Enable = void>
+struct IsUniquePtrToSL : public std::false_type {};
+
+template <class T, class D>
+struct IsUniquePtrToSL<std::unique_ptr<T, D>,
+                       typename std::enable_if<std::is_standard_layout<
+                           T>::value>::type> : public std::true_type {};
+}  // namespace detail
+class IOBuf {
  public:
-  Buffer()
-      : next_(nullptr), buffer_(nullptr), free_(nullptr), total_size_(0),
-        size_(0), offset_(0), length_(0) {}
-  explicit Buffer(size_t size, bool zero_memory = false)
-      : next_(nullptr), total_size_(size), size_(size), offset_(0), length_(1) {
-    if (zero_memory) {
-      buffer_ = std::calloc(1, size);
-    } else {
-      buffer_ = std::malloc(size);
-    }
-    if (buffer_ == nullptr)
-      throw std::bad_alloc();
-    free_ = [](void* ptr, size_t size) { std::free(ptr); };  // NOLINT
-  }
-  Buffer(void* p, size_t size, MovableFunction<void(void*, size_t)> f = nullptr)
-      : next_(nullptr), buffer_(p), free_(std::move(f)), total_size_(size),
-        size_(size), offset_(0), length_(1) {}
-  Buffer(const Buffer&) = delete;
-  Buffer(Buffer&&) = default;
+  class Iterator;
 
-  virtual ~Buffer() {
-    if (!free_)
-      return;
+  IOBuf() noexcept;
+  explicit IOBuf(size_t capacity, bool zero_memory = false);
+  IOBuf(void* buf, size_t capacity, std::function<void(void*)> free_func);
+  IOBuf(IOBuf&& other) noexcept;
+  IOBuf& operator=(IOBuf&& other) noexcept;
+  IOBuf(const IOBuf&) = delete;
+  IOBuf& operator=(const IOBuf&) = delete;
 
-    auto p = static_cast<void*>(static_cast<char*>(buffer_) - offset_);
-    auto l = size_ + offset_;
-    free_(p, l);
-  }
+  static std::unique_ptr<IOBuf> Create(size_t capacity,
+                                       bool zero_memory = false);
 
-  Buffer& operator=(const Buffer&) = delete;
-  Buffer& operator=(Buffer&&) = default;
+  static std::unique_ptr<IOBuf>
+  TakeOwnership(void* buf, size_t capacity,
+                std::function<void(void*)> free_func = [](void*) {});
 
-  void* data() { return static_cast<void*>(buffer_); }
-  const void* data() const { return static_cast<const void*>(buffer_); }
+  template <class UniquePtr>
+  static typename std::enable_if<detail::IsUniquePtrToSL<UniquePtr>::value,
+                                 std::unique_ptr<IOBuf>>::type
+  TakeOwnership(UniquePtr&& buf, size_t count = 1);
 
-  size_t size() const { return size_; }
-  size_t total_size() const { return total_size_; }
-  size_t length() const { return length_; }
+  static std::unique_ptr<IOBuf> WrapBuffer(const void* buf, size_t size);
 
-  Buffer& operator+=(size_t sz) {
-    buffer_ = static_cast<void*>(static_cast<char*>(buffer_) + sz);
-    total_size_ -= sz;
-    size_ -= sz;
-    offset_ += sz;
-    return *this;
+  static std::unique_ptr<IOBuf> CopyBuffer(const void* buf, size_t size) {
+    auto b = Create(size);
+    std::memcpy(b->WritableData(), buf, size);
+    return b;
   }
 
-  std::pair<void*, size_t> release() {
-    auto p = static_cast<void*>(static_cast<char*>(buffer_) - offset_);
-    buffer_ = nullptr;
-    free_ = nullptr;
-    return std::make_pair(p, size_ + offset_);
+  static std::unique_ptr<IOBuf> CopyBuffer(const std::string& buf) {
+    return CopyBuffer(buf.data(), buf.size());
   }
 
- private:
-  std::shared_ptr<Buffer> next_;
-  void* buffer_;
-  MovableFunction<void(void*, size_t)> free_;
-  size_t total_size_;
-  size_t size_;
-  size_t offset_;
-  size_t length_;
+  static void Destroy(std::unique_ptr<IOBuf>&& data) {
+    auto destroyer = std::move(data);
+  }
 
- public:
-  class iterator {
-   public:
-    typedef ptrdiff_t difference_type;
-    typedef std::forward_iterator_tag iterator_category;
-    typedef Buffer value_type;
-    typedef Buffer* pointer;
-    typedef Buffer& reference;
+  ~IOBuf();
 
-    iterator() : p_() {}
-    explicit iterator(Buffer* p) : p_(p) {}
-    reference operator*() const { return *p_; }
-    pointer operator->() const { return p_; }
-    iterator& operator++() {
-      p_ = p_->next_.get();
-      return *this;
+  bool Empty() const;
+
+  const uint8_t* Data() const { return data_; }
+
+  uint8_t* WritableData() { return data_; }
+
+  const uint8_t* Tail() const { return data_ + length_; }
+
+  uint8_t* WritableTail() { return data_ + length_; }
+
+  size_t Length() const { return length_; }
+
+  const uint8_t* Buffer() const { return buf_.get(); }
+
+  uint8_t* WritableBuffer() { return buf_.get(); }
+
+  const uint8_t* BufferEnd() const { return buf_.get() + capacity_; }
+
+  uint64_t Capacity() const { return capacity_; }
+
+  IOBuf* Next() { return next_; }
+
+  const IOBuf* Next() const { return next_; }
+
+  IOBuf* Prev() { return prev_; }
+
+  const IOBuf* Prev() const { return prev_; }
+
+  void Advance(size_t amount) {
+    data_ += amount;
+    length_ -= amount;
+  }
+
+  void Retreat(size_t amount) {
+    data_ -= amount;
+    length_ += amount;
+  }
+
+  bool IsChained() const { return next_ != this; }
+
+  size_t CountChainElements() const;
+
+  size_t ComputeChainDataLength() const;
+
+  void PrependChain(std::unique_ptr<IOBuf>&& iobuf);
+  void AppendChain(std::unique_ptr<IOBuf>&& iobuf) {
+    next_->PrependChain(std::move(iobuf));
+  }
+
+  /* Remove this IOBuf from its current chain and return a unique_ptr to it. Do
+   * not call on the head of a chain that is owned already */
+  std::unique_ptr<IOBuf> Unlink() {
+    next_->prev_ = prev_;
+    prev_->next_ = next_;
+    prev_ = this;
+    next_ = this;
+    return std::unique_ptr<IOBuf>(this);
+  }
+
+  /* Remove this IOBuf from its current chain and return a unique_ptr to the
+     IOBuf that formerly followed it in the chain */
+  std::unique_ptr<IOBuf> Pop() {
+    IOBuf* next = next_;
+    next_->prev_ = prev_;
+    prev_->next_ = next_;
+    prev_ = this;
+    next_ = this;
+    return std::unique_ptr<IOBuf>((next == this) ? nullptr : next);
+  }
+
+  bool Unique() const {
+    const IOBuf* current = this;
+    while (true) {
+      if (current->UniqueOne()) {
+        return true;
+      }
+      current = current->next_;
+      if (current == this) {
+        return false;
+      }
     }
-    bool operator==(const iterator& other) const { return p_ == other.p_; }
-    bool operator!=(const iterator& other) const { return p_ != other.p_; }
+  }
 
-   private:
-    Buffer* p_;
-  };
+  bool UniqueOne() const { return buf_.unique(); }
 
-  class const_iterator {
-   public:
-    typedef ptrdiff_t difference_type;
-    typedef std::forward_iterator_tag iterator_category;
-    typedef const Buffer value_type;
-    typedef const Buffer* pointer;
-    typedef const Buffer& reference;
+  Iterator cbegin() const;
+  Iterator cend() const;
 
-    const_iterator() : p_() {}
-    explicit const_iterator(const Buffer* p) : p_(p) {}
-    reference operator*() const { return *p_; }
-    pointer operator->() const { return p_; }
-    const_iterator& operator++() {
-      p_ = p_->next_.get();
-      return *this;
-    }
-    bool operator==(const const_iterator& other) const {
-      return p_ == other.p_;
-    }
-    bool operator!=(const const_iterator& other) const {
-      return p_ != other.p_;
-    }
-
-   private:
-    const Buffer* p_;
-  };
+  Iterator begin() const;
+  Iterator end() const;
 
   class DataPointer {
    public:
-    explicit DataPointer(Buffer* p) : p_(p), offset_(0) {}
-    void* Addr() {
-      if (!p_ || p_->size() - offset_ == 0)
-        throw std::runtime_error("DataPointer::Addr() past end of buffer");
+    explicit DataPointer(const IOBuf* p) : p_(p) {}
 
-      return static_cast<void*>(static_cast<char*>(p_->data()) + offset_);
+    const uint8_t* Data() {
+      if (!p_ || p_->Length() - offset_ == 0)
+        throw std::runtime_error("DataPointer::Data() past end of buffer");
+
+      return p_->Data() + offset_;
     }
 
-    template <typename T> T& Get() {
+    template <typename T> const T& Get() {
       if (!p_)
-        throw std::runtime_error("DataPointer::Get() past end of buffer");
+        throw std::runtime_error("DataPointer::Get(): past end of buffer");
 
-      if (p_->size() - offset_ < sizeof(T))
-        throw std::runtime_error("DataPointer::Get() asked to straddle buffer");
+      if (p_->Length() - offset_ < sizeof(T)) {
+        throw std::runtime_error(
+            "DataPointer::Get(): request straddles buffers");
+      }
 
-      auto ret = reinterpret_cast<T*>(static_cast<char*>(p_->data()) + offset_);
+      auto ret = reinterpret_cast<const T*>(p_->Data() + offset_);
       Advance(sizeof(T));
       return *ret;
     }
 
     void Advance(size_t size) {
       if (!p_)
-        throw std::runtime_error("DataPointer::Advance() past end of buffer");
+        throw std::runtime_error("DataPointer::Advance(): past end of buffer");
 
-      auto remainder = p_->size() - offset_;
+      auto remainder = p_->Length() - offset_;
       if (remainder > size) {
         offset_ += size;
       } else {
-        p_ = p_->next_.get();
-        offset_ = remainder - size;
+        p_ = p_->Next();
+        offset_ = size - remainder;
       }
     }
 
    private:
-    Buffer* p_;
-    size_t offset_;
+    const IOBuf* p_{nullptr};
+    size_t offset_{0};
   };
 
-  DataPointer GetDataPointer() { return DataPointer(this); }
+  DataPointer GetDataPointer() const { return DataPointer(this); }
 
-  iterator begin() { return iterator(this); }
-  const_iterator begin() const { return const_iterator(this); }
-
-  iterator end() { return iterator(nullptr); }
-  const_iterator end() const { return const_iterator(nullptr); }
-
-  template <typename... Args> void emplace_back(Args&&... args) {
-    auto b = std::make_shared<Buffer>(std::forward<Args>(args)...);
-    append(std::move(b));
-  }
-
-  void append(std::shared_ptr<Buffer> b) {
-    auto it = begin();
-    size_t i = 0;
-    auto len = length_;
-    while (i < (len - 1)) {
-      it->total_size_ += b->total_size();
-      it->length_ += b->length();
-      ++i;
-      ++it;
-    }
-    it->total_size_ += b->total_size();
-    it->length_ += b->length();
-    it->next_ = std::move(b);
-  }
+ private:
+  IOBuf* next_{this};
+  IOBuf* prev_{this};
+  uint8_t* data_{nullptr};
+  std::shared_ptr<uint8_t> buf_{nullptr};
+  size_t length_{0};
+  size_t capacity_{0};
 };
+
+class IOBuf::Iterator
+    : public boost::iterator_facade<IOBuf::Iterator, const IOBuf,
+                                    boost::forward_traversal_tag> {
+ public:
+  Iterator(const IOBuf* pos, const IOBuf* end) : pos_(pos), end_(end) {}
+
+ private:
+  const IOBuf& dereference() const { return *pos_; }
+
+  bool equal(const Iterator& other) const {
+    return pos_ == other.pos_ && end_ == other.end_;
+  }
+
+  void increment() {
+    pos_ = pos_->Next();
+
+    if (pos_ == end_)
+      pos_ = end_ = nullptr;
+  }
+
+  const IOBuf* pos_;
+  const IOBuf* end_;
+
+  friend class boost::iterator_core_access;
+};
+
+inline IOBuf::Iterator IOBuf::begin() const { return cbegin(); }
+inline IOBuf::Iterator IOBuf::end() const { return cend(); }
 }  // namespace ebbrt
 
 #endif  // COMMON_SRC_INCLUDE_EBBRT_BUFFER_H_

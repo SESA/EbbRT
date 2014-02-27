@@ -19,7 +19,8 @@ class Printer : public ebbrt::StaticSharedEbb<Printer>,
 
   static ebbrt::Future<void> Init();
   void Print(std::string string);
-  void ReceiveMessage(ebbrt::Messenger::NetworkId nid, ebbrt::Buffer buffer);
+  void ReceiveMessage(ebbrt::Messenger::NetworkId nid,
+                      std::unique_ptr<ebbrt::IOBuf>&& buffer);
 };
 
 constexpr auto printer = ebbrt::EbbRef<Printer>(kPrinterEbbId);

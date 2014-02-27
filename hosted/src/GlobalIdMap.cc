@@ -18,14 +18,15 @@ ebbrt::Future<void> ebbrt::GlobalIdMap::Set(EbbId id, std::string data) {
   return MakeReadyFuture<void>();
 }
 
-void ebbrt::GlobalIdMap::ReceiveMessage(Messenger::NetworkId nid, Buffer buf) {
-  auto reader = BufferMessageReader(std::move(buf));
+void ebbrt::GlobalIdMap::ReceiveMessage(Messenger::NetworkId nid,
+                                        std::unique_ptr<IOBuf>&& buf) {
+  auto reader = IOBufMessageReader(std::move(buf));
   auto request = reader.getRoot<global_id_map_message::Request>();
 
   switch (request.which()) {
   case global_id_map_message::Request::Which::GET_REQUEST: {
     auto get_request = request.getGetRequest();
-    BufferMessageBuilder message;
+    IOBufMessageBuilder message;
     auto builder = message.initRoot<global_id_map_message::Reply>();
     auto get_builder = builder.initGetReply();
     get_builder.setMessageId(get_request.getMessageId());
@@ -38,8 +39,7 @@ void ebbrt::GlobalIdMap::ReceiveMessage(Messenger::NetworkId nid, Buffer buf) {
       get_builder.setData(reader);
     }
 
-    auto b = AppendHeader(message);
-    SendMessage(nid, std::make_shared<const Buffer>(std::move(b)));
+    SendMessage(nid, AppendHeader(message));
 
     break;
   }

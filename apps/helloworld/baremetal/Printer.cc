@@ -23,17 +23,14 @@ Printer& Printer::HandleFault(ebbrt::EbbId id) {
     }
   }
 
-  ebbrt::kprintf("Getting from gmap\n");
   ebbrt::EventManager::EventContext context;
   auto f = ebbrt::global_id_map->Get(id);
   Printer* p;
   f.Then([&f, &context, &p](ebbrt::Future<std::string> inner) {
-    ebbrt::kprintf("Got from gmap\n");
     p = new Printer(ebbrt::Messenger::NetworkId(inner.Get()));
     ebbrt::event_manager->ActivateContext(context);
   });
   ebbrt::event_manager->SaveContext(context);
-  ebbrt::kprintf("Awoke with data from gmap\n");
   auto inserted = ebbrt::local_id_map->Insert(std::make_pair(id, p));
   if (inserted) {
     ebbrt::EbbRef<Printer>::CacheRef(id, *p);
@@ -50,16 +47,11 @@ Printer& Printer::HandleFault(ebbrt::EbbId id) {
 }
 
 void Printer::Print(std::string str) {
-  auto ptr = str.data();
-  auto sz = str.size();
-  auto buf = std::make_shared<ebbrt::Buffer>(
-      static_cast<void*>(const_cast<char*>(ptr)), sz,
-      ebbrt::MoveBind([](std::string str, void* addr, size_t sz) {},
-                      std::move(str)));
+  auto buf = ebbrt::IOBuf::CopyBuffer(str);
   SendMessage(remote_nid_, std::move(buf));
 }
 
 void Printer::ReceiveMessage(ebbrt::Messenger::NetworkId nid,
-                             ebbrt::Buffer buffer) {
+                             std::unique_ptr<ebbrt::IOBuf> buffer) {
   throw std::runtime_error("Printer: Received message unexpectedly!");
 }

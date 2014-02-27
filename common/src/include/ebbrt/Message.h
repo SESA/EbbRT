@@ -11,7 +11,8 @@ namespace ebbrt {
 class MessagableBase {
  public:
   virtual ~MessagableBase() {}
-  virtual void ReceiveMessageInternal(Messenger::NetworkId nid, Buffer buf) = 0;
+  virtual void ReceiveMessageInternal(Messenger::NetworkId nid,
+                                      std::unique_ptr<IOBuf>&& buf) = 0;
 };
 
 struct Hasher {
@@ -24,10 +25,11 @@ template <typename T> class Messagable : public MessagableBase {
  public:
   explicit Messagable(EbbId id) : id_(id) {}
   Future<void> SendMessage(Messenger::NetworkId nid,
-                           std::shared_ptr<const Buffer> buf) {
+                           std::unique_ptr<const IOBuf>&& buf) {
     return messenger->Send(nid, id_, typeid(T).hash_code(), std::move(buf));
   }
-  void ReceiveMessageInternal(Messenger::NetworkId nid, Buffer buf) override {
+  void ReceiveMessageInternal(Messenger::NetworkId nid,
+                              std::unique_ptr<IOBuf>&& buf) override {
     static_cast<T*>(this)->ReceiveMessage(nid, std::move(buf));
   }
 

@@ -30,10 +30,12 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
 
   auto rcv_vector = event_manager->AllocateVector([this]() {
     auto& rcv_queue = GetQueue(0);
-    rcv_queue.ProcessUsedBuffers([this](Buffer b) {
-      kassert(b.length() == 1);
-      b += sizeof(VirtioNetHeader);
-      itf_->Receive(std::move(b));
+    rcv_queue.ProcessUsedBuffers([this](std::unique_ptr<const IOBuf>&& b) {
+      kassert(b->CountChainElements() == 1);
+      kassert(b->Unique());
+      auto buf = std::unique_ptr<IOBuf>(const_cast<IOBuf*>(b.release()));
+      buf->Advance(sizeof(VirtioNetHeader));
+      itf_->Receive(std::move(buf));
     });
     if (rcv_queue.num_free_descriptors() * 2 >= rcv_queue.Size()) {
       FillRxRing();
@@ -43,7 +45,8 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
 
   auto send_vector = event_manager->AllocateVector([this]() {
     auto& send_queue = GetQueue(1);
-    send_queue.CleanUsedBuffers();
+    // Do nothing, just free the buffer
+    send_queue.ProcessUsedBuffers([](std::unique_ptr<const IOBuf>&& b) {});
   });
   dev.SetMsixEntry(1, send_vector, 0);
 
@@ -55,11 +58,11 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
 void ebbrt::VirtioNetDriver::FillRxRing() {
   auto& rcv_queue = GetQueue(0);
   auto num_bufs = rcv_queue.num_free_descriptors();
-  auto bufs = std::vector<Buffer>();
+  auto bufs = std::vector<std::unique_ptr<IOBuf>>();
   bufs.reserve(num_bufs);
 
   for (size_t i = 0; i < num_bufs; ++i) {
-    bufs.emplace_back(2048);
+    bufs.emplace_back(IOBuf::Create(2048));
   }
 
   auto it = rcv_queue.AddWritableBuffers(bufs.begin(), bufs.end());
@@ -70,13 +73,14 @@ uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
   return 1 << kMac | 1 << kMrgRxbuf;
 }
 
-void ebbrt::VirtioNetDriver::Send(std::shared_ptr<const Buffer> buf) {
-  auto b = std::make_shared<Buffer>(static_cast<void*>(&empty_header_),
-                                    sizeof(empty_header_));
-  b->append(std::move(std::const_pointer_cast<Buffer>(buf)));
+void ebbrt::VirtioNetDriver::Send(std::unique_ptr<const IOBuf>&& buf) {
+  auto b = IOBuf::WrapBuffer(static_cast<void*>(&empty_header_),
+                             sizeof(empty_header_));
+  // const cast is OK because we then take the head of the chain as const
+  b->AppendChain(std::unique_ptr<IOBuf>(const_cast<IOBuf*>(buf.release())));
 
   auto& send_queue = GetQueue(1);
-  kbugon(send_queue.num_free_descriptors() < b->length(),
+  kbugon(send_queue.num_free_descriptors() < b->CountChainElements(),
          "Must queue a packet, no more room\n");
 
   send_queue.AddReadableBuffer(std::move(b));

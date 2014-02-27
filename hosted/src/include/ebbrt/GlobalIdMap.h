@@ -23,7 +23,7 @@ class GlobalIdMap : public StaticSharedEbb<GlobalIdMap>,
   GlobalIdMap();
   Future<void> Set(EbbId id, std::string data);
 
-  void ReceiveMessage(Messenger::NetworkId nid, Buffer buf);
+  void ReceiveMessage(Messenger::NetworkId nid, std::unique_ptr<IOBuf>&& buf);
 
  private:
   std::mutex m_;

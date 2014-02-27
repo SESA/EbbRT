@@ -3,14 +3,6 @@
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
 
-#include <ebbrt/Debug.h>
-
 #include "Printer.h"
 
-void AppMain() {
-  ebbrt::kprintf("Hello World\n");
-  // bool x = true;
-  // while (x)
-  //   ;
-  printer->Print("Hello World\n");
-}
+void AppMain() { printer->Print("Hello World\n"); }

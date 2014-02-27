@@ -14,46 +14,41 @@
 #include <ebbrt/Buffer.h>
 
 namespace ebbrt {
-class BufferMessageBuilder : public capnp::MessageBuilder {
+class IOBufMessageBuilder : public capnp::MessageBuilder {
  public:
   kj::ArrayPtr<capnp::word> allocateSegment(capnp::uint minimumSize) override {
-    capnp::uint size = minimumSize;
+    auto buf = IOBuf::Create(minimumSize * sizeof(capnp::word), true);
+    auto ptr = buf->WritableData();
 
-    void* result = std::calloc(size, sizeof(capnp::word));
-    if (result == nullptr) {
-      throw std::bad_alloc();
-    }
-
-    if (buf_.data() == nullptr) {
-      buf_ = Buffer(result, size * sizeof(capnp::word),
-                    [](void* p, size_t sz) { std::free(p); });
+    if (buf_ == nullptr) {
+      buf_ = std::move(buf);
     } else {
-      buf_.emplace_back(result, size * sizeof(capnp::word),
-                        [](void* p, size_t sz) { std::free(p); });
+      buf_->Prev()->AppendChain(std::move(buf));
     }
 
-    return kj::arrayPtr(reinterpret_cast<capnp::word*>(result), size);
+    return kj::arrayPtr(reinterpret_cast<capnp::word*>(ptr), minimumSize);
   }
 
-  Buffer GetBuffer() { return std::move(buf_); }
+  std::unique_ptr<IOBuf> Move() { return std::move(buf_); }
 
  private:
-  Buffer buf_;
+  std::unique_ptr<IOBuf> buf_;
 };
 
-class BufferMessageReader : public capnp::MessageReader {
+class IOBufMessageReader : public capnp::MessageReader {
  public:
-  BufferMessageReader(Buffer buf,
-                      capnp::ReaderOptions options = capnp::ReaderOptions())
+  IOBufMessageReader(std::unique_ptr<const IOBuf>&& buf,
+                     capnp::ReaderOptions options = capnp::ReaderOptions())
       : capnp::MessageReader(options), buf_(std::move(buf)) {
-    auto p = buf.GetDataPointer();
+    auto p = buf_->GetDataPointer();
     auto nseg = p.Get<uint32_t>();
-    auto p2 = buf.GetDataPointer();
+    auto p2 = buf_->GetDataPointer();
     p2.Advance(align::Up(4 + 4 * nseg, 8));
     segments_.reserve(nseg);
     for (uint32_t i = 0; i < nseg; ++i) {
       auto size = p.Get<uint32_t>();
-      segments_.emplace_back(static_cast<capnp::word*>(p2.Addr()), size);
+      segments_.emplace_back(reinterpret_cast<const capnp::word*>(p2.Data()),
+                             size);
       p2.Advance(size * sizeof(capnp::word));
     }
   }
@@ -63,11 +58,11 @@ class BufferMessageReader : public capnp::MessageReader {
   }
 
  private:
-  Buffer buf_;
+  std::unique_ptr<const IOBuf> buf_;
   std::vector<kj::ArrayPtr<const capnp::word>> segments_;
 };
 
-Buffer AppendHeader(BufferMessageBuilder& builder);
+std::unique_ptr<IOBuf> AppendHeader(IOBufMessageBuilder& builder);
 }  // namespace ebbrt
 
 #endif  // COMMON_SRC_INCLUDE_EBBRT_CAPNPMESSAGE_H_

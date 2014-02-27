@@ -95,6 +95,8 @@ $(lwip_objects): EBBRT_CFLAGS += -Wno-address
 capnp_sources := $(shell find $(EBBRT_BAREMETAL_PATH)/ext/capnp/src/capnp -type f -name '*.c++')
 capnp_objects := $(patsubst $(EBBRT_BAREMETAL_PATH)/%.c++, %.o, $(capnp_sources))
 
+$(capnp_objects): EBBRT_CPPFLAGS := $(filter-out -flto,$(EBBRT_CPPFLAGS))
+
 kj_sources := $(shell find $(EBBRT_BAREMETAL_PATH)/ext/capnp/src/kj -type f -name '*.c++')
 kj_objects := $(patsubst $(EBBRT_BAREMETAL_PATH)/%.c++, %.o, $(kj_sources))
 

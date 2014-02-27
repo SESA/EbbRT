@@ -38,7 +38,7 @@ class Messenger : public StaticSharedEbb<Messenger> {
   Messenger();
 
   Future<void> Send(NetworkId to, EbbId id, uint64_t type_code,
-                    std::shared_ptr<const Buffer> data);
+                    std::unique_ptr<const IOBuf>&& data);
   NetworkId LocalNetworkId();
 
  private:
@@ -53,7 +53,7 @@ class Messenger : public StaticSharedEbb<Messenger> {
     explicit Session(boost::asio::ip::tcp::socket socket);
 
     void Start();
-    Future<void> Send(std::shared_ptr<const Buffer> data);
+    Future<void> Send(std::unique_ptr<const IOBuf>&& data);
 
    private:
     void ReadHeader();

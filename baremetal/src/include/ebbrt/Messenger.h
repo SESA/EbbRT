@@ -43,8 +43,8 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
   Messenger();
 
   Future<void> Send(NetworkId nid, EbbId id, uint64_t type_code,
-                    std::shared_ptr<const Buffer> data);
-  void Receive(NetworkManager::TcpPcb& t, Buffer b);
+                    std::unique_ptr<const IOBuf>&& data);
+  void Receive(NetworkManager::TcpPcb& t, std::unique_ptr<IOBuf>&& b);
 
  private:
   void StartListening(uint16_t port);

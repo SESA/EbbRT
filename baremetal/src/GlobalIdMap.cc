@@ -35,36 +35,20 @@ ebbrt::Future<std::string> ebbrt::GlobalIdMap::Get(EbbId id) {
   auto& p = map_[v];
   lock_.unlock();
 
-  BufferMessageBuilder message;
+  IOBufMessageBuilder message;
   auto builder = message.initRoot<global_id_map_message::Request>();
   auto get_builder = builder.initGetRequest();
   get_builder.setMessageId(v);
   get_builder.setEbbId(id);
 
-  auto buf = message.GetBuffer();
-
-  auto num_segments = buf.length();
-  kassert(num_segments > 0);
-  auto header_size = align::Up(4 + 4 * num_segments, 8);
-  auto header_buf = Buffer(header_size);
-  auto h = static_cast<Header*>(header_buf.data());
-  h->num_segments = num_segments;
-  auto it = buf.begin();
-  for (unsigned i = 0; i < buf.length(); ++i, ++it) {
-    auto seg_size = it->size();
-    kassert(seg_size % sizeof(capnp::word) == 0);
-    h->segment_sizes[i] = seg_size / sizeof(capnp::word);
-  }
-  header_buf.emplace_back(std::move(buf));
-
-  SendMessage(Messenger::NetworkId(frontend_ip),
-              std::make_shared<const Buffer>(std::move(header_buf)));
+  SendMessage(Messenger::NetworkId(frontend_ip), AppendHeader(message));
 
   return p.GetFuture();
 }
 
-void ebbrt::GlobalIdMap::ReceiveMessage(Messenger::NetworkId nid, Buffer b) {
-  auto reader = BufferMessageReader(std::move(b));
+void ebbrt::GlobalIdMap::ReceiveMessage(Messenger::NetworkId nid,
+                                        std::unique_ptr<const IOBuf>&& b) {
+  auto reader = IOBufMessageReader(std::move(b));
   auto reply = reader.getRoot<global_id_map_message::Reply>();
 
   switch (reply.which()) {

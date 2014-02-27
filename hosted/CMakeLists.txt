@@ -27,6 +27,7 @@ include_directories(${CMAKE_BINARY_DIR})
 
 add_library(EbbRT 
   ${CapnpSources}
+  ${CMAKE_SOURCE_DIR}/../common/src/Buffer.cc
   ${CMAKE_SOURCE_DIR}/../common/src/CapnpMessage.cc
   ${CMAKE_SOURCE_DIR}/../common/src/Message.cc
   ${CMAKE_SOURCE_DIR}/src/ContextActivation.cc

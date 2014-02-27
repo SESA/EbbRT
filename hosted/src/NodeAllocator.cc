@@ -9,6 +9,7 @@
 #include <boost/filesystem.hpp>
 #include <capnp/message.h>
 
+#include <ebbrt/CapnpMessage.h>
 #include <ebbrt/Fdt.h>
 #include <ebbrt/Messenger.h>
 #include <ebbrt/NodeAllocator.h>
@@ -21,9 +22,32 @@ ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket,
                                        uint32_t net_addr)
     : socket_(std::move(socket)), net_addr_(net_addr) {}
 
+namespace {
+class IOBufToCBS {
+ public:
+  explicit IOBufToCBS(std::unique_ptr<const ebbrt::IOBuf>&& buf)
+      : buf_(std::move(buf)) {
+    buf_vec_.reserve(buf_->CountChainElements());
+    for (auto& b : *buf_) {
+      buf_vec_.emplace_back(b.Data(), b.Length());
+    }
+  }
+
+  typedef boost::asio::const_buffer value_type;
+  typedef std::vector<boost::asio::const_buffer>::const_iterator const_iterator;
+
+  const_iterator begin() const { return buf_vec_.cbegin(); }
+  const_iterator end() const { return buf_vec_.cend(); }
+
+ private:
+  std::shared_ptr<const ebbrt::IOBuf> buf_;
+  std::vector<boost::asio::const_buffer> buf_vec_;
+};
+}  // namespace
+
 void ebbrt::NodeAllocator::Session::Start() {
-  auto message = new capnp::MallocMessageBuilder();
-  auto builder = message->initRoot<RuntimeInfo>();
+  IOBufMessageBuilder message;
+  auto builder = message.initRoot<RuntimeInfo>();
 
   // set message
   auto index =
@@ -32,18 +56,10 @@ void ebbrt::NodeAllocator::Session::Start() {
   builder.setMessengerPort(messenger->GetPort());
   builder.setGlobalIdMapAddress(net_addr_);
 
-  auto segments = message->getSegmentsForOutput();
-  std::vector<boost::asio::const_buffer> bufs;
-  bufs.reserve(segments.size());
-  for (auto& segment : segments) {
-    bufs.emplace_back(static_cast<const void*>(segment.begin()),
-                      segment.size() * sizeof(capnp::word));
-  }
   auto self(shared_from_this());
-  socket_.async_send(std::move(bufs),
-                     [message, self](const boost::system::error_code& error,
-                                     std::size_t /*bytes_transferred*/) {
-    delete message;
+  async_write(socket_, IOBufToCBS(AppendHeader(message)),
+              [self](const boost::system::error_code& error,
+                     std::size_t /*bytes_transferred*/) {
     if (error) {
       throw std::runtime_error("Node allocator failed to configure node");
     }

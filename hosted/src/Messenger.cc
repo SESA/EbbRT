@@ -18,9 +18,9 @@ ebbrt::Messenger::Messenger() {
   DoAccept(std::move(acceptor), std::move(socket));
 }
 
-ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to, EbbId id,
-                                           uint64_t type_code,
-                                           std::shared_ptr<const Buffer> data) {
+ebbrt::Future<void>
+ebbrt::Messenger::Send(NetworkId to, EbbId id, uint64_t type_code,
+                       std::unique_ptr<const IOBuf>&& data) {
   // make sure we have a pending connection
   auto ip = to.ip_.to_ulong();
   {
@@ -33,14 +33,14 @@ ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to, EbbId id,
   }
 
   // construct header
-  auto buf = std::make_shared<Buffer>(sizeof(Header));
-  auto h = static_cast<Header*>(buf->data());
-  h->length = data->total_size();
+  auto buf = IOBuf::Create(sizeof(Header));
+  auto h = reinterpret_cast<Header*>(buf->WritableData());
+  h->length = data->ComputeChainDataLength();
   h->type_code = type_code;
   h->id = id;
-  buf->append(std::move(std::const_pointer_cast<Buffer>(data)));
+  buf->AppendChain(std::unique_ptr<IOBuf>(const_cast<IOBuf*>(data.release())));
   return connection_map_[ip].Then(
-      MoveBind([](std::shared_ptr<const Buffer> data,
+      MoveBind([](std::unique_ptr<const IOBuf> data,
                   SharedFuture<std::weak_ptr<Session>> f) {
                  return f.Get().lock()->Send(std::move(data));
                },
@@ -75,13 +75,13 @@ ebbrt::Messenger::Session::Session(bai::tcp::socket socket)
 void ebbrt::Messenger::Session::Start() { ReadHeader(); }
 
 namespace {
-class BufferToCBS {
+class IOBufToCBS {
  public:
-  explicit BufferToCBS(std::shared_ptr<const ebbrt::Buffer> buf)
+  explicit IOBufToCBS(std::unique_ptr<const ebbrt::IOBuf>&& buf)
       : buf_(std::move(buf)) {
-    buf_vec_.reserve(buf_->length());
+    buf_vec_.reserve(buf_->CountChainElements());
     for (auto& b : *buf_) {
-      buf_vec_.emplace_back(b.data(), b.size());
+      buf_vec_.emplace_back(b.Data(), b.Length());
     }
   }
 
@@ -92,19 +92,19 @@ class BufferToCBS {
   const_iterator end() const { return buf_vec_.cend(); }
 
  private:
-  std::shared_ptr<const ebbrt::Buffer> buf_;
+  std::shared_ptr<const ebbrt::IOBuf> buf_;
   std::vector<boost::asio::const_buffer> buf_vec_;
 };
 }  // namespace
 
 ebbrt::Future<void>
-ebbrt::Messenger::Session::Send(std::shared_ptr<const Buffer> data) {
+ebbrt::Messenger::Session::Send(std::unique_ptr<const IOBuf>&& data) {
   auto p = new Promise<void>();
   auto ret = p->GetFuture();
   auto self(shared_from_this());
 
   boost::asio::async_write(
-      socket_, BufferToCBS(std::move(data)),
+      socket_, IOBufToCBS(std::move(data)),
       [p, self](boost::system::error_code ec, std::size_t /*length*/) {
         if (!ec) {
           p->SetValue();
@@ -145,7 +145,7 @@ void ebbrt::Messenger::Session::ReadMessage() {
           auto& ref = GetMessagableRef(header_.id, header_.type_code);
           ref.ReceiveMessageInternal(
               NetworkId(socket_.remote_endpoint().address().to_v4()),
-              Buffer(buf, size, [](void* p, size_t sz) { free(p); }));
+              IOBuf::TakeOwnership(buf, size, std::free));
         }
         ReadHeader();
       });
