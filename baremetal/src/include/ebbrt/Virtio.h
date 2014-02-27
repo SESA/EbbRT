@@ -162,7 +162,7 @@ template <typename VirtType> class VirtioDriver {
       free_count_ -= len;
       uint16_t last_desc = free_head_;
       uint16_t head = free_head_;
-      for (auto& buf : *bufs) {
+      for (const auto& buf : *bufs) {
         auto addr = buf.Data();
         auto size = buf.Length();
         auto& desc = desc_[free_head_];
@@ -216,13 +216,30 @@ template <typename VirtType> class VirtioDriver {
           // we must process it before enabling interrupts again.
         }
         auto& elem = used_->ring[used_index % qsize_];
-        auto buf = std::move(buf_references_[elem.id]);
+        kassert(buf_references_[elem.id]->Unique());
+        // This const cast is OK because we have unique access
+        auto buf = std::unique_ptr<IOBuf>(
+            const_cast<IOBuf*>(buf_references_[elem.id].release()));
         buf_references_.erase(elem.id);
         Desc* descriptor = &desc_[elem.id];
         descriptor->next = free_head_;
         free_head_ = elem.id;
         free_count_ += buf->CountChainElements();
         ++used_index;
+
+        // trim the buffer chain to only include the actual size
+        auto packet_len = elem.len;
+        for (auto& b : *buf) {
+          auto blen = b.Length();
+          if (blen > packet_len) {
+            b.TrimEnd(blen - packet_len);
+            packet_len = 0;
+          } else {
+            packet_len -= blen;
+          }
+        }
+
+        kassert(buf->ComputeChainDataLength() == elem.len);
 
         f(std::move(buf));
       }

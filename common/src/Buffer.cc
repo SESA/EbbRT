@@ -86,10 +86,16 @@ size_t ebbrt::IOBuf::ComputeChainDataLength() const {
   return len;
 }
 
-ebbrt::IOBuf::Iterator ebbrt::IOBuf::cbegin() const {
-  return Iterator(this, this);
+ebbrt::IOBuf::ConstIterator ebbrt::IOBuf::cbegin() const {
+  return ConstIterator(this, this);
 }
 
-ebbrt::IOBuf::Iterator ebbrt::IOBuf::cend() const {
+ebbrt::IOBuf::ConstIterator ebbrt::IOBuf::cend() const {
+  return ConstIterator(nullptr, nullptr);
+}
+
+ebbrt::IOBuf::Iterator ebbrt::IOBuf::begin() { return Iterator(this, this); }
+
+ebbrt::IOBuf::Iterator ebbrt::IOBuf::end() {
   return Iterator(nullptr, nullptr);
 }

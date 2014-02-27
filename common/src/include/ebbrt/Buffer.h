@@ -23,6 +23,7 @@ struct IsUniquePtrToSL<std::unique_ptr<T, D>,
 }  // namespace detail
 class IOBuf {
  public:
+  class ConstIterator;
   class Iterator;
 
   IOBuf() noexcept;
@@ -101,6 +102,8 @@ class IOBuf {
     length_ += amount;
   }
 
+  void TrimEnd(size_t amount) { length_ -= amount; }
+
   bool IsChained() const { return next_ != this; }
 
   size_t CountChainElements() const;
@@ -148,11 +151,14 @@ class IOBuf {
 
   bool UniqueOne() const { return buf_.unique(); }
 
-  Iterator cbegin() const;
-  Iterator cend() const;
+  ConstIterator cbegin() const;
+  ConstIterator cend() const;
 
-  Iterator begin() const;
-  Iterator end() const;
+  Iterator begin();
+  Iterator end();
+
+  ConstIterator begin() const;
+  ConstIterator end() const;
 
   class DataPointer {
    public:
@@ -209,15 +215,41 @@ class IOBuf {
 };
 
 class IOBuf::Iterator
-    : public boost::iterator_facade<IOBuf::Iterator, const IOBuf,
+    : public boost::iterator_facade<IOBuf::Iterator, IOBuf,
                                     boost::forward_traversal_tag> {
  public:
-  Iterator(const IOBuf* pos, const IOBuf* end) : pos_(pos), end_(end) {}
+  Iterator(IOBuf* pos, IOBuf* end) : pos_(pos), end_(end) {}
+
+ private:
+  IOBuf& dereference() const { return *pos_; }
+
+  bool equal(const Iterator& other) const {
+    return pos_ == other.pos_ && end_ == other.end_;
+  }
+
+  void increment() {
+    pos_ = pos_->Next();
+
+    if (pos_ == end_)
+      pos_ = end_ = nullptr;
+  }
+
+  IOBuf* pos_;
+  IOBuf* end_;
+
+  friend class boost::iterator_core_access;
+};
+
+class IOBuf::ConstIterator
+    : public boost::iterator_facade<IOBuf::ConstIterator, const IOBuf,
+                                    boost::forward_traversal_tag> {
+ public:
+  ConstIterator(const IOBuf* pos, const IOBuf* end) : pos_(pos), end_(end) {}
 
  private:
   const IOBuf& dereference() const { return *pos_; }
 
-  bool equal(const Iterator& other) const {
+  bool equal(const ConstIterator& other) const {
     return pos_ == other.pos_ && end_ == other.end_;
   }
 
@@ -234,8 +266,8 @@ class IOBuf::Iterator
   friend class boost::iterator_core_access;
 };
 
-inline IOBuf::Iterator IOBuf::begin() const { return cbegin(); }
-inline IOBuf::Iterator IOBuf::end() const { return cend(); }
+inline IOBuf::ConstIterator IOBuf::begin() const { return cbegin(); }
+inline IOBuf::ConstIterator IOBuf::end() const { return cend(); }
 }  // namespace ebbrt
 
 #endif  // COMMON_SRC_INCLUDE_EBBRT_BUFFER_H_
