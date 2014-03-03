@@ -7,8 +7,8 @@
 
 namespace ebbrt {
 namespace console {
-void Init() noexcept;
-void Write(const char* str) noexcept;
+__attribute__((no_instrument_function)) void Init() noexcept;
+__attribute__((no_instrument_function)) void Write(const char* str) noexcept;
 }
 }
 
