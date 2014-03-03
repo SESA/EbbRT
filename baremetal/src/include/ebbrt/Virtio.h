@@ -68,6 +68,7 @@ template <typename VirtType> class VirtioDriver {
       auto order = Fls(sz - 1) - pmem::kPageShift + 1;
       auto page = page_allocator->Alloc(order);
       kbugon(page == Pfn::None(), "virtio: page allocation failed");
+      kprintf("VRING: %x\n", page.ToAddr());
       addr_ = reinterpret_cast<void*>(page.ToAddr());
       memset(addr_, 0, sz);
 
