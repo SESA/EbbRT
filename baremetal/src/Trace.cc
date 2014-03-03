@@ -114,10 +114,51 @@ void ebbrt::trace::Dump() {
   kprintf("================================ \n");
   kprintf(" END TRACE DUMP (%llu)\n", trace_count);
   kprintf("================================ \n");
+=======
+#include <ebbrt/Debug.h>
+
+//__attribute__((no_instrument_function))
+namespace ebbrt {
+namespace trace {
+
+const int MAX_TRACE = 100000;
+struct trace_entry {
+  bool enter;
+  uintptr_t func;
+  uintptr_t caller;
+  uint64_t time;
+} trace_log[MAX_TRACE];
+
+struct trace_entry* trace_current_ptr = trace_log;
+
+bool trace_enabled;
+int trace_count = 0;  // temporary
+
+void enable_trace() { trace_enabled = true; }
+void disable_trace() { trace_enabled = false; }
+
+void Init() { return; }
+
+void Dump() {
+  kprintf("BEGIN TRACE DUMP ============ \n");
+  for (int i = 0; i < trace_count; i++)
+    kprintf("%d %p %p %llu\n", trace_log[i].enter, trace_log[i].func,
+           trace_log[i].caller, trace_log[i].time);
+  kprintf("END TRACE DUMP ============ \n");
+}
+
+inline uint64_t
+rdtsc(void) 
+{
+  uint32_t a,d;
+  __asm__ __volatile__("rdtsc" : "=a" (a), "=d" (d));
+  return ((uint64_t)a) | (((uint64_t)d) << 32);
+>>>>>>> Initial trace infrastructure
 }
 
 
 extern "C" void __cyg_profile_func_enter(void* func, void* caller) {
+<<<<<<< HEAD
   // Make sure to use the `no_instrument_function` attribute for any calls
   // withing this function
   if (global_trace_enabled) {

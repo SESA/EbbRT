@@ -69,6 +69,10 @@ extern "C"
     __attribute__((noreturn)) void ebbrt::Main(multiboot::Information* mbi) {
   console::Init();
 
+#if __EBBRT_ENABLE_TRACE__
+ trace::Init();
+#endif
+
   /* If by chance we reboot back into the kernel, panic */
   kbugon(started_once, "EbbRT reboot detected... aborting!\n");
   started_once = true;
