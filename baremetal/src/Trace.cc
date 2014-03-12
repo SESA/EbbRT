@@ -14,7 +14,7 @@ namespace {
 const constexpr size_t MAX_TRACE = 100000;
 ebbrt::trace::trace_entry trace_log[MAX_TRACE];
 const uint32_t reg = 1 << 30;  // Intel fixed-purpose-register config flag
-bool trace_enabled;
+thread_local bool trace_enabled;
 bool is_intel;
 uint32_t trace_count = 0;
 }
