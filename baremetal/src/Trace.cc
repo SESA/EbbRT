@@ -5,78 +5,23 @@
 #include <ctime>
 #include <cstdint>
 #include <string.h>
+#include <ebbrt/Cpu.h>
 #include <ebbrt/Trace.h>
 #include <ebbrt/Debug.h>
+#include <boost/container/static_vector.hpp>
 
-//__attribute__((no_instrument_function))
-namespace ebbrt {
-namespace trace {
-
-#if 0
-#define wrmsr(msr,lo,hi) \
-asm volatile ("wrmsr" : : "c" (msr), "a" (lo), "d" (hi))
-#define rdmsr(msr,lo,hi) \
-asm volatile ("\trdmsr\n" : "=a" (lo), "=d" (hi) : "c" (msr))
-#endif
-inline uint64_t rdtsc(void) {
-  uint32_t lo, hi;
-  __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
-  return ((uint64_t)lo) | (((uint64_t)hi) << 32);
-}
-
-inline uint64_t rdpmc(int reg) {
-  uint32_t lo, hi;
-  __asm__ __volatile__("rdpmc" : "=a"(lo), "=d"(hi) : "c"(reg));
-  return ((uint64_t)lo) | (((uint64_t)hi) << 32);
-}
-
-inline void cpuid(uint32_t eax, uint32_t ecx, uint32_t* a, uint32_t* b,
-                  uint32_t* c, uint32_t* d) {
-  __asm__ __volatile__("cpuid"
-                       : "=a"(*a), "=b"(*b), "=c"(*c), "=d"(*d)
-                       : "a"(eax), "c"(ecx));
-}
-
-
-const int MAX_TRACE = 100000;
-trace_entry trace_log[MAX_TRACE];
-trace_entry* trace_current_ptr = trace_log;
-
+namespace {
+const constexpr size_t MAX_TRACE = 100000;
+ebbrt::trace::trace_entry trace_log[MAX_TRACE];
+const uint32_t reg = 1 << 30;  // Intel fixed-purpose-register config flag
 bool trace_enabled;
-bool is_intel = false;
-int trace_count = 0;  // temporary
-uint32_t reg = 1 << 30;  // fixed-purpose register flag
-
-void enable_trace() {
-  trace_enabled = true;
-  if (is_intel) {
-    ebbrt::trace::perf_global_ctrl global_ctrl;
-    global_ctrl.val = 0;
-    global_ctrl.ctr0_enable = 1;
-    global_ctrl.ctr1_enable = 1;
-    global_ctrl.ctr2_enable = 1;
-    __asm__ __volatile__("wrmsr"
-                         :
-                         : "a"(global_ctrl.val & 0xFFFFFFFF),
-                           "d"(global_ctrl.val >> 32), "c"(0x38F));
-  }
-}
-void disable_trace() {
-  trace_enabled = false;
-  if (is_intel) {
-    ebbrt::trace::perf_global_ctrl global_ctrl;
-    global_ctrl.val = 0;
-    __asm__ __volatile__("wrmsr"
-                         :
-                         : "a"(global_ctrl.val & 0xFFFFFFFF),
-                           "d"(global_ctrl.val >> 32), "c"(0x38F));
-  }
+bool is_intel;
+uint32_t trace_count = 0;
 }
 
-void Init() {
-
+void ebbrt::trace::Init() {
+  int x;
   char info[13];
-  int x=1;
   cpuid(0, 0, reinterpret_cast<uint32_t*>(&x),
         reinterpret_cast<uint32_t*>(&info[0]),
         reinterpret_cast<uint32_t*>(&info[8]),
@@ -85,11 +30,11 @@ void Init() {
   if (strcmp(info, "GenuineIntel") == 0)
     is_intel = true;
   else
-    kprintf("Trace not fully supported on %s\n", info);
+    kprintf("KVM trace virtualization not fully supported on %s\n", info);
 
   if (is_intel) {
-    ebbrt::trace::fixed_ctr_ctrl fixed_ctrl;
-    ebbrt::trace::perf_global_ctrl global_ctrl;
+    fixed_ctr_ctrl fixed_ctrl;
+    perf_global_ctrl global_ctrl;
     fixed_ctrl.val = 0;
     fixed_ctrl.ctr0_enable = 3;
     fixed_ctrl.ctr1_enable = 3;
@@ -107,54 +52,98 @@ void Init() {
   return; 
 }
 
-void Dump() {
-  kprintf("BEGIN TRACE DUMP ============ \n");
-  for (int i = 0; i < trace_count; i++)
+void ebbrt::trace::AddTracepoint(std::string label)
+{
+  trace_log[trace_count].status = 2;
+  std::size_t len = label.copy(trace_log[trace_count].point,40,0);
+  trace_log[trace_count].point[len] = '\0';
+  trace_count++;
+}
+
+void ebbrt::trace::Enable() {
+  if (ebbrt::Cpu::GetMine() == 0) {
+    trace_enabled = true;
     if (is_intel) {
-      kprintf("%d %p %p %llu %llu %llu\n", trace_log[i].enter,
+      perf_global_ctrl global_ctrl;
+      global_ctrl.val = 0;
+      global_ctrl.ctr0_enable = 1;
+      global_ctrl.ctr1_enable = 1;
+      global_ctrl.ctr2_enable = 1;
+      __asm__ __volatile__("wrmsr"
+                           :
+                           : "a"(global_ctrl.val & 0xFFFFFFFF),
+                             "d"(global_ctrl.val >> 32), "c"(0x38F));
+    }
+  }
+}
+
+void ebbrt::trace::Disable() {
+  if (ebbrt::Cpu::GetMine() == 0) {
+    trace_enabled = false;
+    if (is_intel) {
+      perf_global_ctrl global_ctrl;
+      global_ctrl.val = 0;
+      __asm__ __volatile__("wrmsr"
+                           :
+                           : "a"(global_ctrl.val & 0xFFFFFFFF),
+                             "d"(global_ctrl.val >> 32), "c"(0x38F));
+    }
+  }
+}
+
+void ebbrt::trace::Dump() {
+  kprintf("================================ \n");
+  kprintf(" START TRACE DUMP (%llu)\n", trace_count);
+  kprintf("================================ \n");
+  for (uint32_t i = 0; i < trace_count; i++)
+    if (trace_log[i].status == 2)
+      kprintf("TRACEPOINT: %s\n", trace_log[i].point);
+    else
+      kprintf("%d %p %p %llu %llu %llu\n", trace_log[i].status,
               trace_log[i].func, trace_log[i].caller, trace_log[i].time,
               trace_log[i].cycles, trace_log[i].instructions);
-    }else{
-      kprintf("%d %p %p %llu %llu %llu\n", trace_log[i].enter,
-              trace_log[i].func, trace_log[i].caller, trace_log[i].time,
-              0,0);
-    }
-  kprintf("END TRACE DUMP ============ \n");
+  kprintf("================================ \n");
+  kprintf(" END TRACE DUMP (%llu)\n", trace_count);
+  kprintf("================================ \n");
 }
 
 
 extern "C" void __cyg_profile_func_enter(void* func, void* caller) {
-  if (trace_enabled && (trace_count < MAX_TRACE)) {
-    auto entry = trace_current_ptr;
-    entry->enter = true;
-    entry->func = reinterpret_cast<uintptr_t>(func);
-    entry->caller = reinterpret_cast<uintptr_t>(caller);
-    entry->time = rdtsc();
-    if (is_intel) {
-      entry->instructions = rdpmc((reg));
-      entry->cycles = rdpmc((reg + 1));
+  // Make sure to use the `no_instrument_function` attribute for any calls
+  // withing this function
+  if (trace_enabled) {
+    if (ebbrt::Cpu::GetMine() == 0) {
+      trace_log[trace_count].status = 1;
+      trace_log[trace_count].func = reinterpret_cast<uintptr_t>(func);
+      trace_log[trace_count].caller = reinterpret_cast<uintptr_t>(caller);
+      trace_log[trace_count].time = ebbrt::trace::rdtsc();
+      if (is_intel) {
+        trace_log[trace_count].instructions = ebbrt::trace::rdpmc((reg));
+        trace_log[trace_count].cycles = ebbrt::trace::rdpmc((reg + 1));
+      }
+      trace_count++;
     }
-    trace_current_ptr++;
-    trace_count++;
   }
   return;
 }
 
 extern "C" void __cyg_profile_func_exit(void* func, void* caller) {
-  if (trace_enabled && (trace_count < MAX_TRACE)) {
-    auto entry = trace_current_ptr;
-    entry->enter = false;
-    entry->func = reinterpret_cast<uintptr_t>(func);
-    entry->caller = reinterpret_cast<uintptr_t>(caller);
-    entry->time = rdtsc();
-    if (is_intel) {
-      entry->instructions = rdpmc((reg));
-      entry->cycles = rdpmc((reg + 1));
+  // Make sure to use the `no_instrument_function` attribute for any calls
+  // withing this function
+  if (trace_enabled) {
+    if (ebbrt::Cpu::GetMine() == 0) {
+      trace_log[trace_count].status = 0;
+      trace_log[trace_count].func = reinterpret_cast<uintptr_t>(func);
+      trace_log[trace_count].caller = reinterpret_cast<uintptr_t>(caller);
+      trace_log[trace_count].time = ebbrt::trace::rdtsc();
+      if (is_intel) {
+        trace_log[trace_count].instructions = ebbrt::trace::rdpmc((reg));
+        trace_log[trace_count].cycles = ebbrt::trace::rdpmc((reg + 1));
+      }
+      trace_count++;
     }
-    trace_current_ptr++;
-    trace_count++;
   }
   return;
 }
-}
-}
+
+

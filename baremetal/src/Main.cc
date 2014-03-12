@@ -73,10 +73,6 @@ extern "C"
   kbugon(started_once, "EbbRT reboot detected... aborting!\n");
   started_once = true;
 
-#if __EBBRT_ENABLE_TRACE__
- trace::Init();
-#endif
-
   kprintf("EbbRT Copyright 2013-2014 Boston University SESA Developers\n");
 
   idt::Init();
@@ -90,6 +86,10 @@ extern "C"
   cpu.set_acpi_id(0);
   cpu.set_apic_id(0);
   cpu.Init();
+
+#if __EBBRT_ENABLE_TRACE__
+ trace::Init();
+#endif
 
   e820::Init(mbi);
   e820::PrintMap();
@@ -147,7 +147,7 @@ extern "C"
     __register_frame(__eh_frame_start);
     apic::Init();
     Timer::Init();
-    smp::Init();
+    //smp::Init();
 #if __EBBRT_ENABLE_NETWORKING__
     NetworkManager::Init();
     pci::Init();
