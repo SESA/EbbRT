@@ -11,6 +11,7 @@
 #include <ebbrt/Cpu.h>
 #include <ebbrt/LocalIdMap.h>
 #include <ebbrt/PageAllocator.h>
+#include <ebbrt/Trace.h>
 #include <ebbrt/VMem.h>
 
 void ebbrt::EventManager::Init() {
