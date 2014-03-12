@@ -60,10 +60,10 @@ class EventManager {
 
  private:
   void addRemoteTask(MovableFunction<void()> func);
-  void StartProcessingEvents() __attribute__((noreturn));
-  static void CallProcess(uintptr_t mgr) __attribute__((noreturn));
-  void Process() __attribute__((noreturn));
-  void ProcessInterrupt(int num) __attribute__((noreturn));
+  void StartProcessingEvents() __attribute__((noreturn, no_instrument_function));
+  static void CallProcess(uintptr_t mgr) __attribute__((noreturn, no_instrument_function));
+  void Process() __attribute__((noreturn, no_instrument_function));
+  void ProcessInterrupt(int num) __attribute__((noreturn, no_instrument_function));
 
   Pfn AllocateStack();
 
