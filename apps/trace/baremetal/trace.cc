@@ -8,6 +8,9 @@
 
 void AppMain() { 
   
+  ebbrt::trace::Enable();
+  ebbrt::trace::AddTracepoint("Something in the app");
+  // Do something...
   ebbrt::trace::Disable();
   ebbrt::trace::Dump();
   ebbrt::kabort();
