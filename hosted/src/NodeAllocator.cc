@@ -3,6 +3,7 @@
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include <fstream>
+#include <iostream>
 
 #include <libfdt.h>
 
@@ -99,7 +100,10 @@ ebbrt::NodeAllocator::~NodeAllocator() {
   snprintf(network, sizeof(network), "%d", network_id_);
   std::string command = "/opt/khpy/kh rmnet " + std::string(network);
   std::cout << "executing " << command << std::endl;
-  system(command.c_str());
+  int rc = system(command.c_str());
+  if (rc < 0) {
+    std::cout << "ERROR: system rc =" << rc << std::endl;
+  }
 }
 
 void
@@ -151,7 +155,10 @@ void ebbrt::NodeAllocator::AllocateNode(std::string binary_path) {
   std::string command = "/opt/khpy/kh alloc " + std::string(network) + " " +
                         binary_path + " " + fname.native();
   std::cout << "executing " << command << std::endl;
-  system(command.c_str());
+  int rc = system(command.c_str());
+  if (rc < 0) {
+    std::cout << "ERROR: system rc =" << rc << std::endl;
+  }
 }
 
 uint32_t ebbrt::NodeAllocator::GetNetAddr() { return net_addr_; }

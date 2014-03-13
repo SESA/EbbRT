@@ -18,7 +18,7 @@ endif
 
 EBBRT_OPTFLAGS ?= -O2
 
-EBBRT_PATH := $(dir $(CURDIR)/$(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST)))..
+EBBRT_PATH := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))..)
 
 EBBRT_BAREMETAL_PATH := $(EBBRT_PATH)/baremetal/
 EBBRT_COMMON_PATH := $(EBBRT_PATH)/common/
