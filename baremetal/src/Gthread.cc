@@ -55,23 +55,30 @@ extern "C" int ebbrt_gthread_once(__gthread_once_t* once, void (*func)(void)) {
   return 0;
 }
 
+namespace {
+std::atomic<uintptr_t> key_val;
+}
+
 extern "C" int ebbrt_gthread_key_create(__gthread_key_t* key,
                                         void (*dtor)(void*)) {
+  static_assert(sizeof(__gthread_key_t) == sizeof(uintptr_t), "size mismatch");
+  auto val = key_val.fetch_add(1, std::memory_order_relaxed);
+  *key = reinterpret_cast<__gthread_key_t>(val);
   return 0;
 }
 
 extern "C" int ebbrt_gthread_key_delete(__gthread_key_t key) {
-  UNIMPLEMENTED();
+  // TODO(dschatz): Handle non null dtors in create!
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" void* ebbrt_gthread_getspecific(__gthread_key_t key) {
-  UNIMPLEMENTED();
-  return 0;
+  return ebbrt::event_manager->GetTlsMap()[key];
 }
 
 extern "C" int ebbrt_gthread_setspecific(__gthread_key_t key, const void* ptr) {
-  UNIMPLEMENTED();
+  ebbrt::event_manager->GetTlsMap()[key] = const_cast<void*>(ptr);
   return 0;
 }
 
@@ -81,7 +88,6 @@ extern "C" int ebbrt_gthread_mutex_destroy(__gthread_mutex_t* mutex) {
 
 extern "C" int
 ebbrt_gthread_recursive_mutex_destroy(__gthread_recursive_mutex_t* mutex) {
-  UNIMPLEMENTED();
   return 0;
 }
 
@@ -140,7 +146,7 @@ ebbrt_gthread_recursive_mutex_unlock(__gthread_recursive_mutex_t* mutex) {
 }
 
 extern "C" void ebbrt_gthread_cond_init(__gthread_cond_t* cond) {
-  // UNIMPLEMENTED();
+  // EBBRT_UNIMPLEMENTED();
 }
 
 extern "C" int ebbrt_gthread_cond_broadcast(__gthread_cond_t* cond) {
@@ -149,75 +155,75 @@ extern "C" int ebbrt_gthread_cond_broadcast(__gthread_cond_t* cond) {
 
 extern "C" int ebbrt_gthread_cond_wait(__gthread_cond_t* cond,
                                        __gthread_mutex_t* mutex) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_gthread_cond_wait_recursive(__gthread_cond_t*,
                                                  __gthread_recursive_mutex_t*) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_gthread_cond_destroy(__gthread_cond_t* cond) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_gthread_create(__gthread_t* thread,
                                     void* (*func)(void*),  // NOLINT
                                     void* args) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_gthread_join(__gthread_t thread, void** value_ptr) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_gthread_detach(__gthread_t thread) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_gthread_equal(__gthread_t t1, __gthread_t t2) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" __gthread_t ebbrt_gthread_self() {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return nullptr;
 }
 
 extern "C" int ebbrt_gthread_yield() {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int
 ebbrt_gthread_mutex_timedlock(__gthread_mutex_t* m,
                               const __gthread_time_t* abs_timeout) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int
 ebbrt_gthread_recursive_mutex_timedlock(__gthread_recursive_mutex_t* m,
                                         const __gthread_time_t* abs_time) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_gthread_cond_signal(__gthread_cond_t* cond) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int
 ebbrt_gthread_cond_timedwait(__gthread_cond_t* cond, __gthread_mutex_t* mutex,
                              const __gthread_time_t* abs_timeout) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }

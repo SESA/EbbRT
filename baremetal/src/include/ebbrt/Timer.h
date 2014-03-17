@@ -20,7 +20,8 @@ class Timer : public MulticoreEbbStatic<Timer> {
 
   Timer();
 
-  void Start(std::chrono::microseconds timeout, std::function<void()> f);
+  void Start(std::chrono::microseconds timeout, std::function<void()> f,
+             bool repeat);
 
  private:
   void SetTimer(std::chrono::microseconds from_now);

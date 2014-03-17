@@ -6,6 +6,7 @@
 
 #include <mutex>
 
+#include <ebbrt/Align.h>
 #include <ebbrt/Cpu.h>
 #include <ebbrt/LocalIdMap.h>
 
@@ -54,6 +55,7 @@ ebbrt::VMemAllocator::Alloc(size_t npages,
 
     if (ret == begin) {
       it->second.set_page_fault_handler(std::move(pf_handler));
+      it->second.set_allocated(true);
     } else {
       it->second.set_end(end - npages);
       auto p =
@@ -61,6 +63,52 @@ ebbrt::VMemAllocator::Alloc(size_t npages,
                            std::forward_as_tuple(ret + npages));
       kassert(p.second);
       p.first->second.set_page_fault_handler(std::move(pf_handler));
+      p.first->second.set_allocated(true);
+    }
+
+    kprintf("Allocated %llx - %llx\n", ret.ToAddr(),
+            (ret + npages).ToAddr() - 1);
+
+    return ret;
+  }
+  kabort("%s: unable to allocate %llu virtual pages\n", __PRETTY_FUNCTION__,
+         npages);
+}
+
+ebbrt::Pfn
+ebbrt::VMemAllocator::Alloc(size_t npages, size_t pages_align,
+                            std::unique_ptr<PageFaultHandler> pf_handler) {
+  std::lock_guard<SpinLock> lock(lock_);
+  for (auto it = regions_.begin(); it != regions_.end(); ++it) {
+    const auto& begin = it->first;
+    auto end = it->second.end();
+    if (!it->second.IsFree() || end - begin < npages)
+      continue;
+
+    auto ret = Pfn(align::Down(end.val() - npages, pages_align));
+
+    if (ret < begin)
+      continue;
+
+    auto endsize = (end - ret) - npages;
+
+    if (ret == begin) {
+      it->second.set_page_fault_handler(std::move(pf_handler));
+      it->second.set_allocated(true);
+    } else {
+      it->second.set_end(ret);
+      auto p =
+          regions_.emplace(std::piecewise_construct, std::forward_as_tuple(ret),
+                           std::forward_as_tuple(ret + npages));
+      kassert(p.second);
+      p.first->second.set_page_fault_handler(std::move(pf_handler));
+      p.first->second.set_allocated(true);
+    }
+
+    if (endsize > 0) {
+      regions_.emplace(std::piecewise_construct,
+                       std::forward_as_tuple(ret + npages),
+                       std::forward_as_tuple(end));
     }
 
     return ret;

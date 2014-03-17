@@ -142,7 +142,7 @@ EBBRT_LDFLAGS := -Wl,-n,-z,max-page-size=0x1000 $(EBBRT_OPTFLAGS)
 
 %.elf: $(EBBRT_APP_OBJECTS) $(EBBRT_OBJECTS) src/ebbrt.ld
 	$(call ebbrt_quiet, $(EBBRT_CXX) $(EBBRT_LDFLAGS) \
-	-o $@ $(EBBRT_APP_OBJECTS) $(EBBRT_OBJECTS) \
+	-o $@ $(EBBRT_APP_OBJECTS) $(EBBRT_OBJECTS) $(EBBRT_APP_LINK) \
 		-T $(EBBRT_BAREMETAL_PATH)/src/ebbrt.ld, LD $@)
 
 clean:

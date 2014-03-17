@@ -10,7 +10,7 @@
 
 #include <ebbrt/Acpi.h>
 #include <ebbrt/Apic.h>
-#ifdef __EBBRT_ENABLE_FDT__
+#if __EBBRT_ENABLE_FDT__
 #include <ebbrt/BootFdt.h>
 #endif
 #include <ebbrt/Console.h>
@@ -22,21 +22,22 @@
 #include <ebbrt/EbbAllocator.h>
 #include <ebbrt/EventManager.h>
 #include <ebbrt/GeneralPurposeAllocator.h>
-#ifdef __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
+#if __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
 #include <ebbrt/GlobalIdMap.h>
 #endif
 #include <ebbrt/LocalIdMap.h>
 #include <ebbrt/MemMap.h>
 #include <ebbrt/Messenger.h>
 #include <ebbrt/Multiboot.h>
-#ifdef __EBBRT_ENABLE_NETWORKING__
+#if __EBBRT_ENABLE_NETWORKING__
 #include <ebbrt/Net.h>
 #endif
 #include <ebbrt/Numa.h>
 #include <ebbrt/PageAllocator.h>
 #include <ebbrt/Pic.h>
 #include <ebbrt/Pci.h>
-#ifdef __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
+#include <ebbrt/Random.h>
+#if __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
 #include <ebbrt/Runtime.h>
 #endif
 #include <ebbrt/SlabAllocator.h>
@@ -75,6 +76,7 @@ extern "C"
   cpuid::Init();
   tls::Init();
   clock::Init();
+  random::Init();
   pic::Disable();
   // bring up the first cpu structure early
   auto& cpu = Cpu::Create();
@@ -87,7 +89,7 @@ extern "C"
 
   early_page_allocator::Init();
   multiboot::Reserve(mbi);
-#ifdef __EBBRT_ENABLE_FDT__
+#if __EBBRT_ENABLE_FDT__
   boot_fdt::Init(mbi);
 #endif
   vmem::Init();
@@ -139,13 +141,13 @@ extern "C"
     apic::Init();
     Timer::Init();
     smp::Init();
-#ifdef __EBBRT_ENABLE_NETWORKING__
+#if __EBBRT_ENABLE_NETWORKING__
     NetworkManager::Init();
     pci::Init();
     pci::RegisterProbe(VirtioNetDriver::Probe);
     pci::LoadDrivers();
     network_manager->AcquireIPAddress();
-#ifdef __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
+#if __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
     Messenger::Init();
     runtime::Init();
 #endif

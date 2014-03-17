@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include <ebbrt/Clock.h>
 #include <ebbrt/Debug.h>
 #include <ebbrt/GeneralPurposeAllocator.h>
 #include <ebbrt/Gthread.h>
@@ -20,82 +21,82 @@
 #include <atomic>
 
 extern "C" int ebbrt_newlib_exit(int val) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_execve(char* name, char** argv, char** env) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_getpid(void) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_fork(void) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_kill(int pid, int sig) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_wait(int* status) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_isatty(int fd) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_close(int file) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_link(char* path1, char* path2) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_lseek(int file, int ptr, int dir) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_open(const char* name, int flags, va_list list) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_read(int file, char* ptr, int len) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_fstat(int file, struct stat* st) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_stat(const char* file, struct stat* st) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_unlink(char* name) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_write(int file, char* ptr, int len) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
@@ -106,7 +107,7 @@ extern "C" void* ebbrt_newlib_malloc(size_t size) {
 extern "C" void ebbrt_newlib_free(void* ptr) { ebbrt::gp_allocator->Free(ptr); }
 
 extern "C" void* ebbrt_newlib_realloc(void*, size_t) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return nullptr;
 }
 
@@ -128,12 +129,22 @@ extern "C" void* ebbrt_newlib_memalign(size_t alignment, size_t size) {
 }
 
 extern "C" caddr_t ebbrt_newlib_sbrk(int incr) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int ebbrt_newlib_gettimeofday(struct timeval* p, void* z) {
-  UNIMPLEMENTED();
+  if (z)
+    EBBRT_UNIMPLEMENTED();
+
+  if (!p)
+    return 0;
+
+  auto d = ebbrt::clock::Wall::Now().time_since_epoch();
+  p->tv_sec = std::chrono::duration_cast<std::chrono::seconds>(d).count();
+  p->tv_usec =
+      std::chrono::duration_cast<std::chrono::microseconds>(d).count() %
+      1000000;
   return 0;
 }
 
@@ -143,28 +154,35 @@ struct RLock {
   uint32_t count;
 };
 
-typedef void *_LOCK_T;
-typedef void *_LOCK_RECURSIVE_T;
-#define STATIC_ASSERT(COND,MSG) typedef char static_assertion_##MSG[(COND)?1:-1]
+typedef void* _LOCK_T;
+typedef void* _LOCK_RECURSIVE_T;
+#define STATIC_ASSERT(COND, MSG)                                               \
+  typedef char static_assertion_##MSG[(COND) ? 1 : -1]
 
-STATIC_ASSERT((sizeof(struct RLock)==sizeof(void *)), sizeof_RLock_not_sizeof_void_ptr);
-STATIC_ASSERT(ebbrt::Cpu::kMaxCpus < ((uint64_t)(1ULL<<32)), uint32_not_enough_for_max_cpus);
+STATIC_ASSERT((sizeof(struct RLock) == sizeof(void*)),
+              sizeof_RLock_not_sizeof_void_ptr);
+STATIC_ASSERT(ebbrt::Cpu::kMaxCpus < ((uint64_t)(1ULL << 32)),
+              uint32_not_enough_for_max_cpus);
 
-extern "C" void ebbrt_newlib_lock_init_recursive(_LOCK_RECURSIVE_T *lock) {
-  RLock *l = (struct RLock *)lock;
+extern "C" void ebbrt_newlib_lock_init_recursive(_LOCK_RECURSIVE_T* lock) {
+  RLock* l = (struct RLock*)lock;
   l->owner = RLock::kNoOwner;
   l->count = 0;
 }
 
 extern "C" void ebbrt_newlib_lock_close_recursive(_LOCK_RECURSIVE_T* lock) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
 }
 
-extern "C" void ebbrt_newlib_lock_acquire(_LOCK_T* lock) { UNIMPLEMENTED(); }
+extern "C" void ebbrt_newlib_lock_acquire(_LOCK_T* lock) {
+  auto glock = static_cast<__gthread_mutex_t*>(static_cast<void*>(lock));
+  auto ret = ebbrt_gthread_mutex_lock(glock);
+  ebbrt::kbugon(ret != 0, "lock acquisition failed\n");
+}
 
 extern "C" int
 ebbrt_newlib_lock_try_acquire_recursive(_LOCK_RECURSIVE_T* lock) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
@@ -176,7 +194,9 @@ extern "C" void ebbrt_newlib_lock_acquire_recursive(_LOCK_RECURSIVE_T* lock) {
 }
 
 extern "C" void ebbrt_newlib_lock_release(_LOCK_RECURSIVE_T* lock) {
-  UNIMPLEMENTED();
+  auto glock = static_cast<__gthread_mutex_t*>(static_cast<void*>(lock));
+  auto ret = ebbrt_gthread_mutex_unlock(glock);
+  ebbrt::kbugon(ret != 0, "unlock failed!\n");
 }
 
 extern "C" void ebbrt_newlib_lock_release_recursive(_LOCK_RECURSIVE_T* lock) {

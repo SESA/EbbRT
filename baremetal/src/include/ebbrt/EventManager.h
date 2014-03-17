@@ -20,6 +20,13 @@ namespace ebbrt {
 class EventManager {
  public:
   struct EventContext {
+    EventContext() {}
+    EventContext(uint32_t event_id, Pfn stack)
+        : event_id(event_id), stack(stack) {}
+    EventContext(const EventContext&) = delete;
+    EventContext& operator=(const EventContext&) = delete;
+    EventContext(EventContext&&) = default;
+    EventContext& operator=(EventContext&&) = default;
     uint64_t rbx;
     uint64_t rsp;
     uint64_t rbp;
@@ -29,6 +36,7 @@ class EventManager {
     uint64_t r15;
     uint32_t event_id;
     Pfn stack;
+    std::unordered_map<__gthread_key_t, void*> tls;
   };
   EventManager();
 
@@ -38,9 +46,10 @@ class EventManager {
   void Spawn(ebbrt::MovableFunction<void()> func);
   void SpawnLocal(ebbrt::MovableFunction<void()> func);
   void SaveContext(EventContext& context);
-  void ActivateContext(const EventContext& context);
+  void ActivateContext(EventContext&& context);
   uint8_t AllocateVector(MovableFunction<void()> func);
   uint32_t GetEventId();
+  std::unordered_map<__gthread_key_t, void*>& GetTlsMap();
 
  private:
   void StartProcessingEvents() __attribute__((noreturn));
@@ -50,13 +59,12 @@ class EventManager {
 
   Pfn AllocateStack();
 
-  Pfn stack_;
   std::stack<Pfn> free_stacks_;
   std::stack<MovableFunction<void()>> tasks_;
   std::unordered_map<uint8_t, MovableFunction<void()>> vector_map_;
   std::atomic<uint8_t> vector_idx_;
-  uint32_t active_event_id_;
   uint32_t next_event_id_;
+  EventContext active_event_context_;
 
   friend void ebbrt::idt::EventInterrupt(int num);
   friend void ebbrt::Main(ebbrt::multiboot::Information* mbi);

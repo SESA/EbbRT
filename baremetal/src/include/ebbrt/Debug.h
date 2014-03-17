@@ -5,7 +5,8 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_DEBUG_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_DEBUG_H_
 
-#include <cstdarg>
+#include <stdarg.h>
+
 #include <cstdio>
 #include <utility>
 
@@ -15,6 +16,7 @@ namespace ebbrt {
 void kvprintf(const char* __restrict format, va_list va);
 void kprintf(const char* __restrict format, ...);
 
+#if __cplusplus > 199711L
 template <typename... Args>
 __attribute__((noreturn)) void kabort(const Args&... args) {
   kprintf(args...);
@@ -32,7 +34,7 @@ template <> __attribute__((noreturn)) inline void kabort() {
   }
 }
 
-#define UNIMPLEMENTED()                                                        \
+#define EBBRT_UNIMPLEMENTED()                                                  \
   do {                                                                         \
     ebbrt::kabort("%s: unimplemented\n", __PRETTY_FUNCTION__);                 \
   } while (0)
@@ -57,6 +59,7 @@ template <typename... Args> void kbugon(bool expr, const Args&... args) {
     kabort(args...);
   }
 }
+#endif
 }  // namespace ebbrt
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_DEBUG_H_

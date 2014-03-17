@@ -53,6 +53,7 @@ class NetworkManager {
     ip_addr_t GetRemoteAddress() const;
     void Bind(uint16_t port);
     void Listen();
+    void ListenWithBacklog(uint8_t backlog);
     void Accept(std::function<void(TcpPcb)> callback);
     Future<void> Connect(struct ip_addr* ipaddr, uint16_t port);
     void

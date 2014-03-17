@@ -214,7 +214,7 @@ void ebbrt::acpi::BootInit() {
 ACPI_STATUS AcpiOsInitialize() { return AE_OK; }
 
 ACPI_STATUS AcpiOsTerminate() {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
@@ -248,55 +248,55 @@ ACPI_STATUS AcpiOsPhysicalTableOverride(ACPI_TABLE_HEADER* ExistingTable,
 }
 
 ACPI_STATUS AcpiOsCreateLock(ACPI_SPINLOCK* OutHandle) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
-void AcpiOsDeleteLock(ACPI_SPINLOCK Handle) { UNIMPLEMENTED(); }
+void AcpiOsDeleteLock(ACPI_SPINLOCK Handle) { EBBRT_UNIMPLEMENTED(); }
 
 ACPI_CPU_FLAGS AcpiOsAcquireLock(ACPI_SPINLOCK Handle) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 void AcpiOsReleaseLock(ACPI_SPINLOCK Handle, ACPI_CPU_FLAGS Flags) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
 }
 
 ACPI_STATUS AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits,
                                   ACPI_SEMAPHORE* OutHandle) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 ACPI_STATUS AcpiOsDeleteSemaphore(ACPI_SEMAPHORE Handle) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 ACPI_STATUS AcpiOsWaitSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units,
                                 UINT16 Timeout) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
 }
 
 ACPI_STATUS AcpiOsSignalSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 void* AcpiOsAllocate(ACPI_SIZE Size) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return nullptr;
 }
 
-void AcpiOsFree(void* Memory) { UNIMPLEMENTED(); }
+void AcpiOsFree(void* Memory) { EBBRT_UNIMPLEMENTED(); }
 
 void* AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS Where, ACPI_SIZE Length) {
   if (!initialized) {
     ebbrt::vmem::EarlyMapMemory(Where, Length);
     return reinterpret_cast<void*>(Where);
   } else {
-    UNIMPLEMENTED();
+    EBBRT_UNIMPLEMENTED();
     return nullptr;
   }
 }
@@ -306,99 +306,99 @@ void AcpiOsUnmapMemory(void* LogicalAddress, ACPI_SIZE Size) {
     ebbrt::vmem::EarlyUnmapMemory(reinterpret_cast<uint64_t>(LogicalAddress),
                                   Size);
   } else {
-    UNIMPLEMENTED();
+    EBBRT_UNIMPLEMENTED();
   }
 }
 
 ACPI_STATUS AcpiOsGetPhysicalAddress(void* LogicalAddress,
                                      ACPI_PHYSICAL_ADDRESS* PhysicalAddress) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptNumber,
                                           ACPI_OSD_HANDLER ServiceRoutine,
                                           void* Context) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 ACPI_STATUS AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber,
                                          ACPI_OSD_HANDLER ServiceRoutine) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 ACPI_THREAD_ID AcpiOsGetThreadId(void) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 ACPI_STATUS AcpiOsExecute(ACPI_EXECUTE_TYPE Type,
                           ACPI_OSD_EXEC_CALLBACK Function, void* Context) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
-void AcpiOsWaitEventsComplete(void) { UNIMPLEMENTED(); }
+void AcpiOsWaitEventsComplete(void) { EBBRT_UNIMPLEMENTED(); }
 
-void AcpiOsSleep(UINT64 Milliseconds) { UNIMPLEMENTED(); }
+void AcpiOsSleep(UINT64 Milliseconds) { EBBRT_UNIMPLEMENTED(); }
 
-void AcpiOsStall(UINT32 Microseconds) { UNIMPLEMENTED(); }
+void AcpiOsStall(UINT32 Microseconds) { EBBRT_UNIMPLEMENTED(); }
 
 ACPI_STATUS AcpiOsReadPort(ACPI_IO_ADDRESS Address, UINT32* Value,
                            UINT32 Width) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 ACPI_STATUS AcpiOsWritePort(ACPI_IO_ADDRESS Address, UINT32 Value,
                             UINT32 Width) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 ACPI_STATUS AcpiOsReadMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64* Value,
                              UINT32 Width) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 ACPI_STATUS AcpiOsWriteMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 Value,
                               UINT32 Width) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 ACPI_STATUS AcpiOsReadPciConfiguration(ACPI_PCI_ID* PciId, UINT32 Reg,
                                        UINT64* Value, UINT32 Width) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 ACPI_STATUS AcpiOsWritePciConfiguration(ACPI_PCI_ID* PciId, UINT32 Reg,
                                         UINT64 Value, UINT32 Width) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 BOOLEAN AcpiOsReadable(void* Pointer, ACPI_SIZE Length) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return false;
 }
 
 BOOLEAN AcpiOsWritable(void* Pointer, ACPI_SIZE Length) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return false;
 }
 
 UINT64 AcpiOsGetTimer(void) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 ACPI_STATUS AcpiOsSignal(UINT32 Function, void* Info) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
@@ -412,46 +412,46 @@ void AcpiOsVprintf(const char* Format, va_list Args) {
   ebbrt::kvprintf(Format, Args);
 }
 
-void AcpiOsRedirectOutput(void* Destination) { UNIMPLEMENTED(); }
+void AcpiOsRedirectOutput(void* Destination) { EBBRT_UNIMPLEMENTED(); }
 
 ACPI_STATUS AcpiOsGetLine(char* Buffer, UINT32 BufferLength,
                           UINT32* BytesRead) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 ACPI_STATUS AcpiOsGetTableByName(char* Signature, UINT32 Instance,
                                  ACPI_TABLE_HEADER** Table,
                                  ACPI_PHYSICAL_ADDRESS* Address) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 ACPI_STATUS AcpiOsGetTableByIndex(UINT32 Index, ACPI_TABLE_HEADER** Table,
                                   UINT32* Instance,
                                   ACPI_PHYSICAL_ADDRESS* Address) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 ACPI_STATUS AcpiOsGetTableByAddress(ACPI_PHYSICAL_ADDRESS Address,
                                     ACPI_TABLE_HEADER** Table) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return AE_OK;
 }
 
 void* AcpiOsOpenDirectory(char* Pathname, char* WildcardSpec,
                           char RequestedFileType) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return nullptr;
 }
 
 char* AcpiOsGetNextFilename(void* DirHandle) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return nullptr;
 }
 
-void AcpiOsCloseDirectory(void* DirHandle) { UNIMPLEMENTED(); }
+void AcpiOsCloseDirectory(void* DirHandle) { EBBRT_UNIMPLEMENTED(); }
 
 constexpr uint32_t GL_ACQUIRED = ~0;
 constexpr uint32_t GL_BUSY = 0;
@@ -459,11 +459,11 @@ constexpr uint32_t GL_BIT_PENDING = 1;
 constexpr uint32_t GL_BIT_OWNED = 2;
 constexpr uint32_t GL_BIT_MASK = (GL_BIT_PENDING | GL_BIT_OWNED);
 int AcpiOsAcquireGlobalLock(uint32_t* lock) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }
 
 int AcpiOsReleaseGlobalLock(uint32_t* lock) {
-  UNIMPLEMENTED();
+  EBBRT_UNIMPLEMENTED();
   return 0;
 }

@@ -5,7 +5,10 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_CPU_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_CPU_H_
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Werror"
 #include <boost/container/static_vector.hpp>
+#pragma GCC diagnostic pop
 
 #include <ebbrt/Apic.h>
 #include <ebbrt/Debug.h>

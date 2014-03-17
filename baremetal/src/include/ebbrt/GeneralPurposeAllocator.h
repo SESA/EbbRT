@@ -51,7 +51,7 @@ class GeneralPurposeAllocator : public CacheAligned {
     return ret;
   }
 
-  void operator delete(void* p) { UNIMPLEMENTED(); }
+  void operator delete(void* p) { EBBRT_UNIMPLEMENTED(); }
 
   void* Alloc(size_t size, Nid nid = Cpu::GetMyNode()) {
     Indexer<0, sizes_in...> i;
@@ -64,6 +64,8 @@ class GeneralPurposeAllocator : public CacheAligned {
   }
 
   void Free(void* p) {
+    if (p == nullptr)
+      return;
     auto page = mem_map::AddrToPage(p);
     kassert(page != nullptr);
 

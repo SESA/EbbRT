@@ -14,9 +14,18 @@ void ebbrt::kvprintf(const char* __restrict format, va_list va) {
   vsnprintf(buffer, len + 1, format, va2);
   console::Write(buffer);
 }
+
 void ebbrt::kprintf(const char* __restrict format, ...) {
   va_list ap;
   va_start(ap, format);
   kvprintf(format, ap);
   va_end(ap);
+}
+
+extern "C" void ebbrt_kabort(const char* __restrict format, ...) {
+  va_list ap;
+  va_start(ap, format);
+  ebbrt::kvprintf(format, ap);
+  va_end(ap);
+  ebbrt::kabort();
 }

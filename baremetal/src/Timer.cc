@@ -12,18 +12,21 @@ const constexpr ebbrt::EbbId ebbrt::Timer::static_id;
 
 ebbrt::Timer::Timer() {
   auto interrupt = event_manager->AllocateVector([this]() {
-    auto now = clock::Time();
+    auto now = clock::Wall::Now().time_since_epoch();
     kassert(!timers_.empty());
     while (!timers_.empty() && timers_.begin()->first <= now) {
-      // we assume timers are repeating so we add the next one
       auto& kv = *timers_.begin();
-      auto it =
-          timers_.emplace(std::piecewise_construct,
-                          std::forward_as_tuple(now + std::get<1>(kv.second)),
-                          std::move(kv.second));
+      auto& repeat_us = std::get<1>(kv.second);
+      auto f = std::get<0>(timers_.begin()->second);
+      // if a timer needs repeating, we put it in the map
+      if (repeat_us != std::chrono::microseconds::zero()) {
+        timers_.emplace(std::piecewise_construct,
+                        std::forward_as_tuple(now + repeat_us),
+                        std::move(kv.second));
+      }
       timers_.erase(timers_.begin());
-      std::get<0>(it->second)();
-      now = clock::Time();
+      f();
+      now = clock::Wall::Now().time_since_epoch();
     }
     if (!timers_.empty()) {
       SetTimer(std::chrono::duration_cast<std::chrono::microseconds>(
@@ -36,11 +39,12 @@ ebbrt::Timer::Timer() {
   msr::Write(msr::kX2apicDcr, 0x3);  // divide = 16
 
   // calibrate timer
-  auto t = clock::Time();
+  auto t = clock::Wall::Now().time_since_epoch();
   // set timer
   msr::Write(msr::kX2apicInitCount, 0xFFFFFFFF);
 
-  while (clock::Time() < (t + std::chrono::milliseconds(10))) {
+  while (clock::Wall::Now().time_since_epoch() <
+         (t + std::chrono::milliseconds(10))) {
   }
 
   auto remaining = msr::Read(msr::kX2apicCurrentCount);
@@ -73,13 +77,14 @@ void ebbrt::Timer::SetTimer(std::chrono::microseconds from_now) {
 }
 
 void ebbrt::Timer::Start(std::chrono::microseconds timeout,
-                         std::function<void()> f) {
-  auto now = clock::Time();
+                         std::function<void()> f, bool repeat) {
+  auto now = clock::Wall::Now().time_since_epoch();
   auto when = now + timeout;
   if (timers_.empty() || timers_.begin()->first > when) {
     SetTimer(timeout);
   }
 
+  auto repeat_us = repeat ? timeout : std::chrono::microseconds::zero();
   timers_.emplace(std::piecewise_construct, std::forward_as_tuple(when),
-                  std::forward_as_tuple(std::move(f), timeout));
+                  std::forward_as_tuple(std::move(f), repeat_us));
 }

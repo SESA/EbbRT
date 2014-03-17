@@ -81,7 +81,7 @@ extern "C" __attribute__((noreturn)) void SwitchStack(uintptr_t first_param,
                                                       void (*func)(uintptr_t));
 
 void ebbrt::EventManager::StartProcessingEvents() {
-  auto stack_top = (stack_ + kStackPages).ToAddr();
+  auto stack_top = (active_event_context_.stack + kStackPages).ToAddr();
   Cpu::GetMine().SetEventStack(stack_top);
   SwitchStack(reinterpret_cast<uintptr_t>(this), stack_top, CallProcess);
 }
@@ -120,7 +120,6 @@ process:
   if (!tasks_.empty()) {
     auto f = std::move(tasks_.top());
     tasks_.pop();
-    active_event_id_ = next_event_id_++;
     InvokeFunction(f);
     // if we had a task to execute, then we go to the top again
     goto process;
@@ -147,9 +146,8 @@ ebbrt::Pfn ebbrt::EventManager::AllocateStack() {
 static_assert(ebbrt::Cpu::kMaxCpus <= 256, "adjust event id calculation");
 
 ebbrt::EventManager::EventManager()
-    : vector_idx_(32), next_event_id_(Cpu::GetMine() << 24) {
-  stack_ = AllocateStack();
-}
+    : vector_idx_(32), next_event_id_(Cpu::GetMine() << 24),
+      active_event_context_(next_event_id_++, AllocateStack()) {}
 
 void ebbrt::EventManager::Spawn(MovableFunction<void()> func) {
   SpawnLocal(std::move(func));
@@ -165,11 +163,12 @@ SaveContextAndSwitch(uintptr_t first_param, uintptr_t stack,
                      ebbrt::EventManager::EventContext& context);
 
 void ebbrt::EventManager::SaveContext(EventContext& context) {
-  context.stack = stack_;
-  context.event_id = active_event_id_;
-  stack_ = AllocateStack();
-  auto stack_top = (stack_ + kStackPages).ToAddr();
+  context = std::move(active_event_context_);
+  auto stack = AllocateStack();
+  auto stack_top = (stack + kStackPages).ToAddr();
   Cpu::GetMine().SetEventStack(stack_top);
+  active_event_context_.~EventContext();
+  new (&active_event_context_) EventContext(next_event_id_++, stack);
   SaveContextAndSwitch(reinterpret_cast<uintptr_t>(this), stack_top,
                        CallProcess, context);
 }
@@ -177,15 +176,15 @@ void ebbrt::EventManager::SaveContext(EventContext& context) {
 extern "C" void
 ActivateContextAndReturn(const ebbrt::EventManager::EventContext& context);
 
-void ebbrt::EventManager::ActivateContext(const EventContext& context) {
-  SpawnLocal([this, context]() {
-    free_stacks_.push(stack_);
-    stack_ = context.stack;
-    active_event_id_ = context.event_id;
-    auto stack_top = (context.stack + kStackPages).ToAddr();
-    Cpu::GetMine().SetEventStack(stack_top);
-    ActivateContextAndReturn(context);
-  });
+void ebbrt::EventManager::ActivateContext(EventContext&& context) {
+  SpawnLocal(MoveBind([this](EventContext c) {
+                        free_stacks_.push(active_event_context_.stack);
+                        auto stack_top = (c.stack + kStackPages).ToAddr();
+                        Cpu::GetMine().SetEventStack(stack_top);
+                        active_event_context_ = std::move(c);
+                        ActivateContextAndReturn(active_event_context_);
+                      },
+                      std::move(context)));
 }
 
 uint8_t ebbrt::EventManager::AllocateVector(MovableFunction<void()> func) {
@@ -199,10 +198,15 @@ void ebbrt::EventManager::ProcessInterrupt(int num) {
   auto it = vector_map_.find(num);
   if (it != vector_map_.end()) {
     auto& f = it->second;
-    active_event_id_ = next_event_id_++;
     InvokeFunction(f);
   }
   Process();
 }
 
-uint32_t ebbrt::EventManager::GetEventId() { return active_event_id_; }
+uint32_t ebbrt::EventManager::GetEventId() {
+  return active_event_context_.event_id;
+}
+
+std::unordered_map<__gthread_key_t, void*>& ebbrt::EventManager::GetTlsMap() {
+  return active_event_context_.tls;
+}

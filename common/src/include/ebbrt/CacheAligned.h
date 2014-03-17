@@ -14,6 +14,7 @@ namespace ebbrt {
 const constexpr size_t cache_size = 64;
 
 struct alignas(cache_size) CacheAligned {
+#ifdef __EXCEPTIONS
   void* operator new(size_t size) {
     auto ret = memalign(cache_size, size);
     if (ret == nullptr) {
@@ -22,6 +23,7 @@ struct alignas(cache_size) CacheAligned {
     return ret;
   }
   void operator delete(void* p) { free(p); }
+#endif
 };
 }  // namespace ebbrt
 

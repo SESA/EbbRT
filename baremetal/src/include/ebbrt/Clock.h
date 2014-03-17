@@ -11,8 +11,17 @@ namespace ebbrt {
 namespace clock {
 void Init();
 void ApInit();
-std::chrono::nanoseconds Time();
-}
-}
+
+class Wall {
+ public:
+  typedef std::chrono::nanoseconds duration;
+  typedef std::chrono::time_point<ebbrt::clock::Wall> time_point;
+
+  static time_point Now() noexcept;
+};
+
+std::chrono::nanoseconds Uptime() noexcept;
+}  // namespace clock
+}  // namespace ebbrt
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_CLOCK_H_

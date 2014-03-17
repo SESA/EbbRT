@@ -28,7 +28,8 @@ ebbrt::ExplicitlyConstructed<ebbrt::NetworkManager> the_manager;
 void ebbrt::NetworkManager::Init() {
   the_manager.construct();
   lwip_init();
-  timer->Start(std::chrono::milliseconds(10), []() { sys_check_timeouts(); });
+  timer->Start(std::chrono::milliseconds(10), []() { sys_check_timeouts(); },
+               /* repeat = */ true);
 }
 
 ebbrt::NetworkManager& ebbrt::NetworkManager::HandleFault(EbbId id) {
@@ -105,7 +106,7 @@ void StatusCallback(struct netif* netif) {
   ebbrt::kprintf("IP address: %" U16_F ".%" U16_F ".%" U16_F ".%" U16_F "\n",
                  ip4_addr1_16(&netif->ip_addr), ip4_addr2_16(&netif->ip_addr),
                  ip4_addr3_16(&netif->ip_addr), ip4_addr4_16(&netif->ip_addr));
-  ebbrt::event_manager->ActivateContext(*context);
+  ebbrt::event_manager->ActivateContext(std::move(*context));
   delete context;
 }
 }  // namespace
@@ -171,7 +172,7 @@ extern "C" uint32_t lwip_rand() { return ebbrt::rdtsc() % 0xFFFFFFFF; }
 
 u32_t sys_now() {
   return std::chrono::duration_cast<std::chrono::milliseconds>(
-             ebbrt::clock::Time()).count();
+             ebbrt::clock::Wall::Now().time_since_epoch()).count();
 }
 
 void ebbrt::NetworkManager::TcpPcb::Deleter(struct tcp_pcb* object) {
@@ -237,6 +238,15 @@ void ebbrt::NetworkManager::TcpPcb::Listen() {
   pcb_.reset(pcb);
 }
 
+void ebbrt::NetworkManager::TcpPcb::ListenWithBacklog(uint8_t backlog) {
+  auto pcb = tcp_listen_with_backlog(pcb_.get(), backlog);
+  if (pcb == NULL) {
+    throw std::bad_alloc();
+  }
+  pcb_.release();
+  pcb_.reset(pcb);
+}
+
 void
 ebbrt::NetworkManager::TcpPcb::Accept(std::function<void(TcpPcb)> callback) {
   accept_callback_ = std::move(callback);
@@ -274,8 +284,10 @@ err_t ebbrt::NetworkManager::TcpPcb::Connect_Handler(void* arg,
 
 void ebbrt::NetworkManager::TcpPcb::Receive(
     std::function<void(TcpPcb&, std::unique_ptr<IOBuf>&&)> callback) {
+  if (!receive_callback_) {
+    tcp_recv(pcb_.get(), Receive_Handler);
+  }
   receive_callback_ = std::move(callback);
-  tcp_recv(pcb_.get(), Receive_Handler);
 }
 
 err_t ebbrt::NetworkManager::TcpPcb::Receive_Handler(void* arg,

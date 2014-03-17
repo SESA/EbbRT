@@ -38,7 +38,7 @@ void ebbrt::runtime::Init() {
       kprintf("%x:%d\n", address, port);
       messenger->StartListening(port);
       global_id_map->SetAddress(address);
-      event_manager->ActivateContext(context);
+      event_manager->ActivateContext(std::move(context));
     }
   });
   pcb->Connect(&addr, port);

@@ -33,11 +33,14 @@ class VMemAllocator : CacheAligned {
   Pfn Alloc(size_t npages,
             std::unique_ptr<PageFaultHandler> pf_handler = nullptr);
 
+  Pfn Alloc(size_t npages, size_t pages_align,
+            std::unique_ptr<PageFaultHandler> pf_handler = nullptr);
+
  private:
   class Region {
    public:
-    explicit Region(Pfn addr) : end_(addr) {}
-    bool IsFree() const { return !static_cast<bool>(page_fault_handler_); }
+    explicit Region(Pfn addr) : end_(addr), allocated_(false) {}
+    bool IsFree() const { return !allocated_; }
     void HandleFault(idt::ExceptionFrame* ef, uintptr_t addr) {
       kbugon(IsFree(), "Fault on a free region!\n");
       page_fault_handler_->HandleFault(ef, addr);
@@ -47,10 +50,12 @@ class VMemAllocator : CacheAligned {
     void set_page_fault_handler(std::shared_ptr<PageFaultHandler> p) {
       page_fault_handler_ = std::move(p);
     }
+    void set_allocated(bool allocated) { allocated_ = allocated; }
 
    private:
     Pfn end_;
     std::shared_ptr<PageFaultHandler> page_fault_handler_;
+    bool allocated_;
   };
 
   VMemAllocator();
