@@ -2,29 +2,27 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
-#ifndef APPS_HELLOWORLD_BAREMETAL_PRINTER_H_
-#define APPS_HELLOWORLD_BAREMETAL_PRINTER_H_
+#ifndef APPS_HELLOWORLD_HOSTED_SRC_PRINTER_H_
+#define APPS_HELLOWORLD_HOSTED_SRC_PRINTER_H_
 
 #include <string>
 
 #include <ebbrt/Message.h>
+#include <ebbrt/StaticSharedEbb.h>
 
-#include "../StaticEbbIds.h"
+#include "../../src/StaticEbbIds.h"
 
-class Printer : public ebbrt::Messagable<Printer> {
+class Printer : public ebbrt::StaticSharedEbb<Printer>,
+                public ebbrt::Messagable<Printer> {
  public:
-  explicit Printer(ebbrt::Messenger::NetworkId nid);
+  Printer();
 
-  static Printer& HandleFault(ebbrt::EbbId id);
-
+  static ebbrt::Future<void> Init();
   void Print(std::string string);
   void ReceiveMessage(ebbrt::Messenger::NetworkId nid,
-                      std::unique_ptr<ebbrt::IOBuf> buffer);
-
- private:
-  ebbrt::Messenger::NetworkId remote_nid_;
+                      std::unique_ptr<ebbrt::IOBuf>&& buffer);
 };
 
 constexpr auto printer = ebbrt::EbbRef<Printer>(kPrinterEbbId);
 
-#endif  // APPS_HELLOWORLD_BAREMETAL_PRINTER_H_
+#endif  // APPS_HELLOWORLD_HOSTED_SRC_PRINTER_H_
