@@ -11,7 +11,7 @@
 #include <boost/container/static_vector.hpp>
 
 namespace {
-const constexpr size_t MAX_TRACE = 100000;
+const constexpr size_t MAX_TRACE = 1000000;
 ebbrt::trace::trace_entry trace_log[MAX_TRACE];
 const uint32_t reg = 1 << 30;  // Intel fixed-purpose-register config flag
 bool global_trace_enabled;

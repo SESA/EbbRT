@@ -32,7 +32,10 @@ void AppMain() {
   ebbrt::trace::Init();
   ebbrt::trace::Enable();
 
+
   // EXPERIMENT 1 - COST OF NOTHING
+  //warmup
+  for (auto i = 0; i < ITERATIONS; i++) { do_nothing(); }
   is = ebbrt::trace::rdpmc((reg));
   cs = ebbrt::trace::rdpmc((reg + 1));
   ts = ebbrt::trace::rdtsc();
@@ -48,6 +51,8 @@ void AppMain() {
   ebbrt::kprintf("EXP1: cycle total:%llu ave:%llu\n", (ce - cs), cave);
 
   // EXPERIMENT 2 - COST OF WALLCLOCK
+  // warmup
+  for (auto i = 0; i < ITERATIONS; i++) { do_rdtsc(); }
   is = ebbrt::trace::rdpmc((reg));
   cs = ebbrt::trace::rdpmc((reg + 1));
   ts = ebbrt::trace::rdtsc();
@@ -63,6 +68,8 @@ void AppMain() {
   ebbrt::kprintf("EXP2: cycle total:%llu ave:%llu\n", (ce - cs), cave);
 
   // EXPERIMENT 3 - COST OF PERFORMANCE COUNTERS
+  // warmup
+  for (auto i = 0; i < ITERATIONS; i++) { do_perf(); }
   is = ebbrt::trace::rdpmc((reg));
   cs = ebbrt::trace::rdpmc((reg + 1));
   ts = ebbrt::trace::rdtsc();

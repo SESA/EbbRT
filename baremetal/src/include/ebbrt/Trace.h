@@ -15,6 +15,7 @@ __attribute__((no_instrument_function)) void Dump() ;
 __attribute__((no_instrument_function)) void Enable();
 __attribute__((no_instrument_function)) void Disable();
 __attribute__((no_instrument_function)) void AddTracepoint(std::string);
+__attribute__((no_instrument_function)) bool IsIntel();
 
 inline uint64_t rdtsc(void) {
   uint32_t lo, hi;
