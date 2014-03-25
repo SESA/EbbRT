@@ -37,7 +37,7 @@ app_objects := $(app_sources:.cc=.o)
 
 ${target}: $(app_objects) $(ebbrt_lib) $(bm_imgs)
 	$(CXX) $(OPTFLAGS)  -Wl,--whole-archive $(app_objects) $(ebbrt_lib) -Wl,--no-whole-archive \
-	-lboost_filesystem -lboost_system -lcapnp -lkj -lfdt -pthread -o $@
+	-lboost_filesystem -lboost_system -lcapnp -lkj -lfdt -ltbb  -pthread -o $@
 	@echo CREATED: $(abspath ${target})
 
 ${ebbrt_libdir}:

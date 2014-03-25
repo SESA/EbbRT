@@ -1,12 +1,12 @@
 %::
-	make -C hosted/build  $@
-	make -C baremetal/build $@
+	$(MAKE) -C hosted/build  $@
+	$(MAKE) -C baremetal/build $@
 
 .PHONY: all Release Debug
 
 all: Release
 
 Release:
-	make -C hosted/build/Release
+	$(MAKE) -C hosted/build/Release
 Debug:
-	make -C hosted/build/Debug
+	$(MAKE) -C hosted/build/Debug

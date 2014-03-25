@@ -1,7 +1,7 @@
 %::
-	make -C Debug $@
-	make -C Release $@
+	$(MAKE) -C Debug $@
+	$(MAKE) -C Release $@
 
 all:
-	make -C Debug
-	make -C Release
+	$(MAKE) -C Debug
+	$(MAKE) -C Release
