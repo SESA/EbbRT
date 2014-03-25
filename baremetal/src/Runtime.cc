@@ -14,7 +14,16 @@
 #include <ebbrt/Net.h>
 #include <ebbrt/RuntimeInfo.capnp.h>
 
+namespace ebbrt {
+  namespace runtime {
+    uint32_t frontend;
+  }
+}
+
+uint32_t ebbrt::runtime::Frontend() { return frontend; }
+
 void ebbrt::runtime::Init() {
+
   auto reader = boot_fdt::Get();
   auto offset = reader.GetNodeOffset("/runtime");
   auto ip = reader.GetProperty32(offset, "address");
@@ -33,11 +42,11 @@ void ebbrt::runtime::Init() {
       auto info = message.getRoot<RuntimeInfo>();
 
       ebb_allocator->SetIdSpace(info.getEbbIdSpace());
-      const auto& address = info.getGlobalIdMapAddress();
+      frontend = info.getGlobalIdMapAddress();
       const auto& port = info.getMessengerPort();
-      kprintf("%x:%d\n", address, port);
+      kprintf("%x:%d\n", frontend, port);
       messenger->StartListening(port);
-      global_id_map->SetAddress(address);
+      global_id_map->SetAddress(frontend);
       event_manager->ActivateContext(std::move(context));
     }
   });

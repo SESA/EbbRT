@@ -2,8 +2,10 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
-#ifndef BAREMETAL_SRC_INCLUDE_EBBRT_EBBALLOCATOR_H_
-#define BAREMETAL_SRC_INCLUDE_EBBRT_EBBALLOCATOR_H_
+#ifndef COMMON_SRC_INCLUDE_EBBRT_EBBALLOCATOR_H_
+#define COMMON_SRC_INCLUDE_EBBRT_EBBALLOCATOR_H_
+
+#include <mutex>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
@@ -14,21 +16,19 @@
 #include <ebbrt/EbbRef.h>
 #include <ebbrt/Runtime.h>
 #include <ebbrt/StaticIds.h>
-#include <ebbrt/SpinLock.h>
-#include <ebbrt/Trans.h>
+#include <ebbrt/StaticSharedEbb.h>
 
 namespace ebbrt {
-class EbbAllocator : public CacheAligned {
+class EbbAllocator : public CacheAligned,
+		     public StaticSharedEbb<EbbAllocator> {
  public:
-  static void Init();
-  static EbbAllocator& HandleFault(EbbId id);
   EbbAllocator();
   EbbId AllocateLocal();
 
  private:
   void SetIdSpace(uint16_t id_space);
 
-  SpinLock lock_;
+  std::mutex lock_;
   boost::icl::interval_set<EbbId> free_ids_;
   boost::icl::interval_set<EbbId> free_global_ids_;
 

@@ -7,20 +7,6 @@
 #include <mutex>
 
 #include <ebbrt/Debug.h>
-#include <ebbrt/ExplicitlyConstructed.h>
-
-namespace {
-ebbrt::ExplicitlyConstructed<ebbrt::EbbAllocator> the_allocator;
-}
-
-void ebbrt::EbbAllocator::Init() { the_allocator.construct(); }
-
-ebbrt::EbbAllocator& ebbrt::EbbAllocator::HandleFault(EbbId id) {
-  kassert(id == kEbbAllocatorId);
-  auto& ref = *the_allocator;
-  EbbRef<EbbAllocator>::CacheRef(id, ref);
-  return ref;
-}
 
 ebbrt::EbbAllocator::EbbAllocator() {
   auto start_ids =
@@ -29,7 +15,7 @@ ebbrt::EbbAllocator::EbbAllocator() {
 }
 
 ebbrt::EbbId ebbrt::EbbAllocator::AllocateLocal() {
-  std::lock_guard<SpinLock> lock(lock_);
+  std::lock_guard<std::mutex> lock(lock_);
   kbugon(free_ids_.empty());
   auto ret = boost::icl::first(free_ids_);
   free_ids_.erase(ret);

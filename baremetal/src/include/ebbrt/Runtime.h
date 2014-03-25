@@ -5,9 +5,12 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_RUNTIME_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_RUNTIME_H_
 
+#include <stdint.h>
+
 namespace ebbrt {
 namespace runtime {
-void Init();
+  uint32_t Frontend();
+  void Init();
 }
 }
 

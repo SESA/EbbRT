@@ -4,8 +4,6 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include <ebbrt/LocalIdMap.h>
 
-#include <ebbrt/ExplicitlyConstructed.h>
-
 bool ebbrt::LocalIdMap::Insert(const ValueType& value) {
   return map_.insert(value);
 }
