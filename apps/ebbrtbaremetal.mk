@@ -1,7 +1,9 @@
 ifeq ($(strip ${EBBRT_SRCDIR}),)
- EBBRT_SRCDIR=${HOME}/EbbRT
- $(info EBBRT_SRCDIR not set defaulting to $(EBBRT_SRCDIR))
-endif	
+ $(error EBBRT_SRCDIR not set)
+else
+ $(info EBBRT_SRCDIR set to $(EBBRT_SRCDIR))
+endif
+
 baremetal = ${EBBRT_SRCDIR}/baremetal
 
 ifeq ($(strip ${EBBRT_BUILDTYPE}),Debug)

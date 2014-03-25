@@ -1,5 +1,7 @@
 ifeq ($(strip ${EBBRT_SRCDIR}),)
  $(error EBBRT_SRCDIR not set)
+else
+ $(info EBBRT_SRCDIR set to $(EBBRT_SRCDIR))
 endif
 
 ebbrt_hosted = ${EBBRT_SRCDIR}/hosted	
