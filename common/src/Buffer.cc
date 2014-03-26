@@ -43,10 +43,17 @@ std::unique_ptr<ebbrt::IOBuf> ebbrt::IOBuf::Clone() const {
   return buff;
 }
 
+<<<<<<< HEAD
 std::unique_ptr<ebbrt::IOBuf> ebbrt::IOBuf::CloneOne() const {
   auto p = new IOBuf(*this);
   p->next_ = p;
   p->prev_ = p;
+=======
+std::unique_ptr<ebbrt::IOBuf> ebbrt::IOBuf::CloneOne() const{
+  auto p = new IOBuf(*this);
+  p->next_=p;
+  p->prev_=p;
+>>>>>>> a63b3e2... IOBuff chaining copy constructor
   return std::unique_ptr<IOBuf>(p);
 }
 
