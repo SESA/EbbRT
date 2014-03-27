@@ -158,7 +158,7 @@ template <typename VirtType> class VirtioDriver {
 
     void AddReadableBuffer(std::unique_ptr<const IOBuf>&& bufs) {
       auto len = bufs->CountChainElements();
-      kbugon(free_count_ < len);
+      kbugon(free_count_ < len, "Not enough free descriptors to add buffer chain\n");
 
       free_count_ -= len;
       uint16_t last_desc = free_head_;
@@ -217,15 +217,20 @@ template <typename VirtType> class VirtioDriver {
           // we must process it before enabling interrupts again.
         }
         auto& elem = used_->ring[used_index % qsize_];
-        kassert(buf_references_[elem.id]->Unique());
-        // This const cast is OK because we have unique access
+	kassert(buf_references_.find(elem.id) != buf_references_.end());
+        // This const cast is needed to trim the buffer chain
         auto buf = std::unique_ptr<IOBuf>(
             const_cast<IOBuf*>(buf_references_[elem.id].release()));
         buf_references_.erase(elem.id);
         Desc* descriptor = &desc_[elem.id];
+	auto len = 1;
+	while (descriptor->flags & Desc::Next) {
+	  ++len;
+	  descriptor = &desc_[descriptor->next];
+	}
         descriptor->next = free_head_;
         free_head_ = elem.id;
-        free_count_ += buf->CountChainElements();
+        free_count_ += len;
         ++used_index;
 
         // trim the buffer chain to only include the actual size
@@ -235,7 +240,7 @@ template <typename VirtType> class VirtioDriver {
           if (blen > packet_len) {
             b.TrimEnd(blen - packet_len);
             packet_len = 0;
-          } else {
+	  } else {
             packet_len -= blen;
           }
         }
