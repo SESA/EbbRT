@@ -30,6 +30,7 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
   FillRxRing();
 
   auto rcv_vector = event_manager->AllocateVector([this]() {
+      /* Receive interrupt processing */
       trace::AddTracepoint(1);
     auto& rcv_queue = GetQueue(0);
     rcv_queue.ProcessUsedBuffers([this](std::unique_ptr<const IOBuf>&& b) {

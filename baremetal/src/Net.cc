@@ -164,7 +164,12 @@ void ebbrt::NetworkManager::Interface::Receive(std::unique_ptr<IOBuf>&& buf) {
     ptr += q->len;
   }
 
-  event_manager->SpawnLocal([p, this]() {trace::AddTracepoint(1); netif_.input(p, &netif_); trace::AddTracepoint(0);});
+  event_manager->SpawnLocal([p, this]() {
+    /* call into lwIP for protocol processing */
+    trace::AddTracepoint(1);
+    netif_.input(p, &netif_);
+    trace::AddTracepoint(0);
+  });
 }
 
 extern "C" void lwip_printf(const char* fmt, ...) {
