@@ -58,9 +58,13 @@ class IOBuf {
     return CopyBuffer(buf.data(), buf.size());
   }
 
+  static std::unique_ptr<IOBuf> Clone(const std::unique_ptr<const IOBuf>& buf);
+
   static void Destroy(std::unique_ptr<IOBuf>&& data) {
     auto destroyer = std::move(data);
   }
+
+  std::string ToString();
 
   ~IOBuf();
 

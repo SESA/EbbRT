@@ -8,7 +8,7 @@
 #include <ebbrt/CapnpMessage.h>
 #include <ebbrt/Messenger.h>
 
-#include <ebbrt/GlobalIdMessage.capnp.h>
+#include "GlobalIdMessage.capnp.h"
 
 EBBRT_PUBLISH_TYPE(ebbrt, GlobalIdMap);
 

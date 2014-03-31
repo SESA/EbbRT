@@ -27,9 +27,9 @@ EBBRT_OPTFLAGS += -D__EBBRT_BM__ -I$(abspath ../../src) -I$(abspath ../../../../
 # ../../../src: Common source for this application both baremetal and hosted
 # ../../../../src: Common hosted and baremetal source files that are provide for all apps
 # ../../../../src/bm: Common baremetal source files that are provided for all applications to use
-EBBRT_APP_VPATH := $(abspath ../../src):$(abspath ../../../src):$(abspath ../../../../src):$(abspath ../../../../src/baremetal)
+# EBBRT_APP_VPATH := $(abspath ../../src):$(abspath ../../../src):$(abspath ../../../../src):$(abspath ../../../../src/baremetal)
 
-EBBRT_CONFIG = $(abspath ../../src/ebbrtcfg.h)
+#EBBRT_CONFIG = $(abspath ../../src/ebbrtcfg.h)
 
 include $(baremetal)/build.mk
 

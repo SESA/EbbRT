@@ -17,7 +17,16 @@ void ebbrt::Messenger::StartListening(uint16_t port) {
   tcp_.Bind(port);
   tcp_.Listen();
   tcp_.Accept([this](NetworkManager::TcpPcb pcb) {
-    kabort("UNIMPLEMENTED: New Messenger Connection\n");
+    auto addr = pcb.GetRemoteAddress().addr;
+    std::lock_guard<ebbrt::SpinLock> lock(lock_);
+    if (connection_map_.find(addr) != connection_map_.end())
+      throw std::runtime_error("Store to promise");
+
+    pcb.Receive([this](NetworkManager::TcpPcb& t, std::unique_ptr<IOBuf>&& b) {
+      Receive(t, std::move(b));
+    });
+    connection_map_.emplace(
+        addr, MakeReadyFuture<NetworkManager::TcpPcb>(std::move(pcb)).Share());
   });
 }
 

@@ -16,12 +16,6 @@
 namespace ebbrt {
 class Runtime;
 class Context {
-  Runtime& runtime_;
-  size_t index_;
-  std::unordered_map<EbbId, LocalEntry> local_table_;
-
-  friend class Runtime;
-
  public:
   explicit Context(Runtime& runtime);
   Context(Context&&) = default;
@@ -31,10 +25,20 @@ class Context {
   void Run();
   void RunOne();
   void PollOne();
+  void Stop();
+  void Reset();
   LocalEntry GetLocalEntry(EbbId id) { return local_table_[id]; }
   void SetLocalEntry(EbbId id, LocalEntry le) { local_table_[id] = le; }
 
   boost::asio::io_service io_service_;
+
+ private:
+  Runtime& runtime_;
+  size_t index_;
+  std::unordered_map<EbbId, LocalEntry> local_table_;
+
+  friend class Runtime;
+  friend class EventManager;
 };
 
 extern thread_local Context* active_context;

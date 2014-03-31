@@ -19,7 +19,8 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   NodeAllocator();
   ~NodeAllocator();
 
-  void AllocateNode(std::string binary_path);
+  ebbrt::Future<ebbrt::Messenger::NetworkId>
+  AllocateNode(std::string binary_path);
 
  private:
   class Session : public std::enable_shared_from_this<Session> {
@@ -37,6 +38,8 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   uint32_t GetNetAddr();
 
   std::atomic<uint16_t> node_index_;
+  std::atomic<uint16_t> allocation_index_;
+  std::unordered_map<uint16_t, Promise<Messenger::NetworkId>> promise_map_;
   int network_id_;
   uint32_t net_addr_;
   uint16_t port_;

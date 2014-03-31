@@ -47,6 +47,14 @@ std::unique_ptr<ebbrt::IOBuf> ebbrt::IOBuf::WrapBuffer(const void* buf,
   return TakeOwnership(const_cast<void*>(buf), capacity);
 }
 
+std::string ebbrt::IOBuf::ToString() {
+  std::string ret;
+  for (auto current = next_; current != this; current = current->next_) {
+    ret.insert(ret.end(), current->Data(), current->Tail());
+  }
+  return ret;
+}
+
 ebbrt::IOBuf::~IOBuf() {
   while (next_ != this) {
     // Because we don't capture the unique_ptr, the deleter should be called

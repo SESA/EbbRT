@@ -49,7 +49,7 @@ ${ebbrt_libdir}/Makefile: ${ebbrt_libdir}
 	(cd $(ebbrt_libdir); cmake -DCMAKE_BUILD_TYPE=${EBBRT_BUILDTYPE} ${ebbrt_hosted})
 
 ${ebbrt_lib}: ${ebbrt_libdir}/Makefile
-	make -C ${ebbrt_libdir} 
+	$(MAKE) -C ${ebbrt_libdir} 
 
 ${bm_imgdir}: 
 	mkdir ${bm_imgdir}
@@ -58,7 +58,7 @@ ${bm_imgs}: ${bm_imgdir} ${EBBRT_BM_IMGS}
 	cp ${EBBRT_BM_IMGS}.elf* ${bm_imgdir}
 
 ${EBBRT_BM_IMGS}:
-	make -C $(dir $@)
+	$(MAKE) -C $(dir $@)
 
 .PHONY: distclean
 

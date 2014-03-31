@@ -18,6 +18,10 @@ ebbrt::Future<void> ebbrt::GlobalIdMap::Set(EbbId id, std::string data) {
   return MakeReadyFuture<void>();
 }
 
+ebbrt::Future<std::string> ebbrt::GlobalIdMap::Get(EbbId id) {
+  return MakeReadyFuture<std::string>(map_[id]);
+}
+
 void ebbrt::GlobalIdMap::ReceiveMessage(Messenger::NetworkId nid,
                                         std::unique_ptr<IOBuf>&& buf) {
   auto reader = IOBufMessageReader(std::move(buf));

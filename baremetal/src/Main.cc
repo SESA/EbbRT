@@ -159,8 +159,6 @@ extern "C"
     kprintf("System initialization complete\n");
     if (AppMain) {
       event_manager->SpawnLocal([=]() { AppMain(); });
-    } else {
-      kprintf("No app main found...\n");
     }
   });
   event_manager->StartProcessingEvents();

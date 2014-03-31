@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <ebbrt/EventManager.h>
+#include <ebbrt/ExplicitlyConstructed.h>
 #include <ebbrt/MoveLambda.h>
 
 namespace ebbrt {
@@ -25,9 +26,9 @@ enum class Launch { Sync, Async };
 
 struct UnreadyFutureError : public std::logic_error {
   explicit UnreadyFutureError(const std::string& what_arg)
-      : std::logic_error{ what_arg } {}
+      : std::logic_error{what_arg} {}
   explicit UnreadyFutureError(const char* what_arg)
-      : std::logic_error{ what_arg } {}
+      : std::logic_error{what_arg} {}
 };
 
 template <typename T, typename... Args>
@@ -165,6 +166,8 @@ template <typename Res> class Future {
 
   bool Ready() const;
 
+  Future<Res> Block();
+
  private:
   friend class Promise<Res>;
   template <typename T, typename... Args>
@@ -210,6 +213,8 @@ template <> class Future<void> {
 
   bool Ready() const;
 
+  Future<void> Block();
+
  private:
   friend class Promise<void>;
   template <typename T, typename... Args>
@@ -254,6 +259,8 @@ template <typename Res> class SharedFuture {
 
   bool Ready() const;
 
+  void Block();
+
  private:
   explicit SharedFuture(const std::shared_ptr<State>&);
 
@@ -289,6 +296,8 @@ template <> class SharedFuture<void> {
   void Get();
 
   bool Ready() const;
+
+  void Block();
 
  private:
   friend class Future<void>;
@@ -341,12 +350,12 @@ template <> class Promise<void> {
 
 template <typename T, typename... Args>
 Future<T> MakeReadyFuture(Args&&... args) {
-  return Future<T>{ typename __future_detail::MakeReadyFutureTag(),
-                    std::forward<Args>(args)... };
+  return Future<T>{typename __future_detail::MakeReadyFutureTag(),
+                   std::forward<Args>(args)...};
 }
 
 template <typename T> Future<T> MakeFailedFuture(std::exception_ptr eptr) {
-  return Future<T>{ std::move(eptr) };
+  return Future<T>{std::move(eptr)};
 }
 
 template <typename T>
@@ -502,26 +511,26 @@ Async(F&& f, Args&&... args) {
 
 template <typename Res>
 Future<Res>::Future(const std::shared_ptr<__future_detail::State<Res>>& ptr)
-    : state_{ ptr } {}
+    : state_{ptr} {}
 
 inline Future<void>::Future(
     const std::shared_ptr<__future_detail::State<void>>& ptr)
-    : state_{ ptr } {}
+    : state_{ptr} {}
 
 template <typename Res>
 template <typename... Args>
 Future<Res>::Future(__future_detail::MakeReadyFutureTag tag, Args&&... args)
-    : state_{ std::make_shared<State>(tag, std::forward<Args>(args)...) } {}
+    : state_{std::make_shared<State>(tag, std::forward<Args>(args)...)} {}
 
 inline Future<void>::Future(__future_detail::MakeReadyFutureTag tag)
-    : state_{ std::make_shared<State>(tag) } {}
+    : state_{std::make_shared<State>(tag)} {}
 
 template <typename Res>
 Future<Res>::Future(std::exception_ptr eptr)
-    : state_{ std::make_shared<State>(std::move(eptr)) } {}
+    : state_{std::make_shared<State>(std::move(eptr))} {}
 
 inline Future<void>::Future(std::exception_ptr eptr)
-    : state_{ std::make_shared<State>(std::move(eptr)) } {}
+    : state_{std::make_shared<State>(std::move(eptr))} {}
 
 template <typename Res> SharedFuture<Res> Future<Res>::Share() {
   return SharedFuture<Res>(std::move(state_));
@@ -534,11 +543,11 @@ inline SharedFuture<void> Future<void>::Share() {
 template <typename Res>
 SharedFuture<Res>::SharedFuture(
     const std::shared_ptr<__future_detail::State<Res>>& ptr)
-    : state_{ ptr } {}
+    : state_{ptr} {}
 
 inline SharedFuture<void>::SharedFuture(
     const std::shared_ptr<__future_detail::State<void>>& ptr)
-    : state_{ ptr } {}
+    : state_{ptr} {}
 
 template <typename Res> Res& SharedFuture<Res>::Get() { return state_->Get(); }
 
@@ -614,6 +623,20 @@ template <typename Res> bool Future<Res>::Ready() const {
 
 inline bool Future<void>::Ready() const { return state_->Ready(); }
 
+template <typename Res> Future<Res> Future<Res>::Block() {
+  if (Ready())
+    return std::move(*this);
+
+  ebbrt::EventManager::EventContext context;
+  ExplicitlyConstructed<Future<Res>> ret;
+  Then(Launch::Async, [&context, &ret](ebbrt::Future<Res> fut) {
+    ret.construct(std::move(fut));
+    ebbrt::event_manager->ActivateContext(std::move(context));
+  });
+  ebbrt::event_manager->SaveContext(context);
+  return std::move(*ret);
+}
+
 template <typename Res> bool Future<Res>::Valid() const {
   return static_cast<bool>(state_);
 }
@@ -622,9 +645,9 @@ inline bool Future<void>::Valid() const { return static_cast<bool>(state_); }
 
 template <typename Res>
 Promise<Res>::Promise()
-    : state_{ std::make_shared<State>() } {}
+    : state_{std::make_shared<State>()} {}
 
-inline Promise<void>::Promise() : state_{ std::make_shared<State>() } {}
+inline Promise<void>::Promise() : state_{std::make_shared<State>()} {}
 
 template <typename Res> void Promise<Res>::SetValue(Res&& res) {
   state_->SetValue(std::move(res));
@@ -646,35 +669,33 @@ inline void Promise<void>::SetException(std::exception_ptr eptr) {
 }
 
 template <typename Res> Future<Res> Promise<Res>::GetFuture() {
-  return Future<Res>{ state_ };
+  return Future<Res>{state_};
 }
 
 inline Future<void> Promise<void>::GetFuture() {
-  return Future<void>{ state_ };
+  return Future<void>{state_};
 }
 
-template <typename Res>
-__future_detail::State<Res>::State()
-    : ready_{ false } {}
+template <typename Res> __future_detail::State<Res>::State() : ready_{false} {}
 
-inline __future_detail::State<void>::State() : ready_{ false } {}
+inline __future_detail::State<void>::State() : ready_{false} {}
 
 template <typename Res>
 template <typename... Args>
 __future_detail::State<Res>::State(__future_detail::MakeReadyFutureTag tag,
                                    Args&&... args)
-    : val_(std::forward<Args>(args)...), ready_{ true } {}
+    : val_(std::forward<Args>(args)...), ready_{true} {}
 
 inline __future_detail::State<void>::State(
     __future_detail::MakeReadyFutureTag tag)
-    : ready_{ true } {}
+    : ready_{true} {}
 
 template <typename Res>
 __future_detail::State<Res>::State(std::exception_ptr eptr)
-    : eptr_{ std::move(eptr) }, ready_{ true } {}
+    : eptr_{std::move(eptr)}, ready_{true} {}
 
 inline __future_detail::State<void>::State(std::exception_ptr eptr)
-    : eptr_{ std::move(eptr) }, ready_{ true } {}
+    : eptr_{std::move(eptr)}, ready_{true} {}
 
 template <typename Res>
 template <typename F, typename R>
@@ -698,7 +719,7 @@ typename std::enable_if<
 __future_detail::State<Res>::ThenHelp(Launch policy, F&& func, R fut) {
   typedef typename std::result_of<F(R)>::type result_type;
   if (!Ready()) {
-    std::lock_guard<std::mutex> lock{ mutex_ };
+    std::lock_guard<std::mutex> lock{mutex_};
     // Have to check ready again to avoid a race
     if (!Ready()) {
       // helper sets function to be called
@@ -740,7 +761,7 @@ typename std::enable_if<
 __future_detail::State<void>::ThenHelp(Launch policy, F&& func, R fut) {
   typedef typename std::result_of<F(R)>::type result_type;
   if (!Ready()) {
-    std::lock_guard<std::mutex> lock{ mutex_ };
+    std::lock_guard<std::mutex> lock{mutex_};
     // Have to check ready again to avoid a race
     if (!Ready()) {
       // helper sets function to be called
@@ -783,7 +804,7 @@ typename std::enable_if<
 __future_detail::State<Res>::ThenHelp(Launch policy, F&& func, R fut) {
   typedef typename std::result_of<F(R)>::type result_type;
   if (!Ready()) {
-    std::lock_guard<std::mutex> lock{ mutex_ };
+    std::lock_guard<std::mutex> lock{mutex_};
     // Have to check ready again to avoid a race
     if (!Ready()) {
       // helper sets function to be called
@@ -827,7 +848,7 @@ typename std::enable_if<
 __future_detail::State<void>::ThenHelp(Launch policy, F&& func, R fut) {
   typedef typename std::result_of<F(R)>::type result_type;
   if (!Ready()) {
-    std::lock_guard<std::mutex> lock{ mutex_ };
+    std::lock_guard<std::mutex> lock{mutex_};
     // Have to check ready again to avoid a race
     if (!Ready()) {
       // helper sets function to be called
@@ -889,7 +910,7 @@ inline void __future_detail::State<void>::SetValue() {
 
 template <typename Res>
 void __future_detail::State<Res>::SetException(std::exception_ptr eptr) {
-  std::lock_guard<std::mutex> lock{ mutex_ };
+  std::lock_guard<std::mutex> lock{mutex_};
   eptr_ = std::move(eptr);
   ready_ = true;
   if (func_) {
@@ -899,7 +920,7 @@ void __future_detail::State<Res>::SetException(std::exception_ptr eptr) {
 
 inline void
 __future_detail::State<void>::SetException(std::exception_ptr eptr) {
-  std::lock_guard<std::mutex> lock{ mutex_ };
+  std::lock_guard<std::mutex> lock{mutex_};
   eptr_ = std::move(eptr);
   ready_ = true;
   if (func_) {

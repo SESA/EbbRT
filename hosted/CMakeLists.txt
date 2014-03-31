@@ -34,6 +34,7 @@ add_library(EbbRT
   ${CMAKE_SOURCE_DIR}/../common/src/Message.cc
   ${CMAKE_SOURCE_DIR}/src/ContextActivation.cc
   ${CMAKE_SOURCE_DIR}/src/Context.cc
+  ${CMAKE_SOURCE_DIR}/src/EbbAllocator.cc
   ${CMAKE_SOURCE_DIR}/src/EventManager.cc
   ${CMAKE_SOURCE_DIR}/src/GlobalIdMap.cc
   ${CMAKE_SOURCE_DIR}/src/LocalEntry.cc

@@ -27,8 +27,20 @@ ebbrt::Messenger::Send(NetworkId to, EbbId id, uint64_t type_code,
     std::lock_guard<std::mutex> lock(m_);
     auto it = connection_map_.find(ip);
     if (it == connection_map_.end()) {
-      throw std::runtime_error(
-          "UNIMPLEMENTED Messenger::Send create connection");
+      auto endpoint = bai::tcp::endpoint(to.ip_, port_);
+      auto& p = promise_map_[ip];
+      connection_map_.emplace(ip, p.GetFuture().Share());
+      auto socket =
+          std::make_shared<bai::tcp::socket>(active_context->io_service_);
+      async_connect(*socket, &endpoint, (&endpoint) + 1,
+                    [socket, ip, this](const boost::system::error_code& ec,
+                                       bai::tcp::endpoint* /* unused */) {
+        if (!ec) {
+          auto session = std::make_shared<Session>(std::move(*socket));
+          session->Start();
+          promise_map_[ip].SetValue(std::weak_ptr<Session>(std::move(session)));
+        }
+      });
     }
   }
 

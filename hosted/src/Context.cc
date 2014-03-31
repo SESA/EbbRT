@@ -34,3 +34,7 @@ void ebbrt::Context::PollOne() {
   ContextActivation active(*this);
   io_service_.poll_one();
 }
+
+void ebbrt::Context::Stop() { io_service_.stop(); }
+
+void ebbrt::Context::Reset() { io_service_.reset(); }

@@ -12,7 +12,7 @@
 #include <ebbrt/GlobalIdMap.h>
 #include <ebbrt/Messenger.h>
 #include <ebbrt/Net.h>
-#include <ebbrt/RuntimeInfo.capnp.h>
+#include "RuntimeInfo.capnp.h"
 
 namespace ebbrt {
   namespace runtime {
@@ -28,6 +28,7 @@ void ebbrt::runtime::Init() {
   auto offset = reader.GetNodeOffset("/runtime");
   auto ip = reader.GetProperty32(offset, "address");
   auto port = reader.GetProperty16(offset, "port");
+  auto allocation_id = reader.GetProperty16(offset, "allocation_id");
 
   auto pcb = new NetworkManager::TcpPcb();
   ip_addr_t addr;
@@ -52,4 +53,7 @@ void ebbrt::runtime::Init() {
   });
   pcb->Connect(&addr, port);
   event_manager->SaveContext(context);
+  auto buf = IOBuf::Create(sizeof(uint16_t));
+  *reinterpret_cast<uint16_t*>(buf->WritableData()) = htons(allocation_id);
+  pcb->Send(std::move(buf));
 }

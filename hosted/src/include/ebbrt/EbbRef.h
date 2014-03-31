@@ -12,9 +12,12 @@
 namespace ebbrt {
 template <class T> class EbbRef {
  public:
+  constexpr EbbRef() : ebbid_(0) {}
   constexpr explicit EbbRef(EbbId id) : ebbid_(id) {}
 
-  T* operator->() const {
+  T* operator->() const { return &operator*(); }
+
+  T& operator*() const {
     if (active_context == nullptr) {
       throw std::runtime_error("Cannot invoke Ebb without active context");
     }
@@ -23,8 +26,10 @@ template <class T> class EbbRef {
     if (lref == nullptr) {
       lref = &(T::HandleFault(ebbid_));
     }
-    return lref;
+    return *lref;
   }
+
+  T* GetPointer() const { return &operator*(); }
 
   static void CacheRef(EbbId id, T& ref) {
     LocalEntry le;

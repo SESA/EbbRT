@@ -7,9 +7,31 @@
 #include <ebbrt/Context.h>
 
 void ebbrt::EventManager::Spawn(MovableFunction<void()> func) {
+  // movable function cannot be copied so we put it on the heap
   auto f = new MovableFunction<void()>(std::move(func));
-  active_context->io_service_.dispatch([f]() {
-    (*f)();
-    delete f;
+  // async dispatch
+  active_context->io_service_.dispatch([f, this]() {
+    // create and run a new coroutine to run the event on
+    active_event_context_.coro = boost::coroutines::coroutine<void()>([f, this](
+        boost::coroutines::coroutine<void()>::caller_type& ca) {
+      // store the caller for later if we need to save the context
+      active_event_context_.caller = &ca;
+      (*f)();
+      delete f;
+    });
   });
+}
+
+void ebbrt::EventManager::ActivateContext(EventContext&& context) {
+  auto c = new EventContext(std::move(context));
+  active_context->io_service_.dispatch([c, this]() {
+    active_event_context_ = std::move(*c);
+    active_event_context_.coro();
+    delete c;
+  });
+}
+
+void ebbrt::EventManager::SaveContext(EventContext& context) {
+  context = std::move(active_event_context_);
+  (*context.caller)();
 }

@@ -22,7 +22,7 @@ EBBRT_PATH := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))..)
 
 EBBRT_BAREMETAL_PATH := $(EBBRT_PATH)/baremetal/
 EBBRT_COMMON_PATH := $(EBBRT_PATH)/common/
-VPATH := $(EBBRT_BAREMETAL_PATH) $(EBBRT_COMMON_PATH) $(EBBRT_APP_VPATH)
+VPATH := $(EBBRT_BAREMETAL_PATH) $(EBBRT_BAREMETAL_PATH)/src $(EBBRT_COMMON_PATH) $(EBBRT_COMMON_PATH)/src $(EBBRT_APP_VPATH)
 
 EBBRT_CXX := $(EBBRT_BAREMETAL_PATH)/ext/toolchain/bin/x86_64-pc-ebbrt-g++
 EBBRT_CC := $(EBBRT_BAREMETAL_PATH)/ext/toolchain/bin/x86_64-pc-ebbrt-gcc
@@ -31,7 +31,6 @@ EBBRT_CAPNP := capnp
 EBBRT_INCLUDES := \
 	-I $(EBBRT_BAREMETAL_PATH)/src/include \
 	-I $(EBBRT_BAREMETAL_PATH)/../common/src/include \
-	-I $(CURDIR)/include \
 	-I $(EBBRT_BAREMETAL_PATH)/ext/acpica/include \
 	-I $(EBBRT_BAREMETAL_PATH)/ext/boost/include \
 	-I $(EBBRT_BAREMETAL_PATH)/ext/lwip/include \
@@ -39,6 +38,7 @@ EBBRT_INCLUDES := \
 	-I $(EBBRT_BAREMETAL_PATH)/ext/capnp/include \
 	-I $(EBBRT_BAREMETAL_PATH)/ext/fdt/include \
 	-iquote $(EBBRT_BAREMETAL_PATH)/ext/lwip/include/ipv4/ \
+	-iquote $(CURDIR) \
 	-include $(EBBRT_CONFIG)
 
 EBBRT_CPPFLAGS = -U ebbrt -MD -MT $@ -MP $(EBBRT_OPTFLAGS) -Wall -Werror \
@@ -47,20 +47,18 @@ EBBRT_CXXFLAGS = -std=gnu++11
 EBBRT_CFLAGS = -std=gnu99
 EBBRT_ASFLAGS = -MD -MT $@ -MP $(EBBRT_OPTFLAGS) -DASSEMBLY
 
-EBBRT_CAPNPS := $(addprefix src/,$(notdir $(wildcard $(EBBRT_COMMON_PATH)/src/*.capnp)))
+EBBRT_CAPNPS := $(notdir $(wildcard $(EBBRT_COMMON_PATH)/src/*.capnp))
 EBBRT_CAPNP_OBJECTS := $(EBBRT_CAPNPS:.capnp=.capnp.o)
 EBBRT_CAPNP_CXX := $(EBBRT_CAPNPS:.capnp=.capnp.c++)
 EBBRT_CAPNP_H := $(EBBRT_CAPNPS:.capnp=.capnp.h)
-EBBRT_CAPNP_H_MOVE := $(addprefix include/ebbrt/,$(notdir $(EBBRT_CAPNP_H)))
-EBBRT_CAPNP_GENS := $(EBBRT_CAPNP_CXX) $(EBBRT_CAPNP_H) $(EBBRT_CAPNP_H_MOVE) \
-	$(EBBRT_CAPNP_OBJECTS)
+EBBRT_CAPNP_GENS := $(EBBRT_CAPNP_CXX) $(EBBRT_CAPNP_H) $(EBBRT_CAPNP_OBJECTS)
 
 EBBRT_CXX_SRCS := \
-	$(addprefix src/,$(notdir $(wildcard $(EBBRT_BAREMETAL_PATH)/src/*.cc))) \
-	$(addprefix src/,$(notdir $(wildcard $(EBBRT_COMMON_PATH)/src/*.cc)))
+	$(notdir $(wildcard $(EBBRT_BAREMETAL_PATH)/src/*.cc)) \
+	$(notdir $(wildcard $(EBBRT_COMMON_PATH)/src/*.cc))
 EBBRT_CXX_OBJECTS := $(EBBRT_CXX_SRCS:.cc=.o)
 
-EBBRT_ASM_SRCS := $(addprefix src/,$(notdir $(wildcard $(EBBRT_BAREMETAL_PATH)/src/*.S)))
+EBBRT_ASM_SRCS := $(notdir $(wildcard $(EBBRT_BAREMETAL_PATH)/src/*.S))
 EBBRT_ASM_OBJECTS := $(EBBRT_ASM_SRCS:.S=.o)
 
 ebbrt_quiet = $(if $V, $1, @echo " $2"; $1)
@@ -118,7 +116,16 @@ EBBRT_OBJECTS := \
 
 $(EBBRT_CXX_OBJECTS): $(EBBRT_CAPNP_OBJECTS)
 
-.PRECIOUS: $(EBBRT_CAPNP_GENS) $(EBBRT_TARGET).elf %.o
+EBBRT_APP_CAPNP_OBJECTS := $(EBBRT_APP_CAPNPS:.capnp=.capnp.o)
+EBBRT_APP_CAPNP_CXX := $(EBBRT_APP_CAPNPS:.capnp=.capnp.c++)
+EBBRT_APP_CAPNP_H := $(EBBRT_APP_CAPNPS:.capnp=.capnp.h)
+EBBRT_APP_CAPNP_GENS := \
+	$(EBBRT_APP_CAPNP_CXX) $(EBBRT_APP_CAPNP_H) \
+	$(EBBRT_APP_CAPNP_OBJECTS)
+
+$(EBBRT_APP_OBJECTS): $(EBBRT_APP_CAPNP_OBJECTS)
+
+.PRECIOUS: $(EBBRT_CAPNP_GENS) $(EBBRT_APP_CAPNP_GENS) $(EBBRT_TARGET).elf %.o
 
 .PHONY: all clean
 
@@ -140,24 +147,24 @@ ebbrt_mkrescue = grub-mkrescue -o $@ -graft-points boot/ebbrt=$< \
 
 EBBRT_LDFLAGS := -Wl,-n,-z,max-page-size=0x1000 $(EBBRT_OPTFLAGS)
 
+comma := ,
+
 %.elf: $(EBBRT_APP_OBJECTS) $(EBBRT_OBJECTS) src/ebbrt.ld
 	$(call ebbrt_quiet, $(EBBRT_CXX) $(EBBRT_LDFLAGS) \
-	-o $@ $(EBBRT_APP_OBJECTS) $(EBBRT_OBJECTS) $(EBBRT_APP_LINK) \
-		-T $(EBBRT_BAREMETAL_PATH)/src/ebbrt.ld, LD $@)
+	-o $@ -Wl$(comma)--whole-archive $(EBBRT_APP_OBJECTS) \
+	-Wl$(comma)--no-whole-archive $(EBBRT_OBJECTS) $(EBBRT_APP_LINK) \
+	-T $(EBBRT_BAREMETAL_PATH)/src/ebbrt.ld, LD $@)
 
 clean:
-	-$(RM) $(wildcard $(EBBRT_CAPNP_GENS) $(EBBRT_OBJECTS) $(EBBRT_APP_OBJECTS) \
+	-$(RM) $(wildcard $(EBBRT_CAPNP_GENS) $(EBBRT_OBJECTS) $(EBBRT_APP_CAPNP_GENS) \
+	$(EBBRT_APP_OBJECTS) \
 	$(EBBRT_TARGET).iso $(EBBRT_TARGET).elf $(EBBRT_TARGET).elf.stripped \
 	$(EBBRT_TARGET).elf32 $(shell find -name '*.d'))
 
 %.capnp.h %.capnp.c++: %.capnp
 	$(ebbrt_makedir)
 	$(call ebbrt_quiet, $(EBBRT_CAPNP) compile -oc++:$(CURDIR) \
-		--src-prefix=$(EBBRT_COMMON_PATH) $<, CAPNP $<)
-	$(call ebbrt_very-quiet, mkdir -p $(dir \
-		$(filter %$(notdir $<.h),$(EBBRT_CAPNP_H_MOVE))))
-	$(call ebbrt_quiet, cp $(filter %$(notdir $<.h),$(EBBRT_CAPNP_H)) \
-		$(filter %$(notdir $<.h),$(EBBRT_CAPNP_H_MOVE)), CP $<.h)
+		--src-prefix=$(dir $<) $<, CAPNP $<)
 
 %.capnp.o: %.capnp.c++
 	$(ebbrt_makedir)
