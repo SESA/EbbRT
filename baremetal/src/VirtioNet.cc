@@ -5,6 +5,7 @@
 #include <ebbrt/VirtioNet.h>
 
 #include <ebbrt/Debug.h>
+#include <ebbrt/Trace.h>
 #include <ebbrt/EventManager.h>
 
 namespace {
@@ -29,6 +30,7 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
   FillRxRing();
 
   auto rcv_vector = event_manager->AllocateVector([this]() {
+      trace::AddTracepoint(1);
     auto& rcv_queue = GetQueue(0);
     rcv_queue.ProcessUsedBuffers([this](std::unique_ptr<const IOBuf>&& b) {
       kassert(b->CountChainElements() == 1);
@@ -40,6 +42,7 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
     if (rcv_queue.num_free_descriptors() * 2 >= rcv_queue.Size()) {
       FillRxRing();
     }
+      trace::AddTracepoint(0);
   });
   dev.SetMsixEntry(0, rcv_vector, 0);
 
@@ -78,6 +81,8 @@ uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
 }
 
 void ebbrt::VirtioNetDriver::Send(std::unique_ptr<const IOBuf>&& buf) {
+
+      trace::AddTracepoint(1);
   auto b = IOBuf::WrapBuffer(static_cast<void*>(&empty_header_),
                              sizeof(empty_header_));
   // const cast is OK because we then take the head of the chain as const
@@ -91,6 +96,7 @@ void ebbrt::VirtioNetDriver::Send(std::unique_ptr<const IOBuf>&& buf) {
   }
 
   send_queue.AddReadableBuffer(std::move(b));
+      trace::AddTracepoint(0);
 }
 
 const std::array<char, 6>& ebbrt::VirtioNetDriver::GetMacAddress() {
