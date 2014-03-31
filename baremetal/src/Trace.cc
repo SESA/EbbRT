@@ -54,13 +54,32 @@ void ebbrt::trace::Init() {
   return; 
 }
 
-void ebbrt::trace::AddTracepoint(std::string label) {
+void ebbrt::trace::AddNote(std::string label) {
   if (global_trace_enabled) {
     if (local_trace_enabled) {
-      trace_log[trace_count].status = 2;
+      trace_log[trace_count].status = 100;
       std::size_t len = label.copy(trace_log[trace_count].point, 40, 0);
       trace_log[trace_count].point[len] = '\0';
       trace_count++;
+    }
+  }
+}
+
+void ebbrt::trace::AddTracepoint(uint8_t status) {
+  if (global_trace_enabled) {
+    if (local_trace_enabled) {
+      if (ebbrt::Cpu::GetMine() == 0) {
+        auto func = __builtin_return_address(0);
+        trace_log[trace_count].status = status;
+        trace_log[trace_count].func = reinterpret_cast<uintptr_t>(func);
+        trace_log[trace_count].caller = 0;
+        trace_log[trace_count].time = ebbrt::trace::rdtsc();
+        if (is_intel) {
+          trace_log[trace_count].instructions = ebbrt::trace::rdpmc((reg));
+          trace_log[trace_count].cycles = ebbrt::trace::rdpmc((reg + 1));
+        }
+        trace_count++;
+      }
     }
   }
 }
@@ -102,7 +121,7 @@ void ebbrt::trace::Disable() {
 
 void ebbrt::trace::Dump() {
   kprintf("================================ \n");
-  kprintf(" START TRACE DUMP (%llu)\n", trace_count);
+  kprintf(" BEGIN TRACE DUMP (%llu)\n", trace_count);
   kprintf("================================ \n");
   for (uint32_t i = 0; i < trace_count; i++)
     if (trace_log[i].status == 2)
@@ -114,51 +133,9 @@ void ebbrt::trace::Dump() {
   kprintf("================================ \n");
   kprintf(" END TRACE DUMP (%llu)\n", trace_count);
   kprintf("================================ \n");
-=======
-#include <ebbrt/Debug.h>
-
-//__attribute__((no_instrument_function))
-namespace ebbrt {
-namespace trace {
-
-const int MAX_TRACE = 100000;
-struct trace_entry {
-  bool enter;
-  uintptr_t func;
-  uintptr_t caller;
-  uint64_t time;
-} trace_log[MAX_TRACE];
-
-struct trace_entry* trace_current_ptr = trace_log;
-
-bool trace_enabled;
-int trace_count = 0;  // temporary
-
-void enable_trace() { trace_enabled = true; }
-void disable_trace() { trace_enabled = false; }
-
-void Init() { return; }
-
-void Dump() {
-  kprintf("BEGIN TRACE DUMP ============ \n");
-  for (int i = 0; i < trace_count; i++)
-    kprintf("%d %p %p %llu\n", trace_log[i].enter, trace_log[i].func,
-           trace_log[i].caller, trace_log[i].time);
-  kprintf("END TRACE DUMP ============ \n");
 }
-
-inline uint64_t
-rdtsc(void) 
-{
-  uint32_t a,d;
-  __asm__ __volatile__("rdtsc" : "=a" (a), "=d" (d));
-  return ((uint64_t)a) | (((uint64_t)d) << 32);
->>>>>>> Initial trace infrastructure
-}
-
 
 extern "C" void __cyg_profile_func_enter(void* func, void* caller) {
-<<<<<<< HEAD
   // Make sure to use the `no_instrument_function` attribute for any calls
   // withing this function
   if (global_trace_enabled) {
@@ -199,5 +176,3 @@ extern "C" void __cyg_profile_func_exit(void* func, void* caller) {
   }
   return;
 }
-
-
