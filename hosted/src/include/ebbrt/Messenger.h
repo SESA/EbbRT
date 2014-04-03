@@ -29,6 +29,10 @@ class Messenger : public StaticSharedEbb<Messenger> {
 
     std::string ToString() { return ip_.to_string(); }
 
+    bool operator==(const NetworkId &rhs) {
+      return ip_ == rhs.ip_;
+    }
+
    private:
     boost::asio::ip::address_v4 ip_;
 

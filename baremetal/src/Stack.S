@@ -6,7 +6,7 @@ SwitchStack:
         mov %rsi, %rsp
         callq *%rdx
         .cfi_endproc
-
+	
 .global SaveContextAndSwitch
 SaveContextAndSwitch:
         .cfi_startproc simple
@@ -19,9 +19,11 @@ SaveContextAndSwitch:
 	mov %r13, 32(%rcx)
 	mov %r14, 40(%rcx)
 	mov %r15, 48(%rcx)
-        mov %rsi, %rsp
-        callq *%rdx
-        .cfi_endproc
+        mov %rsi, %rsp             
+        callq *%rdx               
+	// will not get here  return happens at ActivateContextAndReturn
+        .cfi_endproc               
+
 
 .global ActivateContextAndReturn
 ActivateContextAndReturn:
@@ -33,3 +35,5 @@ ActivateContextAndReturn:
         mov 40(%rdi), %r14
         mov 48(%rdi), %r15
         ret
+
+	

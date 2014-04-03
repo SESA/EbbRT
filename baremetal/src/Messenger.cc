@@ -6,6 +6,7 @@
 
 #include <ebbrt/Debug.h>
 #include <ebbrt/GlobalIdMap.h>
+#include <ebbrt/Net.h>
 
 uint16_t ebbrt::Messenger::port_;
 
@@ -18,6 +19,13 @@ void ebbrt::Messenger::StartListening(uint16_t port) {
   tcp_.Accept([this](NetworkManager::TcpPcb pcb) {
     kabort("UNIMPLEMENTED: New Messenger Connection\n");
   });
+}
+
+ebbrt::Messenger::NetworkId 
+ebbrt::Messenger::LocalNetworkId() {
+  ebbrt::NetworkManager::Interface iface = 
+    ebbrt::network_manager->FirstInterface();  
+  return NetworkId(iface.IPV4Addr());
 }
 
 void ebbrt::Messenger::Receive(NetworkManager::TcpPcb& t,

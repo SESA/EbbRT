@@ -45,6 +45,15 @@ ebbrt::NetworkManager::NewInterface(EthernetDevice& ether_dev) {
   return interfaces_[interfaces_.size() - 1];
 }
 
+ebbrt::NetworkManager::Interface&
+ebbrt::NetworkManager::FirstInterface() 
+{
+
+  if (interfaces_.empty())
+    throw std::runtime_error("No Interfaces");
+  return interfaces_.front();
+}
+
 namespace {
 ebbrt::EventManager::EventContext* context;
 }
@@ -123,6 +132,11 @@ ebbrt::NetworkManager::Interface::Interface(EthernetDevice& ether_dev,
 
 const std::array<char, 6>& ebbrt::NetworkManager::Interface::MacAddress() {
   return ether_dev_.GetMacAddress();
+}
+
+uint32_t
+ebbrt::NetworkManager::Interface::IPV4Addr() {
+  return netif_.ip_addr.addr;
 }
 
 void ebbrt::NetworkManager::Interface::Send(std::unique_ptr<const IOBuf>&& b) {
@@ -342,6 +356,7 @@ err_t ebbrt::NetworkManager::TcpPcb::SentHandler(void* arg, struct tcp_pcb* pcb,
                         pcb_s->ack_map_.upper_bound(pcb_s->sent_));
   return ERR_OK;
 }
+
 
 ip_addr_t ebbrt::NetworkManager::TcpPcb::GetRemoteAddress() const {
   return pcb_->remote_ip;

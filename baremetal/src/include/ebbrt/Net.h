@@ -35,7 +35,7 @@ class NetworkManager {
     void Receive(std::unique_ptr<IOBuf>&& buf);
     void Send(std::unique_ptr<const IOBuf>&& buf);
     const std::array<char, 6>& MacAddress();
-
+    uint32_t IPV4Addr();
    private:
     EthernetDevice& ether_dev_;
     struct netif netif_;
@@ -82,6 +82,7 @@ class NetworkManager {
   static void Init();
   static NetworkManager& HandleFault(EbbId id);
   Interface& NewInterface(EthernetDevice& ether_dev);
+  Interface& FirstInterface();
 
  private:
   friend void ebbrt::Main(ebbrt::multiboot::Information* mbi);

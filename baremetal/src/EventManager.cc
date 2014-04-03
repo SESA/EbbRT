@@ -13,7 +13,7 @@
 #include <ebbrt/PageAllocator.h>
 #include <ebbrt/VMem.h>
 
-typedef boost::container::flat_map<size_t, ebbrt::EventManager*> RepMap;
+
 
 void ebbrt::EventManager::Init() {
   local_id_map->Insert(std::make_pair(kEventManagerId, RepMap()));
@@ -21,25 +21,27 @@ void ebbrt::EventManager::Init() {
 
 ebbrt::EventManager& ebbrt::EventManager::HandleFault(EbbId id) {
   kassert(id == kEventManagerId);
+  RepMap *rep_map;
   {
     // Acquire read only to find rep
     LocalIdMap::ConstAccessor accessor;
     auto found = local_id_map->Find(accessor, id);
     kassert(found);
-    auto rep_map = boost::any_cast<RepMap>(accessor->second);
-    auto it = rep_map.find(Cpu::GetMine());
-    if (it != rep_map.end()) {
+    rep_map = boost::any_cast<RepMap *>(accessor->second);
+    auto it = rep_map->find(Cpu::GetMine());
+    if (it != rep_map->end()) {
       EbbRef<EventManager>::CacheRef(id, *it->second);
       return *it->second;
     }
   }
   // OK we must construct a rep
-  auto rep = new EventManager;
-  LocalIdMap::Accessor accessor;
-  auto found = local_id_map->Find(accessor, id);
-  kassert(found);
-  auto rep_map = boost::any_cast<RepMap>(accessor->second);
-  rep_map[Cpu::GetMine()] = rep;
+  auto rep = new EventManager(*rep_map);
+  {
+    LocalIdMap::Accessor accessor;
+    auto found = local_id_map->Find(accessor, id);
+    kassert(found);
+    (*rep_map)[Cpu::GetMine()] = rep;
+  }
   EbbRef<EventManager>::CacheRef(id, *rep);
   return *rep;
 }
@@ -110,26 +112,48 @@ void ebbrt::EventManager::Process() {
 // the sti instruction starts processing interrupts *after* the next
 // instruction is executed (to allow for a halt for example). The nop gives us
 // a one instruction window to process an interrupt (before the cli)
-process:
-  asm volatile("sti;"
-               "nop;"
-               "cli;");
-  // If an interrupt was processed then we would not reach this code (the
-  // interrupt does not return here but instead to the top of this function)
-
-  if (!tasks_.empty()) {
-    auto f = std::move(tasks_.top());
-    tasks_.pop();
-    InvokeFunction(f);
-    // if we had a task to execute, then we go to the top again
-    goto process;
-  }
-
-  // We only reach here if we had no interrupts to process or tasks to run. We
-  // halt until an interrupt wakes us
-  asm volatile("sti;"
-               "hlt;");
-  kabort("Woke up from halt?!?!");
+  while (1) {
+    asm volatile("sti;"
+		 "nop;"
+		 "cli;");
+    // If an interrupt was processed then we would not reach this code (the
+    // interrupt does not return here but instead to the top of this function)
+    
+    tryCnt_++;
+    // to ensure that we don't starve we alternate between the local
+    // and remote queues
+    if ( (tryCnt_ & 0x1) == 0 ) {
+      if (!tasks_.empty()) {
+	auto f = std::move(tasks_.top());
+	tasks_.pop();
+	InvokeFunction(f);
+      } else {
+	// When the local task set is empty we can safely halt however for
+	// improved latency you may want a grace period before halting
+	// However given powerboast this maynot be an easy decision.
+	// This is safe since remote side will latch an interrupt in hardware
+	// and will ensure that interrupts either execute before halt or cause
+	// halt to return and then execute 
+	rtsk_lock_.lock();
+	bool empty = rtasks_.empty();
+	rtsk_lock_.unlock();
+	if (empty) {
+    	  asm volatile("sti;"
+	               "hlt;");
+        }
+      }
+    } else {
+      rtsk_lock_.lock();
+        if (!rtasks_.empty()) {
+       	   auto f = std::move(rtasks_.top());
+           rtasks_.pop();
+           rtsk_lock_.unlock();
+   	   InvokeFunction(f);
+        } else {
+	 rtsk_lock_.unlock();
+        }   
+    }
+ }
 }
 
 ebbrt::Pfn ebbrt::EventManager::AllocateStack() {
@@ -145,9 +169,9 @@ ebbrt::Pfn ebbrt::EventManager::AllocateStack() {
 
 static_assert(ebbrt::Cpu::kMaxCpus <= 256, "adjust event id calculation");
 
-ebbrt::EventManager::EventManager()
-    : vector_idx_(32), next_event_id_(Cpu::GetMine() << 24),
-      active_event_context_(next_event_id_++, AllocateStack()) {}
+ebbrt::EventManager::EventManager(RepMap &rm) 
+  : reps_(rm), vector_idx_(32), next_event_id_(Cpu::GetMine() << 24),
+  active_event_context_(next_event_id_++, AllocateStack()), tryCnt_(0) {}
 
 void ebbrt::EventManager::Spawn(MovableFunction<void()> func) {
   SpawnLocal(std::move(func));
@@ -155,6 +179,23 @@ void ebbrt::EventManager::Spawn(MovableFunction<void()> func) {
 
 void ebbrt::EventManager::SpawnLocal(MovableFunction<void()> func) {
   tasks_.emplace(std::move(func));
+}
+
+void ebbrt::EventManager::addRemoteTask(MovableFunction<void()> func) {
+  std::lock_guard<std::mutex> lock(rtsk_lock_);
+  rtasks_.emplace(std::move(func));
+}
+
+void ebbrt::EventManager::SpawnRemote(MovableFunction<void()> func, size_t cpu) {
+  // FIXME: we probably should make this work even in the case the the rep for
+  // cpu is not created yet but for the moment we are going to let
+  // this throw an error in this case!
+  // kassert(reps_[cpu]);
+   reps_[cpu]->addRemoteTask(func);
+  // We might want to do a queue of ipi's that can
+  // be cancelled if the work was acked via shared memory due to
+  // natural polling on the remote processor
+  //  reps_[cpu].ipi(...);
 }
 
 extern "C" void
@@ -170,21 +211,38 @@ void ebbrt::EventManager::SaveContext(EventContext& context) {
   active_event_context_.~EventContext();
   new (&active_event_context_) EventContext(next_event_id_++, stack);
   SaveContextAndSwitch(reinterpret_cast<uintptr_t>(this), stack_top,
-                       CallProcess, context);
+		       CallProcess, context);
 }
 
 extern "C" void
 ActivateContextAndReturn(const ebbrt::EventManager::EventContext& context);
 
 void ebbrt::EventManager::ActivateContext(EventContext&& context) {
-  SpawnLocal(MoveBind([this](EventContext c) {
-                        free_stacks_.push(active_event_context_.stack);
-                        auto stack_top = (c.stack + kStackPages).ToAddr();
-                        Cpu::GetMine().SetEventStack(stack_top);
-                        active_event_context_ = std::move(c);
-                        ActivateContextAndReturn(active_event_context_);
-                      },
-                      std::move(context)));
+  if (context.cpu == Cpu::GetMine()) { 
+	// if we are activting on the same core as the context was
+	// saved on then we need not syncronize and know that we 
+	// can Spawn Locally
+	SpawnLocal(MoveBind([this](EventContext c) {
+	//ActivatePrivate(std::move(c))
+	   free_stacks_.push(active_event_context_.stack);
+	   auto stack_top = (c.stack + kStackPages).ToAddr();
+	   Cpu::GetMine().SetEventStack(stack_top);
+	   active_event_context_ = std::move(c);
+	   ActivateContextAndReturn(active_event_context_);
+          }, std::move(context)));
+    } else {
+	auto rep = reps_[context.cpu];
+	SpawnRemote(MoveBind([rep](EventContext c) {
+	//event_manager->ActivatePrivate(std::move(c))
+    	   rep->free_stacks_.push(rep->active_event_context_.stack);
+	   auto stack_top = (c.stack + kStackPages).ToAddr();
+	   Cpu::GetMine().SetEventStack(stack_top);
+	   rep->active_event_context_ = std::move(c);
+	   ActivateContextAndReturn(rep->active_event_context_);
+          }, std::move(context)),
+	  context.cpu   // SpawnRemote Argument 2
+	  );
+  }
 }
 
 uint8_t ebbrt::EventManager::AllocateVector(MovableFunction<void()> func) {

@@ -21,6 +21,8 @@ class GlobalIdMap : public StaticSharedEbb<GlobalIdMap>,
                     public Messagable<GlobalIdMap> {
  public:
   GlobalIdMap();
+
+  Future<std::string> Get(EbbId id);
   Future<void> Set(EbbId id, std::string data);
 
   void ReceiveMessage(Messenger::NetworkId nid, std::unique_ptr<IOBuf>&& buf);
