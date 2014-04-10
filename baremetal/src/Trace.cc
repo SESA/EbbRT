@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <string.h>
 #include <ebbrt/Cpu.h>
+#include <ebbrt/Clock.h>
 #include <ebbrt/Trace.h>
 #include <ebbrt/Debug.h>
 #include <boost/container/static_vector.hpp>
@@ -78,6 +79,25 @@ void ebbrt::trace::AddTracepoint(uint8_t status) {
           trace_log[trace_count].instructions = ebbrt::trace::rdpmc((reg));
           trace_log[trace_count].cycles = ebbrt::trace::rdpmc((reg + 1));
         }
+        trace_count++;
+      }
+    }
+  }
+}
+
+void ebbrt::trace::AddTimestamp(uint8_t status) {
+  if (global_trace_enabled) {
+    if (local_trace_enabled) {
+      if (ebbrt::Cpu::GetMine() == 0) {
+        auto func = __builtin_return_address(0);
+        trace_log[trace_count].status = status;
+        trace_log[trace_count].func = reinterpret_cast<uintptr_t>(func);
+        trace_log[trace_count].caller = 0;
+
+        auto tp = clock::Wall::Now();
+        auto dur = tp.time_since_epoch();
+        auto dur_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(dur); 
+        trace_log[trace_count].time = dur_ns.count(); 
         trace_count++;
       }
     }
