@@ -47,7 +47,7 @@ ebbrt::Future<std::string> ebbrt::GlobalIdMap::Get(EbbId id) {
 }
 
 void ebbrt::GlobalIdMap::ReceiveMessage(Messenger::NetworkId nid,
-                                        std::unique_ptr<const IOBuf>&& b) {
+                                        std::unique_ptr<IOBuf>&& b) {
   auto reader = IOBufMessageReader(std::move(b));
   auto reply = reader.getRoot<global_id_map_message::Reply>();
 

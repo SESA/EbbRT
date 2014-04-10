@@ -168,6 +168,8 @@ template <typename Res> class Future {
 
   Future<Res> Block();
 
+  typedef typename std::decay<Res>::type value_type;
+
  private:
   friend class Promise<Res>;
   template <typename T, typename... Args>
@@ -215,6 +217,8 @@ template <> class Future<void> {
 
   Future<void> Block();
 
+  typedef void value_type;
+
  private:
   friend class Promise<void>;
   template <typename T, typename... Args>
@@ -261,6 +265,8 @@ template <typename Res> class SharedFuture {
 
   void Block();
 
+  typedef typename std::decay<Res>::type value_type;
+
  private:
   explicit SharedFuture(const std::shared_ptr<State>&);
 
@@ -298,6 +304,8 @@ template <> class SharedFuture<void> {
   bool Ready() const;
 
   void Block();
+
+  typedef void value_type;
 
  private:
   friend class Future<void>;
@@ -358,20 +366,56 @@ template <typename T> Future<T> MakeFailedFuture(std::exception_ptr eptr) {
   return Future<T>{std::move(eptr)};
 }
 
-template <typename T>
-Future<std::vector<T>> when_all(std::vector<Future<T>>& vec) {
-  if (vec.empty()) {
-    return MakeReadyFuture<std::vector<T>>();
-  }
+template <typename... T> struct AreSame : std::true_type {};
 
-  auto retvec = std::make_shared<std::vector<T>>(vec.size());
-  auto count = std::make_shared<std::atomic_size_t>(vec.size());
-  auto promise = std::make_shared<Promise<std::vector<T>>>();
+template <typename T0> struct AreSame<T0> : std::true_type {};
+
+template <typename T0, typename T1, typename... T>
+struct AreSame<T0, T1, T...> : std::integral_constant<
+                                   bool, std::is_same<T0, T1>::value&&
+                                             AreSame<T1, T...>::value> {};
+
+template <typename T> struct IsFutureType : std::false_type {};
+
+template <typename T> struct IsFutureType<Future<T>> : std::true_type {};
+
+template <typename T> struct IsFutureType<SharedFuture<T>> : std::true_type {};
+
+// template <bool AreSame, typename T0, typename... T> struct WhenTypeImpl;
+
+// template <typename T0, typename... T> struct WhenTypeImpl<true, T0, T...> {
+//   typedef std::vector<typename std::decay<T0>::type> container_type;
+// };
+
+// template <typename T0, typename... T> struct WhenTypeImpl<false, T0, T...> {
+//   typedef std::tuple<typename T0::value_type, typename T::value_type...>
+//   container_type;
+// };
+
+// template <typename T0, typename... T>
+// struct WhenType : WhenTypeImpl<AreSame<T0, T...>::value, T0, T...> {};
+
+inline Future<std::tuple<>> WhenAll() {
+  return MakeReadyFuture<std::tuple<>>();
+}
+
+template <typename InputIterator>
+typename std::enable_if<
+    !IsFutureType<InputIterator>::value,
+    Future<std::vector<typename InputIterator::value_type::value_type>>>::type
+WhenAll(InputIterator first, InputIterator last) {
+  typedef std::vector<typename InputIterator::value_type::value_type>
+  container_type;
+  auto length = std::distance(first, last);
+  auto container = std::make_shared<container_type>(length);
+  auto count = std::make_shared<std::atomic_size_t>(length);
+  auto promise = std::make_shared<Promise<container_type>>();
   auto ret = promise->GetFuture();
-  for (int i = 0; i < vec.size(); ++i) {
-    vec[i].Then([=](Future<T> val) {
+  for (int i = 0; i < length; ++i) {
+    first->Then([container, count, i, promise](
+        typename InputIterator::value_type val) {
       try {
-        (*retvec)[i] = std::move(val.Get());
+        (*container)[i] = std::move(val.Get());
       }
       catch (...) {
         promise->SetException(std::current_exception());
@@ -379,12 +423,85 @@ Future<std::vector<T>> when_all(std::vector<Future<T>>& vec) {
       }
       if (count->fetch_sub(1) == 1) {
         // we are the last to fulfill
-        promise->SetValue(std::move(*retvec));
+        promise->SetValue(std::move(*container));
       }
     });
+    ++first;
   }
   return std::move(ret);
 }
+
+template <typename T0, typename... T>
+Future<typename std::enable_if<
+    AreSame<typename T0::value_type, typename T::value_type...>::value,
+    std::vector<typename std::decay<typename T0::value_type>::type>>::type>
+WhenAll(T0&& f, T&&... futures) {
+  typedef std::vector<typename std::decay<typename T0::value_type>::type>
+  container_type;
+  auto ret_container = std::make_shared<container_type>(sizeof...(T) + 1);
+  auto count = std::make_shared<std::atomic_size_t>(sizeof...(T) + 1);
+  auto promise = std::make_shared<Promise<container_type>>();
+  auto ret = promise->GetFuture();
+  WhenAllHelper(ret_container, count, promise, 0, std::forward<T0>(f),
+                std::forward<T>(futures)...);
+  return std::move(ret);
+}
+
+template <typename ContainerType, typename... T>
+void WhenAllHelper(std::shared_ptr<ContainerType>&,
+                   std::shared_ptr<std::atomic_size_t>&,
+                   std::shared_ptr<Promise<ContainerType>>&, size_t index,
+                   T&&... futures) {}
+
+template <typename ContainerVal, typename T0, typename... T>
+void WhenAllHelper(std::shared_ptr<std::vector<ContainerVal>>& container,
+                   std::shared_ptr<std::atomic_size_t>& count,
+                   std::shared_ptr<Promise<std::vector<ContainerVal>>>& promise,
+                   size_t index, T0&& f, T&&... futures) {
+  f.Then([container, count, index, promise](typename std::decay<T0>::type val) {
+    try {
+      (*container)[index] = std::move(val.Get());
+    }
+    catch (...) {
+      promise->SetException(std::current_exception());
+      return;
+    }
+    if (count->fetch_sub(1) == 1) {
+      // we are the last to fulfill
+      promise->SetValue(std::move(*container));
+    }
+  });
+  WhenAllHelper(container, count, promise, index + 1,
+                std::forward<T>(futures)...);
+}
+
+// template <typename T>
+// Future<std::vector<T>> when_all(std::vector<Future<T>>& vec) {
+//   if (vec.empty()) {
+//     return MakeReadyFuture<std::vector<T>>();
+//   }
+
+//   auto retvec = std::make_shared<std::vector<T>>(vec.size());
+//   auto count = std::make_shared<std::atomic_size_t>(vec.size());
+//   auto promise = std::make_shared<Promise<std::vector<T>>>();
+//   auto ret = promise->GetFuture();
+//   for (int i = 0; i < vec.size(); ++i) {
+//     vec[i].Then([=](Future<T> val) {
+//       try {
+//         (*retvec)[i] = std::move(val.Get());
+//       }
+//       catch (...) {
+//         promise->SetException(std::current_exception());
+//         return;
+//       }
+//       if (count->fetch_sub(1) == 1) {
+//         // we are the last to fulfill
+//         promise->SetValue(std::move(*retvec));
+//       }
+//     });
+//   }
+//   return std::move(ret);
+// }
 
 template <typename Res>
 Future<typename Flatten<Res>::type> flatten(Future<Res> fut) {

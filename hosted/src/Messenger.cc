@@ -33,14 +33,17 @@ ebbrt::Messenger::Send(NetworkId to, EbbId id, uint64_t type_code,
       auto socket =
           std::make_shared<bai::tcp::socket>(active_context->io_service_);
       async_connect(*socket, &endpoint, (&endpoint) + 1,
-                    [socket, ip, this](const boost::system::error_code& ec,
-                                       bai::tcp::endpoint* /* unused */) {
-        if (!ec) {
-          auto session = std::make_shared<Session>(std::move(*socket));
-          session->Start();
-          promise_map_[ip].SetValue(std::weak_ptr<Session>(std::move(session)));
-        }
-      });
+                    EventManager::WrapHandler([socket, ip, this](
+                        const boost::system::error_code& ec,
+                        bai::tcp::endpoint* /* unused */) {
+                      if (!ec) {
+                        auto session =
+                            std::make_shared<Session>(std::move(*socket));
+                        session->Start();
+                        promise_map_[ip].SetValue(
+                            std::weak_ptr<Session>(std::move(session)));
+                      }
+                    }));
     }
   }
 
@@ -63,7 +66,9 @@ void ebbrt::Messenger::DoAccept(
     std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor,
     std::shared_ptr<boost::asio::ip::tcp::socket> socket) {
   acceptor->async_accept(
-      *socket, [acceptor, socket, this](boost::system::error_code ec) {
+      *socket,
+      EventManager::WrapHandler([acceptor, socket, this](
+          boost::system::error_code ec) {
         if (!ec) {
           auto addr = socket->remote_endpoint().address().to_v4().to_ulong();
           std::lock_guard<std::mutex> lock(m_);
@@ -76,7 +81,7 @@ void ebbrt::Messenger::DoAccept(
                                             std::move(session)).Share());
           DoAccept(std::move(acceptor), std::move(socket));
         }
-      });
+      }));
 }
 
 uint16_t ebbrt::Messenger::GetPort() { return port_; }
@@ -117,12 +122,13 @@ ebbrt::Messenger::Session::Send(std::unique_ptr<const IOBuf>&& data) {
 
   boost::asio::async_write(
       socket_, IOBufToCBS(std::move(data)),
-      [p, self](boost::system::error_code ec, std::size_t /*length*/) {
+      EventManager::WrapHandler([p, self](boost::system::error_code ec,
+                                          std::size_t /*length*/) {
         if (!ec) {
           p->SetValue();
           delete p;
         }
-      });
+      }));
   return ret;
 }
 
@@ -131,11 +137,12 @@ void ebbrt::Messenger::Session::ReadHeader() {
   boost::asio::async_read(
       socket_,
       boost::asio::buffer(static_cast<void*>(&header_), sizeof(header_)),
-      [this, self](const boost::system::error_code& ec, std::size_t length) {
+      EventManager::WrapHandler([this, self](
+          const boost::system::error_code& ec, std::size_t length) {
         if (!ec) {
           ReadMessage();
         }
-      });
+      }));
 }
 
 void ebbrt::Messenger::Session::ReadMessage() {
@@ -151,8 +158,8 @@ void ebbrt::Messenger::Session::ReadMessage() {
   auto self(shared_from_this());
   boost::asio::async_read(
       socket_, boost::asio::buffer(buf, size),
-      [this, buf, size, self](const boost::system::error_code& ec,
-                              std::size_t /*length*/) {
+      EventManager::WrapHandler([this, buf, size, self](
+          const boost::system::error_code& ec, std::size_t /*length*/) {
         if (!ec) {
           auto& ref = GetMessagableRef(header_.id, header_.type_code);
           ref.ReceiveMessageInternal(
@@ -160,7 +167,7 @@ void ebbrt::Messenger::Session::ReadMessage() {
               IOBuf::TakeOwnership(buf, size, std::free));
         }
         ReadHeader();
-      });
+      }));
 }
 
 ebbrt::Messenger::NetworkId ebbrt::Messenger::LocalNetworkId() {

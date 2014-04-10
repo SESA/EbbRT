@@ -35,6 +35,21 @@ std::unique_ptr<ebbrt::IOBuf> ebbrt::IOBuf::Create(size_t capacity,
   return std::unique_ptr<IOBuf>(new IOBuf(capacity, zero_memory));
 }
 
+std::unique_ptr<ebbrt::IOBuf> ebbrt::IOBuf::Clone() const {
+  auto buff = CloneOne();
+  for (IOBuf* current = next_; current != this; current = current->next_) {
+    buff->PrependChain(current->CloneOne());
+  }
+  return buff;
+}
+
+std::unique_ptr<ebbrt::IOBuf> ebbrt::IOBuf::CloneOne() const {
+  auto p = new IOBuf(*this);
+  p->next_ = p;
+  p->prev_ = p;
+  return std::unique_ptr<IOBuf>(p);
+}
+
 std::unique_ptr<ebbrt::IOBuf>
 ebbrt::IOBuf::TakeOwnership(void* buf, size_t capacity,
                             std::function<void(void*)> free_func) {

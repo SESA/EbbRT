@@ -41,9 +41,11 @@ class EventManager : public StaticSharedEbb<EventManager>, public CacheAligned {
               [this](boost::coroutines::coroutine<void()>::caller_type& ca,
                      Args&&... args) {
                 event_manager->active_event_context_.caller = &ca;
+                ca();
                 f_(std::forward<Args>(args)...);
               },
               std::placeholders::_1, std::forward<Args>(args)...));
+      event_manager->active_event_context_.coro();
     }
 
    private:

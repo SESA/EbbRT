@@ -31,11 +31,12 @@ class IOBuf {
   IOBuf(void* buf, size_t capacity, std::function<void(void*)> free_func);
   IOBuf(IOBuf&& other) noexcept;
   IOBuf& operator=(IOBuf&& other) noexcept;
-  IOBuf(const IOBuf&) = delete;
-  IOBuf& operator=(const IOBuf&) = delete;
 
   static std::unique_ptr<IOBuf> Create(size_t capacity,
                                        bool zero_memory = false);
+
+  std::unique_ptr<IOBuf> Clone() const;
+  std::unique_ptr<IOBuf> CloneOne() const;
 
   static std::unique_ptr<IOBuf>
   TakeOwnership(void* buf, size_t capacity,
@@ -210,6 +211,8 @@ class IOBuf {
   DataPointer GetDataPointer() const { return DataPointer(this); }
 
  private:
+  IOBuf(const IOBuf&) = default;
+  IOBuf& operator=(const IOBuf&) = default;
   IOBuf* next_{this};
   IOBuf* prev_{this};
   uint8_t* data_{nullptr};

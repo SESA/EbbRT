@@ -37,7 +37,7 @@ class IOBufMessageBuilder : public capnp::MessageBuilder {
 
 class IOBufMessageReader : public capnp::MessageReader {
  public:
-  IOBufMessageReader(std::unique_ptr<const IOBuf>&& buf,
+  IOBufMessageReader(std::unique_ptr<IOBuf>&& buf,
                      capnp::ReaderOptions options = capnp::ReaderOptions())
       : capnp::MessageReader(options), buf_(std::move(buf)) {
     auto p = buf_->GetDataPointer();
@@ -57,8 +57,10 @@ class IOBufMessageReader : public capnp::MessageReader {
     return segments_[id];
   }
 
+  std::unique_ptr<IOBuf> GetBuf() { return std::move(buf_); }
+
  private:
-  std::unique_ptr<const IOBuf> buf_;
+  std::unique_ptr<IOBuf> buf_;
   std::vector<kj::ArrayPtr<const capnp::word>> segments_;
 };
 
