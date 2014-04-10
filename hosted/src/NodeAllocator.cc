@@ -178,7 +178,7 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path) {
 
   char network[100];
   snprintf(network, sizeof(network), "%d", network_id_);
-  std::string command = "/opt/khpy/kh alloc " + std::string(network) + " " +
+  std::string command = "/opt/khpy/kh alloc -g " + std::string(network) + " " +
                         binary_path + " " + fname.native();
   std::cout << "executing " << command << std::endl;
   int rc = system(command.c_str());

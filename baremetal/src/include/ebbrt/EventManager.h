@@ -22,11 +22,12 @@ namespace ebbrt {
 
 class EventManager {
   typedef boost::container::flat_map<size_t, ebbrt::EventManager*> RepMap;
-public:
+
+ public:
   struct EventContext {
     EventContext() : cpu(Cpu::GetMine()) {}
     EventContext(uint32_t event_id, Pfn stack)
-      : event_id(event_id), stack(stack), cpu(Cpu::GetMine()) {}
+        : event_id(event_id), stack(stack), cpu(Cpu::GetMine()) {}
     EventContext(const EventContext&) = delete;
     EventContext& operator=(const EventContext&) = delete;
     EventContext(EventContext&&) = default;
@@ -43,7 +44,7 @@ public:
     std::unordered_map<__gthread_key_t, void*> tls;
     size_t cpu;
   };
-  EventManager(RepMap &rm);
+  explicit EventManager(const RepMap& rm);
 
   static void Init();
   static EventManager& HandleFault(EbbId id);
@@ -66,10 +67,10 @@ public:
 
   Pfn AllocateStack();
 
-  RepMap &reps_;
+  const RepMap& reps_;
   std::stack<Pfn> free_stacks_;
   std::stack<MovableFunction<void()>> tasks_;
-  
+
   std::mutex rtsk_lock_;
   std::stack<MovableFunction<void()>> rtasks_;
 
