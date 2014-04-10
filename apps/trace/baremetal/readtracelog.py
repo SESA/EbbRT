@@ -33,7 +33,7 @@ with open(sys.argv[2]) as f:
       times.append(int(data[3]))
       cycles.append(int(data[4]))
       insts.append(int(data[5]))
-      print depth,">>>",fname,"from",cname
+      print "%s,>,%s,%s" % (depth,fname,cname)
     elif line.startswith("0"):
       data = line.split(' ')
       fname = addr2line(data[1])
@@ -41,9 +41,9 @@ with open(sys.argv[2]) as f:
         ttime = int(data[3]) - times.pop()
         tcycles = int(data[4]) - cycles.pop()
         tinst = int(data[5]) - insts.pop()
-        print depth,"<<<",fname,"[",tcycles,"C,",tinst,"I,",ttime,"T]"
+        print "%s,<,%s,%s,%s,%s" % (depth,fname,tcycles,tinst,ttime)
       else:
-        print depth,"<<<",fname,"[?]"
+        print "%s,<,%s,?,?,?" % (depth,fname)
       depth -= 1
     else:
       # non-trace line
