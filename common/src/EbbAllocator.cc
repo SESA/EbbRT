@@ -12,6 +12,12 @@ ebbrt::EbbAllocator::EbbAllocator() {
   auto start_ids =
       boost::icl::interval<EbbId>::type(kFirstFreeId, kFirstStaticUserId - 1);
   free_ids_.insert(std::move(start_ids));
+#ifndef __ebbrt__
+  auto global_start = 1 << 16;
+  auto global_end = (2 << 16) - 1;
+  auto global_ids = boost::icl::interval<EbbId>::type(global_start, global_end);
+  free_global_ids_.insert(std::move(global_ids));
+#endif
 }
 
 ebbrt::EbbId ebbrt::EbbAllocator::AllocateLocal() {
@@ -22,6 +28,17 @@ ebbrt::EbbId ebbrt::EbbAllocator::AllocateLocal() {
   return ret;
 }
 
+ebbrt::EbbId ebbrt::EbbAllocator::Allocate() {
+  std::lock_guard<std::mutex> lock(lock_);
+  if (free_global_ids_.empty())
+    throw std::runtime_error("Out of Global Ids!");
+
+  auto ret = boost::icl::first(free_global_ids_);
+  free_global_ids_.erase(ret);
+  return ret;
+}
+
+#ifdef __ebbrt__
 void ebbrt::EbbAllocator::SetIdSpace(uint16_t space) {
   auto id_start = space << 16;
   auto id_end = ((space + 1) << 16) - 1;
@@ -29,3 +46,4 @@ void ebbrt::EbbAllocator::SetIdSpace(uint16_t space) {
   auto start_ids = boost::icl::interval<EbbId>::type(id_start, id_end);
   free_global_ids_.insert(std::move(start_ids));
 }
+#endif

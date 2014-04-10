@@ -19,14 +19,16 @@
 #include <ebbrt/StaticSharedEbb.h>
 
 namespace ebbrt {
-class EbbAllocator : public CacheAligned,
-		     public StaticSharedEbb<EbbAllocator> {
+class EbbAllocator : public CacheAligned, public StaticSharedEbb<EbbAllocator> {
  public:
   EbbAllocator();
   EbbId AllocateLocal();
+  EbbId Allocate();
 
  private:
+#ifdef __ebbrt__
   void SetIdSpace(uint16_t id_space);
+#endif
 
   std::mutex lock_;
   boost::icl::interval_set<EbbId> free_ids_;
@@ -38,4 +40,4 @@ class EbbAllocator : public CacheAligned,
 constexpr auto ebb_allocator = EbbRef<EbbAllocator>(kEbbAllocatorId);
 }  // namespace ebbrt
 
-#endif  // BAREMETAL_SRC_INCLUDE_EBBRT_EBBALLOCATOR_H_
+#endif  // COMMON_SRC_INCLUDE_EBBRT_EBBALLOCATOR_H_
