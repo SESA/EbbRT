@@ -47,6 +47,10 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
     auto& send_queue = GetQueue(1);
     // Do nothing, just free the buffer
     send_queue.ProcessUsedBuffers([](std::unique_ptr<const IOBuf>&& b) {});
+    while (!packet_queue_.empty() && send_queue.num_free_descriptors() >= packet_queue_.front()->CountChainElements()) {
+      send_queue.AddReadableBuffer(std::move(packet_queue_.front()));
+      packet_queue_.pop();
+    }
   });
   dev.SetMsixEntry(1, send_vector, 0);
 
@@ -80,8 +84,11 @@ void ebbrt::VirtioNetDriver::Send(std::unique_ptr<const IOBuf>&& buf) {
   b->AppendChain(std::unique_ptr<IOBuf>(const_cast<IOBuf*>(buf.release())));
 
   auto& send_queue = GetQueue(1);
-  kbugon(send_queue.num_free_descriptors() < b->CountChainElements(),
-         "Must queue a packet, no more room\n");
+  if(send_queue.num_free_descriptors() < b->CountChainElements())
+  { //Must queue a packet, no more room
+    packet_queue_.emplace(std::move(b));
+    return;
+  }
 
   send_queue.AddReadableBuffer(std::move(b));
 }
