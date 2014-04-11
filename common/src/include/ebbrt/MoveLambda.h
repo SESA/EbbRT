@@ -24,7 +24,7 @@ template <typename F, typename... BoundArgs> class MoveLambda {
  public:
   MoveLambda() = delete;
   MoveLambda(base_type<F> f, BoundArgs... args)
-      : args_{ std::move(args)... }, f_(std::move(f)) {}
+      : args_{std::move(args)...}, f_(std::move(f)) {}
   MoveLambda(const MoveLambda&) = delete;
   MoveLambda(MoveLambda&& other) = default;
 
@@ -137,7 +137,14 @@ template <typename... ParamTypes> class MovableFunction<void(ParamTypes...)> {
   MovableFunction() = default;
   MovableFunction(std::nullptr_t) : ptr_() {}
   template <typename F>
-  MovableFunction(F&& f)
+  MovableFunction(
+      F&& f,
+      // This parameter ensures that this overload can't be used with a
+      // MovableFunction (e.g. copy or move)
+      typename std::enable_if<
+          !std::is_same<typename std::remove_reference<F>::type,
+                        MovableFunction<void(ParamTypes...)>>::value>::type* =
+          0)
       : ptr_(new MovableFunctionImp<F, void, ParamTypes...>(
             std::forward<F>(f))) {}
   MovableFunction(const MovableFunction&) = delete;

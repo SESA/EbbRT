@@ -156,7 +156,7 @@ static_assert(ebbrt::Cpu::kMaxCpus <= 256, "adjust event id calculation");
 
 ebbrt::EventManager::EventManager(const RepMap& rm)
     : reps_(rm), vector_idx_(33), next_event_id_(Cpu::GetMine() << 24),
-      active_event_context_(next_event_id_++, AllocateStack()), tryCnt_(0) {}
+      active_event_context_(next_event_id_++, AllocateStack()) {}
 
 void ebbrt::EventManager::Spawn(MovableFunction<void()> func) {
   SpawnLocal(std::move(func));
@@ -175,7 +175,7 @@ void ebbrt::EventManager::SpawnRemote(MovableFunction<void()> func,
                                       size_t cpu) {
   auto rep = reps_.find(cpu);
   kassert(rep != reps_.end());
-  rep->second->AddRemoteTask(func);
+  rep->second->AddRemoteTask(std::move(func));
   // We might want to do a queue of ipi's that can
   // be cancelled if the work was acked via shared memory due to
   // natural polling on the remote processor
@@ -243,6 +243,8 @@ uint8_t ebbrt::EventManager::AllocateVector(MovableFunction<void()> func) {
 
 void ebbrt::EventManager::ProcessInterrupt(int num) {
   apic::Eoi();
+  if (num == 32) {
+  }
   auto it = vector_map_.find(num);
   if (it != vector_map_.end()) {
     auto& f = it->second;

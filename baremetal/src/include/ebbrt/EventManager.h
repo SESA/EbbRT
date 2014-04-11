@@ -79,7 +79,6 @@ class EventManager {
   std::atomic<uint8_t> vector_idx_;
   uint32_t next_event_id_;
   EventContext active_event_context_;
-  uint32_t tryCnt_;
   struct RemoteData : CacheAligned {
     std::mutex lock;
     std::list<MovableFunction<void()>> tasks;
