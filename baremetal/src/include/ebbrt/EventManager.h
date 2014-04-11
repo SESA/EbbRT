@@ -5,10 +5,12 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_EVENTMANAGER_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_EVENTMANAGER_H_
 
+#include <list>
+#include <mutex>
 #include <stack>
 #include <unordered_map>
+
 #include <boost/container/flat_map.hpp>
-#include <mutex>
 
 #include <ebbrt/Isr.h>
 #include <ebbrt/Main.h>
@@ -59,26 +61,29 @@ class EventManager {
   std::unordered_map<__gthread_key_t, void*>& GetTlsMap();
 
  private:
-  void addRemoteTask(MovableFunction<void()> func);
-  void StartProcessingEvents() __attribute__((noreturn, no_instrument_function));
-  static void CallProcess(uintptr_t mgr) __attribute__((noreturn, no_instrument_function));
+  void AddRemoteTask(MovableFunction<void()> func);
+  void StartProcessingEvents()
+      __attribute__((noreturn, no_instrument_function));
+  static void CallProcess(uintptr_t mgr)
+      __attribute__((noreturn, no_instrument_function));
   void Process() __attribute__((noreturn, no_instrument_function));
-  void ProcessInterrupt(int num) __attribute__((noreturn, no_instrument_function));
+  void ProcessInterrupt(int num)
+      __attribute__((noreturn, no_instrument_function));
 
   Pfn AllocateStack();
 
   const RepMap& reps_;
   std::stack<Pfn> free_stacks_;
-  std::stack<MovableFunction<void()>> tasks_;
-
-  std::mutex rtsk_lock_;
-  std::stack<MovableFunction<void()>> rtasks_;
-
+  std::list<MovableFunction<void()>> tasks_;
   std::unordered_map<uint8_t, MovableFunction<void()>> vector_map_;
   std::atomic<uint8_t> vector_idx_;
   uint32_t next_event_id_;
   EventContext active_event_context_;
   uint32_t tryCnt_;
+  struct RemoteData : CacheAligned {
+    std::mutex lock;
+    std::list<MovableFunction<void()>> tasks;
+  } remote_;
 
   friend void ebbrt::idt::EventInterrupt(int num);
   friend void ebbrt::Main(ebbrt::multiboot::Information* mbi);

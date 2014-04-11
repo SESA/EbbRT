@@ -109,52 +109,36 @@ void InvokeFunction(ebbrt::MovableFunction<void()>& f) {
 }  // namespace
 
 void ebbrt::EventManager::Process() {
-  // process an interrupt without halting
-  // the sti instruction starts processing interrupts *after* the next
-  // instruction is executed (to allow for a halt for example). The nop gives us
-  // a one instruction window to process an interrupt (before the cli)
-  while (1) {
-    asm volatile("sti;"
-                 "nop;"
-                 "cli;");
-    // If an interrupt was processed then we would not reach this code (the
-    // interrupt does not return here but instead to the top of this function)
+// process an interrupt without halting
+// the sti instruction starts processing interrupts *after* the next
+// instruction is executed (to allow for a halt for example). The nop gives us
+// a one instruction window to process an interrupt (before the cli)
+process:
+  asm volatile("sti;"
+               "nop;"
+               "cli;");
+  // If an interrupt was processed then we would not reach this code (the
+  // interrupt does not return here but instead to the top of this function)
 
-    tryCnt_++;
-    // to ensure that we don't starve we alternate between the local
-    // and remote queues
-    if ((tryCnt_ & 0x1) == 0) {
-      if (!tasks_.empty()) {
-        auto f = std::move(tasks_.top());
-        tasks_.pop();
-        InvokeFunction(f);
-      } else {
-        // When the local task set is empty we can safely halt however for
-        // improved latency you may want a grace period before halting
-        // However given powerboast this maynot be an easy decision.
-        // This is safe since remote side will latch an interrupt in hardware
-        // and will ensure that interrupts either execute before halt or cause
-        // halt to return and then execute
-        rtsk_lock_.lock();
-        bool empty = rtasks_.empty();
-        rtsk_lock_.unlock();
-        if (empty) {
-          asm volatile("sti;"
-                       "hlt;");
-        }
-      }
-    } else {
-      rtsk_lock_.lock();
-      if (!rtasks_.empty()) {
-        auto f = std::move(rtasks_.top());
-        rtasks_.pop();
-        rtsk_lock_.unlock();
-        InvokeFunction(f);
-      } else {
-        rtsk_lock_.unlock();
-      }
-    }
+  // FIXME(dschatz): Maybe don't check this every time through the loop to
+  // reduce contention
+  {
+    // pull all remote tasks onto our queue
+    std::lock_guard<std::mutex> l(remote_.lock);
+    tasks_.splice(tasks_.end(), std::move(remote_.tasks));
   }
+
+  if (!tasks_.empty()) {
+    auto f = std::move(tasks_.front());
+    tasks_.pop_front();
+    InvokeFunction(f);
+    // if we had a task to execute, then we go to the top again
+    goto process;
+  }
+
+  asm volatile("sti;"
+               "hlt;");
+  kabort("Woke up from halt?!?!");
 }
 
 ebbrt::Pfn ebbrt::EventManager::AllocateStack() {
@@ -171,7 +155,7 @@ ebbrt::Pfn ebbrt::EventManager::AllocateStack() {
 static_assert(ebbrt::Cpu::kMaxCpus <= 256, "adjust event id calculation");
 
 ebbrt::EventManager::EventManager(const RepMap& rm)
-    : reps_(rm), vector_idx_(32), next_event_id_(Cpu::GetMine() << 24),
+    : reps_(rm), vector_idx_(33), next_event_id_(Cpu::GetMine() << 24),
       active_event_context_(next_event_id_++, AllocateStack()), tryCnt_(0) {}
 
 void ebbrt::EventManager::Spawn(MovableFunction<void()> func) {
@@ -179,27 +163,26 @@ void ebbrt::EventManager::Spawn(MovableFunction<void()> func) {
 }
 
 void ebbrt::EventManager::SpawnLocal(MovableFunction<void()> func) {
-  tasks_.emplace(std::move(func));
+  tasks_.emplace_back(std::move(func));
 }
 
-void ebbrt::EventManager::addRemoteTask(MovableFunction<void()> func) {
-  std::lock_guard<std::mutex> lock(rtsk_lock_);
-  rtasks_.emplace(std::move(func));
+void ebbrt::EventManager::AddRemoteTask(MovableFunction<void()> func) {
+  std::lock_guard<std::mutex> lock(remote_.lock);
+  remote_.tasks.emplace_back(std::move(func));
 }
 
 void ebbrt::EventManager::SpawnRemote(MovableFunction<void()> func,
                                       size_t cpu) {
-  // FIXME: we probably should make this work even in the case the the rep for
-  // cpu is not created yet but for the moment we are going to let
-  // this throw an error in this case!
-  // kassert(reps_[cpu]);
   auto rep = reps_.find(cpu);
   kassert(rep != reps_.end());
-  rep->second->addRemoteTask(func);
+  rep->second->AddRemoteTask(func);
   // We might want to do a queue of ipi's that can
   // be cancelled if the work was acked via shared memory due to
   // natural polling on the remote processor
-  //  reps_[cpu].ipi(...);
+  auto c = Cpu::GetByIndex(cpu);
+  kassert(c != nullptr);
+  auto apic_id = c->apic_id();
+  apic::Ipi(apic_id, 32);
 }
 
 extern "C" void
