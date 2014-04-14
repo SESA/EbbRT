@@ -120,14 +120,6 @@ process:
   // If an interrupt was processed then we would not reach this code (the
   // interrupt does not return here but instead to the top of this function)
 
-  // FIXME(dschatz): Maybe don't check this every time through the loop to
-  // reduce contention
-  {
-    // pull all remote tasks onto our queue
-    std::lock_guard<std::mutex> l(remote_.lock);
-    tasks_.splice(tasks_.end(), std::move(remote_.tasks));
-  }
-
   if (!tasks_.empty()) {
     auto f = std::move(tasks_.front());
     tasks_.pop_front();
@@ -244,6 +236,9 @@ uint8_t ebbrt::EventManager::AllocateVector(MovableFunction<void()> func) {
 void ebbrt::EventManager::ProcessInterrupt(int num) {
   apic::Eoi();
   if (num == 32) {
+    // pull all remote tasks onto our queue
+    std::lock_guard<std::mutex> l(remote_.lock);
+    tasks_.splice(tasks_.end(), std::move(remote_.tasks));
   }
   auto it = vector_map_.find(num);
   if (it != vector_map_.end()) {
