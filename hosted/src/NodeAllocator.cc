@@ -145,6 +145,7 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path) {
   auto fdt = Fdt();
   fdt.BeginNode("/");
   fdt.BeginNode("runtime");
+  fdt.CreateProperty("net", static_cast<uint16_t>(network_id_));
   fdt.CreateProperty("address", net_addr_);
   auto port = port_;
   fdt.CreateProperty("port", port);

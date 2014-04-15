@@ -14,6 +14,7 @@
 #include <lwip/timers.h>
 #include <netif/etharp.h>
 
+#include <ebbrt/BootFdt.h>
 #include <ebbrt/Clock.h>
 #include <ebbrt/Debug.h>
 #include <ebbrt/EventManager.h>
@@ -45,25 +46,41 @@ ebbrt::NetworkManager::NewInterface(EthernetDevice& ether_dev) {
   return interfaces_[interfaces_.size() - 1];
 }
 
-ebbrt::NetworkManager::Interface&
-ebbrt::NetworkManager::FirstInterface() 
-{
-
+ebbrt::NetworkManager::Interface& ebbrt::NetworkManager::FirstInterface() {
   if (interfaces_.empty())
     throw std::runtime_error("No Interfaces");
   return interfaces_.front();
 }
 
+#ifndef __EBBRT_ENABLE_STATIC_IP__
 namespace {
 ebbrt::EventManager::EventContext* context;
 }
+#endif
 
 void ebbrt::NetworkManager::AcquireIPAddress() {
   kbugon(interfaces_.size() == 0, "No network interfaces identified!\n");
-  netif_set_default(&interfaces_[0].netif_);
-  dhcp_start(&interfaces_[0].netif_);
+  auto netif = &interfaces_[0].netif_;
+  netif_set_default(netif);
+#ifdef __EBBRT_ENABLE_STATIC_IP__
+  const auto& mac_addr = interfaces_[0].MacAddress();
+  auto fdt = boot_fdt::Get();
+  auto net = static_cast<uint8_t>(
+      fdt.GetProperty16(fdt.GetNodeOffset("/runtime"), "net"));
+  ip_addr_t addr;
+  IP4_ADDR(&addr, 10, net, net,
+           mac_addr[5]);  // set addr to 10.net.net.last_mac_octet
+  ip_addr_t netmask;
+  IP4_ADDR(&netmask, 255, 255, 255, 0);  // set netmask to 255.255.255.0
+  ip_addr_t gw;
+  IP4_ADDR(&gw, 10, net, net, 1);  // set gw to 10.net.net.1
+  netif_set_addr(netif, &addr, &netmask, &gw);
+  netif_set_up(netif);
+#else
+  dhcp_start(netif);
   context = new EventManager::EventContext;
   event_manager->SaveContext(*context);
+#endif
 }
 
 namespace {
@@ -115,8 +132,10 @@ void StatusCallback(struct netif* netif) {
   ebbrt::kprintf("IP address: %" U16_F ".%" U16_F ".%" U16_F ".%" U16_F "\n",
                  ip4_addr1_16(&netif->ip_addr), ip4_addr2_16(&netif->ip_addr),
                  ip4_addr3_16(&netif->ip_addr), ip4_addr4_16(&netif->ip_addr));
+#ifndef __EBBRT_ENABLE_STATIC_IP__
   ebbrt::event_manager->ActivateContext(std::move(*context));
   delete context;
+#endif
 }
 }  // namespace
 
@@ -134,8 +153,7 @@ const std::array<char, 6>& ebbrt::NetworkManager::Interface::MacAddress() {
   return ether_dev_.GetMacAddress();
 }
 
-uint32_t
-ebbrt::NetworkManager::Interface::IPV4Addr() {
+uint32_t ebbrt::NetworkManager::Interface::IPV4Addr() {
   return netif_.ip_addr.addr;
 }
 
@@ -356,7 +374,6 @@ err_t ebbrt::NetworkManager::TcpPcb::SentHandler(void* arg, struct tcp_pcb* pcb,
                         pcb_s->ack_map_.upper_bound(pcb_s->sent_));
   return ERR_OK;
 }
-
 
 ip_addr_t ebbrt::NetworkManager::TcpPcb::GetRemoteAddress() const {
   return pcb_->remote_ip;
