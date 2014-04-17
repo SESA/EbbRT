@@ -88,7 +88,7 @@ lwip_sources := $(filter-out %icmp6.c %inet6.c %ip6_addr.c %ip6.c,$(shell find \
 	$(EBBRT_BAREMETAL_PATH)/ext/lwip -type f -name '*.c'))
 lwip_objects := $(patsubst $(EBBRT_BAREMETAL_PATH)/%.c, %.o, $(lwip_sources))
 
-$(lwip_objects): EBBRT_CFLAGS += -Wno-address
+$(lwip_objects): EBBRT_CFLAGS += -Wno-address -Wno-unused-but-set-variable -Wno-array-bounds
 
 capnp_sources := $(shell find $(EBBRT_BAREMETAL_PATH)/ext/capnp/src/capnp -type f -name '*.c++')
 capnp_objects := $(patsubst $(EBBRT_BAREMETAL_PATH)/%.c++, %.o, $(capnp_sources))

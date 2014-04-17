@@ -6,6 +6,7 @@
 #define BAREMETAL_SRC_INCLUDE_EBBRT_NET_H_
 
 #include <map>
+#include <queue>
 #include <vector>
 
 #include <lwip/netif.h>
@@ -36,6 +37,7 @@ class NetworkManager {
     void Send(std::unique_ptr<const IOBuf>&& buf);
     const std::array<char, 6>& MacAddress();
     uint32_t IPV4Addr();
+
    private:
     EthernetDevice& ether_dev_;
     struct netif netif_;
@@ -58,12 +60,13 @@ class NetworkManager {
     Future<void> Connect(struct ip_addr* ipaddr, uint16_t port);
     void
     Receive(std::function<void(TcpPcb&, std::unique_ptr<IOBuf>&&)> callback);
-    Future<void> Send(std::unique_ptr<const IOBuf>&& data);
+    Future<void> Send(std::unique_ptr<IOBuf>&& data);
 
    private:
     static void Deleter(struct tcp_pcb* object);
     explicit TcpPcb(struct tcp_pcb* pcb);
 
+    size_t InternalSend(const std::unique_ptr<IOBuf>& data);
     static err_t Accept_Handler(void* arg, struct tcp_pcb* newpcb, err_t err);
     static err_t Connect_Handler(void* arg, struct tcp_pcb* pcb, err_t err);
     static err_t Receive_Handler(void* arg, struct tcp_pcb* pcb, struct pbuf* p,
@@ -77,6 +80,7 @@ class NetworkManager {
     uint64_t sent_;
     uint64_t next_;
     std::map<uint64_t, Promise<void>> ack_map_;
+    std::queue<std::unique_ptr<IOBuf>> queued_bufs_;
   };
 
   static void Init();

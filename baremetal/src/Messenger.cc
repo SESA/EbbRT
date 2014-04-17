@@ -30,31 +30,53 @@ void ebbrt::Messenger::StartListening(uint16_t port) {
   });
 }
 
-ebbrt::Messenger::NetworkId 
-ebbrt::Messenger::LocalNetworkId() {
-  ebbrt::NetworkManager::Interface iface = 
-    ebbrt::network_manager->FirstInterface();  
+ebbrt::Messenger::NetworkId ebbrt::Messenger::LocalNetworkId() {
+  ebbrt::NetworkManager::Interface iface =
+      ebbrt::network_manager->FirstInterface();
   return NetworkId(iface.IPV4Addr());
 }
 
 void ebbrt::Messenger::Receive(NetworkManager::TcpPcb& t,
                                std::unique_ptr<IOBuf>&& b) {
-  kbugon(b->CountChainElements() > 1, "handle multiple length buffer\n");
-  kbugon(b->Length() < sizeof(Header), "buffer too small\n");
-  auto p = b->GetDataPointer();
+  // This may be part of a message we still haven't received all of, check if we
+  // queued anything
+  auto addr = t.GetRemoteAddress().addr;
+  auto it = queued_receives_.find(addr);
+  bool in_queue = false;
+  std::unique_ptr<IOBuf>* buf;
+  if (it != queued_receives_.end()) {
+    it->second->Prev()->AppendChain(std::move(b));
+    in_queue = true;
+    buf = &it->second;
+  } else {
+    buf = &b;
+  }
+
+  kbugon((*buf)->Length() < sizeof(Header), "buffer too small\n");
+  auto p = (*buf)->GetDataPointer();
   auto& header = p.Get<Header>();
-  auto& ref = GetMessagableRef(header.id, header.type_code);
-  kbugon(b->Length() < (sizeof(Header) + header.length),
-         "Did not receive complete message\n");
-  // consume header
-  b->Advance(sizeof(Header));
-  ref.ReceiveMessageInternal(NetworkId(ntohl(t.GetRemoteAddress().addr)),
-                             std::move(b));
+  auto message_len = sizeof(Header) + header.length;
+  auto chain_len = (*buf)->ComputeChainDataLength();
+  kbugon(chain_len > message_len, "Need to leave tail of message around\n");
+  if (chain_len < message_len && !in_queue) {
+    // we need to put the data in the queue
+    queued_receives_.emplace(addr, std::move(*buf));
+  } else if (chain_len == message_len) {
+    // we are good to upcall the receiver with the message
+    auto& ref = GetMessagableRef(header.id, header.type_code);
+    // consume header
+    (*buf)->Advance(sizeof(Header));
+    ref.ReceiveMessageInternal(NetworkId(ntohl(t.GetRemoteAddress().addr)),
+                               std::move(*buf));
+    if (in_queue) {
+      queued_receives_.erase(it);
+    }
+  }
 }
 
-ebbrt::Future<void>
-ebbrt::Messenger::Send(NetworkId to, EbbId id, uint64_t type_code,
-                       std::unique_ptr<const IOBuf>&& data) {
+ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to, EbbId id,
+                                           uint64_t type_code,
+                                           std::unique_ptr<IOBuf>&& data) {
   // make sure we have a pending connection
   {
     std::lock_guard<SpinLock> lock(lock_);
@@ -83,10 +105,10 @@ ebbrt::Messenger::Send(NetworkId to, EbbId id, uint64_t type_code,
   h->type_code = type_code;
   h->id = id;
   // Cast to non const is ok because we then take the whole chain as const after
-  buf->AppendChain(std::unique_ptr<IOBuf>(const_cast<IOBuf*>(data.release())));
+  buf->AppendChain(std::move(data));
 
   return connection_map_[to.ip.addr].Then(
-      MoveBind([](std::unique_ptr<const IOBuf>&& data,
+      MoveBind([](std::unique_ptr<IOBuf>&& data,
                   SharedFuture<NetworkManager::TcpPcb> f) {
                  f.Get().Send(std::move(data));
                },

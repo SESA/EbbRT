@@ -178,7 +178,7 @@ void ebbrt::NetworkManager::Interface::Receive(std::unique_ptr<IOBuf>&& buf) {
       first = false;
     }
     memcpy(static_cast<char*>(q->payload) + add, ptr, q->len - add);
-    ptr += q->len;
+    ptr += q->len - add;
   }
 
   event_manager->SpawnLocal([p, this]() { netif_.input(p, &netif_); });
@@ -310,6 +310,7 @@ err_t ebbrt::NetworkManager::TcpPcb::Connect_Handler(void* arg,
   kassert(err == ERR_OK);
   auto pcb_s = static_cast<TcpPcb*>(arg);
   kassert(pcb_s->pcb_.get() == pcb);
+  tcp_sent(pcb_s->pcb_.get(), SentHandler);
   pcb_s->connect_promise_.SetValue();
   return ERR_OK;
 }
@@ -345,19 +346,41 @@ err_t ebbrt::NetworkManager::TcpPcb::Receive_Handler(void* arg,
   return ERR_OK;
 }  // NOLINT
 
-ebbrt::Future<void>
-ebbrt::NetworkManager::TcpPcb::Send(std::unique_ptr<const IOBuf>&& data) {
+size_t ebbrt::NetworkManager::TcpPcb::InternalSend(
+    const std::unique_ptr<IOBuf>& data) {
+  size_t ret = 0;
   for (auto& buf : *data) {
-    auto sz = buf.Length();
-    kassert(sz <= UINT16_MAX);
-    auto err = tcp_write(pcb_.get(), const_cast<uint8_t*>(buf.Data()), sz,
-                         TCP_WRITE_FLAG_COPY);
-    kassert(err == ERR_OK);
+    while (buf.Length() != 0) {
+      auto sndbuf = tcp_sndbuf(pcb_.get());
+      if (sndbuf == 0)
+        return ret;
+      auto sz = buf.Length();
+      sz = sz > UINT16_MAX ? UINT16_MAX : sz;
+      sz = sz > sndbuf ? sndbuf : sz;
+      auto err = tcp_write(pcb_.get(), const_cast<uint8_t*>(buf.Data()), sz,
+                           TCP_WRITE_FLAG_COPY);
+      kassert(err == ERR_OK);
+      buf.Advance(sz);
+      ret += sz;
+    }
   }
-  next_ += data->ComputeChainDataLength();
+  return ret;
+}
+
+ebbrt::Future<void>
+ebbrt::NetworkManager::TcpPcb::Send(std::unique_ptr<IOBuf>&& data) {
+  auto len = data->ComputeChainDataLength();
+  next_ += len;
   auto p =
       ack_map_.emplace(std::piecewise_construct, std::forward_as_tuple(next_),
                        std::forward_as_tuple());
+  size_t written = 0;
+  if (queued_bufs_.empty()) {
+    written = InternalSend(data);
+  }
+  if (written < len) {
+    queued_bufs_.emplace(std::move(data));
+  }
   return p.first->second.GetFuture();
 }
 
@@ -372,6 +395,14 @@ err_t ebbrt::NetworkManager::TcpPcb::SentHandler(void* arg, struct tcp_pcb* pcb,
   }
   pcb_s->ack_map_.erase(pcb_s->ack_map_.begin(),
                         pcb_s->ack_map_.upper_bound(pcb_s->sent_));
+  while (!pcb_s->queued_bufs_.empty()) {
+    auto& buf = pcb_s->queued_bufs_.front();
+    auto buf_len = buf->ComputeChainDataLength();
+    auto written = pcb_s->InternalSend(buf);
+    if (written < buf_len)
+      break;
+    pcb_s->queued_bufs_.pop();
+  }
   return ERR_OK;
 }
 

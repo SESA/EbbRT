@@ -33,9 +33,8 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
 
       ip.addr = *reinterpret_cast<const uint32_t*>(str.data());
     }
-    bool operator==(const NetworkId &rhs) {
-      return ip.addr == rhs.ip.addr;
-    }
+    bool operator==(const NetworkId& rhs) { return ip.addr == rhs.ip.addr; }
+
    private:
     struct ip_addr ip;
 
@@ -45,7 +44,7 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
   Messenger();
 
   Future<void> Send(NetworkId nid, EbbId id, uint64_t type_code,
-                    std::unique_ptr<const IOBuf>&& data);
+                    std::unique_ptr<IOBuf>&& data);
   void Receive(NetworkManager::TcpPcb& t, std::unique_ptr<IOBuf>&& b);
 
   NetworkId LocalNetworkId();
@@ -58,6 +57,7 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
   ebbrt::SpinLock lock_;
   std::unordered_map<uint32_t, SharedFuture<NetworkManager::TcpPcb>>
   connection_map_;
+  std::unordered_map<uint32_t, std::unique_ptr<IOBuf>> queued_receives_;
 
   friend void ebbrt::runtime::Init();
 };

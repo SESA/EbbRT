@@ -25,11 +25,11 @@ template <typename T> class Messagable : public MessagableBase {
  public:
   explicit Messagable(EbbId id) : id_(id) {}
   Future<void> SendMessage(Messenger::NetworkId nid,
-                           std::unique_ptr<const IOBuf>&& buf) {
+                           std::unique_ptr<IOBuf>&& buf) {
     return SendMessage(id_, nid, std::move(buf));
   }
   Future<void> SendMessage(EbbId id, Messenger::NetworkId nid,
-                           std::unique_ptr<const IOBuf>&& buf) {
+                           std::unique_ptr<IOBuf>&& buf) {
     return messenger->Send(nid, id, typeid(T).hash_code(), std::move(buf));
   }
   void ReceiveMessageInternal(Messenger::NetworkId nid,
