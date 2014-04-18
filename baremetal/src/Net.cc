@@ -94,14 +94,18 @@ err_t EthOutput(struct netif* netif, struct pbuf* p) {
   if (p == nullptr)
     return ERR_OK;
 
+  pbuf_ref(p);
+  auto b = ebbrt::IOBuf::TakeOwnership(p->payload, p->len,
+                                       [p](void* pointer) { pbuf_free(p); });
   // TODO(dschatz): avoid this copy
-  auto b = ebbrt::IOBuf::Create(p->len);
-  std::memcpy(b->WritableData(), p->payload, p->len);
+  // auto b = ebbrt::IOBuf::Create(p->len);
+  // std::memcpy(b->WritableData(), p->payload, p->len);
 
   for (struct pbuf* q = p->next; q != nullptr; q = q->next) {
-    auto nbuf = ebbrt::IOBuf::Create(q->len);
-    std::memcpy(nbuf->WritableData(), q->payload, q->len);
-
+    auto nbuf =
+        ebbrt::IOBuf::TakeOwnership(q->payload, q->len, [](void* pointer) {});
+    // auto nbuf = ebbrt::IOBuf::Create(q->len);
+    // std::memcpy(nbuf->WritableData(), q->payload, q->len);
     b->Prev()->AppendChain(std::move(nbuf));
   }
   itf->Send(std::move(b));
@@ -336,8 +340,7 @@ err_t ebbrt::NetworkManager::TcpPcb::Receive_Handler(void* arg,
     auto b = IOBuf::TakeOwnership(p->payload, p->len,
                                   [p](void* pointer) { pbuf_free(p); });
     for (auto q = p->next; q != nullptr; q = q->next) {
-      auto n = IOBuf::TakeOwnership(q->payload, q->len,
-                                    [q](void* pointer) { pbuf_free(q); });
+      auto n = IOBuf::TakeOwnership(q->payload, q->len, [](void* pointer) {});
       b->Prev()->AppendChain(std::move(n));
     }
     pcb_s->receive_callback_(*pcb_s, std::move(b));
