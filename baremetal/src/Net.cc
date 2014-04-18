@@ -357,7 +357,14 @@ size_t ebbrt::NetworkManager::TcpPcb::InternalSend(
       auto sz = buf.Length();
       sz = sz > UINT16_MAX ? UINT16_MAX : sz;
       sz = sz > sndbuf ? sndbuf : sz;
-      auto err = tcp_write(pcb_.get(), const_cast<uint8_t*>(buf.Data()), sz, 0);
+      uint8_t flag = 0;
+      if (sz < sndbuf && buf.Next() != &*data) {
+        // we expect to write more almost immediately if there is room in the
+        // send buf and this is not the last element of the chain
+        flag = TCP_WRITE_FLAG_MORE;
+      }
+      auto err =
+          tcp_write(pcb_.get(), const_cast<uint8_t*>(buf.Data()), sz, flag);
       kassert(err == ERR_OK);
       buf.Advance(sz);
       ret += sz;
