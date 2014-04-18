@@ -79,8 +79,9 @@ class NetworkManager {
     std::function<void(TcpPcb&, std::unique_ptr<IOBuf>&&)> receive_callback_;
     uint64_t sent_;
     uint64_t next_;
-    std::map<uint64_t, Promise<void>> ack_map_;
-    std::queue<std::unique_ptr<IOBuf>> queued_bufs_;
+    std::map<uint64_t, std::tuple<Promise<void>, std::unique_ptr<IOBuf>>>
+    ack_map_;
+    std::queue<std::reference_wrapper<std::unique_ptr<IOBuf>>> queued_bufs_;
   };
 
   static void Init();

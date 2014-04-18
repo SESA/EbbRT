@@ -357,8 +357,7 @@ size_t ebbrt::NetworkManager::TcpPcb::InternalSend(
       auto sz = buf.Length();
       sz = sz > UINT16_MAX ? UINT16_MAX : sz;
       sz = sz > sndbuf ? sndbuf : sz;
-      auto err = tcp_write(pcb_.get(), const_cast<uint8_t*>(buf.Data()), sz,
-                           TCP_WRITE_FLAG_COPY);
+      auto err = tcp_write(pcb_.get(), const_cast<uint8_t*>(buf.Data()), sz, 0);
       kassert(err == ERR_OK);
       buf.Advance(sz);
       ret += sz;
@@ -371,17 +370,22 @@ ebbrt::Future<void>
 ebbrt::NetworkManager::TcpPcb::Send(std::unique_ptr<IOBuf>&& data) {
   auto len = data->ComputeChainDataLength();
   next_ += len;
+  // The IOBuf is stored in the ack map until LWIP tells us it has been sent
   auto p =
       ack_map_.emplace(std::piecewise_construct, std::forward_as_tuple(next_),
-                       std::forward_as_tuple());
+                       std::forward_as_tuple(Promise<void>(), std::move(data)));
+  // We just d as a reference to the IOBuf. A reference is stored in
+  // queued_bufs_ which is OK because it will be removed from queued_bufs_
+  // before LWIP acknowledges that it has sent it
+  auto& d = std::get<1>(p.first->second);
   size_t written = 0;
   if (queued_bufs_.empty()) {
-    written = InternalSend(data);
+    written = InternalSend(d);
   }
   if (written < len) {
-    queued_bufs_.emplace(std::move(data));
+    queued_bufs_.emplace(std::ref(d));
   }
-  return p.first->second.GetFuture();
+  return std::get<0>(p.first->second).GetFuture();
 }
 
 err_t ebbrt::NetworkManager::TcpPcb::SentHandler(void* arg, struct tcp_pcb* pcb,
@@ -391,12 +395,12 @@ err_t ebbrt::NetworkManager::TcpPcb::SentHandler(void* arg, struct tcp_pcb* pcb,
   pcb_s->sent_ += len;
   for (auto it = pcb_s->ack_map_.begin();
        it != pcb_s->ack_map_.upper_bound(pcb_s->sent_); ++it) {
-    it->second.SetValue();
+    std::get<0>(it->second).SetValue();
   }
   pcb_s->ack_map_.erase(pcb_s->ack_map_.begin(),
                         pcb_s->ack_map_.upper_bound(pcb_s->sent_));
   while (!pcb_s->queued_bufs_.empty()) {
-    auto& buf = pcb_s->queued_bufs_.front();
+    auto& buf = pcb_s->queued_bufs_.front().get();
     auto buf_len = buf->ComputeChainDataLength();
     auto written = pcb_s->InternalSend(buf);
     if (written < buf_len)
