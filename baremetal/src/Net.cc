@@ -165,25 +165,25 @@ void ebbrt::NetworkManager::Interface::Send(std::unique_ptr<const IOBuf>&& b) {
   ether_dev_.Send(std::move(b));
 }
 
+struct pbuf_custom_wrapper {
+  pbuf_custom p_custom;
+  std::unique_ptr<ebbrt::IOBuf> buf;
+};
+
 void ebbrt::NetworkManager::Interface::Receive(std::unique_ptr<IOBuf>&& buf) {
   kbugon(buf->CountChainElements() > 1, "Handle chained buffer\n");
-  auto len = buf->ComputeChainDataLength();
-  // FIXME: We should avoid this copy
-  auto p = pbuf_alloc(PBUF_LINK, len + ETH_PAD_SIZE, PBUF_POOL);
+  auto data = buf->WritableData() - ETH_PAD_SIZE;
+  auto len = buf->ComputeChainDataLength() + ETH_PAD_SIZE;
 
+  auto p_wrapper = new pbuf_custom_wrapper();
+  p_wrapper->buf = std::move(buf);
+  p_wrapper->p_custom.custom_free_function = [](pbuf* p) {
+    auto wrapper = reinterpret_cast<pbuf_custom_wrapper*>(p);
+    delete wrapper;
+  };
+  auto p = pbuf_alloced_custom(PBUF_RAW, len, PBUF_REF, &p_wrapper->p_custom,
+                               data, len);
   kbugon(p == nullptr, "Failed to allocate pbuf\n");
-
-  auto ptr = buf->Data();
-  bool first = true;
-  for (auto q = p; q != nullptr; q = q->next) {
-    auto add = 0;
-    if (first) {
-      add = ETH_PAD_SIZE;
-      first = false;
-    }
-    memcpy(static_cast<char*>(q->payload) + add, ptr, q->len - add);
-    ptr += q->len - add;
-  }
 
   event_manager->SpawnLocal([p, this]() { netif_.input(p, &netif_); });
 }
