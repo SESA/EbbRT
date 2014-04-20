@@ -53,6 +53,7 @@ class NetworkManager {
 
     TcpPcb& operator=(TcpPcb&&);
     ip_addr_t GetRemoteAddress() const;
+    uint16_t GetRemotePort() const;
     void Bind(uint16_t port);
     void Listen();
     void ListenWithBacklog(uint8_t backlog);
@@ -61,6 +62,10 @@ class NetworkManager {
     void
     Receive(std::function<void(TcpPcb&, std::unique_ptr<IOBuf>&&)> callback);
     Future<void> Send(std::unique_ptr<IOBuf>&& data);
+    /* TCP congestion control toggles */
+    void EnableNagle();
+    void DisableNagle();
+    bool NagleDisabled();
 
    private:
     static void Deleter(struct tcp_pcb* object);

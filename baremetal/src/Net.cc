@@ -398,6 +398,23 @@ ebbrt::NetworkManager::TcpPcb::Send(std::unique_ptr<IOBuf>&& data) {
   return std::get<0>(p.first->second).GetFuture();
 }
 
+void
+ebbrt::NetworkManager::TcpPcb::EnableNagle(){
+  tcp_nagle_enable(pcb_);
+}
+void
+ebbrt::NetworkManager::TcpPcb::DisableNagle(){
+  tcp_nagle_disable(pcb_);
+}
+bool
+ebbrt::NetworkManager::TcpPcb::NagleDisabled(){
+  return tcp_nagle_disabled(pcb_);
+
+}
+
+
+
+
 err_t ebbrt::NetworkManager::TcpPcb::SentHandler(void* arg, struct tcp_pcb* pcb,
                                                  uint16_t len) {
   auto pcb_s = static_cast<TcpPcb*>(arg);
@@ -422,4 +439,8 @@ err_t ebbrt::NetworkManager::TcpPcb::SentHandler(void* arg, struct tcp_pcb* pcb,
 
 ip_addr_t ebbrt::NetworkManager::TcpPcb::GetRemoteAddress() const {
   return pcb_->remote_ip;
+}
+
+uint16_t ebbrt::NetworkManager::TcpPcb::GetRemotePort() const {
+  return pcb_->remote_port;
 }
