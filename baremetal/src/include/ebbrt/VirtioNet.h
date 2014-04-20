@@ -23,6 +23,7 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
 
  private:
   void FillRxRing();
+  void FreeSentPackets();
 
   struct VirtioNetHeader {
     static const constexpr uint8_t kNeedsCsum = 1;

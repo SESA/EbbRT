@@ -60,7 +60,7 @@ template <typename VirtType> class VirtioDriver {
    public:
     VRing(VirtioDriver<VirtType>& driver, uint16_t qsize, size_t idx)
         : driver_(driver), idx_(idx), qsize_(qsize), free_head_(0),
-          free_count_(qsize_) {
+          free_count_(qsize_), event_indexes_(false), interrupts_(true) {
       auto sz =
           align::Up(sizeof(Desc) * qsize + sizeof(uint16_t) * (3 + qsize),
                     4096) +
@@ -147,9 +147,14 @@ template <typename VirtType> class VirtioDriver {
       // loads won't be ordered before the fence.
       std::atomic_thread_fence(std::memory_order_seq_cst);
 
-      auto event_idx = avail_event_->load(std::memory_order_relaxed);
-      if ((uint16_t)(avail_idx - event_idx - 1) <
-          (uint16_t)(avail_idx - orig_idx)) {
+      if (event_indexes_) {
+        auto event_idx = avail_event_->load(std::memory_order_relaxed);
+        if ((uint16_t)(avail_idx - event_idx - 1) <
+            (uint16_t)(avail_idx - orig_idx)) {
+          Kick();
+        }
+      } else if (!(used_->flags.load(std::memory_order_consume) &
+                   Used::kNoNotify)) {
         Kick();
       }
 
@@ -158,7 +163,8 @@ template <typename VirtType> class VirtioDriver {
 
     void AddReadableBuffer(std::unique_ptr<const IOBuf>&& bufs) {
       auto len = bufs->CountChainElements();
-      kbugon(free_count_ < len, "Not enough free descriptors to add buffer chain\n");
+      kbugon(free_count_ < len,
+             "Not enough free descriptors to add buffer chain\n");
 
       free_count_ -= len;
       uint16_t last_desc = free_head_;
@@ -186,9 +192,14 @@ template <typename VirtType> class VirtioDriver {
 
       std::atomic_thread_fence(std::memory_order_seq_cst);
 
-      auto event_idx = avail_event_->load(std::memory_order_relaxed);
-      if ((uint16_t)(avail_idx - event_idx - 1) <
-          (uint16_t)(avail_idx - orig_idx)) {
+      if (event_indexes_) {
+        auto event_idx = avail_event_->load(std::memory_order_relaxed);
+        if ((uint16_t)(avail_idx - event_idx - 1) <
+            (uint16_t)(avail_idx - orig_idx)) {
+          Kick();
+        }
+      } else if (!(used_->flags.load(std::memory_order_consume) &
+                   Used::kNoNotify)) {
         Kick();
       }
 
@@ -200,12 +211,18 @@ template <typename VirtType> class VirtioDriver {
       // the event index. We only get an interrupt when the new index crosses
       // the
       // event index.
-      auto used_index = used_event_->load(std::memory_order_relaxed);
+      DisableInterrupts();
+      auto used_index = last_used_;
       while (1) {
         if (used_index == used_->idx.load(std::memory_order_relaxed)) {
           // Ok we have processed all used buffers, set the event index to
           // re-enable interrupts
-          used_event_->store(used_index, std::memory_order_relaxed);
+          last_used_ = used_index;
+          if (event_indexes_) {
+            used_event_->store(used_index, std::memory_order_relaxed);
+          } else {
+            EnableInterrupts();
+          }
 
           // to avoid a race, we must double check after this barrier
           std::atomic_thread_fence(std::memory_order_seq_cst);
@@ -213,21 +230,22 @@ template <typename VirtType> class VirtioDriver {
           if (used_index == used_->idx.load(std::memory_order_relaxed))
             break;
 
+          DisableInterrupts();
           // otherwise the device did give us another used descriptor chain and
           // we must process it before enabling interrupts again.
         }
         auto& elem = used_->ring[used_index % qsize_];
-	kassert(buf_references_.find(elem.id) != buf_references_.end());
+        kassert(buf_references_.find(elem.id) != buf_references_.end());
         // This const cast is needed to trim the buffer chain
         auto buf = std::unique_ptr<IOBuf>(
             const_cast<IOBuf*>(buf_references_[elem.id].release()));
         buf_references_.erase(elem.id);
         Desc* descriptor = &desc_[elem.id];
-	auto len = 1;
-	while (descriptor->flags & Desc::Next) {
-	  ++len;
-	  descriptor = &desc_[descriptor->next];
-	}
+        auto len = 1;
+        while (descriptor->flags & Desc::Next) {
+          ++len;
+          descriptor = &desc_[descriptor->next];
+        }
         descriptor->next = free_head_;
         free_head_ = elem.id;
         free_count_ += len;
@@ -240,7 +258,7 @@ template <typename VirtType> class VirtioDriver {
           if (blen > packet_len) {
             b.TrimEnd(blen - packet_len);
             packet_len = 0;
-	  } else {
+          } else {
             packet_len -= blen;
           }
         }
@@ -254,6 +272,11 @@ template <typename VirtType> class VirtioDriver {
     uint16_t Size() const { return qsize_; }
 
     void Kick() { driver_.Kick(idx_); }
+
+    void DisableAllInterrupts() {
+      DisableInterrupts();
+      interrupts_ = false;
+    }
 
    private:
     struct Desc {
@@ -288,6 +311,22 @@ template <typename VirtType> class VirtioDriver {
       UsedElem ring[];
     };
 
+    void EnableInterrupts() {
+      if (interrupts_) {
+        auto avail_flags = avail_->flags.load(std::memory_order_relaxed);
+        avail_->flags.store(avail_flags & ~Avail::kNoInterrupt,
+                            std::memory_order_release);
+      }
+    }
+
+    void DisableInterrupts() {
+      if (interrupts_) {
+        auto avail_flags = avail_->flags.load(std::memory_order_relaxed);
+        avail_->flags.store(avail_flags | Avail::kNoInterrupt,
+                            std::memory_order_release);
+      }
+    }
+
     VirtioDriver<VirtType>& driver_;
     size_t idx_;
     void* addr_;
@@ -297,9 +336,12 @@ template <typename VirtType> class VirtioDriver {
     std::atomic<volatile uint16_t>* avail_event_;
     std::atomic<volatile uint16_t>* used_event_;
     uint16_t qsize_;
+    uint16_t last_used_;
     uint16_t free_head_;
     uint16_t free_count_;
     std::unordered_map<uint16_t, std::unique_ptr<const IOBuf>> buf_references_;
+    bool event_indexes_;
+    bool interrupts_;
   };
 
   explicit VirtioDriver(pci::Device& dev) : dev_(dev), bar0_(dev.GetBar(0)) {
@@ -329,6 +371,8 @@ template <typename VirtType> class VirtioDriver {
   uint8_t DeviceConfigRead8(size_t idx) {
     return ConfigRead8(kDeviceConfiguration + idx);
   }
+
+  uint32_t GetDeviceFeatures() { return ConfigRead32(kDeviceFeatures); }
 
  private:
   uint8_t ConfigRead8(size_t offset) { return bar0_.Read8(offset); }
@@ -382,21 +426,20 @@ template <typename VirtType> class VirtioDriver {
     }
   }
 
-  uint32_t GetDeviceFeatures() { return ConfigRead32(kDeviceFeatures); }
-
   void SetGuestFeatures(uint32_t features) {
     ConfigWrite32(kGuestFeatures, features);
   }
 
   void SetupFeatures() {
     auto device_features = GetDeviceFeatures();
+    kprintf("Device features: %x\n", device_features);
     auto driver_features = VirtType::GetDriverFeatures();
 
-    driver_features |= 1 << kVirtioRingEventIdx;
+    // driver_features |= 1 << kVirtioRingEventIdx;
 
     auto subset = device_features & driver_features;
 
-    kassert(subset & 1 << kVirtioRingEventIdx);
+    // kassert(subset & 1 << kVirtioRingEventIdx);
 
     SetGuestFeatures(subset);
   }
