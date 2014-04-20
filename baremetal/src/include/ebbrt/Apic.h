@@ -18,6 +18,7 @@ const constexpr uint8_t kDeliveryStartup = 6;
 
 void Ipi(uint8_t apic_id, uint8_t vector, bool level = true,
          uint8_t delivery_mode = kDeliveryFixed);
+void PVEoiInit(std::size_t cpu);
 uint32_t GetId();
 void Eoi();
 }  // namespace apic

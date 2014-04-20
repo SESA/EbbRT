@@ -53,6 +53,7 @@ extern "C" __attribute__((noreturn)) void ebbrt::smp::SmpMain() {
   apic::Init();
   auto id = apic::GetId();
   auto cpu = Cpu::GetByApicId(id);
+  apic::PVEoiInit(*cpu);
   kassert(cpu != nullptr);
   size_t cpu_index = *cpu;
   kprintf("Core %llu online\n", cpu_index);

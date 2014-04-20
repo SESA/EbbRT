@@ -70,7 +70,7 @@ extern "C"
   console::Init();
 
 #if __EBBRT_ENABLE_TRACE__
- trace::Init();
+  trace::Init();
 #endif
 
   /* If by chance we reboot back into the kernel, panic */
@@ -146,6 +146,7 @@ extern "C"
     /// Enable exceptions
     __register_frame(__eh_frame_start);
     apic::Init();
+    apic::PVEoiInit(0);
     Timer::Init();
     smp::Init();
 #if __EBBRT_ENABLE_NETWORKING__
