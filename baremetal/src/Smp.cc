@@ -28,9 +28,10 @@ void ebbrt::smp::Init() {
   char* stack_list = 0;
   auto num_aps = Cpu::Count() - 1;
   for (size_t i = 0; i < num_aps; i++) {
-    auto pfn = page_allocator->Alloc();
+    auto pfn = page_allocator->Alloc(0, Cpu::GetMyNode(), 1 << 30);
     kbugon(pfn == Pfn::None(), "Failed to allocate smp stack!\n");
     auto addr = pfn.ToAddr();
+    kprintf("%llx\n", addr);
     kbugon(addr >= 1 << 30, "Stack will not be accessible by APs!\n");
     *reinterpret_cast<char**>(addr) = stack_list;
     stack_list = reinterpret_cast<char*>(addr);

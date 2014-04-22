@@ -26,14 +26,15 @@ class PageAllocator : public CacheAligned {
 
   static void Init();
   static PageAllocator& HandleFault(EbbId id);
-  Pfn Alloc(size_t order = 0, Nid nid = Cpu::GetMyNode());
+  Pfn Alloc(size_t order = 0, Nid nid = Cpu::GetMyNode(),
+            uint64_t max_addr = UINT64_MAX);
   void Free(Pfn pfn, size_t order = 0);
 
  private:
   class FreePage {
    public:
-    Pfn pfn() { return Pfn::Down(reinterpret_cast<uintptr_t>(this)); }
-    Pfn GetBuddy(size_t order) { return PfnToBuddy(pfn(), order); }
+    Pfn pfn() const { return Pfn::Down(reinterpret_cast<uintptr_t>(this)); }
+    Pfn GetBuddy(size_t order) const { return PfnToBuddy(pfn(), order); }
 
     boost::intrusive::list_member_hook<> member_hook_;
   };
@@ -52,7 +53,7 @@ class PageAllocator : public CacheAligned {
   }
 
   static void EarlyFreePage(Pfn start, size_t order, Nid nid);
-  Pfn AllocLocal(size_t order);
+  Pfn AllocLocal(size_t order, size_t max_addr);
   void FreePageNoCoalesce(Pfn pfn, size_t order);
 
   static boost::container::static_vector<PageAllocator, numa::kMaxNodes>

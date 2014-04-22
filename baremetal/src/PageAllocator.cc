@@ -69,16 +69,19 @@ ebbrt::PageAllocator& ebbrt::PageAllocator::HandleFault(EbbId id) {
 
 ebbrt::PageAllocator::PageAllocator(Nid nid) : nid_(nid) {}
 
-ebbrt::Pfn ebbrt::PageAllocator::AllocLocal(size_t order) {
+ebbrt::Pfn ebbrt::PageAllocator::AllocLocal(size_t order, uint64_t max_addr) {
   std::lock_guard<SpinLock> lock(lock_);
 
   FreePage* fp = nullptr;
   auto this_order = order;
   while (this_order <= kMaxOrder) {
     auto& list = free_page_lists[this_order];
-    if (!list.empty()) {
-      fp = &list.front();
-      list.pop_front();
+    auto it = std::find_if(
+        list.begin(), list.end(),
+        [max_addr](const FreePage& p) { return p.pfn().ToAddr() < max_addr; });
+    if (it != list.end()) {
+      fp = &*it;
+      list.erase(it);
       break;
     }
     ++this_order;
@@ -99,11 +102,12 @@ ebbrt::Pfn ebbrt::PageAllocator::AllocLocal(size_t order) {
   return pfn;
 }
 
-ebbrt::Pfn ebbrt::PageAllocator::Alloc(size_t order, Nid nid) {
+ebbrt::Pfn ebbrt::PageAllocator::Alloc(size_t order, Nid nid,
+                                       uint64_t max_addr) {
   if (nid == nid_) {
-    return AllocLocal(order);
+    return AllocLocal(order, max_addr);
   } else {
-    return allocators[nid.val()].AllocLocal(order);
+    return allocators[nid.val()].AllocLocal(order, max_addr);
   }
 }
 

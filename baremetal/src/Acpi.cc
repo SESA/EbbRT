@@ -8,6 +8,7 @@
 
 #include <ebbrt/Cpu.h>
 #include <ebbrt/Debug.h>
+#include <ebbrt/E820.h>
 #include <ebbrt/Numa.h>
 #include <ebbrt/VMem.h>
 
@@ -162,9 +163,9 @@ void ParseSrat(const ACPI_TABLE_SRAT* srat) {
       auto mem_affinity =
           reinterpret_cast<const ACPI_SRAT_MEM_AFFINITY*>(srat_addr + offset);
       if (mem_affinity->Flags & ACPI_SRAT_MEM_ENABLED) {
-        auto start = ebbrt::Pfn::Down(mem_affinity->BaseAddress);
+        auto start = ebbrt::Pfn::Up(mem_affinity->BaseAddress);
         auto end =
-            ebbrt::Pfn::Up(mem_affinity->BaseAddress + mem_affinity->Length);
+            ebbrt::Pfn::Down(mem_affinity->BaseAddress + mem_affinity->Length);
         ebbrt::kprintf(
             "SRAT Memory affinity: %#018" PRIx64 "-%#018" PRIx64 " -> %u\n",
             start.ToAddr(), end.ToAddr() - 1, mem_affinity->ProximityDomain);
@@ -205,10 +206,25 @@ void ebbrt::acpi::BootInit() {
   ACPI_TABLE_HEADER* srat;
   status = AcpiGetTable(const_cast<char*>(ACPI_SIG_SRAT), 1, &srat);
   if (ACPI_FAILURE(status)) {
-    ebbrt::kprintf("Failed to locate SRAT\n");
-    ebbrt::kabort();
+    // use only one numa node
+    auto node = ebbrt::numa::SetupNode(0);
+    // attach all cpus to that node
+    for (size_t i = 0; i < Cpu::kMaxCpus; ++i) {
+      auto c = Cpu::GetByIndex(i);
+      if (c) {
+        ebbrt::numa::MapApicToNode(c->apic_id(), node);
+        c->set_nid(node);
+      }
+    }
+    // attach all memory blocks to that node
+    e820::ForEachUsableRegion([node](const e820::Entry& entry) {
+      auto start = ebbrt::Pfn::Up(entry.addr());
+      auto end = ebbrt::Pfn::Down(entry.addr() + entry.length());
+      ebbrt::numa::AddMemBlock(node, start, end);
+    });
+  } else {
+    ParseSrat(reinterpret_cast<ACPI_TABLE_SRAT*>(srat));
   }
-  ParseSrat(reinterpret_cast<ACPI_TABLE_SRAT*>(srat));
 }
 
 ACPI_STATUS AcpiOsInitialize() { return AE_OK; }
