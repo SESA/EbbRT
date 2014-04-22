@@ -19,8 +19,20 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   NodeAllocator();
   ~NodeAllocator();
 
-  ebbrt::Future<ebbrt::Messenger::NetworkId>
-  AllocateNode(std::string binary_path);
+  class NodeDescriptor {
+   public:
+    NodeDescriptor(uint16_t node_id,
+                   ebbrt::Future<ebbrt::Messenger::NetworkId> net_id)
+        : node_id_(node_id), net_id_(std::move(net_id)) {}
+    uint16_t NodeId() { return node_id_; }
+    ebbrt::Future<ebbrt::Messenger::NetworkId>& NetworkId() { return net_id_; }
+
+   private:
+    uint16_t node_id_;
+    ebbrt::Future<ebbrt::Messenger::NetworkId> net_id_;
+  };
+  NodeDescriptor AllocateNode(std::string binary_path);
+  void FreeNode(uint16_t node_id);
 
  private:
   class Session : public std::enable_shared_from_this<Session> {

@@ -140,7 +140,7 @@ ebbrt::NodeAllocator::DoAccept(std::shared_ptr<bai::tcp::acceptor> acceptor,
                          }));
 }
 
-ebbrt::Future<ebbrt::Messenger::NetworkId>
+ebbrt::NodeAllocator::NodeDescriptor
 ebbrt::NodeAllocator::AllocateNode(std::string binary_path) {
   auto fdt = Fdt();
   fdt.BeginNode("/");
@@ -182,12 +182,35 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path) {
   std::string command = "/opt/khpy/kh alloc -g " + std::string(network) + " " +
                         binary_path + " " + fname.native();
   std::cout << "executing " << command << std::endl;
-  int rc = system(command.c_str());
-  if (rc < 0) {
-    std::cout << "ERROR: system rc =" << rc << std::endl;
+  auto f = popen(command.c_str(), "r");
+  if (f == nullptr) {
+    throw std::runtime_error("Failed to allocate node");
   }
 
-  return promise_map_[allocation_id].GetFuture();
+  const constexpr size_t kLineSize = 80;
+  char line[kLineSize];
+  std::string result;
+  while (std::fgets(line, kLineSize, f)) {
+    result += line;
+  }
+  std::cout << result << std::endl;
+  std::istringstream input;
+  input.str(result);
+  std::string num_str;
+  std::getline(input, num_str);
+  auto num = std::stoi(num_str);
+  std::cout << num << std::endl;
+
+  return NodeDescriptor(num, promise_map_[allocation_id].GetFuture());
+}
+
+void ebbrt::NodeAllocator::FreeNode(uint16_t node_id) {
+  std::string command = "/opt/khpy/kh rmnode " + std::to_string(node_id);
+  std::cout << "executing " << command << std::endl;
+  auto f = popen(command.c_str(), "r");
+  if (f == nullptr) {
+    throw std::runtime_error("Failed to allocate node");
+  }
 }
 
 uint32_t ebbrt::NodeAllocator::GetNetAddr() { return net_addr_; }
