@@ -65,6 +65,7 @@ extern "C" __attribute__((noreturn)) void ebbrt::smp::SmpMain() {
 
   cpu->Init();
 
-  event_manager->SpawnLocal([]() { smp_barrier->Wait(); });
+  event_manager->SpawnLocal([]() { smp_barrier->Wait(); },
+                            /* force_async = */ true);
   event_manager->StartProcessingEvents();
 }

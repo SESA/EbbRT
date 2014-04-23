@@ -43,7 +43,7 @@ class EventManager {
     uint64_t r15;
     uint32_t event_id;
     Pfn stack;
-    std::unordered_map<__gthread_key_t, void*> tls;
+    std::unique_ptr<std::unordered_map<__gthread_key_t, void*>> tls;
     size_t cpu;
   };
   explicit EventManager(const RepMap& rm);
@@ -51,8 +51,9 @@ class EventManager {
   static void Init();
   static EventManager& HandleFault(EbbId id);
 
-  void Spawn(ebbrt::MovableFunction<void()> func);
-  void SpawnLocal(ebbrt::MovableFunction<void()> func);
+  void Spawn(ebbrt::MovableFunction<void()> func, bool force_async = false);
+  void SpawnLocal(ebbrt::MovableFunction<void()> func,
+                  bool force_async = false);
   void SpawnRemote(ebbrt::MovableFunction<void()> func, size_t cpu);
   void SaveContext(EventContext& context);
   void ActivateContext(EventContext&& context);
@@ -65,6 +66,8 @@ class EventManager {
   void StartProcessingEvents()
       __attribute__((noreturn, no_instrument_function));
   static void CallProcess(uintptr_t mgr)
+      __attribute__((noreturn, no_instrument_function));
+  static void CallSync(uintptr_t mgr)
       __attribute__((noreturn, no_instrument_function));
   void Process() __attribute__((noreturn, no_instrument_function));
   void ProcessInterrupt(int num)
@@ -79,6 +82,9 @@ class EventManager {
   std::atomic<uint8_t> vector_idx_;
   uint32_t next_event_id_;
   EventContext active_event_context_;
+  std::stack<EventContext> sync_contexts_;
+  MovableFunction<void()> sync_spawn_fn_;
+
   struct RemoteData : CacheAligned {
     std::mutex lock;
     std::list<MovableFunction<void()>> tasks;

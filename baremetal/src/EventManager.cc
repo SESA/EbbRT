@@ -8,6 +8,7 @@
 
 #include <boost/container/flat_map.hpp>
 
+#include <ebbrt/Compiler.h>
 #include <ebbrt/Cpu.h>
 #include <ebbrt/LocalIdMap.h>
 #include <ebbrt/PageAllocator.h>
@@ -85,7 +86,6 @@ extern "C" __attribute__((noreturn)) void SwitchStack(uintptr_t first_param,
 
 void ebbrt::EventManager::StartProcessingEvents() {
   auto stack_top = (active_event_context_.stack + kStackPages).ToAddr();
-  Cpu::GetMine().SetEventStack(stack_top);
   SwitchStack(reinterpret_cast<uintptr_t>(this), stack_top, CallProcess);
 }
 
@@ -109,6 +109,8 @@ void InvokeFunction(ebbrt::MovableFunction<void()>& f) {
 }  // namespace
 
 void ebbrt::EventManager::Process() {
+  auto stack_top = (active_event_context_.stack + kStackPages).ToAddr();
+  Cpu::GetMine().SetEventStack(stack_top);
 // process an interrupt without halting
 // the sti instruction starts processing interrupts *after* the next
 // instruction is executed (to allow for a halt for example). The nop gives us
@@ -134,7 +136,7 @@ process:
 }
 
 ebbrt::Pfn ebbrt::EventManager::AllocateStack() {
-  if (!free_stacks_.empty()) {
+  if (likely(!free_stacks_.empty())) {
     auto ret = free_stacks_.top();
     free_stacks_.pop();
     return ret;
@@ -150,12 +152,58 @@ ebbrt::EventManager::EventManager(const RepMap& rm)
     : reps_(rm), vector_idx_(33), next_event_id_(Cpu::GetMine() << 24),
       active_event_context_(next_event_id_++, AllocateStack()) {}
 
-void ebbrt::EventManager::Spawn(MovableFunction<void()> func) {
-  SpawnLocal(std::move(func));
+void ebbrt::EventManager::Spawn(MovableFunction<void()> func,
+                                bool force_async) {
+  SpawnLocal(std::move(func), force_async);
 }
 
-void ebbrt::EventManager::SpawnLocal(MovableFunction<void()> func) {
-  tasks_.emplace_back(std::move(func));
+extern "C" void
+ActivateContextAndReturn(const ebbrt::EventManager::EventContext& context)
+    __attribute__((noreturn));
+
+extern "C" void
+SaveContextAndSwitch(uintptr_t first_param, uintptr_t stack,
+                     void (*func)(uintptr_t),
+                     ebbrt::EventManager::EventContext& context);
+
+void ebbrt::EventManager::CallSync(uintptr_t mgr) {
+  auto pmgr = reinterpret_cast<EventManager*>(mgr);
+  InvokeFunction(pmgr->sync_spawn_fn_);
+  // In the case that the event blocked, it will only be reactivated on a
+  // "fresh" event. Therefore if the sync_contexts_ stack is empty, we just go
+  // back to the event loop
+  if (unlikely(pmgr->sync_contexts_.empty())) {
+    pmgr->Process();
+  } else {
+    // save this stack
+    pmgr->free_stacks_.push(pmgr->active_event_context_.stack);
+    // reload previous stack
+    auto& prev_context = pmgr->sync_contexts_.top();
+    pmgr->active_event_context_ = std::move(prev_context);
+    pmgr->sync_contexts_.pop();
+    ActivateContextAndReturn(pmgr->active_event_context_);
+  }
+}
+
+void ebbrt::EventManager::SpawnLocal(MovableFunction<void()> func,
+                                     bool force_async) {
+  if (unlikely(force_async)) {
+    tasks_.emplace_back(std::move(func));
+  } else {
+    sync_spawn_fn_ = std::move(func);
+
+    // put current context on the stack
+    sync_contexts_.emplace(std::move(active_event_context_));
+
+    // create new active context
+    auto stack = AllocateStack();
+    auto stack_top = (stack + kStackPages).ToAddr();
+    active_event_context_ = EventContext(next_event_id_++, stack);
+
+    // save the current context to the stack and switches
+    SaveContextAndSwitch(reinterpret_cast<uintptr_t>(this), stack_top, CallSync,
+                         sync_contexts_.top());
+  }
 }
 
 void ebbrt::EventManager::AddRemoteTask(MovableFunction<void()> func) {
@@ -177,24 +225,26 @@ void ebbrt::EventManager::SpawnRemote(MovableFunction<void()> func,
   apic::Ipi(apic_id, 32);
 }
 
-extern "C" void
-SaveContextAndSwitch(uintptr_t first_param, uintptr_t stack,
-                     void (*func)(uintptr_t),
-                     ebbrt::EventManager::EventContext& context);
+extern "C" void SaveContextAndActivate(
+    ebbrt::EventManager::EventContext& save_context,
+    const ebbrt::EventManager::EventContext& activate_context);
 
 void ebbrt::EventManager::SaveContext(EventContext& context) {
   context = std::move(active_event_context_);
-  auto stack = AllocateStack();
-  auto stack_top = (stack + kStackPages).ToAddr();
-  Cpu::GetMine().SetEventStack(stack_top);
-  active_event_context_.~EventContext();
-  new (&active_event_context_) EventContext(next_event_id_++, stack);
-  SaveContextAndSwitch(reinterpret_cast<uintptr_t>(this), stack_top,
-                       CallProcess, context);
+  if (sync_contexts_.empty()) {
+    auto stack = AllocateStack();
+    auto stack_top = (stack + kStackPages).ToAddr();
+    active_event_context_.~EventContext();
+    new (&active_event_context_) EventContext(next_event_id_++, stack);
+    SaveContextAndSwitch(reinterpret_cast<uintptr_t>(this), stack_top,
+                         CallProcess, context);
+  } else {
+    auto& prev_context = sync_contexts_.top();
+    active_event_context_ = std::move(prev_context);
+    sync_contexts_.pop();
+    SaveContextAndActivate(context, active_event_context_);
+  }
 }
-
-extern "C" void
-ActivateContextAndReturn(const ebbrt::EventManager::EventContext& context);
 
 void ebbrt::EventManager::ActivateContext(EventContext&& context) {
   if (context.cpu == Cpu::GetMine()) {
@@ -204,12 +254,15 @@ void ebbrt::EventManager::ActivateContext(EventContext&& context) {
     SpawnLocal(MoveBind([this](EventContext c) {
                           // ActivatePrivate(std::move(c))
                           free_stacks_.push(active_event_context_.stack);
+                          // We need to switch the event stack because we only
+                          // set it at the top of process
                           auto stack_top = (c.stack + kStackPages).ToAddr();
                           Cpu::GetMine().SetEventStack(stack_top);
                           active_event_context_ = std::move(c);
                           ActivateContextAndReturn(active_event_context_);
                         },
-                        std::move(context)));
+                        std::move(context)),
+               /* force_async = */ true);
   } else {
     auto rep_iter = reps_.find(context.cpu);
     auto rep = rep_iter->second;
@@ -235,7 +288,7 @@ uint8_t ebbrt::EventManager::AllocateVector(MovableFunction<void()> func) {
 
 void ebbrt::EventManager::ProcessInterrupt(int num) {
   apic::Eoi();
-  if (num == 32) {
+  if (unlikely(num == 32)) {
     // pull all remote tasks onto our queue
     std::lock_guard<std::mutex> l(remote_.lock);
     tasks_.splice(tasks_.end(), std::move(remote_.tasks));
@@ -253,5 +306,9 @@ uint32_t ebbrt::EventManager::GetEventId() {
 }
 
 std::unordered_map<__gthread_key_t, void*>& ebbrt::EventManager::GetTlsMap() {
-  return active_event_context_.tls;
+  if (unlikely(!active_event_context_.tls)) {
+    active_event_context_.tls.reset(
+        new std::unordered_map<__gthread_key_t, void*>());
+  }
+  return *active_event_context_.tls;
 }
