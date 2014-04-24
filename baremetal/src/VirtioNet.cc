@@ -15,8 +15,6 @@ const constexpr int kNotifyOnEmpty = 24;
 
 ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
     : VirtioDriver<VirtioNetDriver>(dev) {
-  kbugon(!(GetDeviceFeatures() & (1 << 24)),
-         "Device does not support notify on empty!\n");
   std::memset(static_cast<void*>(&empty_header_), 0, sizeof(empty_header_));
 
   for (int i = 0; i < 6; ++i) {
@@ -33,12 +31,11 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
 
   auto rcv_vector = event_manager->AllocateVector([this]() {
     auto& rcv_queue = GetQueue(0);
-    rcv_queue.ProcessUsedBuffers([this](std::unique_ptr<const IOBuf>&& b) {
+    rcv_queue.ProcessUsedBuffers([this](std::unique_ptr<IOBuf>&& b) {
       kassert(b->CountChainElements() == 1);
       kassert(b->Unique());
-      auto buf = std::unique_ptr<IOBuf>(const_cast<IOBuf*>(b.release()));
-      buf->Advance(sizeof(VirtioNetHeader));
-      itf_->Receive(std::move(buf));
+      b->Advance(sizeof(VirtioNetHeader));
+      itf_->Receive(std::move(b));
     });
     if (rcv_queue.num_free_descriptors() * 2 >= rcv_queue.Size()) {
       FillRxRing();
@@ -46,15 +43,15 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
   });
   dev.SetMsixEntry(0, rcv_vector, 0);
 
-  auto send_vector =
-      event_manager->AllocateVector([this]() { FreeSentPackets(); });
-  dev.SetMsixEntry(1, send_vector, 0);
+  // auto send_vector =
+  //     event_manager->AllocateVector([this]() { FreeSentPackets(); });
+  // dev.SetMsixEntry(1, send_vector, 0);
 
   // We disable the interrupt on packets being sent because we clear everytime
   // send() gets called. Additionally the device will interrupt us if the queue
   // is empty (so we will clear in some bounded time)
   auto& send_queue = GetQueue(1);
-  send_queue.DisableAllInterrupts();
+  send_queue.DisableInterrupts();
 
   AddDeviceStatus(kConfigDriverOk);
 
@@ -82,11 +79,10 @@ void ebbrt::VirtioNetDriver::FreeSentPackets() {
 }
 
 uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
-  return 1 << kMac | 1 << kMrgRxbuf | 1 << kNotifyOnEmpty;
+  return 1 << kMac | 1 << kMrgRxbuf;
 }
 
 void ebbrt::VirtioNetDriver::Send(std::unique_ptr<const IOBuf>&& buf) {
-  FreeSentPackets();
 #if 0
   auto b = IOBuf::WrapBuffer(static_cast<void*>(&empty_header_),
                              sizeof(empty_header_));
@@ -105,7 +101,10 @@ void ebbrt::VirtioNetDriver::Send(std::unique_ptr<const IOBuf>&& buf) {
 
   auto& send_queue = GetQueue(1);
   if (unlikely(send_queue.num_free_descriptors() < b->CountChainElements())) {
-    return;  // Drop
+    FreeSentPackets();
+    if (unlikely(send_queue.num_free_descriptors() < b->CountChainElements())) {
+      return;  // Drop
+    }
   }
 
   send_queue.AddReadableBuffer(std::move(b));
@@ -114,3 +113,5 @@ void ebbrt::VirtioNetDriver::Send(std::unique_ptr<const IOBuf>&& buf) {
 const std::array<char, 6>& ebbrt::VirtioNetDriver::GetMacAddress() {
   return mac_addr_;
 }
+
+void ebbrt::VirtioNetDriver::Poll() { FreeSentPackets(); }

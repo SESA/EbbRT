@@ -20,6 +20,7 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
   static uint32_t GetDriverFeatures();
   void Send(std::unique_ptr<const IOBuf>&& buf) override;
   const std::array<char, 6>& GetMacAddress() override;
+  void Poll() override;
 
  private:
   void FillRxRing();

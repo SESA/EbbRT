@@ -29,7 +29,13 @@ ebbrt::ExplicitlyConstructed<ebbrt::NetworkManager> the_manager;
 void ebbrt::NetworkManager::Init() {
   the_manager.construct();
   lwip_init();
-  timer->Start(std::chrono::milliseconds(10), []() { sys_check_timeouts(); },
+  timer->Start(std::chrono::milliseconds(10),
+               []() {
+                 for (auto& itf : network_manager->interfaces_) {
+                   itf.Poll();
+                 }
+                 sys_check_timeouts();
+               },
                /* repeat = */ true);
 }
 
@@ -152,6 +158,8 @@ ebbrt::NetworkManager::Interface::Interface(EthernetDevice& ether_dev,
   }
   netif_set_status_callback(&netif_, StatusCallback);
 }
+
+void ebbrt::NetworkManager::Interface::Poll() { return ether_dev_.Poll(); }
 
 const std::array<char, 6>& ebbrt::NetworkManager::Interface::MacAddress() {
   return ether_dev_.GetMacAddress();

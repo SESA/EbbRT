@@ -60,7 +60,7 @@ template <typename VirtType> class VirtioDriver {
    public:
     VRing(VirtioDriver<VirtType>& driver, uint16_t qsize, size_t idx)
         : driver_(driver), idx_(idx), qsize_(qsize), free_head_(0),
-          free_count_(qsize_), event_indexes_(false), interrupts_(true) {
+          free_count_(qsize_), event_indexes_(false) {
       auto sz =
           align::Up(sizeof(Desc) * qsize + sizeof(uint16_t) * (3 + qsize),
                     4096) +
@@ -161,7 +161,7 @@ template <typename VirtType> class VirtioDriver {
       return end;
     }
 
-    void AddReadableBuffer(std::unique_ptr<const IOBuf>&& bufs) {
+    void AddReadableBuffer(std::unique_ptr<IOBuf>&& bufs) {
       auto len = bufs->CountChainElements();
       kbugon(free_count_ < len,
              "Not enough free descriptors to add buffer chain\n");
@@ -273,9 +273,12 @@ template <typename VirtType> class VirtioDriver {
 
     void Kick() { driver_.Kick(idx_); }
 
-    void DisableAllInterrupts() {
-      DisableInterrupts();
-      interrupts_ = false;
+    void EnableInterrupts() {
+      avail_->flags.store(0, std::memory_order_release);
+    }
+
+    void DisableInterrupts() {
+      avail_->flags.store(Avail::kNoInterrupt, std::memory_order_release);
     }
 
    private:
@@ -311,22 +314,6 @@ template <typename VirtType> class VirtioDriver {
       UsedElem ring[];
     };
 
-    void EnableInterrupts() {
-      if (interrupts_) {
-        auto avail_flags = avail_->flags.load(std::memory_order_relaxed);
-        avail_->flags.store(avail_flags & ~Avail::kNoInterrupt,
-                            std::memory_order_release);
-      }
-    }
-
-    void DisableInterrupts() {
-      if (interrupts_) {
-        auto avail_flags = avail_->flags.load(std::memory_order_relaxed);
-        avail_->flags.store(avail_flags | Avail::kNoInterrupt,
-                            std::memory_order_release);
-      }
-    }
-
     VirtioDriver<VirtType>& driver_;
     size_t idx_;
     void* addr_;
@@ -339,7 +326,7 @@ template <typename VirtType> class VirtioDriver {
     uint16_t last_used_;
     uint16_t free_head_;
     uint16_t free_count_;
-    std::unordered_map<uint16_t, std::unique_ptr<const IOBuf>> buf_references_;
+    std::unordered_map<uint16_t, std::unique_ptr<IOBuf>> buf_references_;
     bool event_indexes_;
     bool interrupts_;
   };
