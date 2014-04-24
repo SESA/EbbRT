@@ -5,6 +5,7 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_EBBREF_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_EBBREF_H_
 
+#include <ebbrt/Compiler.h>
 #include <ebbrt/EbbId.h>
 #include <ebbrt/LocalEntry.h>
 #include <ebbrt/Trans.h>
@@ -19,7 +20,7 @@ template <class T> class EbbRef {
 
   T& operator*() const {
     auto lref = *reinterpret_cast<T**>(ref_);
-    if (lref == nullptr) {
+    if (unlikely(lref == nullptr)) {
       auto id = (ref_ - trans::kVMemStart) / sizeof(LocalEntry);
       lref = &(T::HandleFault(id));
     }

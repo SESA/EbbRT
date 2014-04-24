@@ -239,7 +239,7 @@ ebbrt::NetworkManager::TcpPcb::TcpPcb(TcpPcb&& other)
       connect_promise_(std::move(other.connect_promise_)),
       receive_callback_(std::move(other.receive_callback_)),
       sent_(std::move(other.sent_)), next_(std::move(other.next_)),
-      ack_map_(std::move(other.ack_map_)) {
+      ack_queue_(std::move(other.ack_queue_)) {
   tcp_arg(pcb_.get(), static_cast<void*>(this));
 }
 
@@ -251,7 +251,7 @@ operator=(TcpPcb&& other) {
   receive_callback_ = std::move(other.receive_callback_);
   sent_ = std::move(other.sent_);
   next_ = std::move(other.next_);
-  ack_map_ = std::move(other.ack_map_);
+  ack_queue_ = std::move(other.ack_queue_);
 
   tcp_arg(pcb_.get(), static_cast<void*>(this));
 
@@ -355,7 +355,7 @@ size_t ebbrt::NetworkManager::TcpPcb::InternalSend(
   for (auto& buf : *data) {
     while (buf.Length() != 0) {
       auto sndbuf = tcp_sndbuf(pcb_.get());
-      if (sndbuf == 0)
+      if (unlikely(sndbuf == 0))
         return ret;
       auto sz = buf.Length();
       sz = sz > UINT16_MAX ? UINT16_MAX : sz;
@@ -379,53 +379,37 @@ size_t ebbrt::NetworkManager::TcpPcb::InternalSend(
 ebbrt::Future<void>
 ebbrt::NetworkManager::TcpPcb::Send(std::unique_ptr<IOBuf>&& data) {
   auto len = data->ComputeChainDataLength();
-  next_ += len;
-  // The IOBuf is stored in the ack map until LWIP tells us it has been sent
-  auto p =
-      ack_map_.emplace(std::piecewise_construct, std::forward_as_tuple(next_),
-                       std::forward_as_tuple(Promise<void>(), std::move(data)));
-  // We just d as a reference to the IOBuf. A reference is stored in
-  // queued_bufs_ which is OK because it will be removed from queued_bufs_
-  // before LWIP acknowledges that it has sent it
-  auto& d = std::get<1>(p.first->second);
   size_t written = 0;
-  if (queued_bufs_.empty()) {
-    written = InternalSend(d);
+  if (likely(queued_bufs_.empty())) {
+    written = InternalSend(data);
   }
+  // The IOBuf is stored in the ack map until LWIP tells us it has been sent
+  next_ += len;
+  ack_queue_.emplace(next_, Promise<void>(), std::move(data));
+  auto& p = ack_queue_.back();
+  auto& d = std::get<2>(p);
   if (written < len) {
     queued_bufs_.emplace(std::ref(d));
   }
-  return std::get<0>(p.first->second).GetFuture();
+  return std::get<1>(p).GetFuture();
 }
 
-void
-ebbrt::NetworkManager::TcpPcb::EnableNagle(){
-  tcp_nagle_enable(pcb_);
-}
-void
-ebbrt::NetworkManager::TcpPcb::DisableNagle(){
-  tcp_nagle_disable(pcb_);
-}
-bool
-ebbrt::NetworkManager::TcpPcb::NagleDisabled(){
+void ebbrt::NetworkManager::TcpPcb::EnableNagle() { tcp_nagle_enable(pcb_); }
+void ebbrt::NetworkManager::TcpPcb::DisableNagle() { tcp_nagle_disable(pcb_); }
+bool ebbrt::NetworkManager::TcpPcb::NagleDisabled() {
   return tcp_nagle_disabled(pcb_);
-
 }
-
-
-
 
 err_t ebbrt::NetworkManager::TcpPcb::SentHandler(void* arg, struct tcp_pcb* pcb,
                                                  uint16_t len) {
   auto pcb_s = static_cast<TcpPcb*>(arg);
   kassert(pcb_s->pcb_.get() == pcb);
   pcb_s->sent_ += len;
-  for (auto it = pcb_s->ack_map_.begin();
-       it != pcb_s->ack_map_.upper_bound(pcb_s->sent_); ++it) {
-    std::get<0>(it->second).SetValue();
+  while (!pcb_s->ack_queue_.empty() &&
+         std::get<0>(pcb_s->ack_queue_.front()) <= pcb_s->sent_) {
+    std::get<1>(pcb_s->ack_queue_.front()).SetValue();
+    pcb_s->ack_queue_.pop();
   }
-  pcb_s->ack_map_.erase(pcb_s->ack_map_.begin(),
-                        pcb_s->ack_map_.upper_bound(pcb_s->sent_));
   while (!pcb_s->queued_bufs_.empty()) {
     auto& buf = pcb_s->queued_bufs_.front().get();
     auto buf_len = buf->ComputeChainDataLength();
