@@ -79,12 +79,6 @@ void ebbrt::VirtioNetDriver::FreeSentPackets() {
   auto& send_queue = GetQueue(1);
   // Do nothing, just free the buffer
   send_queue.ProcessUsedBuffers([](std::unique_ptr<const IOBuf>&& b) {});
-  while (!packet_queue_.empty() &&
-         send_queue.num_free_descriptors() >=
-             packet_queue_.front()->CountChainElements()) {
-    send_queue.AddReadableBuffer(std::move(packet_queue_.front()));
-    packet_queue_.pop();
-  }
 }
 
 uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
@@ -93,16 +87,25 @@ uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
 
 void ebbrt::VirtioNetDriver::Send(std::unique_ptr<const IOBuf>&& buf) {
   FreeSentPackets();
+#if 0
   auto b = IOBuf::WrapBuffer(static_cast<void*>(&empty_header_),
                              sizeof(empty_header_));
   // const cast is OK because we then take the head of the chain as const
   b->AppendChain(std::unique_ptr<IOBuf>(const_cast<IOBuf*>(buf.release())));
+#else
+  auto b = IOBuf::Create(buf->ComputeChainDataLength() + sizeof(empty_header_));
+  auto data = b->WritableData();
+  memcpy(data, static_cast<void*>(&empty_header_), sizeof(empty_header_));
+  data += sizeof(empty_header_);
+  for (auto& buf_it : *buf) {
+    memcpy(data, buf_it.Data(), buf_it.Length());
+    data += buf_it.Length();
+  }
+#endif
 
   auto& send_queue = GetQueue(1);
-  if (send_queue.num_free_descriptors() <
-      b->CountChainElements()) {  // Must queue a packet, no more room
-    packet_queue_.emplace(std::move(b));
-    return;
+  if (unlikely(send_queue.num_free_descriptors() < b->CountChainElements())) {
+    return;  // Drop
   }
 
   send_queue.AddReadableBuffer(std::move(b));

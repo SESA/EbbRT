@@ -44,7 +44,6 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
   VirtioNetHeader empty_header_;
   std::array<char, 6> mac_addr_;
   NetworkManager::Interface* itf_;
-  std::queue<std::unique_ptr<const IOBuf>> packet_queue_;
 };
 }  // namespace ebbrt
 
