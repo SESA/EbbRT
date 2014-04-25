@@ -25,6 +25,7 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
  private:
   void FillRxRing();
   void FreeSentPackets();
+  void ReceivePoll();
 
   struct VirtioNetHeader {
     static const constexpr uint8_t kNeedsCsum = 1;
@@ -45,6 +46,7 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
   VirtioNetHeader empty_header_;
   std::array<char, 6> mac_addr_;
   NetworkManager::Interface* itf_;
+  EventManager::IdleCallback receive_callback_;
 };
 }  // namespace ebbrt
 

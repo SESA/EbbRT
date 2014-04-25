@@ -193,7 +193,8 @@ void ebbrt::NetworkManager::Interface::Receive(std::unique_ptr<IOBuf>&& buf) {
                                data, len);
   kbugon(p == nullptr, "Failed to allocate pbuf\n");
 
-  event_manager->SpawnLocal([p, this]() { netif_.input(p, &netif_); });
+  // event_manager->SpawnLocal([p, this]() { netif_.input(p, &netif_); });
+  netif_.input(p, &netif_);
 }
 
 extern "C" void lwip_printf(const char* fmt, ...) {

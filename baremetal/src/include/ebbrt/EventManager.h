@@ -11,6 +11,7 @@
 #include <unordered_map>
 
 #include <boost/container/flat_map.hpp>
+#include <boost/utility.hpp>
 
 #include <ebbrt/Isr.h>
 #include <ebbrt/Main.h>
@@ -46,6 +47,20 @@ class EventManager {
     std::unique_ptr<std::unordered_map<__gthread_key_t, void*>> tls;
     size_t cpu;
   };
+  class IdleCallback : boost::noncopyable {
+   public:
+    template <typename F>
+    explicit IdleCallback(F&& f)
+        : f_(std::forward<F>(f)), started_(false) {}
+
+    void Start();
+    void Stop();
+
+   private:
+    std::function<void()> f_;
+    bool started_;
+  };
+
   explicit EventManager(const RepMap& rm);
 
   static void Init();
@@ -84,6 +99,7 @@ class EventManager {
   EventContext active_event_context_;
   std::stack<EventContext> sync_contexts_;
   MovableFunction<void()> sync_spawn_fn_;
+  std::function<void()>* idle_callback_;
 
   struct RemoteData : CacheAligned {
     std::mutex lock;

@@ -95,7 +95,7 @@ void ebbrt::EventManager::CallProcess(uintptr_t mgr) {
 }
 
 namespace {
-void InvokeFunction(ebbrt::MovableFunction<void()>& f) {
+template <typename F> void InvokeFunction(F&& f) {
   try {
     f();
   }
@@ -127,6 +127,11 @@ process:
     tasks_.pop_front();
     InvokeFunction(f);
     // if we had a task to execute, then we go to the top again
+    goto process;
+  }
+
+  if (idle_callback_) {
+    InvokeFunction(*idle_callback_);
     goto process;
   }
 
@@ -311,4 +316,20 @@ std::unordered_map<__gthread_key_t, void*>& ebbrt::EventManager::GetTlsMap() {
         new std::unordered_map<__gthread_key_t, void*>());
   }
   return *active_event_context_.tls;
+}
+
+void ebbrt::EventManager::IdleCallback::Start() {
+  if (!started_) {
+    kbugon(event_manager->idle_callback_ != nullptr,
+           "Multiple idle callbacks!\n");
+    event_manager->idle_callback_ = &f_;
+    started_ = true;
+  }
+}
+
+void ebbrt::EventManager::IdleCallback::Stop() {
+  if (started_) {
+    event_manager->idle_callback_ = nullptr;
+    started_ = false;
+  }
 }

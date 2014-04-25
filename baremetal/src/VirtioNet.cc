@@ -14,7 +14,8 @@ const constexpr int kNotifyOnEmpty = 24;
 }
 
 ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
-    : VirtioDriver<VirtioNetDriver>(dev) {
+    : VirtioDriver<VirtioNetDriver>(dev),
+      receive_callback_([this]() { ReceivePoll(); }) {
   std::memset(static_cast<void*>(&empty_header_), 0, sizeof(empty_header_));
 
   for (int i = 0; i < 6; ++i) {
@@ -31,15 +32,17 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
 
   auto rcv_vector = event_manager->AllocateVector([this]() {
     auto& rcv_queue = GetQueue(0);
-    rcv_queue.ProcessUsedBuffers([this](std::unique_ptr<IOBuf>&& b) {
-      kassert(b->CountChainElements() == 1);
-      kassert(b->Unique());
-      b->Advance(sizeof(VirtioNetHeader));
-      itf_->Receive(std::move(b));
-    });
-    if (rcv_queue.num_free_descriptors() * 2 >= rcv_queue.Size()) {
-      FillRxRing();
-    }
+    rcv_queue.DisableInterrupts();
+    receive_callback_.Start();
+    // rcv_queue.ProcessUsedBuffers([this](std::unique_ptr<IOBuf>&& b) {
+    //   kassert(b->CountChainElements() == 1);
+    //   kassert(b->Unique());
+    //   b->Advance(sizeof(VirtioNetHeader));
+    //   itf_->Receive(std::move(b));
+    // });
+    // if (rcv_queue.num_free_descriptors() * 2 >= rcv_queue.Size()) {
+    //   FillRxRing();
+    // }
   });
   dev.SetMsixEntry(0, rcv_vector, 0);
 
@@ -115,3 +118,34 @@ const std::array<char, 6>& ebbrt::VirtioNetDriver::GetMacAddress() {
 }
 
 void ebbrt::VirtioNetDriver::Poll() { FreeSentPackets(); }
+
+void ebbrt::VirtioNetDriver::ReceivePoll() {
+  // bool x = true;
+  // while (x)
+  //   ;
+  auto& rcv_queue = GetQueue(0);
+  // If there are no used buffers, turn on interrupts and stop this poll
+  if (!rcv_queue.HasUsedBuffer()) {
+    rcv_queue.EnableInterrupts();
+    // Double check to avoid race
+    if (likely(!rcv_queue.HasUsedBuffer())) {
+      receive_callback_.Stop();
+      return;
+    } else {
+      // raced, disable interrupts
+      rcv_queue.DisableInterrupts();
+    }
+  }
+
+  kassert(rcv_queue.HasUsedBuffer());
+  auto b = rcv_queue.GetBuffer();
+  kassert(b->CountChainElements() == 1);
+  kassert(b->Unique());
+  b->Advance(sizeof(VirtioNetHeader));
+
+  if (rcv_queue.num_free_descriptors() * 2 >= rcv_queue.Size()) {
+    FillRxRing();
+  }
+
+  itf_->Receive(std::move(b));
+}

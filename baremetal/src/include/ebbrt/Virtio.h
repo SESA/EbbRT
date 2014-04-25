@@ -59,8 +59,9 @@ template <typename VirtType> class VirtioDriver {
   class VRing {
    public:
     VRing(VirtioDriver<VirtType>& driver, uint16_t qsize, size_t idx)
-        : driver_(driver), idx_(idx), qsize_(qsize), free_head_(0),
-          free_count_(qsize_), event_indexes_(false) {
+        : driver_(driver), idx_(idx), qsize_(qsize), last_used_(0),
+          used_head_(0), free_head_(0), free_count_(qsize_),
+          event_indexes_(false) {
       auto sz =
           align::Up(sizeof(Desc) * qsize + sizeof(uint16_t) * (3 + qsize),
                     4096) +
@@ -206,11 +207,53 @@ template <typename VirtType> class VirtioDriver {
       buf_references_.emplace(head, std::move(bufs));
     }
 
+    bool HasUsedBuffer() {
+      if (last_used_ == used_head_) {
+        used_head_ = used_->idx.load(std::memory_order_consume);
+        if (last_used_ == used_head_)
+          return false;
+      }
+      return true;
+    }
+
+    std::unique_ptr<IOBuf> GetBuffer() {
+      auto& elem = used_->ring[last_used_ % qsize_];
+      kassert(buf_references_.find(elem.id) != buf_references_.end());
+      // This const cast is needed to trim the buffer chain
+      auto buf = std::move(buf_references_[elem.id]);
+      buf_references_.erase(elem.id);
+      Desc* descriptor = &desc_[elem.id];
+      auto len = 1;
+      while (descriptor->flags & Desc::Next) {
+        ++len;
+        descriptor = &desc_[descriptor->next];
+      }
+      descriptor->next = free_head_;
+      free_head_ = elem.id;
+      free_count_ += len;
+      ++last_used_;
+
+      // trim the buffer chain to only include the actual size
+      auto packet_len = elem.len;
+      for (auto& b : *buf) {
+        auto blen = b.Length();
+        if (blen > packet_len) {
+          b.TrimEnd(blen - packet_len);
+          packet_len = 0;
+        } else {
+          packet_len -= blen;
+        }
+      }
+
+      kassert(buf->ComputeChainDataLength() == elem.len);
+
+      return std::move(buf);
+    }
+
     template <typename F> void ProcessUsedBuffers(F&& f) {
-      // future interrupts on this queue are implicitly disabled by our use of
-      // the event index. We only get an interrupt when the new index crosses
-      // the
-      // event index.
+      // future interrupts on this queue are implicitly disabled by our use
+      // of the event index. We only get an interrupt when the new index
+      // crosses the event index.
       DisableInterrupts();
       auto used_index = last_used_;
       while (1) {
@@ -231,8 +274,8 @@ template <typename VirtType> class VirtioDriver {
             break;
 
           DisableInterrupts();
-          // otherwise the device did give us another used descriptor chain and
-          // we must process it before enabling interrupts again.
+          // otherwise the device did give us another used descriptor chain
+          // and we must process it before enabling interrupts again.
         }
         auto& elem = used_->ring[used_index % qsize_];
         kassert(buf_references_.find(elem.id) != buf_references_.end());
@@ -324,6 +367,7 @@ template <typename VirtType> class VirtioDriver {
     std::atomic<volatile uint16_t>* used_event_;
     uint16_t qsize_;
     uint16_t last_used_;
+    uint16_t used_head_;
     uint16_t free_head_;
     uint16_t free_count_;
     std::unordered_map<uint16_t, std::unique_ptr<IOBuf>> buf_references_;
