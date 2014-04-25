@@ -4,6 +4,7 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include <ebbrt/VMemAllocator.h>
 
+#include <cinttypes>
 #include <mutex>
 
 #include <ebbrt/Align.h>
@@ -125,8 +126,33 @@ void ebbrt::VMemAllocator::HandlePageFault(idt::ExceptionFrame* ef) {
     trans::HandleFault(ef, fault_addr);
   } else {
     auto it = regions_.lower_bound(Pfn::Down(fault_addr));
-    kbugon(it == regions_.end() || it->second.end() < Pfn::Up(fault_addr),
-           "Could not find region for faulting address!\n");
+    if (it == regions_.end() || it->second.end() < Pfn::Up(fault_addr)) {
+      kprintf("Could not find region for %llx\n", fault_addr);
+      ebbrt::kprintf("SS: %#018" PRIx64 " RSP: %#018" PRIx64 "\n", ef->ss,
+                     ef->rsp);
+      ebbrt::kprintf("FLAGS: %#018" PRIx64 "\n",
+                     ef->rflags);  // TODO(Dschatz): print out actual meaning
+      ebbrt::kprintf("CS: %#018" PRIx64 " RIP: %#018" PRIx64 "\n", ef->cs,
+                     ef->rip);
+      ebbrt::kprintf("Error Code: %" PRIx64 "\n", ef->error_code);
+      ebbrt::kprintf("RAX: %#018" PRIx64 " RBX: %#018" PRIx64 "\n", ef->rax,
+                     ef->rbx);
+      ebbrt::kprintf("RCX: %#018" PRIx64 " RDX: %#018" PRIx64 "\n", ef->rcx,
+                     ef->rdx);
+      ebbrt::kprintf("RSI: %#018" PRIx64 " RDI: %#018" PRIx64 "\n", ef->rsi,
+                     ef->rdi);
+      ebbrt::kprintf("RBP: %#018" PRIx64 " R8:  %#018" PRIx64 "\n", ef->rbp,
+                     ef->r8);
+      ebbrt::kprintf("R9:  %#018" PRIx64 " R10: %#018" PRIx64 "\n", ef->r9,
+                     ef->r10);
+      ebbrt::kprintf("R11: %#018" PRIx64 " R12: %#018" PRIx64 "\n", ef->r11,
+                     ef->r12);
+      ebbrt::kprintf("R13: %#018" PRIx64 " R14: %#018" PRIx64 "\n", ef->r13,
+                     ef->r14);
+      ebbrt::kprintf("R15: %#018" PRIx64 "\n", ef->r15);
+      // TODO(dschatz): FPU
+      kabort();
+    }
     it->second.HandleFault(ef, fault_addr);
   }
 }

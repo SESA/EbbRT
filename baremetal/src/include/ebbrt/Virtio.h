@@ -274,8 +274,7 @@ template <typename VirtType> class VirtioDriver {
       while (last_used_ != used_head_) {
         auto& elem = used_->ring[last_used_ % qsize_];
         kassert(buf_references_[elem.id]);
-        auto buf = std::move(buf_references_[elem.id]);
-        buf_references_[elem.id].reset();
+        auto& buf = buf_references_[elem.id];
         Desc* descriptor = &desc_[elem.id];
         auto len = 1;
         while (descriptor->flags & Desc::Next) {

@@ -108,16 +108,17 @@ void ebbrt::VirtioNetDriver::Poll() { FreeSentPackets(); }
 
 void ebbrt::VirtioNetDriver::ReceivePoll() {
   auto& rcv_queue = GetQueue(0);
-  // rcv_queue.ProcessUsedBuffers([this](std::unique_ptr<IOBuf>&& buf) {
-  //   circ_buffer_[circ_buffer_head_ % 256] = std::move(buf);
-  //   ++circ_buffer_head_;
-  //   if (circ_buffer_head_ != circ_buffer_tail_ &&
-  //       (circ_buffer_head_ % 256) == (circ_buffer_tail_ % 256))
-  //     ++circ_buffer_tail_;
-  // });
+process:
+  rcv_queue.ProcessUsedBuffers([this](std::unique_ptr<IOBuf>&& buf) {
+    circ_buffer_[circ_buffer_head_ % 256] = std::move(buf);
+    ++circ_buffer_head_;
+    if (circ_buffer_head_ != circ_buffer_tail_ &&
+        (circ_buffer_head_ % 256) == (circ_buffer_tail_ % 256))
+      ++circ_buffer_tail_;
+  });
   // If there are no used buffers, turn on interrupts and stop this poll
-  // if (circ_buffer_head_ == circ_buffer_tail_) {
-  if (!rcv_queue.HasUsedBuffer()) {
+  if (circ_buffer_head_ == circ_buffer_tail_) {
+    // if (!rcv_queue.HasUsedBuffer()) {
     rcv_queue.EnableInterrupts();
     // Double check to avoid race
     if (likely(!rcv_queue.HasUsedBuffer())) {
@@ -126,14 +127,16 @@ void ebbrt::VirtioNetDriver::ReceivePoll() {
     } else {
       // raced, disable interrupts
       rcv_queue.DisableInterrupts();
+      goto process;
     }
   }
 
-  // kassert(circ_buffer_head_ != circ_buffer_tail_);
-  // --circ_buffer_head_;
-  // auto b = std::move(circ_buffer_[circ_buffer_head_ % 256]);
-  kassert(rcv_queue.HasUsedBuffer());
-  auto b = rcv_queue.GetBuffer();
+  kassert(circ_buffer_head_ != circ_buffer_tail_);
+  kassert(circ_buffer_[circ_buffer_tail_ % 256]);
+  auto b = std::move(circ_buffer_[circ_buffer_tail_ % 256]);
+  ++circ_buffer_tail_;
+  // kassert(rcv_queue.HasUsedBuffer());
+  // auto b = rcv_queue.GetBuffer();
   kassert(b->CountChainElements() == 1);
   kassert(b->Unique());
   b->Advance(sizeof(VirtioNetHeader));
