@@ -34,21 +34,8 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
     auto& rcv_queue = GetQueue(0);
     rcv_queue.DisableInterrupts();
     receive_callback_.Start();
-    // rcv_queue.ProcessUsedBuffers([this](std::unique_ptr<IOBuf>&& b) {
-    //   kassert(b->CountChainElements() == 1);
-    //   kassert(b->Unique());
-    //   b->Advance(sizeof(VirtioNetHeader));
-    //   itf_->Receive(std::move(b));
-    // });
-    // if (rcv_queue.num_free_descriptors() * 2 >= rcv_queue.Size()) {
-    //   FillRxRing();
-    // }
   });
   dev.SetMsixEntry(0, rcv_vector, 0);
-
-  // auto send_vector =
-  //     event_manager->AllocateVector([this]() { FreeSentPackets(); });
-  // dev.SetMsixEntry(1, send_vector, 0);
 
   // We disable the interrupt on packets being sent because we clear everytime
   // send() gets called. Additionally the device will interrupt us if the queue
@@ -77,8 +64,7 @@ void ebbrt::VirtioNetDriver::FillRxRing() {
 
 void ebbrt::VirtioNetDriver::FreeSentPackets() {
   auto& send_queue = GetQueue(1);
-  // Do nothing, just free the buffer
-  send_queue.ProcessUsedBuffers([](std::unique_ptr<const IOBuf>&& b) {});
+  send_queue.ClearUsedBuffers();
 }
 
 uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
@@ -120,9 +106,6 @@ const std::array<char, 6>& ebbrt::VirtioNetDriver::GetMacAddress() {
 void ebbrt::VirtioNetDriver::Poll() { FreeSentPackets(); }
 
 void ebbrt::VirtioNetDriver::ReceivePoll() {
-  // bool x = true;
-  // while (x)
-  //   ;
   auto& rcv_queue = GetQueue(0);
   // If there are no used buffers, turn on interrupts and stop this poll
   if (!rcv_queue.HasUsedBuffer()) {
