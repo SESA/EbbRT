@@ -5,7 +5,6 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_VIRTIONET_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_VIRTIONET_H_
 
-#include <queue>
 #include <ebbrt/Net.h>
 #include <ebbrt/Virtio.h>
 
@@ -47,6 +46,9 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
   std::array<char, 6> mac_addr_;
   NetworkManager::Interface* itf_;
   EventManager::IdleCallback receive_callback_;
+  size_t circ_buffer_head_;
+  size_t circ_buffer_tail_;
+  std::array<std::unique_ptr<IOBuf>, 256> circ_buffer_;
 };
 }  // namespace ebbrt
 

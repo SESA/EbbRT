@@ -165,7 +165,7 @@ template <typename VirtType> class VirtioDriver {
 
     void AddReadableBuffer(std::unique_ptr<IOBuf>&& bufs) {
       auto len = bufs->CountChainElements();
-      kassert(free_count_ < len);
+      kassert(free_count_ >= len);
 
       free_count_ -= len;
       uint16_t last_desc = free_head_;
@@ -251,30 +251,9 @@ template <typename VirtType> class VirtioDriver {
     }
 
     void ClearUsedBuffers() {
-      auto used_index = last_used_;
-      while (1) {
-        if (used_index == used_head_) {
-          used_head_ = used_->idx.load(std::memory_order_relaxed);
-          if (likely(used_index == used_head_)) {
-            // Ok we have processed all used buffers, set the event index to
-            // re-enable interrupts
-            last_used_ = used_index;
-            if (event_indexes_) {
-              used_event_->store(used_index, std::memory_order_relaxed);
-            }
-
-            // to avoid a race, we must double check after this barrier
-            std::atomic_thread_fence(std::memory_order_seq_cst);
-
-            used_head_ = used_->idx.load(std::memory_order_relaxed);
-            if (used_index == used_head_)
-              break;
-
-            // otherwise the device did give us another used descriptor chain
-            // and we must process it before enabling interrupts again.
-          }
-        }
-        auto& elem = used_->ring[used_index % qsize_];
+      used_head_ = used_->idx.load(std::memory_order_relaxed);
+      while (last_used_ != used_head_) {
+        auto& elem = used_->ring[last_used_ % qsize_];
         kassert(buf_references_[elem.id]);
         buf_references_[elem.id].reset();
         Desc* descriptor = &desc_[elem.id];
@@ -286,7 +265,41 @@ template <typename VirtType> class VirtioDriver {
         descriptor->next = free_head_;
         free_head_ = elem.id;
         free_count_ += len;
-        ++used_index;
+        ++last_used_;
+      }
+    }
+
+    template <typename F> void ProcessUsedBuffers(F&& f) {
+      used_head_ = used_->idx.load(std::memory_order_relaxed);
+      while (last_used_ != used_head_) {
+        auto& elem = used_->ring[last_used_ % qsize_];
+        kassert(buf_references_[elem.id]);
+        auto buf = std::move(buf_references_[elem.id]);
+        buf_references_[elem.id].reset();
+        Desc* descriptor = &desc_[elem.id];
+        auto len = 1;
+        while (descriptor->flags & Desc::Next) {
+          ++len;
+          descriptor = &desc_[descriptor->next];
+        }
+        descriptor->next = free_head_;
+        free_head_ = elem.id;
+        free_count_ += len;
+        ++last_used_;
+
+        auto packet_len = elem.len;
+        for (auto& b : *buf) {
+          auto blen = b.Length();
+          if (blen > packet_len) {
+            b.TrimEnd(blen - packet_len);
+            packet_len = 0;
+          } else {
+            packet_len -= blen;
+          }
+        }
+
+        kassert(buf->ComputeChainDataLength() == elem.len);
+        f(std::move(buf));
       }
     }
 
