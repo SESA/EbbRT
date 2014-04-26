@@ -127,7 +127,7 @@ $(EBBRT_APP_OBJECTS): $(EBBRT_APP_CAPNP_OBJECTS)
 
 .PRECIOUS: $(EBBRT_CAPNP_GENS) $(EBBRT_APP_CAPNP_GENS) $(EBBRT_TARGET).elf %.o
 
-.PHONY: all clean
+.PHONY: all clean $(EBBRT_APP_PHONY)
 
 .SUFFIXES:
 
@@ -149,7 +149,7 @@ EBBRT_LDFLAGS := -Wl,-n,-z,max-page-size=0x1000 $(EBBRT_OPTFLAGS)
 
 comma := ,
 
-%.elf: $(EBBRT_APP_OBJECTS) $(EBBRT_OBJECTS) src/ebbrt.ld
+%.elf: $(EBBRT_APP_DEPS) $(EBBRT_APP_OBJECTS) $(EBBRT_OBJECTS) src/ebbrt.ld
 	$(call ebbrt_quiet, $(EBBRT_CXX) $(EBBRT_LDFLAGS) \
 	-o $@ -Wl$(comma)--whole-archive $(EBBRT_APP_OBJECTS) \
 	-Wl$(comma)--no-whole-archive $(EBBRT_OBJECTS) $(EBBRT_APP_LINK) \

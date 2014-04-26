@@ -14,7 +14,6 @@ namespace ebbrt {
 template <class T> class EbbRef {
  public:
   constexpr EbbRef() : ref_(0) {}
-
   constexpr explicit EbbRef(EbbId id)
       : ref_(trans::kVMemStart + sizeof(LocalEntry) * id) {}
 
