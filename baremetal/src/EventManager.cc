@@ -125,12 +125,14 @@ process:
   if (!tasks_.empty()) {
     auto f = std::move(tasks_.front());
     tasks_.pop_front();
+    ecount_++;
     InvokeFunction(f);
     // if we had a task to execute, then we go to the top again
     goto process;
   }
 
   if (idle_callback_) {
+    ecount_++;
     InvokeFunction(*idle_callback_);
     goto process;
   }
@@ -155,7 +157,7 @@ static_assert(ebbrt::Cpu::kMaxCpus <= 256, "adjust event id calculation");
 
 ebbrt::EventManager::EventManager(const RepMap& rm)
     : reps_(rm), vector_idx_(33), next_event_id_(Cpu::GetMine() << 24),
-      active_event_context_(next_event_id_++, AllocateStack()) {}
+      active_event_context_(next_event_id_++, AllocateStack()), ecount_(0) {}
 
 void ebbrt::EventManager::Spawn(MovableFunction<void()> func,
                                 bool force_async) {
@@ -173,6 +175,7 @@ SaveContextAndSwitch(uintptr_t first_param, uintptr_t stack,
 
 void ebbrt::EventManager::CallSync(uintptr_t mgr) {
   auto pmgr = reinterpret_cast<EventManager*>(mgr);
+  pmgr->ecount_++;
   InvokeFunction(pmgr->sync_spawn_fn_);
   // In the case that the event blocked, it will only be reactivated on a
   // "fresh" event. Therefore if the sync_contexts_ stack is empty, we just go
@@ -301,6 +304,7 @@ void ebbrt::EventManager::ProcessInterrupt(int num) {
   auto it = vector_map_.find(num);
   if (it != vector_map_.end()) {
     auto& f = it->second;
+    ecount_++;
     InvokeFunction(f);
   }
   Process();
@@ -332,4 +336,13 @@ void ebbrt::EventManager::IdleCallback::Stop() {
     event_manager->idle_callback_ = nullptr;
     started_ = false;
   }
+}
+
+uint64_t ebbrt::EventManager::GetNumCore() { return ecount_; }
+uint64_t ebbrt::EventManager::GetNumNode() {
+  uint64_t count=0;
+  for (auto it = reps_.begin(); it != reps_.end(); it++) {
+    count += it->second->GetNumCore();
+  }
+  return count;
 }

@@ -66,6 +66,10 @@ class EventManager {
   static void Init();
   static EventManager& HandleFault(EbbId id);
 
+  uint64_t GetNumCore();
+  uint64_t GetNumNode();
+//Future<uint64_t> GetNum();
+
   void Spawn(ebbrt::MovableFunction<void()> func, bool force_async = false);
   void SpawnLocal(ebbrt::MovableFunction<void()> func,
                   bool force_async = false);
@@ -100,6 +104,7 @@ class EventManager {
   std::stack<EventContext> sync_contexts_;
   MovableFunction<void()> sync_spawn_fn_;
   std::function<void()>* idle_callback_;
+  uint64_t ecount_;
 
   struct RemoteData : CacheAligned {
     std::mutex lock;
