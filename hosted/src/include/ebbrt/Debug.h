@@ -7,24 +7,31 @@
 
 namespace ebbrt {
 
-  static __attribute__((noreturn)) void kabort() { abort(); }
-  
-  template <typename... Args> void kprintf(Args... args) {
-    printf(args...);
-  }
-  
-  
-  template <typename... Args>
-  __attribute__((noreturn)) void kabort(const Args&... args) {
-    kprintf(args...);
+static __attribute__((noreturn)) void kabort() { abort(); }
+
+template <typename... Args>
+__attribute__((noreturn)) void kprintf(Args... args) {
+  printf(args...);  // NOLINT
   kabort();
+}
+
+template <typename... Args>
+__attribute__((noreturn)) void kabort(const Args&... args) {
+  kprintf(args...);
+  kabort();
+}
+
+template <typename... Args> void kbugon(bool expr, const Args&... args) {
+  if (expr) {
+    kabort(args...);
   }
-  
-  template <typename... Args> void kbugon(bool expr, const Args&... args) {
-    if (expr) {
-      kabort(args...);
-    }
-  }
+}
+
+#define EBBRT_UNIMPLEMENTED()                                                  \
+  do {                                                                         \
+    ebbrt::kabort("%s: unimplemented\n", __PRETTY_FUNCTION__);                 \
+  } while (0)
+
 }  // namespace ebbrt
 
 #endif  // HOSTED_SRC_INCLUDE_EBBRT_DEBUG_H_

@@ -35,6 +35,18 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
     }
     bool operator==(const NetworkId& rhs) { return ip.addr == rhs.ip.addr; }
 
+    static NetworkId FromBytes(const unsigned char* p, size_t len) {
+      if (unlikely(len != 4))
+        throw std::runtime_error("NetworkId::FromBytes length != 4");
+
+      return NetworkId(ntohl(*reinterpret_cast<const uint32_t*>(p)));
+    }
+
+    std::string ToBytes() {
+      return std::string(reinterpret_cast<const char*>(&ip.addr),
+                         sizeof(ip.addr));
+    }
+
    private:
     struct ip_addr ip;
 

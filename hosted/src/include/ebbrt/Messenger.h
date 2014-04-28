@@ -10,6 +10,7 @@
 #include <boost/asio.hpp>
 
 #include <ebbrt/Buffer.h>
+#include <ebbrt/Compiler.h>
 #include <ebbrt/EbbRef.h>
 #include <ebbrt/Future.h>
 #include <ebbrt/StaticIds.h>
@@ -28,10 +29,20 @@ class Messenger : public StaticSharedEbb<Messenger> {
         throw std::runtime_error(
             "Cannot build NetworkId from string, size mismatch");
 
-      const auto& addr = reinterpret_cast<const boost::asio::ip::address_v4::bytes_type&>(*str.data());
+      const auto& addr =
+          reinterpret_cast<const boost::asio::ip::address_v4::bytes_type&>(
+              *str.data());
       ip_ = boost::asio::ip::address_v4(addr);
     }
 
+    static NetworkId FromBytes(const unsigned char* p, size_t len) {
+      if (unlikely(len != 4))
+        throw std::runtime_error("NetworkId::FromBytes length != 4");
+
+      std::array<unsigned char, 4> bytes;
+      std::copy(p, p + 4, bytes.begin());
+      return NetworkId(boost::asio::ip::address_v4(bytes));
+    }
     std::string ToBytes() {
       auto a = ip_.to_bytes();
       return std::string(reinterpret_cast<char*>(a.data()), a.size());
@@ -39,9 +50,7 @@ class Messenger : public StaticSharedEbb<Messenger> {
 
     std::string ToString() { return ip_.to_string(); }
 
-    bool operator==(const NetworkId &rhs) {
-      return ip_ == rhs.ip_;
-    }
+    bool operator==(const NetworkId& rhs) { return ip_ == rhs.ip_; }
 
    private:
     boost::asio::ip::address_v4 ip_;
