@@ -7,6 +7,7 @@
 
 #include <list>
 #include <mutex>
+#include <queue>
 #include <stack>
 #include <unordered_map>
 
@@ -72,6 +73,9 @@ class EventManager {
   void SpawnRemote(ebbrt::MovableFunction<void()> func, size_t cpu);
   void SaveContext(EventContext& context);
   void ActivateContext(EventContext&& context);
+  void ActivateContextSync(EventContext&& context);
+  void ActivateContextLow(EventContext&& context);
+  void Yield();
   uint8_t AllocateVector(MovableFunction<void()> func);
   uint32_t GetEventId();
   std::unordered_map<__gthread_key_t, void*>& GetTlsMap();
@@ -100,6 +104,7 @@ class EventManager {
   std::stack<EventContext> sync_contexts_;
   MovableFunction<void()> sync_spawn_fn_;
   std::function<void()>* idle_callback_;
+  std::queue<EventContext> yielded_contexts_;
 
   struct RemoteData : CacheAligned {
     std::mutex lock;

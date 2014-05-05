@@ -64,6 +64,7 @@ class NetworkManager {
     void
     Receive(std::function<void(TcpPcb&, std::unique_ptr<IOBuf>&&)> callback);
     Future<void> Send(std::unique_ptr<IOBuf>&& data);
+    void Output();
     /* TCP congestion control toggles */
     void EnableNagle();
     void DisableNagle();

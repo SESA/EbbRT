@@ -108,6 +108,10 @@ template <typename F> void InvokeFunction(F&& f) {
 }
 }  // namespace
 
+extern "C" void
+ActivateContextAndReturn(const ebbrt::EventManager::EventContext& context)
+    __attribute__((noreturn));
+
 void ebbrt::EventManager::Process() {
   auto stack_top = (active_event_context_.stack + kStackPages).ToAddr();
   Cpu::GetMine().SetEventStack(stack_top);
@@ -126,12 +130,25 @@ process:
     auto f = std::move(tasks_.front());
     tasks_.pop_front();
     InvokeFunction(f);
+    kassert(sync_contexts_.empty());
     // if we had a task to execute, then we go to the top again
     goto process;
   }
 
   if (idle_callback_) {
     InvokeFunction(*idle_callback_);
+    kassert(sync_contexts_.empty());
+    goto process;
+  }
+
+  if (!yielded_contexts_.empty()) {
+    auto& context = yielded_contexts_.front();
+    free_stacks_.push(active_event_context_.stack);
+    auto stack_top = (context.stack + kStackPages).ToAddr();
+    Cpu::GetMine().SetEventStack(stack_top);
+    active_event_context_ = std::move(context);
+    yielded_contexts_.pop();
+    ActivateContextAndReturn(active_event_context_);
     goto process;
   }
 
@@ -157,14 +174,15 @@ ebbrt::EventManager::EventManager(const RepMap& rm)
     : reps_(rm), vector_idx_(33), next_event_id_(Cpu::GetMine() << 24),
       active_event_context_(next_event_id_++, AllocateStack()) {}
 
+void ebbrt::EventManager::Yield() {
+  yielded_contexts_.emplace();
+  SaveContext(yielded_contexts_.back());
+}
+
 void ebbrt::EventManager::Spawn(MovableFunction<void()> func,
                                 bool force_async) {
   SpawnLocal(std::move(func), force_async);
 }
-
-extern "C" void
-ActivateContextAndReturn(const ebbrt::EventManager::EventContext& context)
-    __attribute__((noreturn));
 
 extern "C" void
 SaveContextAndSwitch(uintptr_t first_param, uintptr_t stack,
@@ -283,6 +301,29 @@ void ebbrt::EventManager::ActivateContext(EventContext&& context) {
                          std::move(context)),
                 context.cpu);  // SpawnRemote Argument 2
   }
+}
+
+void ebbrt::EventManager::ActivateContextLow(EventContext&& context) {
+  kassert(context.cpu == Cpu::GetMine());
+  yielded_contexts_.emplace(std::move(context));
+}
+
+void ebbrt::EventManager::ActivateContextSync(EventContext&& context) {
+  kassert(context.cpu == Cpu::GetMine());
+  sync_contexts_.emplace(std::move(active_event_context_));
+  active_event_context_ = std::move(context);
+  SaveContextAndActivate(sync_contexts_.top(), active_event_context_);
+  // SpawnLocal(MoveBind([this](EventContext c) {
+  //                       // ActivatePrivate(std::move(c))
+  //                       free_stacks_.push(active_event_context_.stack);
+  //                       // We need to switch the event stack because we only
+  //                       // set it at the top of process
+  //                       auto stack_top = (c.stack + kStackPages).ToAddr();
+  //                       Cpu::GetMine().SetEventStack(stack_top);
+  //                       active_event_context_ = std::move(c);
+  //                       ActivateContextAndReturn(active_event_context_);
+  //                     },
+  //                     std::move(context)));
 }
 
 uint8_t ebbrt::EventManager::AllocateVector(MovableFunction<void()> func) {

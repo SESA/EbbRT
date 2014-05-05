@@ -22,9 +22,51 @@
 #include <ebbrt/Rdtsc.h>
 #include <ebbrt/Timer.h>
 
+// #define COUNTERS
+
 namespace {
 ebbrt::ExplicitlyConstructed<ebbrt::NetworkManager> the_manager;
-}
+class Counter {
+ public:
+  Counter() : sum_(0), start_(), counts_(0) {}
+  void Enter() {
+#ifdef COUNTERS
+    start_ = ebbrt::clock::Wall::Now();
+#endif
+  }
+  void Exit() {
+#ifdef COUNTERS
+    if (start_.time_since_epoch() != std::chrono::nanoseconds(0)) {
+      sum_ += std::chrono::duration_cast<std::chrono::nanoseconds>(
+          ebbrt::clock::Wall::Now() - start_);
+      start_ = ebbrt::clock::Wall::time_point(std::chrono::nanoseconds(0));
+      counts_++;
+    }
+#endif
+  }
+  double Mean() {
+    return static_cast<double>(sum_.count()) / static_cast<double>(counts_);
+  }
+  std::chrono::nanoseconds Total() { return sum_; }
+  void Clear() {
+    sum_ = std::chrono::nanoseconds(0);
+    start_ = ebbrt::clock::Wall::time_point(std::chrono::nanoseconds(0));
+    counts_ = 0;
+  }
+  size_t Count() { return counts_; }
+
+ private:
+  std::chrono::nanoseconds sum_;
+  ebbrt::clock::Wall::time_point start_;
+  size_t counts_;
+};
+Counter accept_ctr;
+Counter accept_cb_ctr;
+Counter receive_ctr;
+Counter receive_cb_ctr;
+Counter input_ctr;
+Counter eth_out_ctr;
+}  // namespace
 
 void ebbrt::NetworkManager::Init() {
   the_manager.construct();
@@ -37,6 +79,33 @@ void ebbrt::NetworkManager::Init() {
                  sys_check_timeouts();
                },
                /* repeat = */ true);
+#ifdef COUNTERS
+  timer->Start(std::chrono::seconds(5),
+               []() {
+                 ebbrt::kprintf("Accepted for %lld nanoseconds\n",
+                                accept_ctr.Total().count());
+                 ebbrt::kprintf("Accept count %lld\n", accept_ctr.Count());
+                 accept_ctr.Clear();
+                 ebbrt::kprintf("Received for %lld nanoseconds\n",
+                                receive_ctr.Total().count());
+                 ebbrt::kprintf("Receive count %lld\n", receive_ctr.Count());
+                 receive_ctr.Clear();
+                 ebbrt::kprintf("Accept_cb for %lld nanoseconds\n",
+                                accept_cb_ctr.Total().count());
+                 accept_cb_ctr.Clear();
+                 ebbrt::kprintf("Receive_cb for %lld nanoseconds\n",
+                                receive_cb_ctr.Total().count());
+                 receive_cb_ctr.Clear();
+                 ebbrt::kprintf("lwip input for %lld nanoseconds\n",
+                                input_ctr.Total().count());
+                 ebbrt::kprintf("lwip input count %lld\n", input_ctr.Count());
+                 input_ctr.Clear();
+                 ebbrt::kprintf("eth output for %lld nanoseconds\n",
+                                eth_out_ctr.Total().count());
+                 eth_out_ctr.Clear();
+               },
+               /* repeat = */ true);
+#endif
 }
 
 ebbrt::NetworkManager& ebbrt::NetworkManager::HandleFault(EbbId id) {
@@ -94,6 +163,7 @@ void ebbrt::NetworkManager::AcquireIPAddress() {
 
 namespace {
 err_t EthOutput(struct netif* netif, struct pbuf* p) {
+  eth_out_ctr.Enter();
   auto itf = static_cast<ebbrt::NetworkManager::Interface*>(netif->state);
 
 #if ETH_PAD_SIZE
@@ -125,6 +195,7 @@ err_t EthOutput(struct netif* netif, struct pbuf* p) {
 
   LINK_STATS_INC(link.xmit);
 
+  eth_out_ctr.Exit();
   return ERR_OK;
 }
 
@@ -197,7 +268,11 @@ void ebbrt::NetworkManager::Interface::Receive(std::unique_ptr<IOBuf>&& buf) {
   kbugon(p == nullptr, "Failed to allocate pbuf\n");
 
   // event_manager->SpawnLocal([p, this]() { netif_.input(p, &netif_); });
+  accept_ctr.Enter();
+  receive_ctr.Enter();
+  input_ctr.Enter();
   netif_.input(p, &netif_);
+  input_ctr.Exit();
 }
 
 extern "C" void lwip_printf(const char* fmt, ...) {
@@ -223,9 +298,20 @@ u32_t sys_now() {
              ebbrt::clock::Wall::Now().time_since_epoch()).count();
 }
 
+namespace {
+err_t tcp_recv_null(void* arg, struct tcp_pcb* pcb, struct pbuf* p, err_t err) {
+  if (p != NULL) {
+    pbuf_free(p);
+  }
+  return ERR_OK;
+}
+}
+
 void ebbrt::NetworkManager::TcpPcb::Deleter(struct tcp_pcb* object) {
-  if (object != nullptr)
+  if (object != nullptr) {
+    tcp_recv(object, tcp_recv_null);
     tcp_close(object);
+  }
 }
 
 ebbrt::NetworkManager::TcpPcb::TcpPcb()
@@ -315,8 +401,11 @@ err_t ebbrt::NetworkManager::TcpPcb::Accept_Handler(void* arg,
                                                     err_t err) {
   kassert(err == ERR_OK);
   auto listening_pcb = static_cast<TcpPcb*>(arg);
-  listening_pcb->accept_callback_(TcpPcb(newpcb));
   tcp_accepted(listening_pcb->pcb_.get());
+  accept_ctr.Exit();
+  accept_cb_ctr.Enter();
+  listening_pcb->accept_callback_(TcpPcb(newpcb));
+  accept_cb_ctr.Exit();
   return ERR_OK;
 }
 
@@ -343,6 +432,8 @@ err_t ebbrt::NetworkManager::TcpPcb::Receive_Handler(void* arg,
                                                      struct tcp_pcb* pcb,
                                                      struct pbuf* p,
                                                      err_t err) {
+  receive_ctr.Exit();
+  receive_cb_ctr.Enter();
   kassert(err == ERR_OK);
   auto pcb_s = static_cast<TcpPcb*>(arg);
   kassert(pcb_s->pcb_.get() == pcb);
@@ -355,9 +446,10 @@ err_t ebbrt::NetworkManager::TcpPcb::Receive_Handler(void* arg,
       auto n = IOBuf::TakeOwnership(q->payload, q->len, [](void* pointer) {});
       b->Prev()->AppendChain(std::move(n));
     }
-    pcb_s->receive_callback_(*pcb_s, std::move(b));
     tcp_recved(pcb_s->pcb_.get(), p->tot_len);
+    pcb_s->receive_callback_(*pcb_s, std::move(b));
   }
+  receive_cb_ctr.Exit();
   return ERR_OK;
 }  // NOLINT
 
@@ -406,6 +498,8 @@ ebbrt::NetworkManager::TcpPcb::Send(std::unique_ptr<IOBuf>&& data) {
   return std::get<1>(p).GetFuture();
 }
 
+void ebbrt::NetworkManager::TcpPcb::Output() { tcp_output(pcb_.get()); }
+
 void ebbrt::NetworkManager::TcpPcb::EnableNagle() { tcp_nagle_enable(pcb_); }
 void ebbrt::NetworkManager::TcpPcb::DisableNagle() { tcp_nagle_disable(pcb_); }
 bool ebbrt::NetworkManager::TcpPcb::NagleDisabled() {
@@ -417,11 +511,6 @@ err_t ebbrt::NetworkManager::TcpPcb::SentHandler(void* arg, struct tcp_pcb* pcb,
   auto pcb_s = static_cast<TcpPcb*>(arg);
   kassert(pcb_s->pcb_.get() == pcb);
   pcb_s->sent_ += len;
-  while (!pcb_s->ack_queue_.empty() &&
-         std::get<0>(pcb_s->ack_queue_.front()) <= pcb_s->sent_) {
-    std::get<1>(pcb_s->ack_queue_.front()).SetValue();
-    pcb_s->ack_queue_.pop();
-  }
   while (!pcb_s->queued_bufs_.empty()) {
     auto& buf = pcb_s->queued_bufs_.front().get();
     auto buf_len = buf->ComputeChainDataLength();
@@ -429,6 +518,19 @@ err_t ebbrt::NetworkManager::TcpPcb::SentHandler(void* arg, struct tcp_pcb* pcb,
     if (written < buf_len)
       break;
     pcb_s->queued_bufs_.pop();
+  }
+  // We place these on the stack so that if the pcb is deleted, we are still
+  // clean
+  std::queue<std::tuple<uint64_t, Promise<void>, std::unique_ptr<IOBuf>>>
+  temp_queue;
+  while (!pcb_s->ack_queue_.empty() &&
+         std::get<0>(pcb_s->ack_queue_.front()) <= pcb_s->sent_) {
+    temp_queue.emplace(std::move(pcb_s->ack_queue_.front()));
+    pcb_s->ack_queue_.pop();
+  }
+  while (!temp_queue.empty()) {
+    std::get<1>(temp_queue.front()).SetValue();
+    temp_queue.pop();
   }
   return ERR_OK;
 }
