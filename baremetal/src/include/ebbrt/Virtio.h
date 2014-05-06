@@ -396,6 +396,8 @@ template <typename VirtType> class VirtioDriver {
 
   uint32_t GetDeviceFeatures() { return ConfigRead32(kDeviceFeatures); }
 
+  uint32_t GetGuestFeatures() { return ConfigRead32(kGuestFeatures); }
+
  private:
   uint8_t ConfigRead8(size_t offset) { return bar0_.Read8(offset); }
 

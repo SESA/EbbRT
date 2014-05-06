@@ -176,7 +176,7 @@ class IOBuf {
       return p_->Data() + offset_;
     }
 
-    template <typename T> const T& Get() {
+    template <typename T> const T& GetNoAdvance() {
       if (!p_)
         throw std::runtime_error("DataPointer::Get(): past end of buffer");
 
@@ -185,9 +185,13 @@ class IOBuf {
             "DataPointer::Get(): request straddles buffers");
       }
 
-      auto ret = reinterpret_cast<const T*>(p_->Data() + offset_);
+      return *reinterpret_cast<const T*>(p_->Data() + offset_);
+    }
+
+    template <typename T> const T& Get() {
+      auto& ret = GetNoAdvance<T>();
       Advance(sizeof(T));
-      return *ret;
+      return ret;
     }
 
     void Advance(size_t size) {

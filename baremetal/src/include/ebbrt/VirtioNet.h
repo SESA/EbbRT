@@ -49,6 +49,8 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
   size_t circ_buffer_head_;
   size_t circ_buffer_tail_;
   std::array<std::unique_ptr<IOBuf>, 256> circ_buffer_;
+  bool csum_;
+  bool guest_csum_;
 };
 }  // namespace ebbrt
 
