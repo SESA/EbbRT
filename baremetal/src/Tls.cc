@@ -38,7 +38,7 @@ void ebbrt::tls::SmpInit() {
   auto tls_size = align::Up(tls_end - tls_start + 8, 64);
   for (size_t i = 1; i < Cpu::Count(); ++i) {
     auto nid = Cpu::GetByIndex(i)->nid();
-    auto ptr = gp_allocator->Alloc(tls_size, nid);
+    auto ptr = gp_allocator->AllocNid(tls_size, nid);
     kbugon(ptr == nullptr, "Failed to allocate TLS region\n");
     tls_ptrs.emplace_back(ptr);
   }

@@ -6,6 +6,7 @@
 #define BAREMETAL_SRC_INCLUDE_EBBRT_VIRTIONET_H_
 
 #include <ebbrt/Net.h>
+#include <ebbrt/SlabAllocator.h>
 #include <ebbrt/Virtio.h>
 
 namespace ebbrt {
@@ -42,6 +43,7 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
     uint16_t csum_offset;
     uint16_t num_buffers;
   };
+  EbbRef<SlabAllocator> allocator_;
   std::array<char, 6> mac_addr_;
   NetworkManager::Interface* itf_;
   EventManager::IdleCallback receive_callback_;

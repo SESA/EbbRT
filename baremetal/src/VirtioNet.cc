@@ -22,6 +22,7 @@ const constexpr int kNotifyOnEmpty = 24;
 
 ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
     : VirtioDriver<VirtioNetDriver>(dev),
+      allocator_(SlabAllocator::Construct(2048)),
       receive_callback_([this]() { ReceivePoll(); }), circ_buffer_head_(0),
       circ_buffer_tail_(0) {
   auto feat = GetGuestFeatures();
@@ -71,7 +72,11 @@ void ebbrt::VirtioNetDriver::FillRxRing() {
   bufs.reserve(num_bufs);
 
   for (size_t i = 0; i < num_bufs; ++i) {
-    bufs.emplace_back(IOBuf::Create(2048));
+    auto buf = allocator_->Alloc();
+    if (unlikely(buf == nullptr))
+      throw std::bad_alloc();
+    bufs.emplace_back(IOBuf::TakeOwnership(
+        buf, 2048, [this](void* p) { allocator_->Free(p); }));
   }
 
   auto it = rcv_queue.AddWritableBuffers(bufs.begin(), bufs.end());
@@ -277,22 +282,40 @@ void ebbrt::VirtioNetDriver::Send(std::unique_ptr<IOBuf>&& buf) {
     if (eth_type == kEtherTypeIP) {
       auto& ih = dp.GetNoAdvance<ip_hdr>();
       auto iphdr_hlen = IPH_HL(&ih) * 4;
+      ip_addr_t src;
+      ip_addr_copy(src, ih.src);
+      ip_addr_t dest;
+      ip_addr_copy(dest, ih.dest);
+      uint32_t acc = 0;
+      uint32_t addr = ip4_addr_get_u32(&src);
+      acc += (addr & 0xffffUL);
+      acc += ((addr >> 16) & 0xffffUL);
+      addr = ip4_addr_get_u32(&dest);
+      acc += (addr & 0xffffUL);
+      acc += ((addr >> 16) & 0xffffUL);
+      acc += (uint32_t)htons(buf->ComputeChainDataLength() -
+                             (sizeof(ethernet_header) + iphdr_hlen));
+
       dp.Advance(iphdr_hlen);
       switch (IPH_PROTO(&ih)) {
-      // case IP_PROTO_UDP: {
-      //   kprintf("udp chksum\n");
-      //   header.flags |= VirtioNetHeader::kNeedsCsum;
-      //   auto& uh = dp.Get<udp_hdr>();
-      //   uh.chksum = 0;
-      //   header.csum_start = sizeof(ethernet_header) + iphdr_hlen;
-      //   header.csum_offset = 6;
-      //   break;
-      // }
+      case IP_PROTO_UDP: {
+        acc += (uint32_t)htons((uint16_t)IP_PROTO_UDP);
+        header.flags |= VirtioNetHeader::kNeedsCsum;
+        auto& uh = dp.Get<udp_hdr>();
+        acc = FOLD_U32T(acc);
+        acc = FOLD_U32T(acc);
+        uh.chksum = acc & 0xffffUL;
+        header.csum_start = sizeof(ethernet_header) + iphdr_hlen;
+        header.csum_offset = 6;
+        break;
+      }
       case IP_PROTO_TCP: {
-        kprintf("tcp chksum\n");
+        acc += (uint32_t)htons((uint16_t)IP_PROTO_TCP);
         header.flags |= VirtioNetHeader::kNeedsCsum;
         auto& th = dp.Get<tcp_hdr>();
-        th.chksum = 0;
+        acc = FOLD_U32T(acc);
+        acc = FOLD_U32T(acc);
+        th.chksum = acc & 0xffffUL;
         header.csum_start = sizeof(ethernet_header) + iphdr_hlen;
         header.csum_offset = 16;
         break;
@@ -308,22 +331,6 @@ void ebbrt::VirtioNetDriver::Send(std::unique_ptr<IOBuf>&& buf) {
     memcpy(data, buf_it.Data(), buf_it.Length());
     data += buf_it.Length();
   }
-  // #if 0
-  //   auto b = IOBuf::WrapBuffer(static_cast<void*>(&empty_header_),
-  //                              sizeof(empty_header_));
-  //   // const cast is OK because we then take the head of the chain as const
-  //  b->AppendChain(std::unique_ptr<IOBuf>(const_cast<IOBuf*>(buf.release())));
-  // #else
-  //   auto b = IOBuf::Create(buf->ComputeChainDataLength() +
-  // sizeof(empty_header_));
-  //   auto data = b->WritableData();
-  //   memcpy(data, static_cast<void*>(&empty_header_), sizeof(empty_header_));
-  //   data += sizeof(empty_header_);
-  //   for (auto& buf_it : *buf) {
-  //     memcpy(data, buf_it.Data(), buf_it.Length());
-  //     data += buf_it.Length();
-  //   }
-  // #endif
 
   auto& send_queue = GetQueue(1);
   if (unlikely(send_queue.num_free_descriptors() < b->CountChainElements())) {
