@@ -169,7 +169,7 @@ uint32_t ebbrt::NetworkManager::Interface::IPV4Addr() {
   return netif_.ip_addr.addr;
 }
 
-void ebbrt::NetworkManager::Interface::Send(std::unique_ptr<const IOBuf>&& b) {
+void ebbrt::NetworkManager::Interface::Send(std::unique_ptr<IOBuf>&& b) {
   ether_dev_.Send(std::move(b));
 }
 

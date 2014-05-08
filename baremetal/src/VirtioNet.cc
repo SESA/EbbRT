@@ -6,6 +6,8 @@
 
 #include "lwip/ip.h"
 #include "lwip/inet_chksum.h"
+#include "lwip/tcp_impl.h"
+#include "lwip/udp.h"
 
 #include <ebbrt/Debug.h>
 #include <ebbrt/EventManager.h>
@@ -31,7 +33,6 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
   if (guest_csum_) {
     kprintf("VirtioNet: guest_csum\n");
   }
-  std::memset(static_cast<void*>(&empty_header_), 0, sizeof(empty_header_));
 
   for (int i = 0; i < 6; ++i) {
     mac_addr_[i] = DeviceConfigRead8(i);
@@ -86,40 +87,6 @@ uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
   return 1 << kCSum | 1 << kGuestCSum | 1 << kMac | 1 << kMrgRxbuf;
 }
 
-void ebbrt::VirtioNetDriver::Send(std::unique_ptr<const IOBuf>&& buf) {
-#if 0
-  auto b = IOBuf::WrapBuffer(static_cast<void*>(&empty_header_),
-                             sizeof(empty_header_));
-  // const cast is OK because we then take the head of the chain as const
-  b->AppendChain(std::unique_ptr<IOBuf>(const_cast<IOBuf*>(buf.release())));
-#else
-  auto b = IOBuf::Create(buf->ComputeChainDataLength() + sizeof(empty_header_));
-  auto data = b->WritableData();
-  memcpy(data, static_cast<void*>(&empty_header_), sizeof(empty_header_));
-  data += sizeof(empty_header_);
-  for (auto& buf_it : *buf) {
-    memcpy(data, buf_it.Data(), buf_it.Length());
-    data += buf_it.Length();
-  }
-#endif
-
-  auto& send_queue = GetQueue(1);
-  if (unlikely(send_queue.num_free_descriptors() < b->CountChainElements())) {
-    FreeSentPackets();
-    if (unlikely(send_queue.num_free_descriptors() < b->CountChainElements())) {
-      return;  // Drop
-    }
-  }
-
-  send_queue.AddReadableBuffer(std::move(b));
-}
-
-const std::array<char, 6>& ebbrt::VirtioNetDriver::GetMacAddress() {
-  return mac_addr_;
-}
-
-void ebbrt::VirtioNetDriver::Poll() { FreeSentPackets(); }
-
 namespace {
 struct ethernet_header {
   uint8_t dest_addr[6];
@@ -172,12 +139,18 @@ u16_t lwip_standard_chksum(const void* dataptr, int len) {
 
 uint16_t inet_chksum_pseudo(const std::unique_ptr<ebbrt::IOBuf>& buf,
                             ip_addr_t* src, ip_addr_t* dest, uint8_t proto,
-                            uint16_t proto_len) {
+                            uint16_t proto_len, uint16_t offset = 0) {
   uint32_t acc = 0;
   uint8_t swapped = 0;
+  proto_len -= offset;
 
   for (auto& b : *buf) {
-    acc += lwip_standard_chksum(b.Data(), b.Length());
+    if (b.Length() <= offset) {
+      offset -= b.Length();
+      continue;
+    }
+    acc += lwip_standard_chksum(b.Data() + offset, b.Length() - offset);
+    offset = 0;
     acc = FOLD_U32T(acc);
     if (b.Length() % 2 != 0) {
       swapped = 1 - swapped;
@@ -204,6 +177,44 @@ uint16_t inet_chksum_pseudo(const std::unique_ptr<ebbrt::IOBuf>& buf,
   return (uint16_t) ~(acc & 0xffffUL);
 }
 
+void tx_csum(const std::unique_ptr<ebbrt::IOBuf>& buf) {
+  auto dp = buf->GetDataPointer();
+  auto& eh = dp.Get<ethernet_header>();
+  auto eth_type = ntohs(eh.ethertype);
+  ebbrt::kbugon(eth_type == kEtherTypeVLan, "VLAN csum not supported\n");
+  if (eth_type != kEtherTypeIP) {
+    return;
+  }
+
+  auto& ih = const_cast<ip_hdr&>(dp.GetNoAdvance<ip_hdr>());
+  auto iphdr_hlen = IPH_HL(&ih) * 4;
+  auto offset = sizeof(ethernet_header) + iphdr_hlen;
+  ip_addr_t src;
+  ip_addr_copy(src, ih.src);
+  ip_addr_t dest;
+  ip_addr_copy(dest, ih.dest);
+  dp.Advance(iphdr_hlen);
+  switch (IPH_PROTO(&ih)) {
+  case IP_PROTO_UDP: {
+    auto& uh = const_cast<udp_hdr&>(dp.Get<udp_hdr>());
+    uh.chksum = 0;
+    auto chksum = inet_chksum_pseudo(buf, &src, &dest, IP_PROTO_UDP,
+                                     buf->ComputeChainDataLength(), offset);
+    if (chksum == 0x0000)
+      chksum = 0xffff;
+    uh.chksum = chksum;
+    break;
+  }
+  case IP_PROTO_TCP: {
+    auto& th = const_cast<tcp_hdr&>(dp.Get<tcp_hdr>());
+    th.chksum = 0;
+    th.chksum = inet_chksum_pseudo(buf, &src, &dest, IP_PROTO_TCP,
+                                   buf->ComputeChainDataLength(), offset);
+    break;
+  }
+  }
+}
+
 bool rx_csum(const std::unique_ptr<ebbrt::IOBuf>& buf) {
   auto dp = buf->GetDataPointer();
   auto& eh = dp.Get<ethernet_header>();
@@ -220,7 +231,6 @@ bool rx_csum(const std::unique_ptr<ebbrt::IOBuf>& buf) {
     ebbrt::kprintf("ip chksum fail\n");
     return false;
   }
-  dp.Advance(iphdr_hlen);
 
   kassert(buf->CountChainElements() == 1);
   buf->Advance(sizeof(ethernet_header) + iphdr_hlen);
@@ -253,6 +263,85 @@ bool rx_csum(const std::unique_ptr<ebbrt::IOBuf>& buf) {
 }
 }  // namespace
 
+void ebbrt::VirtioNetDriver::Send(std::unique_ptr<IOBuf>&& buf) {
+  auto b =
+      IOBuf::Create(buf->ComputeChainDataLength() + sizeof(VirtioNetHeader));
+  memset(b->WritableData(), 0, sizeof(VirtioNetHeader));
+  if (csum_) {
+    auto header_dp = b->GetWritableDataPointer();
+    auto& header = header_dp.Get<VirtioNetHeader>();
+    auto dp = buf->GetWritableDataPointer();
+    auto& eh = dp.Get<ethernet_header>();
+    auto eth_type = ntohs(eh.ethertype);
+    ebbrt::kbugon(eth_type == kEtherTypeVLan, "VLAN csum not supported\n");
+    if (eth_type == kEtherTypeIP) {
+      auto& ih = dp.GetNoAdvance<ip_hdr>();
+      auto iphdr_hlen = IPH_HL(&ih) * 4;
+      dp.Advance(iphdr_hlen);
+      switch (IPH_PROTO(&ih)) {
+      // case IP_PROTO_UDP: {
+      //   kprintf("udp chksum\n");
+      //   header.flags |= VirtioNetHeader::kNeedsCsum;
+      //   auto& uh = dp.Get<udp_hdr>();
+      //   uh.chksum = 0;
+      //   header.csum_start = sizeof(ethernet_header) + iphdr_hlen;
+      //   header.csum_offset = 6;
+      //   break;
+      // }
+      case IP_PROTO_TCP: {
+        kprintf("tcp chksum\n");
+        header.flags |= VirtioNetHeader::kNeedsCsum;
+        auto& th = dp.Get<tcp_hdr>();
+        th.chksum = 0;
+        header.csum_start = sizeof(ethernet_header) + iphdr_hlen;
+        header.csum_offset = 16;
+        break;
+      }
+      }
+    }
+  } else {
+    tx_csum(buf);
+  }
+  // TODO(dschatz): Use indirect descriptors to avoid this copy
+  auto data = b->WritableData() + sizeof(VirtioNetHeader);
+  for (auto& buf_it : *buf) {
+    memcpy(data, buf_it.Data(), buf_it.Length());
+    data += buf_it.Length();
+  }
+  // #if 0
+  //   auto b = IOBuf::WrapBuffer(static_cast<void*>(&empty_header_),
+  //                              sizeof(empty_header_));
+  //   // const cast is OK because we then take the head of the chain as const
+  //  b->AppendChain(std::unique_ptr<IOBuf>(const_cast<IOBuf*>(buf.release())));
+  // #else
+  //   auto b = IOBuf::Create(buf->ComputeChainDataLength() +
+  // sizeof(empty_header_));
+  //   auto data = b->WritableData();
+  //   memcpy(data, static_cast<void*>(&empty_header_), sizeof(empty_header_));
+  //   data += sizeof(empty_header_);
+  //   for (auto& buf_it : *buf) {
+  //     memcpy(data, buf_it.Data(), buf_it.Length());
+  //     data += buf_it.Length();
+  //   }
+  // #endif
+
+  auto& send_queue = GetQueue(1);
+  if (unlikely(send_queue.num_free_descriptors() < b->CountChainElements())) {
+    FreeSentPackets();
+    if (unlikely(send_queue.num_free_descriptors() < b->CountChainElements())) {
+      return;  // Drop
+    }
+  }
+
+  send_queue.AddReadableBuffer(std::move(b));
+}
+
+const std::array<char, 6>& ebbrt::VirtioNetDriver::GetMacAddress() {
+  return mac_addr_;
+}
+
+void ebbrt::VirtioNetDriver::Poll() { FreeSentPackets(); }
+
 void ebbrt::VirtioNetDriver::ReceivePoll() {
   auto& rcv_queue = GetQueue(0);
 process:
@@ -282,15 +371,9 @@ process:
   kassert(circ_buffer_[circ_buffer_tail_ % 256]);
   auto b = std::move(circ_buffer_[circ_buffer_tail_ % 256]);
   ++circ_buffer_tail_;
-  // kassert(rcv_queue.HasUsedBuffer());
-  // auto b = rcv_queue.GetBuffer();
-  auto dp = b->GetDataPointer();
-  auto& vheader = dp.Get<VirtioNetHeader>();
   auto good_csum = true;
   if (!guest_csum_) {
     good_csum = rx_csum(b);
-  } else if (vheader.flags & VirtioNetHeader::kNeedsCsum) {
-    kabort("handle partial checksum of packet\n");
   }
 
   if (rcv_queue.num_free_descriptors() * 2 >= rcv_queue.Size()) {

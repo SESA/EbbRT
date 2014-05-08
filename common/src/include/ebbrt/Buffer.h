@@ -214,6 +214,60 @@ class IOBuf {
 
   DataPointer GetDataPointer() const { return DataPointer(this); }
 
+  class WritableDataPointer {
+   public:
+    explicit WritableDataPointer(IOBuf* p) : p_(p) {}
+
+    const uint8_t* Data() {
+      if (!p_ || p_->Length() - offset_ == 0)
+        throw std::runtime_error(
+            "WritableDataPointer::Data() past end of buffer");
+
+      return p_->WritableData() + offset_;
+    }
+
+    template <typename T> T& GetNoAdvance() {
+      if (!p_)
+        throw std::runtime_error(
+            "WritableDataPointer::Get(): past end of buffer");
+
+      if (p_->Length() - offset_ < sizeof(T)) {
+        throw std::runtime_error(
+            "WritableDataPointer::Get(): request straddles buffers");
+      }
+
+      return *reinterpret_cast<T*>(p_->WritableData() + offset_);
+    }
+
+    template <typename T> T& Get() {
+      auto& ret = GetNoAdvance<T>();
+      Advance(sizeof(T));
+      return ret;
+    }
+
+    void Advance(size_t size) {
+      if (!p_)
+        throw std::runtime_error(
+            "WritableDataPointer::Advance(): past end of buffer");
+
+      auto remainder = p_->Length() - offset_;
+      if (remainder > size) {
+        offset_ += size;
+      } else {
+        p_ = p_->Next();
+        offset_ = size - remainder;
+      }
+    }
+
+   private:
+    IOBuf* p_{nullptr};
+    size_t offset_{0};
+  };
+
+  WritableDataPointer GetWritableDataPointer() {
+    return WritableDataPointer(this);
+  }
+
  private:
   IOBuf(const IOBuf&) = default;
   IOBuf& operator=(const IOBuf&) = default;

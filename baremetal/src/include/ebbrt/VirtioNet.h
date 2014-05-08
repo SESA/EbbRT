@@ -17,7 +17,7 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
   explicit VirtioNetDriver(pci::Device& dev);
 
   static uint32_t GetDriverFeatures();
-  void Send(std::unique_ptr<const IOBuf>&& buf) override;
+  void Send(std::unique_ptr<IOBuf>&& buf) override;
   const std::array<char, 6>& GetMacAddress() override;
   void Poll() override;
 
@@ -42,7 +42,6 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
     uint16_t csum_offset;
     uint16_t num_buffers;
   };
-  VirtioNetHeader empty_header_;
   std::array<char, 6> mac_addr_;
   NetworkManager::Interface* itf_;
   EventManager::IdleCallback receive_callback_;

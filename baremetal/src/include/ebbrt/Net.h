@@ -23,7 +23,7 @@ struct tcp_pcb;
 namespace ebbrt {
 class EthernetDevice {
  public:
-  virtual void Send(std::unique_ptr<const IOBuf>&& l) = 0;
+  virtual void Send(std::unique_ptr<IOBuf>&& l) = 0;
   virtual const std::array<char, 6>& GetMacAddress() = 0;
   virtual void Poll() = 0;
   virtual ~EthernetDevice() {}
@@ -35,7 +35,7 @@ class NetworkManager {
    public:
     Interface(EthernetDevice& ether_dev, size_t idx);
     void Receive(std::unique_ptr<IOBuf>&& buf);
-    void Send(std::unique_ptr<const IOBuf>&& buf);
+    void Send(std::unique_ptr<IOBuf>&& buf);
     void Poll();
     const std::array<char, 6>& MacAddress();
     uint32_t IPV4Addr();
