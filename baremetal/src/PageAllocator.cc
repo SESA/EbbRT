@@ -14,12 +14,14 @@
 #include <ebbrt/EarlyPageAllocator.h>
 #include <ebbrt/MemMap.h>
 
-boost::container::static_vector<ebbrt::PageAllocator, ebbrt::numa::kMaxNodes>
+ebbrt::ExplicitlyConstructed<boost::container::static_vector<
+    ebbrt::PageAllocator, ebbrt::numa::kMaxNodes>>
 ebbrt::PageAllocator::allocators;
 
 void ebbrt::PageAllocator::Init() {
-  for (unsigned i = 0; i < numa::nodes.size(); ++i) {
-    allocators.emplace_back(Nid(i));
+  allocators.construct();
+  for (unsigned i = 0; i < numa::nodes->size(); ++i) {
+    allocators->emplace_back(Nid(i));
   }
 
   early_page_allocator::ReleaseFreePages([](Pfn start, Pfn end, Nid nid) {
@@ -53,7 +55,7 @@ void ebbrt::PageAllocator::Init() {
 void ebbrt::PageAllocator::EarlyFreePage(Pfn start, size_t order, Nid nid) {
   kassert(order <= kMaxOrder);
   auto entry = PfnToFreePage(start);
-  allocators[nid.val()].free_page_lists[order].push_front(*entry);
+  (*allocators)[nid.val()].free_page_lists[order].push_front(*entry);
   auto page = mem_map::PfnToPage(start);
   kassert(page != nullptr);
   page->usage = mem_map::Page::Usage::kPageAllocator;
@@ -62,7 +64,7 @@ void ebbrt::PageAllocator::EarlyFreePage(Pfn start, size_t order, Nid nid) {
 
 ebbrt::PageAllocator& ebbrt::PageAllocator::HandleFault(EbbId id) {
   kassert(id == kPageAllocatorId);
-  auto& allocator = allocators[Cpu::GetMyNode().val()];
+  auto& allocator = (*allocators)[Cpu::GetMyNode().val()];
   EbbRef<PageAllocator>::CacheRef(id, allocator);
   return allocator;
 }
@@ -107,7 +109,7 @@ ebbrt::Pfn ebbrt::PageAllocator::Alloc(size_t order, Nid nid,
   if (nid == nid_) {
     return AllocLocal(order, max_addr);
   } else {
-    return allocators[nid.val()].AllocLocal(order, max_addr);
+    return (*allocators)[nid.val()].AllocLocal(order, max_addr);
   }
 }
 

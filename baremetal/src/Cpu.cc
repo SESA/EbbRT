@@ -4,15 +4,19 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include <ebbrt/Cpu.h>
 
+#include <ebbrt/ExplicitlyConstructed.h>
 #include <ebbrt/PageAllocator.h>
 
 namespace {
-boost::container::static_vector<ebbrt::Cpu, ebbrt::Cpu::kMaxCpus> cpus;
+ebbrt::ExplicitlyConstructed<
+    boost::container::static_vector<ebbrt::Cpu, ebbrt::Cpu::kMaxCpus>> cpus;
 }
 
 thread_local ebbrt::Cpu* ebbrt::Cpu::my_cpu_tls_;
 
 char ebbrt::Cpu::boot_interrupt_stack_[ebbrt::pmem::kPageSize];
+
+void ebbrt::Cpu::EarlyInit() { cpus.construct(); }
 
 void ebbrt::Cpu::Init() {
   my_cpu_tls_ = this;
@@ -37,23 +41,23 @@ void ebbrt::Cpu::SetEventStack(uintptr_t top_of_stack) {
 }
 
 ebbrt::Cpu* ebbrt::Cpu::GetByIndex(size_t index) {
-  if (index > cpus.size() - 1) {
+  if (index > cpus->size() - 1) {
     return nullptr;
   }
-  return &cpus[index];
+  return &((*cpus)[index]);
 }
 
 ebbrt::Cpu& ebbrt::Cpu::Create() {
-  cpus.emplace_back(cpus.size(), 0, 0);
-  return cpus[cpus.size() - 1];
+  cpus->emplace_back(cpus->size(), 0, 0);
+  return (*cpus)[cpus->size() - 1];
 }
 
 ebbrt::Cpu* ebbrt::Cpu::GetByApicId(size_t apic_id) {
-  auto it = std::find_if(cpus.begin(), cpus.end(),
+  auto it = std::find_if(cpus->begin(), cpus->end(),
                          [=](const Cpu& c) { return c.apic_id() == apic_id; });
-  if (it == cpus.end())
+  if (it == cpus->end())
     return nullptr;
   return &(*it);
 }
 
-size_t ebbrt::Cpu::Count() { return cpus.size(); }
+size_t ebbrt::Cpu::Count() { return cpus->size(); }

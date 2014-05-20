@@ -10,6 +10,7 @@
 
 #include <boost/container/static_vector.hpp>
 
+#include <ebbrt/ExplicitlyConstructed.h>
 #include <ebbrt/Multiboot.h>
 
 namespace ebbrt {
@@ -75,7 +76,8 @@ inline bool operator>=(const Entry& lhs, const Entry& rhs) {
 }
 
 const constexpr size_t kMaxEntries = 128;
-extern boost::container::static_vector<Entry, kMaxEntries> map;
+extern ebbrt::ExplicitlyConstructed<
+    boost::container::static_vector<Entry, kMaxEntries>> map;
 
 void Init(multiboot::Information* mbi);
 
@@ -84,7 +86,7 @@ void PrintMap();
 void Reserve(uint64_t addr, uint64_t length);
 
 template <typename F> void ForEachUsableRegion(F f) {
-  std::for_each(std::begin(map), std::end(map), [=](const Entry& entry) {
+  std::for_each(std::begin(*map), std::end(*map), [=](const Entry& entry) {
     if (entry.type() == Entry::kTypeRam) {
       f(entry);
     }

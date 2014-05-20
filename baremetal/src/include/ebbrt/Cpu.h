@@ -5,11 +5,6 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_CPU_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_CPU_H_
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Werror"
-#include <boost/container/static_vector.hpp>
-#pragma GCC diagnostic pop
-
 #include <ebbrt/Apic.h>
 #include <ebbrt/Debug.h>
 #include <ebbrt/ExplicitlyConstructed.h>
@@ -162,6 +157,7 @@ class Cpu {
   static Cpu* GetByIndex(size_t index);
   static Cpu* GetByApicId(size_t apic_id);
   static size_t Count();
+  static void EarlyInit();
   void Init();
   operator size_t() const { return index_; }
   uint8_t apic_id() const { return apic_id_; }

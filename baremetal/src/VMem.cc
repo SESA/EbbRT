@@ -97,7 +97,7 @@ void ebbrt::vmem::ApInit(size_t index) {
   EnableRuntimePageTable();
   Pte ap_pte_root;
   auto nid = Cpu::GetByIndex(index)->nid();
-  auto& p_allocator = PageAllocator::allocators[nid.val()];
+  auto& p_allocator = (*PageAllocator::allocators)[nid.val()];
   auto page = p_allocator.Alloc(0, nid);
   kbugon(page == Pfn::None(),
          "Failed to allocate page for initial page tables\n");

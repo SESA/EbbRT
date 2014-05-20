@@ -9,7 +9,6 @@
 #include <ebbrt/Clock.h>
 #include <ebbrt/Trace.h>
 #include <ebbrt/Debug.h>
-#include <boost/container/static_vector.hpp>
 
 namespace {
 const constexpr size_t MAX_TRACE = 1000000;
@@ -51,8 +50,8 @@ void ebbrt::trace::Init() {
                          : "a"(global_ctrl.val & 0xFFFFFFFF),
                            "d"(global_ctrl.val >> 32), "c"(0x38F));
   }
-  global_trace_enabled  = true; 
-  return; 
+  global_trace_enabled = true;
+  return;
 }
 
 void ebbrt::trace::AddNote(std::string label) {
@@ -96,8 +95,8 @@ void ebbrt::trace::AddTimestamp(uint8_t status) {
 
         auto tp = clock::Wall::Now();
         auto dur = tp.time_since_epoch();
-        auto dur_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(dur); 
-        trace_log[trace_count].time = dur_ns.count(); 
+        auto dur_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(dur);
+        trace_log[trace_count].time = dur_ns.count();
         trace_count++;
       }
     }

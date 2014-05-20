@@ -7,6 +7,7 @@
 
 #include <boost/container/static_vector.hpp>
 
+#include <ebbrt/ExplicitlyConstructed.h>
 #include <ebbrt/Nid.h>
 #include <ebbrt/Pfn.h>
 
@@ -38,7 +39,8 @@ Nid SetupNode(size_t proximity_domain);
 void MapApicToNode(size_t apic_id, Nid nid);
 void AddMemBlock(Nid nid, Pfn start, Pfn End);
 
-extern boost::container::static_vector<Node, kMaxNodes> nodes;
+extern ebbrt::ExplicitlyConstructed<
+    boost::container::static_vector<Node, kMaxNodes>> nodes;
 
 }  // namespace numa
 }  // namespace ebbrt

@@ -4,6 +4,8 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include <ebbrt/Apic.h>
 
+#include <array>
+
 #include <ebbrt/Cpu.h>
 #include <ebbrt/Cpuid.h>
 #include <ebbrt/Msr.h>

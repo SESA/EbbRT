@@ -40,7 +40,7 @@ void ebbrt::trans::ApInit(size_t index) {
   pt[idx].Clear();
 
   auto nid = Cpu::GetByIndex(index)->nid();
-  auto& p_allocator = PageAllocator::allocators[nid.val()];
+  auto& p_allocator = (*PageAllocator::allocators)[nid.val()];
 
   vmem::TraversePageTable(
       pte_root, kVMemStart, kVMemStart + pmem::kPageSize, 0, 4,

@@ -9,6 +9,7 @@
 #include <boost/container/static_vector.hpp>
 
 #include <ebbrt/Cpu.h>
+#include <ebbrt/ExplicitlyConstructed.h>
 #include <ebbrt/GeneralPurposeAllocator.h>
 #include <ebbrt/Msr.h>
 
@@ -20,6 +21,11 @@ extern char tcb0[];
 extern char tls_start[];
 extern char tls_end[];
 
+namespace {
+ebbrt::ExplicitlyConstructed<
+    boost::container::static_vector<void*, ebbrt::Cpu::kMaxCpus>> tls_ptrs;
+}
+
 void ebbrt::tls::Init() {
   auto tls_size = tls_end - tls_start;
   std::copy(tls_start, tls_end, tcb0);
@@ -27,25 +33,22 @@ void ebbrt::tls::Init() {
   p->self = p;
 
   msr::Write(msr::kIa32FsBase, reinterpret_cast<uint64_t>(p));
-}
-
-namespace {
-boost::container::static_vector<void*, ebbrt::Cpu::kMaxCpus> tls_ptrs;
+  tls_ptrs.construct();
 }
 
 void ebbrt::tls::SmpInit() {
-  tls_ptrs.emplace_back(static_cast<void*>(tcb0));
+  tls_ptrs->emplace_back(static_cast<void*>(tcb0));
   auto tls_size = align::Up(tls_end - tls_start + 8, 64);
   for (size_t i = 1; i < Cpu::Count(); ++i) {
     auto nid = Cpu::GetByIndex(i)->nid();
     auto ptr = gp_allocator->AllocNid(tls_size, nid);
     kbugon(ptr == nullptr, "Failed to allocate TLS region\n");
-    tls_ptrs.emplace_back(ptr);
+    tls_ptrs->emplace_back(ptr);
   }
 }
 
 void ebbrt::tls::ApInit(size_t index) {
-  auto tcb = static_cast<char*>(tls_ptrs[index]);
+  auto tcb = static_cast<char*>((*tls_ptrs)[index]);
   std::copy(tls_start, tls_end, tcb);
   auto tls_size = tls_end - tls_start;
   auto p = reinterpret_cast<ThreadControlBlock*>(tcb + tls_size);

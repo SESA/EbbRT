@@ -60,24 +60,27 @@ ebbrt::Pfn AddrToSlabPfn(void* addr, size_t order) {
 }
 
 ebbrt::ExplicitlyConstructed<ebbrt::SlabAllocatorRoot> slab_root_allocator;
-boost::container::static_vector<ebbrt::SlabAllocatorNode,
-                                ebbrt::numa::kMaxNodes>
+ebbrt::ExplicitlyConstructed<boost::container::static_vector<
+    ebbrt::SlabAllocatorNode, ebbrt::numa::kMaxNodes>>
 slab_root_allocator_node_allocators;
-boost::container::static_vector<ebbrt::SlabAllocator, ebbrt::Cpu::kMaxCpus>
+ebbrt::ExplicitlyConstructed<
+    boost::container::static_vector<ebbrt::SlabAllocator, ebbrt::Cpu::kMaxCpus>>
 slab_root_allocator_cpu_allocators;
 
 ebbrt::ExplicitlyConstructed<ebbrt::SlabAllocatorRoot> slab_node_allocator;
-boost::container::static_vector<ebbrt::SlabAllocatorNode,
-                                ebbrt::numa::kMaxNodes>
+ebbrt::ExplicitlyConstructed<boost::container::static_vector<
+    ebbrt::SlabAllocatorNode, ebbrt::numa::kMaxNodes>>
 slab_node_allocator_node_allocators;
-boost::container::static_vector<ebbrt::SlabAllocator, ebbrt::Cpu::kMaxCpus>
+ebbrt::ExplicitlyConstructed<
+    boost::container::static_vector<ebbrt::SlabAllocator, ebbrt::Cpu::kMaxCpus>>
 slab_node_allocator_cpu_allocators;
 
 ebbrt::ExplicitlyConstructed<ebbrt::SlabAllocatorRoot> slab_cpu_allocator;
-boost::container::static_vector<ebbrt::SlabAllocatorNode,
-                                ebbrt::numa::kMaxNodes>
+ebbrt::ExplicitlyConstructed<boost::container::static_vector<
+    ebbrt::SlabAllocatorNode, ebbrt::numa::kMaxNodes>>
 slab_cpu_allocator_node_allocators;
-boost::container::static_vector<ebbrt::SlabAllocator, ebbrt::Cpu::kMaxCpus>
+ebbrt::ExplicitlyConstructed<
+    boost::container::static_vector<ebbrt::SlabAllocator, ebbrt::Cpu::kMaxCpus>>
 slab_cpu_allocator_cpu_allocators;
 }  // namespace
 
@@ -88,37 +91,40 @@ void ebbrt::slab::Init() {
                                 alignof(SlabAllocatorNode));
   slab_cpu_allocator.construct(sizeof(SlabAllocator), alignof(SlabAllocator));
 
-  for (unsigned i = 0; i < numa::nodes.size(); ++i) {
-    slab_root_allocator_node_allocators.emplace_back(*slab_root_allocator,
-                                                     Nid(i));
+  for (unsigned i = 0; i < numa::nodes->size(); ++i) {
+    slab_root_allocator_node_allocators->emplace_back(*slab_root_allocator,
+                                                      Nid(i));
     slab_root_allocator->SetNodeAllocator(
-        &slab_root_allocator_node_allocators[i], Nid(i));
+        &(*slab_root_allocator_node_allocators)[i], Nid(i));
 
-    slab_node_allocator_node_allocators.emplace_back(*slab_node_allocator,
-                                                     Nid(i));
+    slab_node_allocator_node_allocators->emplace_back(*slab_node_allocator,
+                                                      Nid(i));
     slab_node_allocator->SetNodeAllocator(
-        &slab_node_allocator_node_allocators[i], Nid(i));
+        &(*slab_node_allocator_node_allocators)[i], Nid(i));
 
-    slab_cpu_allocator_node_allocators.emplace_back(*slab_cpu_allocator,
-                                                    Nid(i));
-    slab_cpu_allocator->SetNodeAllocator(&slab_cpu_allocator_node_allocators[i],
-                                         Nid(i));
+    slab_cpu_allocator_node_allocators->emplace_back(*slab_cpu_allocator,
+                                                     Nid(i));
+    slab_cpu_allocator->SetNodeAllocator(
+        &(*slab_cpu_allocator_node_allocators)[i], Nid(i));
   }
 
   for (unsigned i = 0; i < Cpu::Count(); ++i) {
-    slab_root_allocator_cpu_allocators.emplace_back(*slab_root_allocator);
+    slab_root_allocator_cpu_allocators->emplace_back(*slab_root_allocator);
     slab_root_allocator->SetCpuAllocator(
-        std::unique_ptr<SlabAllocator>(&slab_root_allocator_cpu_allocators[i]),
+        std::unique_ptr<SlabAllocator>(
+            &(*slab_root_allocator_cpu_allocators)[i]),
         i);
 
-    slab_node_allocator_cpu_allocators.emplace_back(*slab_cpu_allocator);
+    slab_node_allocator_cpu_allocators->emplace_back(*slab_cpu_allocator);
     slab_node_allocator->SetCpuAllocator(
-        std::unique_ptr<SlabAllocator>(&slab_node_allocator_cpu_allocators[i]),
+        std::unique_ptr<SlabAllocator>(
+            &(*slab_node_allocator_cpu_allocators)[i]),
         i);
 
-    slab_cpu_allocator_cpu_allocators.emplace_back(*slab_cpu_allocator);
+    slab_cpu_allocator_cpu_allocators->emplace_back(*slab_cpu_allocator);
     slab_cpu_allocator->SetCpuAllocator(
-        std::unique_ptr<SlabAllocator>(&slab_cpu_allocator_cpu_allocators[i]),
+        std::unique_ptr<SlabAllocator>(
+            &(*slab_cpu_allocator_cpu_allocators)[i]),
         i);
   }
 }

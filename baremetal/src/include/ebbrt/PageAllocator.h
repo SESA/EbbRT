@@ -56,8 +56,8 @@ class PageAllocator : public CacheAligned {
   Pfn AllocLocal(size_t order, size_t max_addr);
   void FreePageNoCoalesce(Pfn pfn, size_t order);
 
-  static boost::container::static_vector<PageAllocator, numa::kMaxNodes>
-  allocators;
+  static ExplicitlyConstructed<boost::container::static_vector<
+      PageAllocator, numa::kMaxNodes>> allocators;
   SpinLock lock_;
   Nid nid_;
   std::array<FreePageList, kMaxOrder + 1> free_page_lists;

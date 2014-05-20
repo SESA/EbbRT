@@ -85,6 +85,7 @@ extern "C"
   clock::Init();
   random::Init();
   pic::Disable();
+  Cpu::EarlyInit();
   // bring up the first cpu structure early
   auto& cpu = Cpu::Create();
   cpu.set_acpi_id(0);
@@ -149,6 +150,7 @@ extern "C"
                               apic::PVEoiInit(0);
                               Timer::Init();
                               smp::Init();
+                              event_manager->ReceiveToken();
 #if __EBBRT_ENABLE_NETWORKING__
                               NetworkManager::Init();
                               pci::Init();

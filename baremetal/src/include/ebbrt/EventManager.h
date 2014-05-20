@@ -28,9 +28,8 @@ class EventManager {
 
  public:
   struct EventContext {
-    EventContext() : cpu(Cpu::GetMine()) {}
-    EventContext(uint32_t event_id, Pfn stack)
-        : event_id(event_id), stack(stack), cpu(Cpu::GetMine()) {}
+    EventContext();
+    EventContext(uint32_t event_id, Pfn stack);
     EventContext(const EventContext&) = delete;
     EventContext& operator=(const EventContext&) = delete;
     EventContext(EventContext&&) = default;
@@ -46,6 +45,7 @@ class EventManager {
     Pfn stack;
     std::unique_ptr<std::unordered_map<__gthread_key_t, void*>> tls;
     size_t cpu;
+    size_t generation;
   };
   class IdleCallback : boost::noncopyable {
    public:
@@ -77,6 +77,7 @@ class EventManager {
   std::unordered_map<__gthread_key_t, void*>& GetTlsMap();
 
  private:
+  template <typename F> void InvokeFunction(F&& f);
   void AddRemoteTask(MovableFunction<void()> func);
   void StartProcessingEvents()
       __attribute__((noreturn, no_instrument_function));
@@ -87,8 +88,12 @@ class EventManager {
   void Process() __attribute__((noreturn, no_instrument_function));
   void ProcessInterrupt(int num)
       __attribute__((noreturn, no_instrument_function));
-
   Pfn AllocateStack();
+  void FreeStack(Pfn pfn);
+  void PassToken();
+  void ReceiveToken();
+  void CheckGeneration();
+  void StartTimer();
 
   const RepMap& reps_;
   std::stack<Pfn> free_stacks_;
@@ -100,6 +105,9 @@ class EventManager {
   std::stack<EventContext> sync_contexts_;
   MovableFunction<void()> sync_spawn_fn_;
   std::function<void()>* idle_callback_;
+  size_t generation_ = 0;
+  std::array<size_t, 2> generation_count_ = {{0}};
+  int8_t pending_generation_ = -1;
 
   struct RemoteData : CacheAligned {
     std::mutex lock;

@@ -12,6 +12,7 @@
 #include <ebbrt/Cpu.h>
 #include <ebbrt/LocalIdMap.h>
 #include <ebbrt/PageAllocator.h>
+#include <ebbrt/Timer.h>
 #include <ebbrt/Trace.h>
 #include <ebbrt/VMem.h>
 
@@ -94,10 +95,13 @@ void ebbrt::EventManager::CallProcess(uintptr_t mgr) {
   pmgr->Process();
 }
 
-namespace {
-template <typename F> void InvokeFunction(F&& f) {
+template <typename F> void ebbrt::EventManager::InvokeFunction(F&& f) {
   try {
+    auto generation = generation_;
+    active_event_context_.generation = generation;
+    ++generation_count_[generation % 2];
     f();
+    --generation_count_[generation % 2];
   }
   catch (std::exception& e) {
     ebbrt::kabort("Unhandled exception caught: %s\n", e.what());
@@ -106,7 +110,6 @@ template <typename F> void InvokeFunction(F&& f) {
     ebbrt::kabort("Unhandled exception caught!\n");
   }
 }
-}  // namespace
 
 void ebbrt::EventManager::Process() {
   auto stack_top = (active_event_context_.stack + kStackPages).ToAddr();
@@ -151,10 +154,12 @@ ebbrt::Pfn ebbrt::EventManager::AllocateStack() {
       kStackPages, std::unique_ptr<EventStackFaultHandler>(fault_handler));
 }
 
+void ebbrt::EventManager::FreeStack(Pfn stack) { free_stacks_.push(stack); }
+
 static_assert(ebbrt::Cpu::kMaxCpus <= 256, "adjust event id calculation");
 
 ebbrt::EventManager::EventManager(const RepMap& rm)
-    : reps_(rm), vector_idx_(33), next_event_id_(Cpu::GetMine() << 24),
+    : reps_(rm), vector_idx_(34), next_event_id_(Cpu::GetMine() << 24),
       active_event_context_(next_event_id_++, AllocateStack()) {}
 
 void ebbrt::EventManager::Spawn(MovableFunction<void()> func,
@@ -173,7 +178,7 @@ SaveContextAndSwitch(uintptr_t first_param, uintptr_t stack,
 
 void ebbrt::EventManager::CallSync(uintptr_t mgr) {
   auto pmgr = reinterpret_cast<EventManager*>(mgr);
-  InvokeFunction(pmgr->sync_spawn_fn_);
+  pmgr->InvokeFunction(pmgr->sync_spawn_fn_);
   // In the case that the event blocked, it will only be reactivated on a
   // "fresh" event. Therefore if the sync_contexts_ stack is empty, we just go
   // back to the event loop
@@ -181,7 +186,7 @@ void ebbrt::EventManager::CallSync(uintptr_t mgr) {
     pmgr->Process();
   } else {
     // save this stack
-    pmgr->free_stacks_.push(pmgr->active_event_context_.stack);
+    pmgr->FreeStack(pmgr->active_event_context_.stack);
     // reload previous stack
     auto& prev_context = pmgr->sync_contexts_.top();
     pmgr->active_event_context_ = std::move(prev_context);
@@ -258,7 +263,7 @@ void ebbrt::EventManager::ActivateContext(EventContext&& context) {
     // can Spawn Locally
     SpawnLocal(MoveBind([this](EventContext c) {
                           // ActivatePrivate(std::move(c))
-                          free_stacks_.push(active_event_context_.stack);
+                          FreeStack(active_event_context_.stack);
                           // We need to switch the event stack because we only
                           // set it at the top of process
                           auto stack_top = (c.stack + kStackPages).ToAddr();
@@ -273,8 +278,7 @@ void ebbrt::EventManager::ActivateContext(EventContext&& context) {
     auto rep = rep_iter->second;
     SpawnRemote(MoveBind([rep](EventContext c) {
                            // event_manager->ActivatePrivate(std::move(c))
-                           rep->free_stacks_.push(
-                               rep->active_event_context_.stack);
+                           rep->FreeStack(rep->active_event_context_.stack);
                            auto stack_top = (c.stack + kStackPages).ToAddr();
                            Cpu::GetMine().SetEventStack(stack_top);
                            rep->active_event_context_ = std::move(c);
@@ -293,13 +297,15 @@ uint8_t ebbrt::EventManager::AllocateVector(MovableFunction<void()> func) {
 
 void ebbrt::EventManager::ProcessInterrupt(int num) {
   apic::Eoi();
-  if (unlikely(num == 32)) {
+  if (num == 32) {
     // pull all remote tasks onto our queue
     std::lock_guard<std::mutex> l(remote_.lock);
     tasks_.splice(tasks_.end(), std::move(remote_.tasks));
-  }
-  auto it = vector_map_.find(num);
-  if (it != vector_map_.end()) {
+  } else if (num == 33) {
+    ReceiveToken();
+  } else {
+    auto it = vector_map_.find(num);
+    kassert(it != vector_map_.end());
     auto& f = it->second;
     InvokeFunction(f);
   }
@@ -332,4 +338,41 @@ void ebbrt::EventManager::IdleCallback::Stop() {
     event_manager->idle_callback_ = nullptr;
     started_ = false;
   }
+}
+
+ebbrt::EventManager::EventContext::EventContext() : cpu(Cpu::GetMine()) {}
+
+ebbrt::EventManager::EventContext::EventContext(uint32_t event_id, Pfn stack)
+    : event_id(event_id), stack(stack), cpu(Cpu::GetMine()) {}
+
+void ebbrt::EventManager::PassToken() {
+  size_t my_cpu_index = Cpu::GetMine();
+  if (Cpu::Count() > 1) {
+    auto next_cpu_index = (my_cpu_index + 1) % Cpu::Count();
+    auto next_cpu = Cpu::GetByIndex(next_cpu_index);
+    kassert(next_cpu != nullptr);
+    apic::Ipi(next_cpu->apic_id(), 33);
+  } else {
+    ReceiveToken();
+  }
+}
+
+void ebbrt::EventManager::ReceiveToken() {
+  pending_generation_ = generation_++ % 2;
+
+  StartTimer();
+}
+
+void ebbrt::EventManager::CheckGeneration() {
+  if (generation_count_[pending_generation_] == 0) {
+    pending_generation_ = -1;
+    PassToken();
+  } else {
+    StartTimer();
+  }
+}
+
+void ebbrt::EventManager::StartTimer() {
+  timer->Start(std::chrono::milliseconds(10), [this]() { CheckGeneration(); },
+               /* repeat = */ false);
 }

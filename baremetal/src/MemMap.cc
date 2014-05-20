@@ -12,7 +12,7 @@ std::array<ebbrt::mem_map::Section, ebbrt::mem_map::kSections>
 ebbrt::mem_map::sections;
 
 void ebbrt::mem_map::Init() {
-  for (const auto& node : numa::nodes) {
+  for (const auto& node : (*numa::nodes)) {
     for (const auto& memblock : node.memblocks) {
       auto nid = memblock.nid;
       auto start = memblock.start;
