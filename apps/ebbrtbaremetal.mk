@@ -9,7 +9,7 @@ baremetal = ${EBBRT_SRCDIR}/baremetal
 ifeq ($(strip ${EBBRT_BUILDTYPE}),Debug)
   EBBRT_OPTFLAGS ?=-g3 -O0
 else ifeq ($(strip ${EBBRT_BUILDTYPE}),Release)
-  EBBRT_OPTFLAGS ?= -O4 -DNDEBUG -flto
+  EBBRT_OPTFLAGS ?= -O4 -DNDEBUG -DBOOST_DISABLE_ASSERTS -flto 
 else 
   $(error EBBRT_BUILDTYPE must be set to either Debug or Release)
 endif

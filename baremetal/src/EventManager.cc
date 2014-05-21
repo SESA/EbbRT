@@ -358,15 +358,25 @@ void ebbrt::EventManager::PassToken() {
 }
 
 void ebbrt::EventManager::ReceiveToken() {
-  pending_generation_ = generation_++ % 2;
+  pending_generation_ = generation_++;
 
   StartTimer();
 }
 
 void ebbrt::EventManager::CheckGeneration() {
-  if (generation_count_[pending_generation_] == 0) {
-    pending_generation_ = -1;
+  if (generation_count_[pending_generation_ % 2] == 0) {
+    // generation complete
     PassToken();
+    // temporarily store tasks that have now lived at least one entire
+    // generation (can be invoked)
+    auto tasks = std::move(prev_rcu_tasks_);
+    // current tasks stored
+    prev_rcu_tasks_ = std::move(curr_rcu_tasks_);
+    while (!tasks.empty()) {
+      auto& task = tasks.front();
+      SpawnLocal(std::move(task));
+      tasks.pop();
+    }
   } else {
     StartTimer();
   }
@@ -375,4 +385,8 @@ void ebbrt::EventManager::CheckGeneration() {
 void ebbrt::EventManager::StartTimer() {
   timer->Start(std::chrono::milliseconds(10), [this]() { CheckGeneration(); },
                /* repeat = */ false);
+}
+
+void ebbrt::EventManager::RcuDo(MovableFunction<void()> func) {
+  curr_rcu_tasks_.emplace(std::move(func));
 }

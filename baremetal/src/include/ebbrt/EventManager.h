@@ -7,6 +7,7 @@
 
 #include <list>
 #include <mutex>
+#include <queue>
 #include <stack>
 #include <unordered_map>
 
@@ -75,6 +76,7 @@ class EventManager {
   uint8_t AllocateVector(MovableFunction<void()> func);
   uint32_t GetEventId();
   std::unordered_map<__gthread_key_t, void*>& GetTlsMap();
+  void RcuDo(MovableFunction<void()> func);
 
  private:
   template <typename F> void InvokeFunction(F&& f);
@@ -107,7 +109,9 @@ class EventManager {
   std::function<void()>* idle_callback_;
   size_t generation_ = 0;
   std::array<size_t, 2> generation_count_ = {{0}};
-  int8_t pending_generation_ = -1;
+  size_t pending_generation_ = 0;
+  std::queue<MovableFunction<void()>> prev_rcu_tasks_;
+  std::queue<MovableFunction<void()>> curr_rcu_tasks_;
 
   struct RemoteData : CacheAligned {
     std::mutex lock;
