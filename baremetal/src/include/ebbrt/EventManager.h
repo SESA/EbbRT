@@ -76,7 +76,7 @@ class EventManager {
   uint8_t AllocateVector(MovableFunction<void()> func);
   uint32_t GetEventId();
   std::unordered_map<__gthread_key_t, void*>& GetTlsMap();
-  void RcuDo(MovableFunction<void()> func);
+  void DoRcu(MovableFunction<void()> func);
 
  private:
   template <typename F> void InvokeFunction(F&& f);
@@ -106,7 +106,7 @@ class EventManager {
   EventContext active_event_context_;
   std::stack<EventContext> sync_contexts_;
   MovableFunction<void()> sync_spawn_fn_;
-  std::function<void()>* idle_callback_;
+  std::function<void()>* idle_callback_ = nullptr;
   size_t generation_ = 0;
   std::array<size_t, 2> generation_count_ = {{0}};
   size_t pending_generation_ = 0;

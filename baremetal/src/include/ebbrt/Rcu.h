@@ -15,14 +15,14 @@ typename std::enable_if<
     !std::is_void<typename std::result_of<F()>::type>::value,
     Future<typename Flatten<typename std::result_of<F(Args...)>::type>::type>>::
     type
-    CallRCUHelper(F&& f, Args&&... args) {
+    CallRcuHelper(F&& f, Args&&... args) {
   typedef typename std::result_of<F(Args...)>::type result_type;
   typedef decltype(std::bind(std::forward<F>(f), std::forward<Args>(args)...))
       bound_fn_type;
   auto p = Promise<result_type>();
   auto ret = p.GetFuture();
   auto bound_f = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
-  event_manager->RcuDo(
+  event_manager->DoRcu(
       MoveBind([](Promise<result_type> prom, bound_fn_type fn) {
                  try {
                    prom.SetValue(fn());
@@ -41,13 +41,13 @@ typename std::enable_if<
     std::is_void<typename std::result_of<F()>::type>::value,
     Future<typename Flatten<typename std::result_of<F(Args...)>::type>::type>>::
     type
-    CallRCUHelper(F&& f, Args&&... args) {
+    CallRcuHelper(F&& f, Args&&... args) {
   typedef decltype(std::bind(std::forward<F>(f), std::forward<Args>(args)...))
       bound_fn_type;
   auto p = Promise<void>();
   auto ret = p.GetFuture();
   auto bound_f = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
-  event_manager->RcuDo(MoveBind([](Promise<void> prom, bound_fn_type fn) {
+  event_manager->DoRcu(MoveBind([](Promise<void> prom, bound_fn_type fn) {
                                   try {
                                     fn();
                                     prom.SetValue();
@@ -62,8 +62,8 @@ typename std::enable_if<
 
 template <typename F, typename... Args>
 Future<typename Flatten<typename std::result_of<F(Args...)>::type>::type>
-CallRCU(F&& f, Args&&... args) {
-  return CallRCUHelper(std::forward<F>(f), std::forward<Args>(args)...);
+CallRcu(F&& f, Args&&... args) {
+  return CallRcuHelper(std::forward<F>(f), std::forward<Args>(args)...);
 }
 
 }  // namespace ebbrt

@@ -16,15 +16,13 @@ template <int... S> struct gens<0, S...> {
   typedef seq<S...> type;
 };
 
-template <typename T>
-using base_type =
-    typename std::remove_cv<typename std::remove_reference<T>::type>::type;
-
 template <typename F, typename... BoundArgs> class MoveLambda {
  public:
   MoveLambda() = delete;
-  MoveLambda(base_type<F> f, BoundArgs... args)
-      : args_{std::move(args)...}, f_(std::move(f)) {}
+  MoveLambda(const F& f, BoundArgs&&... args)
+      : args_{std::forward<BoundArgs>(args)...}, f_(f) {}
+  MoveLambda(F&& f, BoundArgs&&... args)
+      : args_(std::forward<BoundArgs>(args)...), f_(std::move(f)) {}
   MoveLambda(const MoveLambda&) = delete;
   MoveLambda(MoveLambda&& other) = default;
 
@@ -59,7 +57,7 @@ template <typename F, typename... BoundArgs> class MoveLambda {
   template <class T> using special_decay_t = typename special_decay<T>::type;
 
   std::tuple<special_decay_t<BoundArgs>...> args_;
-  base_type<F> f_;
+  F f_;
 };
 
 template <class F, class... BoundArgs>
@@ -78,9 +76,11 @@ template <typename F, typename ReturnType, typename... ParamTypes>
 class MovableFunctionImp
     : public MovableFunctionBase<ReturnType, ParamTypes...> {
  public:
+  typedef typename std::decay<F>::type f_type;
   MovableFunctionImp() = delete;
   MovableFunctionImp(const MovableFunctionImp&) = delete;
-  explicit MovableFunctionImp(base_type<F> f) : f_(std::move(f)) {}
+  explicit MovableFunctionImp(const f_type& f) : f_(f) {}
+  explicit MovableFunctionImp(f_type&& f) : f_(std::move(f)) {}
 
   MovableFunctionImp& operator=(const MovableFunctionImp&) = delete;
   ReturnType CallFunc(ParamTypes... p) override {
@@ -88,16 +88,18 @@ class MovableFunctionImp
   }
 
  private:
-  base_type<F> f_;
+  f_type f_;
 };
 
 template <typename F, typename... ParamTypes>
 class MovableFunctionImp<F, void, ParamTypes...> : public MovableFunctionBase<
                                                        void, ParamTypes...> {
  public:
+  typedef typename std::decay<F>::type f_type;
   MovableFunctionImp() = delete;
   MovableFunctionImp(const MovableFunctionImp&) = delete;
-  explicit MovableFunctionImp(base_type<F> f) : f_(std::move(f)) {}
+  explicit MovableFunctionImp(const f_type& f) : f_(f) {}
+  explicit MovableFunctionImp(f_type&& f) : f_(std::move(f)) {}
 
   MovableFunctionImp& operator=(const MovableFunctionImp&) = delete;
   void CallFunc(ParamTypes... p) override {
@@ -105,7 +107,7 @@ class MovableFunctionImp<F, void, ParamTypes...> : public MovableFunctionBase<
   }
 
  private:
-  base_type<F> f_;
+  f_type f_;
 };
 
 template <typename FuncType> class MovableFunction {};

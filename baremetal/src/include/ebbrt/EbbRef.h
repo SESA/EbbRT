@@ -13,7 +13,7 @@
 namespace ebbrt {
 template <class T> class EbbRef {
  public:
-  constexpr explicit EbbRef(EbbId id)
+  constexpr explicit EbbRef(EbbId id = 0)
       : ref_(trans::kVMemStart + sizeof(LocalEntry) * id) {}
 
   T* operator->() const { return &operator*(); }

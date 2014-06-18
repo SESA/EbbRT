@@ -387,6 +387,6 @@ void ebbrt::EventManager::StartTimer() {
                /* repeat = */ false);
 }
 
-void ebbrt::EventManager::RcuDo(MovableFunction<void()> func) {
+void ebbrt::EventManager::DoRcu(MovableFunction<void()> func) {
   curr_rcu_tasks_.emplace(std::move(func));
 }
