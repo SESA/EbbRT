@@ -43,7 +43,7 @@ EBBRT_INCLUDES := \
 
 EBBRT_CPPFLAGS = -U ebbrt -MD -MT $@ -MP $(EBBRT_OPTFLAGS) -Wall -Werror \
 	-fno-stack-protector $(EBBRT_INCLUDES)
-EBBRT_CXXFLAGS = -std=gnu++11
+EBBRT_CXXFLAGS = -std=gnu++11 -ftemplate-backtrace-limit=0
 EBBRT_CFLAGS = -std=gnu99
 EBBRT_ASFLAGS = -MD -MT $@ -MP $(EBBRT_OPTFLAGS) -DASSEMBLY
 
@@ -109,7 +109,6 @@ EBBRT_OBJECTS := \
 	$(EBBRT_ASM_OBJECTS) \
 	$(acpi_objects) \
 	$(tbb_objects) \
-	$(lwip_objects) \
 	$(capnp_objects) \
 	$(kj_objects) \
 	$(fdt_objects)

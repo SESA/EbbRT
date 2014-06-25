@@ -156,7 +156,7 @@ extern "C"
                               pci::Init();
                               pci::RegisterProbe(VirtioNetDriver::Probe);
                               pci::LoadDrivers();
-                              network_manager->AcquireIPAddress();
+                              // network_manager->AcquireIPAddress();
 #if __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
                               Messenger::Init();
                               runtime::Init();

@@ -106,7 +106,6 @@ template <typename VirtType> class VirtioDriver {
       for (auto it = begin; it < end; ++it) {
         ++count;
         auto& buf_chain = *it;
-        kassert(buf_chain->Unique());
 
         auto chain_len = buf_chain->CountChainElements();
         if (chain_len > free_count_)
@@ -163,7 +162,7 @@ template <typename VirtType> class VirtioDriver {
       return end;
     }
 
-    void AddReadableBuffer(std::unique_ptr<IOBuf>&& bufs) {
+    void AddReadableBuffer(std::unique_ptr<IOBuf> bufs) {
       auto len = bufs->CountChainElements();
       kassert(free_count_ >= len);
 
@@ -298,7 +297,8 @@ template <typename VirtType> class VirtioDriver {
         }
 
         kassert(buf->ComputeChainDataLength() == elem.len);
-        f(std::move(buf));
+        // cast from non mut to mut, we know that a used buffer was mutable
+        f(std::unique_ptr<MutIOBuf>(static_cast<MutIOBuf*>(buf.release())));
       }
     }
 
