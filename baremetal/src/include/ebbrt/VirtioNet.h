@@ -19,7 +19,7 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
 
   static uint32_t GetDriverFeatures();
   void Send(std::unique_ptr<IOBuf> buf) override;
-  const std::array<char, 6>& GetMacAddress() override;
+  const EthernetAddress& GetMacAddress() override;
   void Poll() override;
 
  private:
@@ -44,7 +44,7 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
     uint16_t num_buffers;
   };
   EbbRef<SlabAllocator> allocator_;
-  std::array<char, 6> mac_addr_;
+  EthernetAddress mac_addr_;
   NetworkManager::Interface& itf_;
   EventManager::IdleCallback receive_callback_;
   size_t circ_buffer_head_;

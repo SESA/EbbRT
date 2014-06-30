@@ -344,7 +344,7 @@ void ebbrt::VirtioNetDriver::Send(std::unique_ptr<IOBuf> buf) {
   send_queue.AddReadableBuffer(std::move(b));
 }
 
-const std::array<char, 6>& ebbrt::VirtioNetDriver::GetMacAddress() {
+const ebbrt::EthernetAddress& ebbrt::VirtioNetDriver::GetMacAddress() {
   return mac_addr_;
 }
 

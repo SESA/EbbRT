@@ -5,24 +5,19 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_NET_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_NET_H_
 
+#include <ebbrt/AtomicUniquePtr.h>
 #include <ebbrt/EventManager.h>
 #include <ebbrt/IOBuf.h>
+#include <ebbrt/NetEth.h>
+#include <ebbrt/NetIp.h>
+#include <ebbrt/RcuTable.h>
 #include <ebbrt/StaticSharedEbb.h>
 
 namespace ebbrt {
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-constexpr uint16_t htons(uint16_t data) {
-  return ((data & 0xff00) >> 8) | ((data & 0xff) << 8);
-}
-#else
-constexpr uint16_t htons(uint16_t data) { return data; }
-#endif
-constexpr uint16_t ntohs(uint16_t data) { return htons(data); }
-
 class EthernetDevice {
  public:
   virtual void Send(std::unique_ptr<IOBuf> buf) = 0;
-  virtual const std::array<char, 6>& GetMacAddress() = 0;
+  virtual const EthernetAddress& GetMacAddress() = 0;
   virtual void Poll() = 0;
   virtual ~EthernetDevice() {}
 };
@@ -31,14 +26,41 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
  public:
   class Interface {
    public:
-    explicit Interface(EthernetDevice& ether_dev) : ether_dev_(ether_dev) {}
+    struct ItfAddress {
+      bool isBroadcast(const Ipv4Address& addr);
+      bool isLocalNetwork(const Ipv4Address& addr);
+
+      Ipv4Address address;
+      Ipv4Address netmask;
+      Ipv4Address gateway;
+    };
+
+    struct ItfAddressDeleter {
+      void operator()(ItfAddress* p) {
+        event_manager->DoRcu([p]() { delete p; });
+      }
+    };
+
+    explicit Interface(EthernetDevice& ether_dev)
+        : address_(nullptr), ether_dev_(ether_dev) {}
 
     void Receive(std::unique_ptr<MutIOBuf> buf);
     void Send(std::unique_ptr<IOBuf> buf);
     void Poll();
-    const std::array<char, 6>& MacAddress();
+    const EthernetAddress& MacAddress();
+    ItfAddress* Address() { return address_.get(); }
+    void SetAddress(std::unique_ptr<ItfAddress> address) {
+      address_.store(address.release());
+    }
 
    private:
+    void ReceiveArp(EthernetHeader& eh, std::unique_ptr<MutIOBuf> buf);
+    void ReceiveIp(EthernetHeader& eh, std::unique_ptr<MutIOBuf> buf);
+    void ReceiveIcmp(EthernetHeader& eh, Ipv4Header& ih,
+                     std::unique_ptr<MutIOBuf> buf);
+    void EthArpSend(EthernetHeader& eh, Ipv4Header& ih,
+                    std::unique_ptr<MutIOBuf> buf);
+    atomic_unique_ptr<ItfAddress, ItfAddressDeleter> address_;
     EthernetDevice& ether_dev_;
   };
 
@@ -48,6 +70,10 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
 
  private:
   std::vector<Interface> interfaces_;
+  RcuHashTable<ArpEntry, Ipv4Address, &ArpEntry::hook, &ArpEntry::paddr>
+  arp_cache_{8};  // 256 buckets
+
+  alignas(cache_size) std::mutex arp_write_lock_;
 };
 
 constexpr auto network_manager = EbbRef<NetworkManager>(kNetworkManagerId);

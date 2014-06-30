@@ -7,32 +7,10 @@
 
 #include <cassert>
 
+#include <ebbrt/AtomicUniquePtr.h>
 #include <ebbrt/RcuList.h>
 
 namespace ebbrt {
-
-template <typename T, typename Deleter = std::default_delete<T>>
-class atomic_unique_ptr {
-  std::atomic<T*> ptr_;
-  Deleter deleter_;
-
- public:
-  explicit atomic_unique_ptr(T* ptr) : ptr_(ptr), deleter_(Deleter()) {}
-  ~atomic_unique_ptr() {
-    auto p = get();
-    if (!p)
-      deleter_(p);
-  }
-  T* get() { return ptr_.load(std::memory_order_consume); }
-  void store(T* desired) {
-    auto p = ptr_.exchange(desired, std::memory_order_release);
-    if (!p)
-      deleter_(p);
-  }
-  T* exchange(T* desired) {
-    return ptr_.exchange(desired, std::memory_order_release);
-  }
-};
 
 template <typename T, RcuHListHook T::*hookptr> class RcuBuckets {
   typedef RcuHList<T, hookptr> bucket_type;

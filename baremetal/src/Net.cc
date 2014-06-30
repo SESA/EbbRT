@@ -4,14 +4,42 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include <ebbrt/Net.h>
 
-#include <ebbrt/NetEth.h>
+#include <ebbrt/NetChecksum.h>
+#include <ebbrt/NetIcmp.h>
 
 void ebbrt::NetworkManager::Init() {}
 
 ebbrt::NetworkManager::Interface&
 ebbrt::NetworkManager::NewInterface(EthernetDevice& ether_dev) {
   interfaces_.emplace_back(ether_dev);
+  auto addr = new Interface::ItfAddress;
+  addr->address = {{10, 1, 23, 2}};
+  addr->netmask = {{255, 255, 255, 0}};
+  addr->gateway = {{10, 1, 23, 1}};
+  interfaces_[interfaces_.size() - 1].SetAddress(
+      std::unique_ptr<Interface::ItfAddress>(addr));
   return interfaces_[interfaces_.size() - 1];
+}
+
+bool ebbrt::NetworkManager::Interface::ItfAddress::isBroadcast(
+    const Ipv4Address& addr) {
+  if (addr.isBroadcast())
+    return true;
+
+  if (addr == address)
+    return false;
+
+  // if on the same subnet and host bits are all set
+  if (isLocalNetwork(addr) &&
+      addr.Mask(~netmask) == Ipv4Address::Broadcast().Mask(~netmask))
+    return true;
+
+  return false;
+}
+
+bool ebbrt::NetworkManager::Interface::ItfAddress::isLocalNetwork(
+    const Ipv4Address& addr) {
+  return addr.Mask(netmask) == address.Mask(netmask);
 }
 
 void ebbrt::NetworkManager::Interface::Receive(std::unique_ptr<MutIOBuf> buf) {
@@ -21,20 +49,222 @@ void ebbrt::NetworkManager::Interface::Receive(std::unique_ptr<MutIOBuf> buf) {
   if (packet_len <= sizeof(EthernetHeader))
     return;
 
-  auto dp = buf->GetDataPointer();
-  const auto& eth_header = dp.GetNoAdvance<EthernetHeader>();
+  auto dp = buf->GetMutDataPointer();
+  auto& eth_header = dp.Get<EthernetHeader>();
+
+  buf->Advance(sizeof(EthernetHeader));
 
   switch (ntohs(eth_header.type)) {
   case kEthTypeIp: {
-    kprintf("Ip\n");
+    ReceiveIp(eth_header, std::move(buf));
     break;
   }
   case kEthTypeArp: {
-    kprintf("Arp\n");
+    ReceiveArp(eth_header, std::move(buf));
     break;
   }
   }
 }
+
+void
+ebbrt::NetworkManager::Interface::ReceiveArp(EthernetHeader& eth_header,
+                                             std::unique_ptr<MutIOBuf> buf) {
+  auto packet_len = buf->ComputeChainDataLength();
+
+  if (packet_len < sizeof(ArpPacket))
+    return;
+
+  auto dp = buf->GetMutDataPointer();
+  auto& arp_packet = dp.Get<ArpPacket>();
+
+  // RFC 826: do we have the hardware type and do we speak the protocol?
+  if (ntohs(arp_packet.htype) != kHTypeEth ||
+      ntohs(arp_packet.ptype) != kEthTypeIp)
+    return;
+
+  auto entry = network_manager->arp_cache_.find(arp_packet.spa);
+
+  if (entry) {
+    // RFC 826: If entry is found, update it
+    entry->SetAddr(arp_packet.sha);
+  }
+
+  // Am I the target address?
+  auto addr = Address();
+  if (addr && addr->address == arp_packet.tpa) {
+    if (!entry) {
+      // RFC 826: If target address matches ours, and we didn't update the
+      // entry, create it
+      std::lock_guard<std::mutex> guard(network_manager->arp_write_lock_);
+
+      // double check for entry
+      entry = network_manager->arp_cache_.find(arp_packet.spa);
+      if (entry) {
+        // RFC 826: If entry is found, update it
+        entry->SetAddr(arp_packet.sha);
+      } else {
+        network_manager->arp_cache_.insert(
+            *new ArpEntry(arp_packet.spa, arp_packet.sha));
+      }
+    }
+
+    if (ntohs(arp_packet.oper) == kArpRequest) {
+      // RFC 826: If we received an arp request, send back a reply
+
+      // We just reuse this packet, rewriting it
+      eth_header.dst = eth_header.src;
+      eth_header.src = MacAddress();
+      arp_packet.tha = arp_packet.sha;
+      arp_packet.tpa = arp_packet.spa;
+      arp_packet.sha = MacAddress();
+      arp_packet.spa = addr->address;
+      arp_packet.oper = htons(kArpReply);
+
+      buf->Retreat(sizeof(EthernetHeader));
+
+      Send(std::move(buf));
+    }
+  }
+}
+
+void
+ebbrt::NetworkManager::Interface::ReceiveIp(EthernetHeader& eth_header,
+                                            std::unique_ptr<MutIOBuf> buf) {
+  auto packet_len = buf->ComputeChainDataLength();
+
+  if (unlikely(packet_len < sizeof(Ipv4Header)))
+    return;
+
+  auto dp = buf->GetMutDataPointer();
+  auto& ip_header = dp.Get<Ipv4Header>();
+
+  if (unlikely(ip_header.Version() != 4))
+    return;
+
+  auto hlen = ip_header.HeaderLength();
+
+  if (unlikely(hlen < sizeof(Ipv4Header)))
+    return;
+
+  auto tot_len = ip_header.TotalLength();
+
+  if (unlikely(packet_len < tot_len))
+    return;
+
+  if (unlikely(ip_header.ComputeChecksum() != 0))
+    return;
+
+  auto addr = Address();
+  if (unlikely(!addr || (!addr->isBroadcast(ip_header.dest) &&
+                         addr->address != ip_header.dest)))
+    return;
+
+  // Drop unacceptable sources
+  if (unlikely(ip_header.src.isBroadcast() || ip_header.src.isMulticast()))
+    return;
+
+  // We do not support fragmentation
+  if (unlikely(ip_header.Fragmented()))
+    return;
+
+  buf->Advance(hlen);
+
+  switch (ip_header.proto) {
+  case kIpProtoICMP: {
+    ReceiveIcmp(eth_header, ip_header, std::move(buf));
+    break;
+  }
+  case kIpProtoUDP: {
+    kprintf("Udp\n");
+    break;
+  }
+  case kIpProtoTCP: {
+    kprintf("Tcp\n");
+    break;
+  }
+  }
+}
+
+void
+ebbrt::NetworkManager::Interface::ReceiveIcmp(EthernetHeader& eth_header,
+                                              Ipv4Header& ip_header,
+                                              std::unique_ptr<MutIOBuf> buf) {
+  auto packet_len = buf->ComputeChainDataLength();
+
+  if (unlikely(packet_len < sizeof(IcmpHeader)))
+    return;
+
+  auto dp = buf->GetMutDataPointer();
+  auto& icmp_header = dp.Get<IcmpHeader>();
+
+  // checksum
+  if (IpCsum(*buf))
+    return;
+
+  // if echo_request, send reply
+  if (icmp_header.type == kIcmpEchoRequest) {
+    auto tmp = ip_header.dest;
+    ip_header.dest = ip_header.src;
+    ip_header.src = tmp;
+
+    icmp_header.type = kIcmpEchoReply;
+
+    // adjust checksum
+    auto addend = static_cast<uint16_t>(kIcmpEchoRequest) << 8;
+    // check wrap of checksum
+    if (icmp_header.checksum >= htons(0xffff - addend)) {
+      icmp_header.checksum += htons(addend) + 1;
+    } else {
+      icmp_header.checksum += htons(addend);
+    }
+
+    ip_header.ttl = kIpDefaultTtl;
+    ip_header.chksum = 0;
+    ip_header.chksum = ip_header.ComputeChecksum();
+
+    buf->Retreat(sizeof(EthernetHeader) + ip_header.HeaderLength());
+    EthArpSend(eth_header, ip_header, std::move(buf));
+  }
+}
+
+void
+ebbrt::NetworkManager::Interface::EthArpSend(EthernetHeader& eth_header,
+                                             Ipv4Header& ip_header,
+                                             std::unique_ptr<MutIOBuf> buf) {
+  Ipv4Address local_dest = ip_header.dest;
+  auto addr = Address();
+  if (addr->isBroadcast(ip_header.dest)) {
+    eth_header.dst.fill(0xff);
+  } else if (ip_header.dest.isMulticast()) {
+    kabort("UNIMPLEMENTED: Multicast send\n");
+  } else {
+    // on the outside network
+    if (!addr->isLocalNetwork(ip_header.dest) &&
+        !ip_header.dest.isLinkLocal()) {
+      local_dest = addr->gateway;
+    }
+
+    // look up local_dest in arp cache
+    auto entry = network_manager->arp_cache_.find(local_dest);
+    kbugon(!entry, "Need to perform arp query\n");
+    auto eth_addr = entry->hwaddr.get();
+    kbugon(eth_addr == nullptr, "Need to queue for arp query\n");
+    eth_header.dst = *eth_addr;
+    Send(std::move(buf));
+  }
+}
+
+const ebbrt::EthernetAddress& ebbrt::NetworkManager::Interface::MacAddress() {
+  return ether_dev_.GetMacAddress();
+}
+
+void ebbrt::NetworkManager::Interface::Send(std::unique_ptr<IOBuf> b) {
+  ether_dev_.Send(std::move(b));
+}
+
+// void ebbrt::NetworkManager::Interface::Send(std::unique_ptr<IOBuf>&& b) {
+//   ether_dev_.Send(std::move(b));
+// }
 
 // #include <cstring>
 

@@ -133,7 +133,7 @@ class IOBuf {
         return reinterpret_cast<const T&>(chunk.front());
       }
 
-      return *reinterpret_cast<const T*>(p_->Data() + offset_);
+      return *reinterpret_cast<const T*>(Data());
     }
 
     template <typename T> const T& Get() {
@@ -210,6 +210,59 @@ class MutIOBuf : public IOBuf {
 
   ConstIterator begin() const;
   ConstIterator end() const;
+
+  class MutDataPointer {
+   public:
+    explicit MutDataPointer(MutIOBuf* p) : p_{p} {}
+
+    uint8_t* Data() {
+      if (!p_ || p_->Length() - offset_ == 0)
+        throw std::runtime_error("MutDataPointer::Data() past end of buffer");
+
+      return p_->MutData() + offset_;
+    }
+
+    template <typename T> T& GetNoAdvance() {
+      if (!p_)
+        throw std::runtime_error("MutDataPointer::Get(): past end of buffer");
+
+      if (p_->Length() - offset_ < sizeof(T)) {
+        throw std::runtime_error(
+            "MutDataPointer::Get(): request straddles buffer");
+      }
+
+      return *reinterpret_cast<T*>(Data());
+    }
+
+    template <typename T> T& Get() {
+      auto& ret = GetNoAdvance<T>();
+      Advance(sizeof(T));
+      return ret;
+    }
+
+    void Advance(size_t size) {
+      while (size > 0 && p_) {
+        auto remainder = p_->Length() - offset_;
+        if (remainder > size) {
+          offset_ += size;
+          return;
+        }
+        p_ = p_->Next();
+        offset_ = 0;
+        size -= remainder;
+      }
+
+      if (!p_ && size > 0)
+        throw std::runtime_error(
+            "MutDataPointer::Advance(): past end of buffer");
+    }
+
+   private:
+    MutIOBuf* p_{nullptr};
+    size_t offset_{0};
+  };
+
+  MutDataPointer GetMutDataPointer() { return MutDataPointer(this); }
 };
 
 template <typename T> class IOBufBase : public T, public IOBuf {

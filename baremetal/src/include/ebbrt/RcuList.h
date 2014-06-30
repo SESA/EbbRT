@@ -61,7 +61,7 @@ template <typename T, RcuHListHook T::*hookptr> class RcuHList {
   typedef iter<T> iterator;
   typedef iter<const T> const_iterator;
 
-  RcuHList() = default;
+  RcuHList() { head_.store(nullptr, std::memory_order_relaxed); }
 
   RcuHList& operator=(const RcuHList& other) {
     head_.store(other.head_.load(std::memory_order_consume),
