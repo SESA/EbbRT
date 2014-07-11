@@ -143,35 +143,39 @@ extern "C"
   VMemAllocator::Init();
   EventManager::Init();
 
-  event_manager->SpawnLocal([=]() {
-                              /// Enable exceptions
-                              __register_frame(__eh_frame_start);
-                              apic::Init();
-                              apic::PVEoiInit(0);
-                              Timer::Init();
-                              smp::Init();
-                              event_manager->ReceiveToken();
+  event_manager
+      ->SpawnLocal([=]() {
+                     /// Enable exceptions
+                     __register_frame(__eh_frame_start);
+                     apic::Init();
+                     apic::PVEoiInit(0);
+                     Timer::Init();
+                     smp::Init();
+                     event_manager->ReceiveToken();
 #if __EBBRT_ENABLE_NETWORKING__
-                              NetworkManager::Init();
-                              pci::Init();
-                              pci::RegisterProbe(VirtioNetDriver::Probe);
-                              pci::LoadDrivers();
-                              // network_manager->AcquireIPAddress();
+                     NetworkManager::Init();
+                     pci::Init();
+                     pci::RegisterProbe(VirtioNetDriver::Probe);
+                     pci::LoadDrivers();
+                     network_manager->StartDhcp().Then([](Future<void> fut) {
+                       fut.Get();
+// Dhcp completed
 #if __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
-                              Messenger::Init();
-                              runtime::Init();
+                       Messenger::Init();
+                       runtime::Init();
 #endif
 #endif
-                              // run global ctors
-                              for (unsigned i = 0;
-                                   i < (end_ctors - start_ctors); ++i) {
-                                start_ctors[i]();
-                              }
-                              kprintf("System initialization complete\n");
-                              if (AppMain) {
-                                event_manager->SpawnLocal([=]() { AppMain(); });
-                              }
-                            },
-                            /* force_async = */ true);
+                       // run global ctors
+                       for (unsigned i = 0; i < (end_ctors - start_ctors);
+                            ++i) {
+                         start_ctors[i]();
+                       }
+                       kprintf("System initialization complete\n");
+                       if (AppMain) {
+                         event_manager->SpawnLocal([=]() { AppMain(); });
+                       }
+                     });
+                   },
+                   /* force_async = */ true);
   event_manager->StartProcessingEvents();
 }

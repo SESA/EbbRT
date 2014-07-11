@@ -4,5 +4,14 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 
 #include <ebbrt/Debug.h>
+#include <ebbrt/Net.h>
+#include <ebbrt/StaticIOBuf.h>
 
-void AppMain() { ebbrt::kprintf("Hello World\n"); }
+ebbrt::NetworkManager::UdpPcb pcb;
+
+void AppMain() {
+  // pcb.Bind(12345);
+  // auto buf =
+  //     std::unique_ptr<ebbrt::StaticIOBuf>(new ebbrt::StaticIOBuf("test"));
+  // pcb.SendTo({{10, 1, 23, 1}}, 54321, std::move(buf));
+}

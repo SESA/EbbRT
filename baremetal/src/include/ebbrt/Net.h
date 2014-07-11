@@ -8,8 +8,10 @@
 #include <ebbrt/AtomicUniquePtr.h>
 #include <ebbrt/EventManager.h>
 #include <ebbrt/IOBuf.h>
+#include <ebbrt/NetDhcp.h>
 #include <ebbrt/NetEth.h>
 #include <ebbrt/NetIp.h>
+#include <ebbrt/PoolAllocator.h>
 #include <ebbrt/RcuTable.h>
 #include <ebbrt/StaticSharedEbb.h>
 
@@ -24,11 +26,38 @@ class EthernetDevice {
 
 class NetworkManager : public StaticSharedEbb<NetworkManager> {
  public:
+  struct UdpEntry {
+    RcuHListHook hook;
+    uint16_t port{0};
+    MovableFunction<void(Ipv4Address, uint16_t, std::unique_ptr<MutIOBuf>)>
+    func;
+    std::atomic<bool> reading{false};
+  };
+
+  class Interface;
+
+  class UdpPcb {
+   public:
+    UdpPcb() : entry_{new UdpEntry()} {}
+    uint16_t Bind(uint16_t port);
+    void Receive(MovableFunction<
+        void(Ipv4Address, uint16_t, std::unique_ptr<MutIOBuf>)> func);
+    void SendTo(Ipv4Address addr, uint16_t port, std::unique_ptr<IOBuf> buf);
+
+   private:
+    struct UdpEntryDeleter {
+      void operator()(UdpEntry* e);
+    };
+    std::unique_ptr<UdpEntry, UdpEntryDeleter> entry_;
+
+    friend class Interface;
+  };
+
   class Interface {
    public:
     struct ItfAddress {
-      bool isBroadcast(const Ipv4Address& addr);
-      bool isLocalNetwork(const Ipv4Address& addr);
+      bool isBroadcast(const Ipv4Address& addr) const;
+      bool isLocalNetwork(const Ipv4Address& addr) const;
 
       Ipv4Address address;
       Ipv4Address netmask;
@@ -46,22 +75,60 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
 
     void Receive(std::unique_ptr<MutIOBuf> buf);
     void Send(std::unique_ptr<IOBuf> buf);
+    void SendUdp(UdpPcb& pcb, Ipv4Address addr, uint16_t port,
+                 std::unique_ptr<IOBuf> buf);
+    void SendIp(std::unique_ptr<MutIOBuf> buf, Ipv4Address src, Ipv4Address dst,
+                uint8_t proto);
     void Poll();
     const EthernetAddress& MacAddress();
-    ItfAddress* Address() { return address_.get(); }
+    const ItfAddress* Address() const { return address_.get(); }
     void SetAddress(std::unique_ptr<ItfAddress> address) {
       address_.store(address.release());
     }
+    Future<void> StartDhcp();
 
    private:
+    struct DhcpPcb : public CacheAligned {
+      std::mutex lock;
+      UdpPcb udp_pcb;
+      enum State { kInactive, kSelecting, kRequesting, kBound } state;
+      uint32_t xid;
+      size_t tries;
+      size_t options_len;
+      Promise<void> complete;
+    };
+
     void ReceiveArp(EthernetHeader& eh, std::unique_ptr<MutIOBuf> buf);
     void ReceiveIp(EthernetHeader& eh, std::unique_ptr<MutIOBuf> buf);
     void ReceiveIcmp(EthernetHeader& eh, Ipv4Header& ih,
                      std::unique_ptr<MutIOBuf> buf);
-    void EthArpSend(EthernetHeader& eh, Ipv4Header& ih,
+    void ReceiveUdp(Ipv4Header& ih, std::unique_ptr<MutIOBuf> buf);
+    void ReceiveDhcp(Ipv4Address from_addr, uint16_t from_port,
+                     std::unique_ptr<MutIOBuf> buf);
+    void EthArpSend(uint16_t proto, const Ipv4Header& ih,
                     std::unique_ptr<MutIOBuf> buf);
+    void EthArpRequest(ArpEntry& entry);
+    void DhcpOption(DhcpMessage& message, uint8_t option_type,
+                    uint8_t option_len);
+    void DhcpOptionByte(DhcpMessage& message, uint8_t value);
+    void DhcpOptionShort(DhcpMessage& message, uint16_t value);
+    void DhcpOptionLong(DhcpMessage& message, uint32_t value);
+    boost::optional<uint8_t> DhcpGetOptionByte(const DhcpMessage& message,
+                                               uint8_t option_type);
+    boost::optional<uint16_t> DhcpGetOptionShort(const DhcpMessage& message,
+                                                 uint8_t option_type);
+    boost::optional<uint32_t> DhcpGetOptionLong(const DhcpMessage& message,
+                                                uint8_t option_type);
+    void DhcpOptionTrailer(DhcpMessage& message);
+    void DhcpSetState(DhcpPcb::State state);
+    void DhcpCreateMessage(DhcpMessage& msg);
+    void DhcpDiscover();
+    void DhcpHandleOffer(const DhcpMessage& message);
+    void DhcpHandleAck(const DhcpMessage& message);
+
     atomic_unique_ptr<ItfAddress, ItfAddressDeleter> address_;
     EthernetDevice& ether_dev_;
+    DhcpPcb dhcp_pcb_;
   };
 
   static void Init();
@@ -69,11 +136,22 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
   Interface& NewInterface(EthernetDevice& ether_dev);
 
  private:
-  std::vector<Interface> interfaces_;
+  Future<void> StartDhcp();
+  Interface* IpRoute(Ipv4Address dest);
+
+  std::unique_ptr<Interface> interface_;
   RcuHashTable<ArpEntry, Ipv4Address, &ArpEntry::hook, &ArpEntry::paddr>
   arp_cache_{8};  // 256 buckets
+  RcuHashTable<UdpEntry, uint16_t, &UdpEntry::hook, &UdpEntry::port> udp_pcbs_{
+      8};  // 256 buckets
+  EbbRef<PoolAllocator<uint16_t, 25>> port_allocator_{
+      PoolAllocator<uint16_t, 25>::Create(49152, 65535,
+                                          ebb_allocator->AllocateLocal())};
 
   alignas(cache_size) std::mutex arp_write_lock_;
+  alignas(cache_size) std::mutex udp_write_lock_;
+
+  friend void ebbrt::Main(ebbrt::multiboot::Information* mbi);
 };
 
 constexpr auto network_manager = EbbRef<NetworkManager>(kNetworkManagerId);

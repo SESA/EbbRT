@@ -25,7 +25,7 @@ class atomic_unique_ptr {
     if (!p)
       deleter_(p);
   }
-  T* get() { return ptr_.load(std::memory_order_consume); }
+  T* get() const { return ptr_.load(std::memory_order_consume); }
   void store(T* desired) {
     auto p = exchange(desired);
     if (!p)

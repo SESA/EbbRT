@@ -15,6 +15,9 @@ const constexpr size_t kEthHwAddrLen = 6;
 
 typedef std::array<uint8_t, kEthHwAddrLen> EthernetAddress;
 
+const constexpr EthernetAddress BroadcastMAC = {
+    {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
+
 struct __attribute__((packed)) EthernetHeader {
   EthernetAddress dst;
   EthernetAddress src;
@@ -37,56 +40,33 @@ struct __attribute__((packed)) ArpPacket {
 };
 
 const constexpr uint16_t kHTypeEth = 1;
+const constexpr uint16_t kPTypeIp = 0x800;
 
 const constexpr uint16_t kArpRequest = 1;
 const constexpr uint16_t kArpReply = 2;
 
 class OperationQueue {
  public:
-  class Operation {
+  class OperationBase {
    public:
-    Operation(MovableFunction<void()> func, Operation* next) {
-      func_ = std::move(func);
-      next_.store(next, std::memory_order_relaxed);
+    explicit OperationBase(OperationBase* next_) {
+      next.store(next_, std::memory_order_relaxed);
     }
+    virtual ~OperationBase() {}
+    virtual void Invoke(const EthernetAddress& addr) = 0;
 
-    std::atomic<Operation*> next_;
-    MovableFunction<void()> func_;
+    std::atomic<OperationBase*> next;
   };
 
-  template <typename Value>
-  class iter : public boost::iterator_facade<iter<Value>, Value,
-                                             boost::forward_traversal_tag> {
-    struct enabler {};
-
+  template <typename F> class Operation : public OperationBase {
    public:
-    iter() : node_(nullptr) {}
-    explicit iter(Operation* p) : node_(p) {}
+    Operation(F func, OperationBase* next)
+        : OperationBase(next), func_(std::move(func)) {}
 
-    template <typename OtherValue>
-    iter(
-        const iter<OtherValue>& other,
-        typename std::enable_if<std::is_convertible<OtherValue*, Value*>::value,
-                                enabler>::type = enabler())
-        : node_(other.node_) {}
+    void Invoke(const EthernetAddress& addr) override { func_(addr); }
 
-   private:
-    void increment() { node_ = node_->next_.load(std::memory_order_acquire); }
-
-    template <typename OtherValue>
-    bool equal(const iter<OtherValue>& other) const {
-      return this->node_ == other.node_;
-    }
-
-    MovableFunction<void()>& dereference() const { return node_->func_; }
-
-    Operation* node_;
-
-    friend class boost::iterator_core_access;
+    F func_;
   };
-
-  typedef iter<MovableFunction<void()>> iterator;
-  typedef iter<const MovableFunction<void()>> const_iterator;
 
   OperationQueue() noexcept {
     queue_.store(nullptr, std::memory_order_release);
@@ -97,23 +77,26 @@ class OperationQueue {
     queue_.store(other_head, std::memory_order_release);
   }
 
-  void Push(MovableFunction<void()> func) {
-    Operation* next;
-    Operation* operation;
+  template <typename F> void Push(F&& func) {
+    OperationBase* next;
+    OperationBase* operation;
     do {
       next = queue_.load(std::memory_order_relaxed);
-      operation = new Operation(std::move(func), next);
-    } while (queue_.compare_exchange_weak(
-        next, operation, std::memory_order_release, std::memory_order_relaxed));
+      operation = new Operation<F>(std::forward<F>(func), next);
+    } while (!queue_.compare_exchange_weak(next, operation,
+                                           std::memory_order_release,
+                                           std::memory_order_relaxed));
   }
 
-  iterator begin() { return iterator(queue_.load(std::memory_order_consume)); }
-  iterator end() { return iterator(nullptr); }
-
-  const_iterator cbegin() const {
-    return const_iterator(queue_.load(std::memory_order_consume));
+  void InvokeAndClear(const EthernetAddress& addr) {
+    auto current = queue_.load(std::memory_order_consume);
+    while (current != nullptr) {
+      auto next = current->next.load(std::memory_order_consume);
+      current->Invoke(addr);
+      delete current;
+      current = next;
+    }
   }
-  const_iterator cend() const { return const_iterator(nullptr); }
 
   bool empty() const {
     auto front = queue_.load(std::memory_order_consume);
@@ -121,25 +104,28 @@ class OperationQueue {
   }
 
  private:
-  std::atomic<Operation*> queue_;
+  std::atomic<OperationBase*> queue_;
 };
 
 struct ArpEntry {
-  ArpEntry(Ipv4Address paddr_, const EthernetAddress& addr)
-      : paddr(paddr_), hwaddr(new EthernetAddress(addr)) {}
+  ArpEntry(Ipv4Address paddr_, EthernetAddress* addr = nullptr)
+      : paddr(paddr_), hwaddr(addr) {}
 
-  void SetAddr(const EthernetAddress& addr) {
-    auto ptr = new EthernetAddress(addr);
+  void SetAddr(EthernetAddress* ptr) {
     auto old = hwaddr.exchange(ptr);
     // If there was no previous address, then we should check the queue to send
     // packets
     if (!old) {
       auto q = std::move(queue);
-      kbugon(!q.empty(), "Send out queued packets\n");
-      event_manager->DoRcu([this]() {
-        auto q = std::move(queue);
-        kbugon(!q.empty(), "Send out queued packets\n");
-      });
+      q.InvokeAndClear(*ptr);
+      event_manager->DoRcu(
+          MoveBind([this, ptr](std::unique_ptr<EthernetAddress> old_addr) {
+                     // We shouldn't have any modifications to the queue anymore
+                     // so we can
+                     // just clear it
+                     queue.InvokeAndClear(*ptr);
+                   },
+                   std::move(old)));
     }
   }
 

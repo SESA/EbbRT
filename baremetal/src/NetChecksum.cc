@@ -9,11 +9,13 @@
 namespace {
 // Last step, fold a 32 bit sum to 16 bit and invert it
 uint16_t CsumFold(uint32_t sum) {
+  auto lower_sum = sum << 16;
+  sum &= 0xffff0000;
   asm("addl %[lower_sum], %[sum];"
       "adcl $0xffff,%[sum];"
       : [sum] "+r"(sum)
-      : [lower_sum] "r"(static_cast<uint32_t>(sum << 16)));
-  return ~(sum >> 16);
+      : [lower_sum] "r"(lower_sum));
+  return sum >> 16;
 }
 
 uint16_t From32To16(uint32_t val) {
@@ -115,26 +117,35 @@ uint32_t Csum(const uint8_t* buf, size_t len) {
   }
   return result;
 }
+
+uint32_t IpCsumNoFold(const ebbrt::IOBuf& buf) {
+  uint32_t ret = 0;
+  for (auto& b : buf) {
+    ret = Add32WithCarry(ret, Csum(b.Data(), b.Length()));
+  }
+  return ret;
+}
 }  // namespace
 
-uint16_t ebbrt::IpCsum(const IOBuf& buf) {
-  uint32_t acc = 0;
-  bool swapped = false;
-  for (auto& b : buf) {
-    acc += Csum(b.Data(), b.Length());
-    acc = CsumFold(acc);
-    if (b.Length() % 2) {
-      swapped = !swapped;
-      acc = __builtin_bswap16(acc);
-    }
-  }
+uint16_t ebbrt::IpPseudoCsum(const IOBuf& buf, uint8_t proto, Ipv4Address src,
+                             Ipv4Address dst) {
+  auto sum = IpCsumNoFold(buf);
+  uint32_t lenproto = (buf.ComputeChainDataLength() + proto) << 8;
+  asm("addl %[dst], %[sum];"
+      "adcl %[src], %[sum];"
+      "adcl %[lenproto], %[sum];"
+      "adcl $0, %[sum];"
+      : [sum] "+r"(sum)
+      :
+      [dst] "g"(dst.toU32()), [src] "g"(src.toU32()), [lenproto] "g"(lenproto));
 
-  if (swapped) {
-    acc = __builtin_bswap16(acc);
-  }
-  return ~(acc & 0xffff);
+  return ~CsumFold(sum);
+}
+
+uint16_t ebbrt::IpCsum(const IOBuf& buf) {
+  return ~CsumFold(IpCsumNoFold(buf));
 }
 
 uint16_t ebbrt::IpCsum(const uint8_t* buf, size_t len) {
-  return CsumFold(Csum(buf, len));
+  return ~CsumFold(Csum(buf, len));
 }

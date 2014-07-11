@@ -21,6 +21,12 @@ class IOBuf {
 
   virtual ~IOBuf() noexcept;
 
+  template <typename T, typename... Args>
+  static std::unique_ptr<T> Create(Args&&... args) {
+    auto ptr = new T(std::forward<Args>(args)...);
+    return std::unique_ptr<T>(ptr);
+  }
+
   const uint8_t* Data() const { return data_; }
 
   const uint8_t* Tail() const { return Data() + Length(); }

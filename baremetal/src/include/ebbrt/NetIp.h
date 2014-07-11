@@ -67,7 +67,7 @@ struct __attribute__((packed)) Ipv4Header {
   uint8_t proto;
   uint16_t chksum;
   Ipv4Address src;
-  Ipv4Address dest;
+  Ipv4Address dst;
 };
 
 const constexpr uint8_t kIpDefaultTtl = 255;

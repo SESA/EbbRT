@@ -89,7 +89,8 @@ void ebbrt::VirtioNetDriver::FreeSentPackets() {
 }
 
 uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
-  return 1 << kCSum | 1 << kGuestCSum | 1 << kMac | 1 << kMrgRxbuf;
+  // return 1 << kCSum | 1 << kGuestCSum | 1 << kMac | 1 << kMrgRxbuf;
+  return 1 << kMac | 1 << kMrgRxbuf;
 }
 
 // namespace {
@@ -270,8 +271,9 @@ uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
 // }  // namespace
 
 void ebbrt::VirtioNetDriver::Send(std::unique_ptr<IOBuf> buf) {
-  auto b = std::unique_ptr<MutUniqueIOBuf>(new MutUniqueIOBuf(
-      buf->ComputeChainDataLength() + sizeof(VirtioNetHeader)));
+  auto len = buf->ComputeChainDataLength();
+  auto b = std::unique_ptr<MutUniqueIOBuf>(
+      new MutUniqueIOBuf(len + sizeof(VirtioNetHeader)));
   memset(b->MutData(), 0, sizeof(VirtioNetHeader));
   // if (csum_) {
   //   auto header_dp = b->GetWritableDataPointer();
@@ -329,6 +331,7 @@ void ebbrt::VirtioNetDriver::Send(std::unique_ptr<IOBuf> buf) {
   // TODO(dschatz): Use indirect descriptors to avoid this copy
   auto data = b->MutData() + sizeof(VirtioNetHeader);
   for (auto& buf_it : *buf) {
+    kprintf("Copy %d\n", buf_it.Length());
     memcpy(data, buf_it.Data(), buf_it.Length());
     data += buf_it.Length();
   }

@@ -6,23 +6,21 @@
 
 #include <ebbrt/NetChecksum.h>
 #include <ebbrt/NetIcmp.h>
+#include <ebbrt/NetUdp.h>
+#include <ebbrt/Random.h>
+#include <ebbrt/Timer.h>
+#include <ebbrt/UniqueIOBuf.h>
 
 void ebbrt::NetworkManager::Init() {}
 
 ebbrt::NetworkManager::Interface&
 ebbrt::NetworkManager::NewInterface(EthernetDevice& ether_dev) {
-  interfaces_.emplace_back(ether_dev);
-  auto addr = new Interface::ItfAddress;
-  addr->address = {{10, 1, 23, 2}};
-  addr->netmask = {{255, 255, 255, 0}};
-  addr->gateway = {{10, 1, 23, 1}};
-  interfaces_[interfaces_.size() - 1].SetAddress(
-      std::unique_ptr<Interface::ItfAddress>(addr));
-  return interfaces_[interfaces_.size() - 1];
+  interface_.reset(new Interface(ether_dev));
+  return *interface_;
 }
 
 bool ebbrt::NetworkManager::Interface::ItfAddress::isBroadcast(
-    const Ipv4Address& addr) {
+    const Ipv4Address& addr) const {
   if (addr.isBroadcast())
     return true;
 
@@ -38,7 +36,7 @@ bool ebbrt::NetworkManager::Interface::ItfAddress::isBroadcast(
 }
 
 bool ebbrt::NetworkManager::Interface::ItfAddress::isLocalNetwork(
-    const Ipv4Address& addr) {
+    const Ipv4Address& addr) const {
   return addr.Mask(netmask) == address.Mask(netmask);
 }
 
@@ -66,6 +64,278 @@ void ebbrt::NetworkManager::Interface::Receive(std::unique_ptr<MutIOBuf> buf) {
   }
 }
 
+ebbrt::Future<void> ebbrt::NetworkManager::Interface::StartDhcp() {
+  dhcp_pcb_.udp_pcb.Bind(kDhcpClientPort);
+  dhcp_pcb_.udp_pcb.Receive([this](Ipv4Address from_addr, uint16_t from_port,
+                                   std::unique_ptr<MutIOBuf> buf) {
+    ReceiveDhcp(from_addr, from_port, std::move(buf));
+  });
+  std::lock_guard<std::mutex> guard(dhcp_pcb_.lock);
+  DhcpDiscover();
+  return dhcp_pcb_.complete.GetFuture();
+}
+
+void ebbrt::NetworkManager::Interface::DhcpOption(DhcpMessage& message,
+                                                  uint8_t option_type,
+                                                  uint8_t option_len) {
+  auto& len = dhcp_pcb_.options_len;
+  kassert((len + 2) <= kDhcpOptionsLen);
+  message.options[len++] = option_type;
+  message.options[len++] = option_len;
+}
+
+void ebbrt::NetworkManager::Interface::DhcpOptionByte(DhcpMessage& message,
+                                                      uint8_t value) {
+  auto& len = dhcp_pcb_.options_len;
+  kassert((len + 1) <= kDhcpOptionsLen);
+  message.options[len++] = value;
+}
+
+// void ebbrt::NetworkManager::Interface::DhcpOptionShort(DhcpMessage& message,
+//                                                        uint8_t value) {}
+
+void ebbrt::NetworkManager::Interface::DhcpOptionLong(DhcpMessage& message,
+                                                      uint32_t value) {
+  auto& len = dhcp_pcb_.options_len;
+  kassert((len + 4) <= kDhcpOptionsLen);
+  *reinterpret_cast<uint32_t*>(message.options.data() + len) = value;
+  len += 4;
+}
+
+void ebbrt::NetworkManager::Interface::DhcpOptionTrailer(DhcpMessage& message) {
+  auto& len = dhcp_pcb_.options_len;
+  kassert((len + 1) <= kDhcpOptionsLen);
+  message.options[len++] = kDhcpOptionEnd;
+}
+
+boost::optional<uint8_t>
+ebbrt::NetworkManager::Interface::DhcpGetOptionByte(const DhcpMessage& message,
+                                                    uint8_t option_type) {
+  auto option_it = message.options.begin();
+  while (option_it != message.options.end()) {
+    auto option_code = option_it[0];
+
+    if (option_code == option_type)
+      return boost::optional<uint8_t>(option_it[2]);  // skip code and length
+
+    if (option_code == kDhcpOptionEnd)
+      return boost::optional<uint8_t>();
+
+    auto option_length = option_it[1];
+    std::advance(option_it, option_length + 2);
+  }
+
+  return boost::optional<uint8_t>();
+}
+
+boost::optional<uint32_t>
+ebbrt::NetworkManager::Interface::DhcpGetOptionLong(const DhcpMessage& message,
+                                                    uint8_t option_type) {
+  auto option_it = message.options.begin();
+  while (option_it != message.options.end()) {
+    auto option_code = option_it[0];
+
+    if (option_code == option_type)
+      return boost::optional<uint32_t>(
+          *reinterpret_cast<const uint32_t*>(&option_it[2]));
+
+    if (option_code == kDhcpOptionEnd)
+      return boost::optional<uint32_t>();
+
+    auto option_length = option_it[1];
+    std::advance(option_it, option_length + 2);
+  }
+
+  return boost::optional<uint32_t>();
+}
+
+void ebbrt::NetworkManager::Interface::DhcpSetState(DhcpPcb::State state) {
+  if (state != dhcp_pcb_.state) {
+    dhcp_pcb_.state = state;
+    dhcp_pcb_.tries = 0;
+  }
+}
+
+void ebbrt::NetworkManager::Interface::DhcpCreateMessage(DhcpMessage& message) {
+  if (dhcp_pcb_.tries == 0)
+    dhcp_pcb_.xid = random::Get();
+
+  message.op = kDhcpOpRequest;
+  message.htype = kDhcpHTypeEth;
+  message.hlen = kDhcpHLenEth;
+  message.xid = htonl(dhcp_pcb_.xid);
+  const auto& mac_addr = MacAddress();
+  std::copy(mac_addr.begin(), mac_addr.end(), message.chaddr.begin());
+  message.cookie = htonl(kDhcpMagicCookie);
+  dhcp_pcb_.options_len = 0;
+}
+
+void ebbrt::NetworkManager::Interface::DhcpDiscover() {
+  DhcpSetState(DhcpPcb::State::kSelecting);
+  auto buf = IOBuf::Create<MutUniqueIOBuf>(sizeof(DhcpMessage));
+  auto dp = buf->GetMutDataPointer();
+  auto& dhcp_message = dp.Get<DhcpMessage>();
+
+  DhcpCreateMessage(dhcp_message);
+
+  DhcpOption(dhcp_message, kDhcpOptionMessageType, 1);
+  DhcpOptionByte(dhcp_message, kDhcpOptionMessageTypeDiscover);
+
+  DhcpOption(dhcp_message, kDhcpOptionParameterRequestList, 3);
+  DhcpOptionByte(dhcp_message, kDhcpOptionSubnetMask);
+  DhcpOptionByte(dhcp_message, kDhcpOptionRouter);
+  DhcpOptionByte(dhcp_message, kDhcpOptionBroadcast);
+
+  DhcpOptionTrailer(dhcp_message);
+
+  dhcp_pcb_.udp_pcb.SendTo(Ipv4Address::Broadcast(), kDhcpServerPort,
+                           std::move(buf));
+
+  dhcp_pcb_.tries++;
+  auto timeout =
+      std::chrono::seconds(dhcp_pcb_.tries < 6 ? 1 << dhcp_pcb_.tries : 60);
+  timer->Start(timeout, [this]() {
+                          std::lock_guard<std::mutex> guard(dhcp_pcb_.lock);
+                          if (dhcp_pcb_.state == DhcpPcb::State::kSelecting)
+                            DhcpDiscover();
+                        },
+               /* repeat = */ false);
+}
+
+void ebbrt::NetworkManager::Interface::DhcpHandleOffer(
+    const DhcpMessage& dhcp_message) {
+  auto server_id_opt = DhcpGetOptionLong(dhcp_message, kDhcpOptionServerId);
+  if (!server_id_opt)
+    return;
+
+  const auto& offered_ip = dhcp_message.yiaddr;
+
+  DhcpSetState(DhcpPcb::State::kRequesting);
+  auto buf = IOBuf::Create<MutUniqueIOBuf>(sizeof(DhcpMessage));
+  auto dp = buf->GetMutDataPointer();
+  auto& new_dhcp_message = dp.Get<DhcpMessage>();
+  DhcpCreateMessage(new_dhcp_message);
+
+  DhcpOption(new_dhcp_message, kDhcpOptionMessageType, 1);
+  DhcpOptionByte(new_dhcp_message, kDhcpOptionMessageTypeRequest);
+
+  DhcpOption(new_dhcp_message, kDhcpOptionRequestIp, 4);
+  DhcpOptionLong(new_dhcp_message, offered_ip.toU32());
+
+  DhcpOption(new_dhcp_message, kDhcpOptionServerId, 4);
+  DhcpOptionLong(new_dhcp_message, *server_id_opt);
+
+  DhcpOption(new_dhcp_message, kDhcpOptionParameterRequestList, 3);
+  DhcpOptionByte(new_dhcp_message, kDhcpOptionSubnetMask);
+  DhcpOptionByte(new_dhcp_message, kDhcpOptionRouter);
+  DhcpOptionByte(new_dhcp_message, kDhcpOptionBroadcast);
+
+  DhcpOptionTrailer(new_dhcp_message);
+
+  dhcp_pcb_.udp_pcb.SendTo(Ipv4Address::Broadcast(), kDhcpServerPort,
+                           std::move(buf));
+
+  dhcp_pcb_.tries++;
+  auto timeout =
+      std::chrono::seconds(dhcp_pcb_.tries < 6 ? 1 << dhcp_pcb_.tries : 60);
+  timer->Start(timeout, [this]() {
+                          std::lock_guard<std::mutex> guard(dhcp_pcb_.lock);
+                          if (dhcp_pcb_.state == DhcpPcb::State::kRequesting)
+                            kabort("UNIMPLEMENTED: Dhcp request timeout\n");
+                        },
+               /* repeat = */ false);
+}
+
+void
+ebbrt::NetworkManager::Interface::DhcpHandleAck(const DhcpMessage& message) {
+  auto lease_secs_opt = DhcpGetOptionLong(message, kDhcpOptionLeaseTime);
+
+  auto lease_time = lease_secs_opt
+                        ? std::chrono::seconds(ntohl(*lease_secs_opt))
+                        : std::chrono::seconds::zero();
+
+  timer->Start(lease_time,
+               [this]() { kabort("UNIMPLEMENTED: Dhcp lease expired\n"); },
+               /* repeat = */ false);
+
+  auto renew_secs_opt = DhcpGetOptionLong(message, kDhcpOptionRenewalTime);
+
+  auto renewal_time = renew_secs_opt
+                          ? std::chrono::seconds(ntohl(*renew_secs_opt))
+                          : lease_time / 2;
+
+  timer->Start(renewal_time,
+               [this]() { kabort("UNIMPLEMENTED: Dhcp renewal\n"); },
+               /* repeat = */ false);
+
+  auto rebind_secs_opt = DhcpGetOptionLong(message, kDhcpOptionRebindingTime);
+
+  auto rebind_time = rebind_secs_opt
+                         ? std::chrono::seconds(ntohl(*rebind_secs_opt))
+                         : lease_time;
+
+  timer->Start(rebind_time,
+               [this]() { kabort("UNIMPLEMENTED: Dhcp rebind\n"); },
+               /* repeat = */ false);
+
+  auto addr = new ItfAddress();
+
+  addr->address = message.yiaddr;
+
+  auto netmask_opt = DhcpGetOptionLong(message, kDhcpOptionSubnetMask);
+  kassert(netmask_opt);
+
+  addr->netmask = *netmask_opt;
+
+  auto gw_opt = DhcpGetOptionLong(message, kDhcpOptionRouter);
+  kassert(gw_opt);
+
+  addr->gateway = *gw_opt;
+
+  SetAddress(std::unique_ptr<ItfAddress>(addr));
+
+  DhcpSetState(DhcpPcb::State::kBound);
+
+  dhcp_pcb_.complete.SetValue();
+}
+
+void ebbrt::NetworkManager::Interface::ReceiveDhcp(
+    Ipv4Address from_addr, uint16_t from_port, std::unique_ptr<MutIOBuf> buf) {
+  auto len = buf->ComputeChainDataLength();
+
+  if (len < sizeof(DhcpMessage))
+    return;
+
+  auto dp = buf->GetDataPointer();
+  auto& dhcp_message = dp.Get<DhcpMessage>();
+
+  if (dhcp_message.op != kDhcpOpReply)
+    return;
+
+  std::lock_guard<std::mutex> guard(dhcp_pcb_.lock);
+  if (ntohl(dhcp_message.xid) != dhcp_pcb_.xid)
+    return;
+
+  auto msg_type = DhcpGetOptionByte(dhcp_message, kDhcpOptionMessageType);
+  if (!msg_type)
+    return;
+
+  switch (*msg_type) {
+  case kDhcpOptionMessageTypeOffer:
+    if (dhcp_pcb_.state != DhcpPcb::State::kSelecting)
+      return;
+
+    DhcpHandleOffer(dhcp_message);
+    break;
+  case kDhcpOptionMessageTypeAck:
+    if (dhcp_pcb_.state != DhcpPcb::State::kRequesting)
+      return;
+
+    DhcpHandleAck(dhcp_message);
+    break;
+  }
+}
+
 void
 ebbrt::NetworkManager::Interface::ReceiveArp(EthernetHeader& eth_header,
                                              std::unique_ptr<MutIOBuf> buf) {
@@ -86,7 +356,7 @@ ebbrt::NetworkManager::Interface::ReceiveArp(EthernetHeader& eth_header,
 
   if (entry) {
     // RFC 826: If entry is found, update it
-    entry->SetAddr(arp_packet.sha);
+    entry->SetAddr(new EthernetAddress(arp_packet.sha));
   }
 
   // Am I the target address?
@@ -101,10 +371,10 @@ ebbrt::NetworkManager::Interface::ReceiveArp(EthernetHeader& eth_header,
       entry = network_manager->arp_cache_.find(arp_packet.spa);
       if (entry) {
         // RFC 826: If entry is found, update it
-        entry->SetAddr(arp_packet.sha);
+        entry->SetAddr(new EthernetAddress(arp_packet.sha));
       } else {
         network_manager->arp_cache_.insert(
-            *new ArpEntry(arp_packet.spa, arp_packet.sha));
+            *new ArpEntry(arp_packet.spa, new EthernetAddress(arp_packet.sha)));
       }
     }
 
@@ -155,8 +425,11 @@ ebbrt::NetworkManager::Interface::ReceiveIp(EthernetHeader& eth_header,
     return;
 
   auto addr = Address();
-  if (unlikely(!addr || (!addr->isBroadcast(ip_header.dest) &&
-                         addr->address != ip_header.dest)))
+  // If the protocol is not UDP (for dhcp purposes) and we don't have an address
+  // or the address is not broadcast and not our address, then drop
+  if (unlikely(ip_header.proto != kIpProtoUDP &&
+               (!addr || (!addr->isBroadcast(ip_header.dst) &&
+                          addr->address != ip_header.dst))))
     return;
 
   // Drop unacceptable sources
@@ -175,7 +448,7 @@ ebbrt::NetworkManager::Interface::ReceiveIp(EthernetHeader& eth_header,
     break;
   }
   case kIpProtoUDP: {
-    kprintf("Udp\n");
+    ReceiveUdp(ip_header, std::move(buf));
     break;
   }
   case kIpProtoTCP: {
@@ -203,8 +476,8 @@ ebbrt::NetworkManager::Interface::ReceiveIcmp(EthernetHeader& eth_header,
 
   // if echo_request, send reply
   if (icmp_header.type == kIcmpEchoRequest) {
-    auto tmp = ip_header.dest;
-    ip_header.dest = ip_header.src;
+    auto tmp = ip_header.dst;
+    ip_header.dst = ip_header.src;
     ip_header.src = tmp;
 
     icmp_header.type = kIcmpEchoReply;
@@ -222,36 +495,135 @@ ebbrt::NetworkManager::Interface::ReceiveIcmp(EthernetHeader& eth_header,
     ip_header.chksum = 0;
     ip_header.chksum = ip_header.ComputeChecksum();
 
-    buf->Retreat(sizeof(EthernetHeader) + ip_header.HeaderLength());
-    EthArpSend(eth_header, ip_header, std::move(buf));
+    buf->Retreat(ip_header.HeaderLength());
+    EthArpSend(kEthTypeIp, ip_header, std::move(buf));
   }
 }
 
 void
-ebbrt::NetworkManager::Interface::EthArpSend(EthernetHeader& eth_header,
-                                             Ipv4Header& ip_header,
+ebbrt::NetworkManager::Interface::ReceiveUdp(Ipv4Header& ip_header,
                                              std::unique_ptr<MutIOBuf> buf) {
-  Ipv4Address local_dest = ip_header.dest;
+  auto packet_len = buf->ComputeChainDataLength();
+
+  // Ensure we have a header
+  if (unlikely(packet_len < sizeof(UdpHeader)))
+    return;
+
+  auto dp = buf->GetDataPointer();
+  const auto& udp_header = dp.Get<UdpHeader>();
+
+  // ensure packet is the full udp packet
+  if (unlikely(packet_len < ntohs(udp_header.length)))
+    return;
+
+  // trim any excess off the packet
+  buf->TrimEnd(packet_len - ntohs(udp_header.length));
+
+  if (udp_header.checksum &&
+      IpPseudoCsum(*buf, ip_header.proto, ip_header.src, ip_header.dst))
+    return;
+
+  auto entry = network_manager->udp_pcbs_.find(ntohs(udp_header.dst_port));
+
+  if (!entry || !entry->reading.load(std::memory_order_consume))
+    return;
+
+  buf->Advance(sizeof(UdpHeader));
+
+  entry->func(ip_header.src, ntohs(udp_header.src_port), std::move(buf));
+}
+
+void
+ebbrt::NetworkManager::Interface::EthArpSend(uint16_t proto,
+                                             const Ipv4Header& ip_header,
+                                             std::unique_ptr<MutIOBuf> buf) {
+  buf->Retreat(sizeof(EthernetHeader));
+  auto dp = buf->GetMutDataPointer();
+  auto& eth_header = dp.Get<EthernetHeader>();
+  Ipv4Address local_dest = ip_header.dst;
   auto addr = Address();
-  if (addr->isBroadcast(ip_header.dest)) {
+  if (ip_header.dst == Ipv4Address::Broadcast() ||
+      (addr && addr->isBroadcast(ip_header.dst))) {
     eth_header.dst.fill(0xff);
-  } else if (ip_header.dest.isMulticast()) {
+    eth_header.src = MacAddress();
+    eth_header.type = htons(proto);
+    Send(std::move(buf));
+  } else if (ip_header.dst.isMulticast()) {
     kabort("UNIMPLEMENTED: Multicast send\n");
-  } else {
+  } else if (addr) {
     // on the outside network
-    if (!addr->isLocalNetwork(ip_header.dest) &&
-        !ip_header.dest.isLinkLocal()) {
+    if (!addr->isLocalNetwork(ip_header.dst) && !ip_header.dst.isLinkLocal()) {
       local_dest = addr->gateway;
     }
 
+    auto send_func = MoveBind([this, proto](std::unique_ptr<MutIOBuf> buf,
+                                            EthernetAddress addr) {
+                                auto dp = buf->GetMutDataPointer();
+                                auto& eth_header = dp.Get<EthernetHeader>();
+                                eth_header.dst = addr;
+                                eth_header.src = MacAddress();
+                                eth_header.type = htons(proto);
+                                Send(std::move(buf));
+                              },
+                              std::move(buf));
+
     // look up local_dest in arp cache
     auto entry = network_manager->arp_cache_.find(local_dest);
-    kbugon(!entry, "Need to perform arp query\n");
-    auto eth_addr = entry->hwaddr.get();
-    kbugon(eth_addr == nullptr, "Need to queue for arp query\n");
-    eth_header.dst = *eth_addr;
-    Send(std::move(buf));
+    if (!entry) {
+      // no entry, lock and check again
+      network_manager->arp_write_lock_.lock();
+      entry = network_manager->arp_cache_.find(local_dest);
+      if (!entry) {
+        // create entry
+        auto& new_arp_entry = *new ArpEntry(local_dest);
+        network_manager->arp_cache_.insert(new_arp_entry);
+        network_manager->arp_write_lock_.unlock();
+        EthArpRequest(new_arp_entry);
+        new_arp_entry.queue.Push(std::move(send_func));
+        return;
+      } else {
+        network_manager->arp_write_lock_.unlock();
+      }
+    } else {
+      // entry found
+      auto eth_addr = entry->hwaddr.get();
+      if (!eth_addr) {
+        // no addr yet, pending request
+        entry->queue.Push(std::move(send_func));
+      } else {
+        // got addr, just send right away
+        send_func(*eth_addr);
+      }
+    }
   }
+}
+
+void ebbrt::NetworkManager::Interface::EthArpRequest(ArpEntry& entry) {
+  auto buf = std::unique_ptr<MutUniqueIOBuf>(
+      new MutUniqueIOBuf(sizeof(EthernetHeader) + sizeof(ArpPacket)));
+  auto dp = buf->GetMutDataPointer();
+  auto& eth_header = dp.Get<EthernetHeader>();
+  auto& arp_packet = dp.Get<ArpPacket>();
+
+  eth_header.dst = BroadcastMAC;
+  eth_header.src = MacAddress();
+  eth_header.type = htons(kEthTypeArp);
+
+  arp_packet.htype = htons(kHTypeEth);
+  arp_packet.ptype = htons(kPTypeIp);
+  arp_packet.hlen = kEthHwAddrLen;
+  arp_packet.plen = 4;
+  arp_packet.oper = htons(kArpRequest);
+  arp_packet.sha = MacAddress();
+
+  auto addr = Address();
+  if (addr)
+    arp_packet.spa = addr->address;
+
+  arp_packet.tha = {{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
+  arp_packet.tpa = entry.paddr;
+
+  Send(std::move(buf));
 }
 
 const ebbrt::EthernetAddress& ebbrt::NetworkManager::Interface::MacAddress() {
@@ -260,6 +632,128 @@ const ebbrt::EthernetAddress& ebbrt::NetworkManager::Interface::MacAddress() {
 
 void ebbrt::NetworkManager::Interface::Send(std::unique_ptr<IOBuf> b) {
   ether_dev_.Send(std::move(b));
+}
+
+void ebbrt::NetworkManager::UdpPcb::UdpEntryDeleter::operator()(UdpEntry* e) {
+  if (e->port) {
+    network_manager->port_allocator_->Free(e->port);
+    std::lock_guard<std::mutex> guard(network_manager->udp_write_lock_);
+    network_manager->udp_pcbs_.erase(*e);
+    e->reading.store(false, std::memory_order_release);
+  }
+  event_manager->DoRcu([e]() { delete e; });
+}
+
+uint16_t ebbrt::NetworkManager::UdpPcb::Bind(uint16_t port) {
+  if (!port) {
+    auto ret = network_manager->port_allocator_->Allocate();
+    if (!ret)
+      throw std::runtime_error("Failed to allocate ephemeral port");
+
+    port = *ret;
+  }
+  // TODO(dschatz): check port is free
+  entry_->port = port;
+  network_manager->udp_pcbs_.insert(*entry_);
+  entry_->reading.store(true, std::memory_order_release);
+  return port;
+}
+
+void ebbrt::NetworkManager::UdpPcb::Receive(MovableFunction<
+    void(Ipv4Address, uint16_t, std::unique_ptr<MutIOBuf>)> func) {
+  entry_->func = std::move(func);
+}
+
+void ebbrt::NetworkManager::UdpPcb::SendTo(Ipv4Address addr, uint16_t port,
+                                           std::unique_ptr<IOBuf> buf) {
+  auto itf = network_manager->IpRoute(addr);
+
+  if (!itf)
+    return;
+
+  itf->SendUdp(*this, addr, port, std::move(buf));
+}
+
+void ebbrt::NetworkManager::Interface::SendUdp(UdpPcb& pcb, Ipv4Address addr,
+                                               uint16_t port,
+                                               std::unique_ptr<IOBuf> buf) {
+  auto itf_addr = Address();
+  Ipv4Address src_addr;
+  if (!itf_addr) {
+    src_addr = Ipv4Address::Any();
+  } else {
+    src_addr = itf_addr->address;
+  }
+
+  auto src_port = pcb.entry_->port;
+  // Bind port if not already bound
+  if (!src_port)
+    throw std::runtime_error("Send on unbound pcb");
+
+  auto header_buf = std::unique_ptr<MutUniqueIOBuf>(new MutUniqueIOBuf(
+      sizeof(UdpHeader) + sizeof(Ipv4Header) + sizeof(EthernetHeader)));
+
+  header_buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
+
+  auto dp = header_buf->GetMutDataPointer();
+  auto& udp_header = dp.Get<UdpHeader>();
+  udp_header.src_port = htons(src_port);
+  udp_header.dst_port = htons(port);
+  udp_header.length = htons(buf->ComputeChainDataLength() + sizeof(UdpHeader));
+  udp_header.checksum = 0;
+
+  header_buf->AppendChain(std::move(buf));
+
+  auto csum = IpPseudoCsum(*header_buf, kIpProtoUDP, src_addr, addr);
+
+  if (unlikely(csum == 0x0000))
+    csum = 0xffff;
+
+  udp_header.checksum = csum;
+
+  kassert(IpPseudoCsum(*header_buf, kIpProtoUDP, src_addr, addr) == 0);
+
+  SendIp(std::move(header_buf), src_addr, addr, kIpProtoUDP);
+}
+
+void ebbrt::NetworkManager::Interface::SendIp(std::unique_ptr<MutIOBuf> buf,
+                                              Ipv4Address src, Ipv4Address dst,
+                                              uint8_t proto) {
+  buf->Retreat(sizeof(Ipv4Header));
+  auto dp = buf->GetMutDataPointer();
+  auto& ih = dp.Get<Ipv4Header>();
+  ih.version_ihl = 4 << 4 | 5;
+  ih.dscp_ecn = 0;
+  ih.length = ntohs(buf->ComputeChainDataLength());
+  ih.id = 0;
+  ih.flags_fragoff = 0;
+  ih.ttl = kIpDefaultTtl;
+  ih.proto = proto;
+  ih.chksum = 0;
+  ih.src = src;
+  ih.dst = dst;
+  ih.chksum = ih.ComputeChecksum();
+
+  kassert(ih.ComputeChecksum() == 0);
+
+  EthArpSend(kEthTypeIp, ih, std::move(buf));
+}
+
+ebbrt::Future<void> ebbrt::NetworkManager::StartDhcp() {
+  if (interface_)
+    return interface_->StartDhcp();
+
+  return MakeFailedFuture<void>(
+      std::make_exception_ptr(std::runtime_error("No interface to DHCP")));
+}
+
+ebbrt::NetworkManager::Interface*
+ebbrt::NetworkManager::IpRoute(Ipv4Address dest) {
+  // Find first matching interface
+  if (!interface_)
+    return nullptr;
+
+  return &*interface_;
 }
 
 // void ebbrt::NetworkManager::Interface::Send(std::unique_ptr<IOBuf>&& b) {

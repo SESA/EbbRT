@@ -172,6 +172,7 @@ template <typename VirtType> class VirtioDriver {
       for (const auto& buf : *bufs) {
         auto addr = buf.Data();
         auto size = buf.Length();
+        kprintf("Size %d\n", size);
         auto& desc = desc_[free_head_];
         desc.addr = reinterpret_cast<uint64_t>(addr);
         desc.len = size;

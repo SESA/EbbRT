@@ -7,13 +7,14 @@
 
 namespace ebbrt {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-constexpr uint16_t htons(uint16_t data) {
-  return ((data & 0xff00) >> 8) | ((data & 0xff) << 8);
-}
+constexpr uint32_t htonl(uint32_t data) { return __builtin_bswap32(data); }
+constexpr uint16_t htons(uint16_t data) { return __builtin_bswap16(data); }
 #else
+constexpr uint32_t htonl(uint32_t data) { return data; }
 constexpr uint16_t htons(uint16_t data) { return data; }
 #endif
+constexpr uint32_t ntohl(uint32_t data) { return htonl(data); }
 constexpr uint16_t ntohs(uint16_t data) { return htons(data); }
-}
+}  // namespace ebbrt
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_NETMISC_H_

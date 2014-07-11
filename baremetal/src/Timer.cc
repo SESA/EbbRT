@@ -65,7 +65,11 @@ void ebbrt::Timer::SetTimer(std::chrono::microseconds from_now) {
     ticks >>= 1;
     divider++;
   }
-  kbugon(divider > 7);  // max can divide by 128 (2^7)
+  if (divider > 7) {
+    divider = 7;
+    ticks = 0xFFFFFFFF;
+  }
+  kbugon(divider > 7, "Divider too Large!\n");  // max can divide by 128 (2^7)
   uint32_t divider_set;
   if (divider == -1) {
     divider_set = 0xb;
