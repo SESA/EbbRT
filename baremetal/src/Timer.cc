@@ -13,24 +13,25 @@ const constexpr ebbrt::EbbId ebbrt::Timer::static_id;
 ebbrt::Timer::Timer() {
   auto interrupt = event_manager->AllocateVector([this]() {
     auto now = clock::Wall::Now().time_since_epoch();
-    kassert(!timers_.empty());
-    while (!timers_.empty() && timers_.begin()->first <= now) {
-      auto& kv = *timers_.begin();
-      auto& repeat_us = std::get<1>(kv.second);
-      auto f = std::get<0>(timers_.begin()->second);
-      // if a timer needs repeating, we put it in the map
-      if (repeat_us != std::chrono::microseconds::zero()) {
-        timers_.emplace(std::piecewise_construct,
-                        std::forward_as_tuple(now + repeat_us),
-                        std::move(kv.second));
+    while (!timers_.empty() && timers_.begin()->fire_time_ <= now) {
+      auto& hook = *timers_.begin();
+
+      // remove from the set
+      timers_.erase(hook);
+
+      // If it needs repeating, put it back in with the updated time
+      if (hook.repeat_us_ != std::chrono::microseconds::zero()) {
+        hook.fire_time_ = now + hook.repeat_us_;
+        timers_.insert(hook);
       }
-      timers_.erase(timers_.begin());
-      f();
+
+      hook.Fire();
+
       now = clock::Wall::Now().time_since_epoch();
     }
     if (!timers_.empty()) {
       SetTimer(std::chrono::duration_cast<std::chrono::microseconds>(
-          timers_.begin()->first - now));
+          timers_.begin()->fire_time_ - now));
     }
   });
 
@@ -80,15 +81,30 @@ void ebbrt::Timer::SetTimer(std::chrono::microseconds from_now) {
   msr::Write(msr::kX2apicInitCount, ticks);
 }
 
-void ebbrt::Timer::Start(std::chrono::microseconds timeout,
-                         std::function<void()> f, bool repeat) {
+void ebbrt::Timer::StopTimer() { msr::Write(msr::kX2apicInitCount, 0); }
+
+void ebbrt::Timer::Start(Hook& hook, std::chrono::microseconds timeout,
+                         bool repeat) {
   auto now = clock::Wall::Now().time_since_epoch();
-  auto when = now + timeout;
-  if (timers_.empty() || timers_.begin()->first > when) {
+  hook.fire_time_ = now + timeout;
+  if (timers_.empty() || *timers_.begin() > hook) {
     SetTimer(timeout);
   }
 
-  auto repeat_us = repeat ? timeout : std::chrono::microseconds::zero();
-  timers_.emplace(std::piecewise_construct, std::forward_as_tuple(when),
-                  std::forward_as_tuple(std::move(f), repeat_us));
+  hook.repeat_us_ = repeat ? timeout : std::chrono::microseconds::zero();
+  timers_.insert(hook);
+}
+
+void ebbrt::Timer::Stop(Hook& hook) {
+  timers_.erase(hook);
+
+  if (timers_.empty()) {
+    StopTimer();
+  } else {
+    auto now = clock::Wall::Now().time_since_epoch();
+    auto fire_time = timers_.begin()->fire_time_;
+    if (now < fire_time)
+      SetTimer(std::chrono::duration_cast<std::chrono::microseconds>(fire_time -
+                                                                     now));
+  }
 }

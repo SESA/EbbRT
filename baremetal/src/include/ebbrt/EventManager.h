@@ -18,13 +18,14 @@
 #include <ebbrt/Main.h>
 #include <ebbrt/MoveLambda.h>
 #include <ebbrt/Smp.h>
+#include <ebbrt/Timer.h>
 #include <ebbrt/Trans.h>
 #include <ebbrt/VMemAllocator.h>
 #include <ebbrt/Cpu.h>
 
 namespace ebbrt {
 
-class EventManager {
+class EventManager : Timer::Hook {
   typedef boost::container::flat_map<size_t, ebbrt::EventManager*> RepMap;
 
  public:
@@ -77,6 +78,7 @@ class EventManager {
   uint32_t GetEventId();
   std::unordered_map<__gthread_key_t, void*>& GetTlsMap();
   void DoRcu(MovableFunction<void()> func);
+  void Fire() override;
 
  private:
   template <typename F> void InvokeFunction(F&& f);

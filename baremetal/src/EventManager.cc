@@ -12,7 +12,6 @@
 #include <ebbrt/Cpu.h>
 #include <ebbrt/LocalIdMap.h>
 #include <ebbrt/PageAllocator.h>
-#include <ebbrt/Timer.h>
 #include <ebbrt/Trace.h>
 #include <ebbrt/VMem.h>
 
@@ -363,7 +362,8 @@ void ebbrt::EventManager::ReceiveToken() {
   StartTimer();
 }
 
-void ebbrt::EventManager::CheckGeneration() {
+// Check Generation
+void ebbrt::EventManager::Fire() {
   if (generation_count_[pending_generation_ % 2] == 0) {
     // generation complete
     PassToken();
@@ -383,7 +383,7 @@ void ebbrt::EventManager::CheckGeneration() {
 }
 
 void ebbrt::EventManager::StartTimer() {
-  timer->Start(std::chrono::milliseconds(10), [this]() { CheckGeneration(); },
+  timer->Start(*this, std::chrono::milliseconds(10),
                /* repeat = */ false);
 }
 

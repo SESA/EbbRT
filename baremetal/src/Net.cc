@@ -196,16 +196,12 @@ void ebbrt::NetworkManager::Interface::DhcpDiscover() {
   dhcp_pcb_.tries++;
   auto timeout =
       std::chrono::seconds(dhcp_pcb_.tries < 6 ? 1 << dhcp_pcb_.tries : 60);
-  timer->Start(timeout, [this]() {
-                          std::lock_guard<std::mutex> guard(dhcp_pcb_.lock);
-                          if (dhcp_pcb_.state == DhcpPcb::State::kSelecting)
-                            DhcpDiscover();
-                        },
-               /* repeat = */ false);
+  timer->Start(dhcp_pcb_, timeout, /* repeat = */ false);
 }
 
 void ebbrt::NetworkManager::Interface::DhcpHandleOffer(
     const DhcpMessage& dhcp_message) {
+  timer->Stop(dhcp_pcb_);
   auto server_id_opt = DhcpGetOptionLong(dhcp_message, kDhcpOptionServerId);
   if (!server_id_opt)
     return;
@@ -240,25 +236,56 @@ void ebbrt::NetworkManager::Interface::DhcpHandleOffer(
   dhcp_pcb_.tries++;
   auto timeout =
       std::chrono::seconds(dhcp_pcb_.tries < 6 ? 1 << dhcp_pcb_.tries : 60);
-  timer->Start(timeout, [this]() {
-                          std::lock_guard<std::mutex> guard(dhcp_pcb_.lock);
-                          if (dhcp_pcb_.state == DhcpPcb::State::kRequesting)
-                            kabort("UNIMPLEMENTED: Dhcp request timeout\n");
-                        },
+  timer->Start(dhcp_pcb_, timeout,
                /* repeat = */ false);
+}
+
+void ebbrt::NetworkManager::Interface::DhcpPcb::Fire() {
+  std::lock_guard<std::mutex> guard(lock);
+  switch (state) {
+  case DhcpPcb::State::kRequesting: {
+    kabort("UNIMPLEMENTED: Dhcp request timeout\n");
+    break;
+  }
+  case DhcpPcb::State::kSelecting: {
+    auto itf =
+        boost::intrusive::get_parent_from_member(this, &Interface::dhcp_pcb_);
+    itf->DhcpDiscover();
+    break;
+  }
+  case DhcpPcb::State::kBound: {
+    auto now = ebbrt::clock::Wall::Now();
+
+    if (now > lease_time) {
+      kabort("UNIMPLENTED: DHCP lease expired\n");
+    }
+
+    if (now > renewal_time) {
+      kabort("UNIMPLEMENTED: DHCP renewal\n");
+    }
+
+    if (now > rebind_time) {
+      kabort("UNIMPLEMENTED: DHCP rebind\n");
+    }
+    break;
+  }
+  default: { break; }
+  }
 }
 
 void
 ebbrt::NetworkManager::Interface::DhcpHandleAck(const DhcpMessage& message) {
+  timer->Stop(dhcp_pcb_);
+
+  auto now = ebbrt::clock::Wall::Now();
+
   auto lease_secs_opt = DhcpGetOptionLong(message, kDhcpOptionLeaseTime);
 
   auto lease_time = lease_secs_opt
                         ? std::chrono::seconds(ntohl(*lease_secs_opt))
                         : std::chrono::seconds::zero();
 
-  timer->Start(lease_time,
-               [this]() { kabort("UNIMPLEMENTED: Dhcp lease expired\n"); },
-               /* repeat = */ false);
+  dhcp_pcb_.lease_time = now + lease_time;
 
   auto renew_secs_opt = DhcpGetOptionLong(message, kDhcpOptionRenewalTime);
 
@@ -266,9 +293,7 @@ ebbrt::NetworkManager::Interface::DhcpHandleAck(const DhcpMessage& message) {
                           ? std::chrono::seconds(ntohl(*renew_secs_opt))
                           : lease_time / 2;
 
-  timer->Start(renewal_time,
-               [this]() { kabort("UNIMPLEMENTED: Dhcp renewal\n"); },
-               /* repeat = */ false);
+  dhcp_pcb_.renewal_time = now + renewal_time;
 
   auto rebind_secs_opt = DhcpGetOptionLong(message, kDhcpOptionRebindingTime);
 
@@ -276,9 +301,9 @@ ebbrt::NetworkManager::Interface::DhcpHandleAck(const DhcpMessage& message) {
                          ? std::chrono::seconds(ntohl(*rebind_secs_opt))
                          : lease_time;
 
-  timer->Start(rebind_time,
-               [this]() { kabort("UNIMPLEMENTED: Dhcp rebind\n"); },
-               /* repeat = */ false);
+  dhcp_pcb_.rebind_time = now + rebind_time;
+
+  timer->Start(dhcp_pcb_, renewal_time, /* repeat = */ false);
 
   auto addr = new ItfAddress();
 

@@ -6,6 +6,7 @@
 #define BAREMETAL_SRC_INCLUDE_EBBRT_NET_H_
 
 #include <ebbrt/AtomicUniquePtr.h>
+#include <ebbrt/Clock.h>
 #include <ebbrt/EventManager.h>
 #include <ebbrt/IOBuf.h>
 #include <ebbrt/NetDhcp.h>
@@ -109,13 +110,18 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     Future<void> StartDhcp();
 
    private:
-    struct DhcpPcb : public CacheAligned {
+    struct DhcpPcb : public CacheAligned, public Timer::Hook {
+      void Fire() override;
+
       std::mutex lock;
       UdpPcb udp_pcb;
       enum State { kInactive, kSelecting, kRequesting, kBound } state;
       uint32_t xid;
       size_t tries;
       size_t options_len;
+      ebbrt::clock::Wall::time_point lease_time;
+      ebbrt::clock::Wall::time_point renewal_time;
+      ebbrt::clock::Wall::time_point rebind_time;
       Promise<void> complete;
     };
 
