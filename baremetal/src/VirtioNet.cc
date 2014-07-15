@@ -331,7 +331,6 @@ void ebbrt::VirtioNetDriver::Send(std::unique_ptr<IOBuf> buf) {
   // TODO(dschatz): Use indirect descriptors to avoid this copy
   auto data = b->MutData() + sizeof(VirtioNetHeader);
   for (auto& buf_it : *buf) {
-    kprintf("Copy %d\n", buf_it.Length());
     memcpy(data, buf_it.Data(), buf_it.Length());
     data += buf_it.Length();
   }

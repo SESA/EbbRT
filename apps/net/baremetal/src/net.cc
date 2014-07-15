@@ -7,9 +7,10 @@
 #include <ebbrt/Net.h>
 #include <ebbrt/StaticIOBuf.h>
 
-ebbrt::NetworkManager::UdpPcb pcb;
+ebbrt::NetworkManager::TcpPcb pcb;
 
 void AppMain() {
+  pcb.Bind(54321);
   // pcb.Bind(12345);
   // auto buf =
   //     std::unique_ptr<ebbrt::StaticIOBuf>(new ebbrt::StaticIOBuf("test"));

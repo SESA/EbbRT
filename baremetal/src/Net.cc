@@ -4,6 +4,8 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include <ebbrt/Net.h>
 
+#include <cinttypes>
+
 #include <ebbrt/NetChecksum.h>
 #include <ebbrt/NetIcmp.h>
 #include <ebbrt/NetUdp.h>
@@ -280,6 +282,10 @@ ebbrt::NetworkManager::Interface::DhcpHandleAck(const DhcpMessage& message) {
 
   auto addr = new ItfAddress();
 
+  const auto& print_addr = message.yiaddr.toArray();
+  kprintf("Dhcp Complete: %" PRIu8 ".%" PRIu8 ".%" PRIu8 ".%" PRIu8 "\n",
+          print_addr[0], print_addr[1], print_addr[2], print_addr[3]);
+
   addr->address = message.yiaddr;
 
   auto netmask_opt = DhcpGetOptionLong(message, kDhcpOptionSubnetMask);
@@ -452,7 +458,7 @@ ebbrt::NetworkManager::Interface::ReceiveIp(EthernetHeader& eth_header,
     break;
   }
   case kIpProtoTCP: {
-    kprintf("Tcp\n");
+    ReceiveTcp(ip_header, std::move(buf));
     break;
   }
   }
@@ -636,7 +642,7 @@ void ebbrt::NetworkManager::Interface::Send(std::unique_ptr<IOBuf> b) {
 
 void ebbrt::NetworkManager::UdpPcb::UdpEntryDeleter::operator()(UdpEntry* e) {
   if (e->port) {
-    network_manager->port_allocator_->Free(e->port);
+    network_manager->udp_port_allocator_->Free(e->port);
     std::lock_guard<std::mutex> guard(network_manager->udp_write_lock_);
     network_manager->udp_pcbs_.erase(*e);
     e->reading.store(false, std::memory_order_release);
@@ -646,7 +652,7 @@ void ebbrt::NetworkManager::UdpPcb::UdpEntryDeleter::operator()(UdpEntry* e) {
 
 uint16_t ebbrt::NetworkManager::UdpPcb::Bind(uint16_t port) {
   if (!port) {
-    auto ret = network_manager->port_allocator_->Allocate();
+    auto ret = network_manager->udp_port_allocator_->Allocate();
     if (!ret)
       throw std::runtime_error("Failed to allocate ephemeral port");
 
@@ -654,7 +660,10 @@ uint16_t ebbrt::NetworkManager::UdpPcb::Bind(uint16_t port) {
   }
   // TODO(dschatz): check port is free
   entry_->port = port;
-  network_manager->udp_pcbs_.insert(*entry_);
+  {
+    std::lock_guard<std::mutex> guard(network_manager->udp_write_lock_);
+    network_manager->udp_pcbs_.insert(*entry_);
+  }
   entry_->reading.store(true, std::memory_order_release);
   return port;
 }
@@ -754,6 +763,117 @@ ebbrt::NetworkManager::IpRoute(Ipv4Address dest) {
     return nullptr;
 
   return &*interface_;
+}
+
+void ebbrt::NetworkManager::TcpPcb::TcpEntryDeleter::operator()(TcpEntry* e) {
+  if (e->port) {
+    network_manager->tcp_port_allocator_->Free(e->port);
+    std::lock_guard<std::mutex> guard(network_manager->tcp_write_lock_);
+    network_manager->tcp_pcbs_.erase(*e);
+  }
+  event_manager->DoRcu([e]() { delete e; });
+}
+
+uint16_t ebbrt::NetworkManager::TcpPcb::Bind(uint16_t port) {
+  if (!port) {
+    auto ret = network_manager->tcp_port_allocator_->Allocate();
+    if (!ret)
+      throw std::runtime_error("Failed to allocate ephemeral port");
+
+    port = *ret;
+  }
+  // TODO(dschatz): check port is free
+  entry_->port = port;
+  {
+    std::lock_guard<std::mutex> guard(network_manager->tcp_write_lock_);
+    network_manager->tcp_pcbs_.insert(*entry_);
+  }
+  return port;
+}
+
+void
+ebbrt::NetworkManager::Interface::ReceiveTcp(const Ipv4Header& ih,
+                                             std::unique_ptr<MutIOBuf> buf) {
+  auto packet_len = buf->ComputeChainDataLength();
+
+  // Ensure we have a header
+  if (unlikely(packet_len < sizeof(TcpHeader)))
+    return;
+
+  auto dp = buf->GetDataPointer();
+  const auto& tcp_header = dp.Get<TcpHeader>();
+
+  // drop broadcast/multicast
+  auto addr = Address();
+  if (unlikely(addr->isBroadcast(ih.dst) || ih.dst.isMulticast()))
+    return;
+
+  if (unlikely(IpPseudoCsum(*buf, ih.proto, ih.src, ih.dst)))
+    return;
+
+  TcpInfo info = {.src_port = ntohs(tcp_header.src_port),
+                  .dst_port = ntohs(tcp_header.dst_port),
+                  .seqno = ntohl(tcp_header.seqno),
+                  .ackno = ntohl(tcp_header.ackno),
+                  .tcplen =
+                      packet_len - tcp_header.HdrLen() +
+                      ((tcp_header.Flags() & (kTcpFin | kTcpSyn)) ? 1 : 0)};
+
+  auto entry = network_manager->tcp_pcbs_.find(ntohs(tcp_header.dst_port));
+
+  if (!entry) {
+    TcpReset(info.ackno, info.seqno + info.tcplen, ih.dst, ih.src,
+             info.dst_port, info.src_port);
+    return;
+  } else {
+    // Check connected pcbs
+
+    TcpListenInput(ih, tcp_header, info, std::move(buf));
+  }
+}
+
+void ebbrt::NetworkManager::Interface::TcpListenInput(
+    const Ipv4Header& ih, const TcpHeader& th, const TcpInfo& info,
+    std::unique_ptr<MutIOBuf> buf) {
+  auto flags = th.Flags();
+
+  if (flags & kTcpRst)
+    return;
+
+  if (flags & kTcpAck) {
+    TcpReset(info.ackno, info.seqno + info.tcplen, ih.dst, ih.src,
+             info.dst_port, info.src_port);
+  } else if (flags & kTcpSyn) {
+    // TcpPcb new_pcb;
+
+    // auto& entry = *(new_pcb.entry_);
+  }
+}
+
+void ebbrt::NetworkManager::Interface::TcpReset(uint32_t seqno, uint32_t ackno,
+                                                const Ipv4Address& local_ip,
+                                                const Ipv4Address& remote_ip,
+                                                uint16_t local_port,
+                                                uint16_t remote_port) {
+  auto buf = std::unique_ptr<MutUniqueIOBuf>(new MutUniqueIOBuf(
+      sizeof(TcpHeader) + sizeof(Ipv4Header) + sizeof(EthernetHeader)));
+
+  buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
+
+  auto dp = buf->GetMutDataPointer();
+  auto& tcp_header = dp.Get<TcpHeader>();
+
+  tcp_header.src_port = htons(local_port);
+  tcp_header.dst_port = htons(remote_port);
+  tcp_header.seqno = htonl(seqno);
+  tcp_header.ackno = htonl(ackno);
+  tcp_header.SetHdrLenFlags(sizeof(TcpHeader), kTcpRst | kTcpAck);
+  tcp_header.wnd = htons(kTcpWnd);
+  tcp_header.checksum = 0;
+  tcp_header.urgp = 0;
+  tcp_header.checksum = IpPseudoCsum(*buf, kIpProtoTCP, local_ip, remote_ip);
+
+  SendIp(std::move(buf), local_ip, remote_ip, kIpProtoTCP);
 }
 
 // void ebbrt::NetworkManager::Interface::Send(std::unique_ptr<IOBuf>&& b) {

@@ -89,6 +89,8 @@ class __attribute__((packed)) Ipv4Address {
     return *reinterpret_cast<const uint32_t*>(addr_.data());
   }
 
+  const std::array<uint8_t, 4>& toArray() const { return addr_; }
+
  private:
   std::array<uint8_t, 4> addr_;
 

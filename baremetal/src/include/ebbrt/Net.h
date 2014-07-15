@@ -11,6 +11,7 @@
 #include <ebbrt/NetDhcp.h>
 #include <ebbrt/NetEth.h>
 #include <ebbrt/NetIp.h>
+#include <ebbrt/NetTcp.h>
 #include <ebbrt/PoolAllocator.h>
 #include <ebbrt/RcuTable.h>
 #include <ebbrt/StaticSharedEbb.h>
@@ -49,6 +50,26 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
       void operator()(UdpEntry* e);
     };
     std::unique_ptr<UdpEntry, UdpEntryDeleter> entry_;
+
+    friend class Interface;
+  };
+
+  struct TcpEntry {
+    RcuHListHook hook;
+    uint16_t port{0};
+    enum State { kListen, kSynSent, kSynReceived } state;
+  };
+
+  class TcpPcb {
+   public:
+    TcpPcb() : entry_{new TcpEntry()} {}
+    uint16_t Bind(uint16_t port);
+
+   private:
+    struct TcpEntryDeleter {
+      void operator()(TcpEntry* e);
+    };
+    std::unique_ptr<TcpEntry, TcpEntryDeleter> entry_;
 
     friend class Interface;
   };
@@ -103,6 +124,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     void ReceiveIcmp(EthernetHeader& eh, Ipv4Header& ih,
                      std::unique_ptr<MutIOBuf> buf);
     void ReceiveUdp(Ipv4Header& ih, std::unique_ptr<MutIOBuf> buf);
+    void ReceiveTcp(const Ipv4Header& ih, std::unique_ptr<MutIOBuf> buf);
     void ReceiveDhcp(Ipv4Address from_addr, uint16_t from_port,
                      std::unique_ptr<MutIOBuf> buf);
     void EthArpSend(uint16_t proto, const Ipv4Header& ih,
@@ -125,6 +147,11 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     void DhcpDiscover();
     void DhcpHandleOffer(const DhcpMessage& message);
     void DhcpHandleAck(const DhcpMessage& message);
+    void TcpReset(uint32_t seqno, uint32_t ackno, const Ipv4Address& local_ip,
+                  const Ipv4Address& remote_ip, uint16_t local_port,
+                  uint16_t remote_port);
+    void TcpListenInput(const Ipv4Header& ih, const TcpHeader& th,
+                        const TcpInfo& info, std::unique_ptr<MutIOBuf> buf);
 
     atomic_unique_ptr<ItfAddress, ItfAddressDeleter> address_;
     EthernetDevice& ether_dev_;
@@ -144,12 +171,18 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
   arp_cache_{8};  // 256 buckets
   RcuHashTable<UdpEntry, uint16_t, &UdpEntry::hook, &UdpEntry::port> udp_pcbs_{
       8};  // 256 buckets
-  EbbRef<PoolAllocator<uint16_t, 25>> port_allocator_{
+  RcuHashTable<TcpEntry, uint16_t, &TcpEntry::hook, &TcpEntry::port> tcp_pcbs_{
+      8};  // 256 buckets
+  EbbRef<PoolAllocator<uint16_t, 25>> udp_port_allocator_{
+      PoolAllocator<uint16_t, 25>::Create(49152, 65535,
+                                          ebb_allocator->AllocateLocal())};
+  EbbRef<PoolAllocator<uint16_t, 25>> tcp_port_allocator_{
       PoolAllocator<uint16_t, 25>::Create(49152, 65535,
                                           ebb_allocator->AllocateLocal())};
 
   alignas(cache_size) std::mutex arp_write_lock_;
   alignas(cache_size) std::mutex udp_write_lock_;
+  alignas(cache_size) std::mutex tcp_write_lock_;
 
   friend void ebbrt::Main(ebbrt::multiboot::Information* mbi);
 };
