@@ -23,6 +23,15 @@ class Messenger : public StaticSharedEbb<Messenger> {
     NetworkId() {}
     explicit NetworkId(boost::asio::ip::address_v4 ip) : ip_(std::move(ip)) {}
 
+    explicit NetworkId(std::string str) {
+      if (str.size() != 4)
+        throw std::runtime_error(
+            "Cannot build NetworkId from string, size mismatch");
+
+      const auto& addr = reinterpret_cast<const boost::asio::ip::address_v4::bytes_type&>(*str.data());
+      ip_ = boost::asio::ip::address_v4(addr);
+    }
+
     std::string ToBytes() {
       auto a = ip_.to_bytes();
       return std::string(reinterpret_cast<char*>(a.data()), a.size());

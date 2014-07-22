@@ -37,6 +37,10 @@ template <class T> class EbbRef {
     active_context->SetLocalEntry(id, le);
   }
 
+  operator EbbId() const {
+    return ebbid_;
+  }
+
  private:
   EbbId ebbid_;
 };

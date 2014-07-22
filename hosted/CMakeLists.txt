@@ -41,4 +41,5 @@ add_library(EbbRT
   ${CMAKE_SOURCE_DIR}/src/Messenger.cc
   ${CMAKE_SOURCE_DIR}/src/NodeAllocator.cc
   ${CMAKE_SOURCE_DIR}/src/Runtime.cc
+  ${CMAKE_SOURCE_DIR}/src/Random.cc
 )
