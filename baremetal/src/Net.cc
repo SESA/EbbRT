@@ -73,8 +73,11 @@ void ebbrt::NetworkManager::AcquireIPAddress() {
   auto fdt = boot_fdt::Get();
   auto net = static_cast<uint8_t>(
       fdt.GetProperty16(fdt.GetNodeOffset("/runtime"), "net"));
+  auto address = static_cast<uint32_t>(
+      fdt.GetProperty32(fdt.GetNodeOffset("/runtime"), "address"));
+
   ip_addr_t addr;
-  IP4_ADDR(&addr, 10, net, net,
+  IP4_ADDR(&addr, 10, ((address>>16)&0xFF), ((address>>8)&0xFF),
            mac_addr[5]);  // set addr to 10.net.net.last_mac_octet
   ip_addr_t netmask;
   IP4_ADDR(&netmask, 255, 255, 255, 0);  // set netmask to 255.255.255.0
