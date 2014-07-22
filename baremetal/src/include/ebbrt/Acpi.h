@@ -8,6 +8,7 @@
 namespace ebbrt {
 namespace acpi {
 void BootInit();
+void PowerOff();
 }
 }
 

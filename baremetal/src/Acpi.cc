@@ -5,10 +5,13 @@
 #include <ebbrt/Acpi.h>
 
 #include <cinttypes>
+#include <mutex>
 
+#include <ebbrt/Clock.h>
 #include <ebbrt/Cpu.h>
 #include <ebbrt/Debug.h>
 #include <ebbrt/E820.h>
+#include <ebbrt/Io.h>
 #include <ebbrt/Numa.h>
 #include <ebbrt/VMem.h>
 
@@ -187,6 +190,11 @@ void ParseSrat(const ACPI_TABLE_SRAT* srat) {
 }
 }  // namespace
 
+void ebbrt::acpi::PowerOff() {
+  ebbrt::kprintf("Power Off.\n");
+  AcpiEnterSleepState(ACPI_STATE_S5);
+}
+
 void ebbrt::acpi::BootInit() {
   auto status =
       AcpiInitializeTables(initial_table_storage, ACPI_MAX_INIT_TABLES, false);
@@ -264,19 +272,21 @@ ACPI_STATUS AcpiOsPhysicalTableOverride(ACPI_TABLE_HEADER* ExistingTable,
 }
 
 ACPI_STATUS AcpiOsCreateLock(ACPI_SPINLOCK* OutHandle) {
-  EBBRT_UNIMPLEMENTED();
+  *OutHandle = new std::mutex();
   return AE_OK;
 }
 
 void AcpiOsDeleteLock(ACPI_SPINLOCK Handle) { EBBRT_UNIMPLEMENTED(); }
 
 ACPI_CPU_FLAGS AcpiOsAcquireLock(ACPI_SPINLOCK Handle) {
-  EBBRT_UNIMPLEMENTED();
-  return 0;
+  //auto mut = static_cast<std::mutex *>(Handle);
+  //mut->lock();
+  return AE_OK;
 }
 
 void AcpiOsReleaseLock(ACPI_SPINLOCK Handle, ACPI_CPU_FLAGS Flags) {
-  EBBRT_UNIMPLEMENTED();
+  //auto mut = static_cast<std::mutex *>(Handle);
+  //mut->unlock();
 }
 
 ACPI_STATUS AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits,
@@ -360,17 +370,48 @@ void AcpiOsWaitEventsComplete(void) { EBBRT_UNIMPLEMENTED(); }
 
 void AcpiOsSleep(UINT64 Milliseconds) { EBBRT_UNIMPLEMENTED(); }
 
-void AcpiOsStall(UINT32 Microseconds) { EBBRT_UNIMPLEMENTED(); }
+void AcpiOsStall(UINT32 Microseconds) { 
+  auto duration = std::chrono::microseconds(Microseconds);
+  auto end = ebbrt::clock::Wall::Now() + duration;
+  while (ebbrt::clock::Wall::Now() < end)
+    ;
+}
 
 ACPI_STATUS AcpiOsReadPort(ACPI_IO_ADDRESS Address, UINT32* Value,
                            UINT32 Width) {
-  EBBRT_UNIMPLEMENTED();
+  switch(Width){
+    case 8:
+      *Value = ebbrt::io::In8(Address);
+      break;
+    case 16:
+      *Value = ebbrt::io::In16(Address);
+      break;
+    case 32:
+      *Value = ebbrt::io::In32(Address);
+      break;
+    default:
+      return AE_BAD_PARAMETER;
+  };
+
   return AE_OK;
 }
 
 ACPI_STATUS AcpiOsWritePort(ACPI_IO_ADDRESS Address, UINT32 Value,
                             UINT32 Width) {
-  EBBRT_UNIMPLEMENTED();
+  switch(Width){
+    case 8:
+      ebbrt::io::Out8(Address, Value);
+      break;
+    case 16:
+      ebbrt::io::Out16(Address, Value);
+      break;
+    case 32:
+      ebbrt::io::Out32(Address, Value);
+      break;
+    default:
+      return AE_BAD_PARAMETER;
+  
+  };
   return AE_OK;
 }
 
