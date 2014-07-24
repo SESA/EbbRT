@@ -6,9 +6,9 @@
 
 #include <cstdlib>
 
-ebbrt::IOBuf::IOBuf(const uint8_t* buf, size_t capacity) noexcept
-    : data_(buf),
-      length_(capacity) {}
+ebbrt::IOBuf::IOBuf(const uint8_t* data, size_t length) noexcept
+    : data_(data),
+      length_(length) {}
 
 ebbrt::IOBuf::~IOBuf() noexcept {
   while (Next() != this) {
@@ -63,8 +63,8 @@ ebbrt::IOBuf::Iterator ebbrt::IOBuf::end() {
   return Iterator(nullptr, nullptr);
 }
 
-ebbrt::MutIOBuf::MutIOBuf(const uint8_t* buf, size_t capacity) noexcept
-    : IOBuf(buf, capacity) {}
+ebbrt::MutIOBuf::MutIOBuf(const uint8_t* data, size_t length) noexcept
+    : IOBuf(data, length) {}
 
 ebbrt::MutIOBuf::Iterator ebbrt::MutIOBuf::begin() {
   return Iterator(this, this);

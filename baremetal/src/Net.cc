@@ -6,6 +6,7 @@
 
 #include <cinttypes>
 
+#include <ebbrt/IOBufRef.h>
 #include <ebbrt/NetChecksum.h>
 #include <ebbrt/NetIcmp.h>
 #include <ebbrt/NetUdp.h>
@@ -790,16 +791,29 @@ ebbrt::NetworkManager::IpRoute(Ipv4Address dest) {
   return &*interface_;
 }
 
-void ebbrt::NetworkManager::TcpPcb::TcpEntryDeleter::operator()(TcpEntry* e) {
+void ebbrt::NetworkManager::ListeningTcpPcb::ListeningTcpEntryDeleter::
+operator()(ListeningTcpEntry* e) {
+  kabort("UNIMPLEMENTED: ListeningTcpEntry Delete\n");
   if (e->port) {
     network_manager->tcp_port_allocator_->Free(e->port);
-    std::lock_guard<std::mutex> guard(network_manager->tcp_write_lock_);
-    network_manager->tcp_pcbs_.erase(*e);
+    std::lock_guard<std::mutex> guard(
+        network_manager->listening_tcp_write_lock_);
+    network_manager->listening_tcp_pcbs_.erase(*e);
   }
   event_manager->DoRcu([e]() { delete e; });
 }
 
-uint16_t ebbrt::NetworkManager::TcpPcb::Bind(uint16_t port) {
+void ebbrt::NetworkManager::TcpPcb::TcpEntryDeleter::operator()(TcpEntry* e) {
+  // if (e->port) {
+  //   network_manager->tcp_port_allocator_->Free(e->port);
+  //   std::lock_guard<std::mutex> guard(network_manager->tcp_write_lock_);
+  //   network_manager->tcp_pcbs_.erase(*e);
+  // }
+  e->Close();
+}
+
+uint16_t ebbrt::NetworkManager::ListeningTcpPcb::Bind(
+    uint16_t port, MovableFunction<void(TcpPcb)> accept) {
   if (!port) {
     auto ret = network_manager->tcp_port_allocator_->Allocate();
     if (!ret)
@@ -807,13 +821,35 @@ uint16_t ebbrt::NetworkManager::TcpPcb::Bind(uint16_t port) {
 
     port = *ret;
   }
-  // TODO(dschatz): check port is free
+  // TODO(dschatz): else, check port is free and mark it as allocated
+
   entry_->port = port;
+  entry_->accept_fn = std::move(accept);
   {
-    std::lock_guard<std::mutex> guard(network_manager->tcp_write_lock_);
-    network_manager->tcp_pcbs_.insert(*entry_);
+    std::lock_guard<std::mutex> guard(
+        network_manager->listening_tcp_write_lock_);
+    network_manager->listening_tcp_pcbs_.insert(*entry_);
   }
   return port;
+}
+
+void ebbrt::NetworkManager::TcpPcb::InstallHandler(
+    std::unique_ptr<ITcpHandler> handler) {
+  entry_->handler = std::move(handler);
+}
+
+uint16_t ebbrt::NetworkManager::TcpPcb::RemoteWindowRemaining() {
+  return entry_->WindowRemaining();
+}
+
+void ebbrt::NetworkManager::TcpPcb::SetWindowNotify(bool notify) {
+  entry_->window_notify = notify;
+}
+
+void ebbrt::NetworkManager::TcpPcb::Send(std::unique_ptr<IOBuf> buf) {
+  kassert(buf->ComputeChainDataLength() <= RemoteWindowRemaining());
+
+  entry_->Send(std::move(buf));
 }
 
 void
@@ -844,20 +880,64 @@ ebbrt::NetworkManager::Interface::ReceiveTcp(const Ipv4Header& ih,
                       packet_len - tcp_header.HdrLen() +
                       ((tcp_header.Flags() & (kTcpFin | kTcpSyn)) ? 1 : 0)};
 
-  auto entry = network_manager->tcp_pcbs_.find(ntohs(tcp_header.dst_port));
+  // Only SYN flag set? check listening pcbs
+  auto reset = false;
+  if ((tcp_header.Flags() & (kTcpSyn | kTcpAck)) == kTcpSyn) {
+    auto entry =
+        network_manager->listening_tcp_pcbs_.find(ntohs(tcp_header.dst_port));
 
-  if (!entry) {
-    TcpReset(info.ackno, info.seqno + info.tcplen, ih.dst, ih.src,
-             info.dst_port, info.src_port);
-    return;
+    if (!entry) {
+      reset = true;
+    } else {
+      entry->Input(ih, tcp_header, info, std::move(buf));
+    }
   } else {
-    // Check connected pcbs
+    // Otherwise, check connected pcbs
+    auto key = std::make_tuple(ih.src, info.src_port, info.dst_port);
+    auto entry = network_manager->tcp_pcbs_.find(key);
+    if (!entry) {
+      reset = true;
+    } else {
+      entry->Input(ih, tcp_header, info, std::move(buf));
+    }
+  }
 
-    TcpListenInput(ih, tcp_header, info, std::move(buf));
+  if (reset) {
+    network_manager->TcpReset(info.ackno, info.seqno + info.tcplen, ih.dst,
+                              ih.src, info.dst_port, info.src_port);
   }
 }
 
-void ebbrt::NetworkManager::Interface::TcpListenInput(
+void ebbrt::NetworkManager::TcpEntry::Fire() {
+  timer_set = false;
+  auto now = ebbrt::clock::Wall::Now();
+  if (retransmit != ebbrt::clock::Wall::time_point() && now >= retransmit) {
+    retransmit = ebbrt::clock::Wall::time_point();
+    // Move all unacked segments to the front of the pending segments queue
+    pending_segments.splice(pending_segments.begin(),
+                            std::move(unacked_segments));
+  }
+
+  Output(now);
+  SetTimer(now);
+}
+
+void
+ebbrt::NetworkManager::TcpEntry::SetTimer(ebbrt::clock::Wall::time_point now) {
+  if (timer_set)
+    return;
+
+  if (now >= retransmit)
+    return;
+
+  auto min_timer = retransmit;
+  timer->Start(*this, std::chrono::duration_cast<std::chrono::microseconds>(
+                          min_timer - now),
+               /* repeat = */ false);
+  timer_set = true;
+}
+
+void ebbrt::NetworkManager::ListeningTcpEntry::Input(
     const Ipv4Header& ih, const TcpHeader& th, const TcpInfo& info,
     std::unique_ptr<MutIOBuf> buf) {
   auto flags = th.Flags();
@@ -866,20 +946,366 @@ void ebbrt::NetworkManager::Interface::TcpListenInput(
     return;
 
   if (flags & kTcpAck) {
-    TcpReset(info.ackno, info.seqno + info.tcplen, ih.dst, ih.src,
-             info.dst_port, info.src_port);
+    network_manager->TcpReset(info.ackno, info.seqno + info.tcplen, ih.dst,
+                              ih.src, info.dst_port, info.src_port);
   } else if (flags & kTcpSyn) {
-    // TcpPcb new_pcb;
+    auto& entry = *new TcpEntry(&accept_fn);
 
-    // auto& entry = *(new_pcb.entry_);
+    entry.address = ih.dst;
+    std::get<0>(entry.key) = ih.src;
+    std::get<1>(entry.key) = info.src_port;
+    std::get<2>(entry.key) = info.dst_port;
+    entry.state = TcpEntry::State::kSynReceived;
+    uint32_t start_seq = random::Get();
+    entry.snd_lbb = start_seq;
+    entry.rcv_nxt = info.seqno + info.tcplen;
+    entry.lastack = start_seq;
+    entry.rcv_wnd = ntohs(th.wnd);
+
+    auto buf = std::unique_ptr<MutUniqueIOBuf>(new MutUniqueIOBuf(
+        sizeof(TcpHeader) + sizeof(Ipv4Header) + sizeof(EthernetHeader)));
+    buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
+    auto dp = buf->GetMutDataPointer();
+    auto& tcp_header = dp.Get<TcpHeader>();
+    entry.EnqueueSegment(tcp_header, std::move(buf), kTcpSyn | kTcpAck);
+
+    {
+      std::lock_guard<std::mutex> lock(network_manager->tcp_write_lock_);
+      auto found = network_manager->tcp_pcbs_.find(entry.key);
+      if (!found) {
+        network_manager->tcp_pcbs_.insert(entry);
+      }
+    }
+
+    auto now = ebbrt::clock::Wall::Now();
+    entry.Output(now);
+    entry.SetTimer(now);
   }
 }
 
-void ebbrt::NetworkManager::Interface::TcpReset(uint32_t seqno, uint32_t ackno,
-                                                const Ipv4Address& local_ip,
-                                                const Ipv4Address& remote_ip,
-                                                uint16_t local_port,
-                                                uint16_t remote_port) {
+namespace {
+bool TcpSeqBetween(uint32_t in, uint32_t left, uint32_t right) {
+  return ((right - left) >= (in - left));
+}
+
+bool TcpSeqLT(uint32_t first, uint32_t second) {
+  return ((int32_t)(first - second)) < 0;
+}
+
+bool TcpSeqGT(uint32_t first, uint32_t second) {
+  return ((int32_t)(first - second)) < 0;
+}
+}  // namespace
+
+ebbrt::NetworkManager::TcpEntry::TcpEntry(MovableFunction<void(TcpPcb)>* accept)
+    : accept_fn(accept) {}
+
+void ebbrt::NetworkManager::TcpEntry::Send(std::unique_ptr<IOBuf> buf) {
+  auto header_buf = std::unique_ptr<MutUniqueIOBuf>(new MutUniqueIOBuf(
+      sizeof(TcpHeader) + sizeof(Ipv4Header) + sizeof(EthernetHeader)));
+  header_buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
+  header_buf->PrependChain(std::move(buf));
+  auto dp = header_buf->GetMutDataPointer();
+  auto& tcp_header = dp.Get<TcpHeader>();
+  EnqueueSegment(tcp_header, std::move(header_buf), kTcpAck);
+}
+
+void ebbrt::NetworkManager::TcpEntry::Input(const Ipv4Header& ih,
+                                            const TcpHeader& th,
+                                            const TcpInfo& info,
+                                            std::unique_ptr<MutIOBuf> buf) {
+  auto flags = th.Flags();
+
+  if (flags & kTcpRst)
+    return;
+
+  switch (state) {
+  case kSynReceived:
+    if (flags & kTcpAck) {
+      if (TcpSeqBetween(info.ackno, lastack + 1, snd_lbb)) {
+        state = kEstablished;
+        kassert(accept_fn != nullptr);
+        (*accept_fn)(TcpPcb(this));
+        Receive(ih, th, info, std::move(buf));
+      } else {
+        // TODO(dschatz): reset
+      }
+    } else if ((flags & kTcpSyn) && info.seqno == rcv_nxt - 1) {
+      // Got another copy of the SYN, retransmit
+      // TODO(dschatz): retransmit
+    }
+    break;
+  case kCloseWait:
+  case kEstablished:
+    Receive(ih, th, info, std::move(buf));
+    break;
+  case kLastAck:
+    Receive(ih, th, info, std::move(buf));
+    if (flags & kTcpAck && info.ackno == snd_lbb) {
+      state = kClosed;
+      if (timer_set)
+        timer->Stop(*this);
+      {
+        std::lock_guard<std::mutex> guard(network_manager->tcp_write_lock_);
+        network_manager->tcp_pcbs_.erase(*this);
+      }
+      event_manager->DoRcu([this]() { delete this; });
+    }
+    break;
+  default:
+    kabort("UNIMPLEMENTED: Input State\n");
+  }
+
+  auto now = ebbrt::clock::Wall::Now();
+  Output(now);
+  SetTimer(now);
+}
+
+uint16_t ebbrt::NetworkManager::TcpEntry::WindowRemaining() {
+  int32_t remaining = rcv_wnd - (snd_lbb - lastack);
+  return remaining >= 0 ? remaining : 0;
+}
+
+void ebbrt::NetworkManager::TcpEntry::Receive(const Ipv4Header& ih,
+                                              const TcpHeader& th,
+                                              const TcpInfo& info,
+                                              std::unique_ptr<MutIOBuf> buf) {
+  auto flags = th.Flags();
+
+  rcv_wnd = ntohs(th.wnd);
+
+  // ACK processing
+  if (flags & kTcpAck) {
+    if (TcpSeqLT(lastack, info.ackno)) {
+      // Ack for unacked data
+      lastack = info.ackno;
+      auto it = unacked_segments.begin();
+      while (it != unacked_segments.end()) {
+        if (TcpSeqGT(ntohl(it->th.seqno) + it->SeqLen(), info.ackno))
+          break;
+        auto prev_it = it;
+        ++it;
+        unacked_segments.erase(prev_it);
+      }
+
+      auto it2 = pending_segments.begin();
+      while (it2 != pending_segments.end()) {
+        if (TcpSeqGT(ntohl(it2->th.seqno) + it2->SeqLen(), info.ackno))
+          break;
+        auto prev_it2 = it2;
+        ++it2;
+        pending_segments.erase(prev_it2);
+      }
+
+      if (unacked_segments.empty()) {
+        // disable retransmit timer
+        retransmit = ebbrt::clock::Wall::time_point();
+      }
+      // Notify handler of window inrease
+      if (window_notify)
+        handler->WindowIncrease(WindowRemaining());
+    }
+  }
+
+  // Data processing only if theres data and we are not in the CloseWait state
+  if (info.tcplen > 0 && state < kCloseWait) {
+    if (TcpSeqBetween(rcv_nxt, info.seqno, info.seqno + info.tcplen - 1)) {
+      buf->Advance(rcv_nxt - info.seqno);
+      // TODO(dschatz): This could overrun our window, perhaps we should do
+      // something in that case
+
+      rcv_nxt = info.seqno + info.tcplen;
+
+      // Upcall user application
+      buf->Advance(sizeof(TcpHeader));
+      handler->Receive(std::move(buf));
+
+      if (flags & kTcpFin) {
+        state = kCloseWait;
+        handler->Receive(nullptr);
+      }
+
+    } else if (TcpSeqLT(info.seqno, rcv_nxt)) {
+      kabort("UNIMPLEMENTED: Empty Ack\n");
+    } else {
+      // Out of sequence
+      kabort("UNIMPLEMENTED: OOS: Empty Ack\n");
+    }
+  } else {
+    if (!TcpSeqBetween(info.seqno, rcv_nxt, rcv_nxt + rcv_wnd - 1)) {
+      kabort("UNIMPLEMENTED: empty ack, may need to ack back\n");
+    }
+  }
+}
+
+void ebbrt::NetworkManager::TcpEntry::EnqueueSegment(
+    TcpHeader& th, std::unique_ptr<MutIOBuf> buf, uint16_t flags) {
+  auto packet_len = buf->ComputeChainDataLength();
+  auto tcp_len =
+      packet_len - sizeof(TcpHeader) + ((flags & (kTcpSyn | kTcpFin)) ? 1 : 0);
+  th.src_port = htons(std::get<2>(key));
+  th.dst_port = htons(std::get<1>(key));
+  th.seqno = htonl(snd_lbb);
+  th.SetHdrLenFlags(sizeof(TcpHeader), flags);
+  // ackno, wnd, and checksum are set in Output()
+  th.urgp = 0;
+
+  pending_segments.emplace_back(std::move(buf), th, tcp_len);
+
+  snd_lbb += tcp_len;
+}
+
+size_t
+ebbrt::NetworkManager::TcpEntry::Output(ebbrt::clock::Wall::time_point now) {
+  auto it = pending_segments.begin();
+
+  auto wnd = std::min(kTcpCWnd, rcv_wnd);
+
+  // check unacked first
+  size_t sent = 0;
+  for (; it != pending_segments.end() &&
+             ntohl(it->th.seqno) - lastack + it->tcp_len <= wnd;
+       ++it) {
+    SendSegment(*it);
+    ++sent;
+  }
+
+  // If we sent some segments, add them to the unacked list
+  if (sent) {
+    unacked_segments.splice(unacked_segments.end(), std::move(pending_segments),
+                            pending_segments.begin(), it, sent);
+  } else {
+    if (!pending_segments.empty() && unacked_segments.empty()) {
+      // If we have no outstanding segments to be acked and there is at least
+      // one segment pending, we need either:
+      if (wnd > 0) {
+        // Shrink the front most segment so it will fit in the window
+        kabort("UNIMPLEMENTED: Shrink pending segment to be sent\n");
+      } else {
+        // Set a persist timer to periodically probe for window size changes
+        kabort("UNIMPLEMENTED: Window size probe needed\n");
+      }
+    }
+
+    // We haven't sent out a packet and have data we haven't acked, send an
+    // empty ack
+    if (TcpSeqLT(last_sent_ack, rcv_nxt)) {
+      SendEmptyAck();
+    }
+  }
+
+  if (sent) {
+    retransmit = now + std::chrono::milliseconds(250);
+  }
+
+  return sent;
+}
+
+void ebbrt::NetworkManager::TcpEntry::SendEmptyAck() {
+  auto buf = std::unique_ptr<MutUniqueIOBuf>(new MutUniqueIOBuf(
+      sizeof(TcpHeader) + sizeof(Ipv4Header) + sizeof(EthernetHeader)));
+  buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
+  auto dp = buf->GetMutDataPointer();
+  auto& th = dp.Get<TcpHeader>();
+  th.src_port = htons(std::get<2>(key));
+  th.dst_port = htons(std::get<1>(key));
+  th.seqno = htonl(snd_lbb);
+  th.SetHdrLenFlags(sizeof(TcpHeader), kTcpAck);
+  th.urgp = 0;
+  last_sent_ack = rcv_nxt;
+  th.ackno = htonl(rcv_nxt);
+  th.wnd = htons(kTcpWnd);
+  th.checksum = 0;
+  th.checksum = IpPseudoCsum(*buf, kIpProtoTCP, address, std::get<0>(key));
+
+  network_manager->SendIp(std::move(buf), address, std::get<0>(key),
+                          kIpProtoTCP);
+}
+
+void ebbrt::NetworkManager::TcpEntry::Close() {
+  switch (state) {
+  case kCloseWait:
+    SendFin();
+    state = kLastAck;
+    break;
+  case kClosed:
+    break;
+  default:
+    kabort("UNIMPLEMENTED: Close()\n");
+  }
+}
+
+void ebbrt::NetworkManager::TcpEntry::SendFin() {
+  // Try to add fin to the last segment
+  if (!pending_segments.empty()) {
+    auto& seg = pending_segments.back();
+    auto flags = seg.th.Flags();
+    if (!(flags & (kTcpSyn | kTcpFin | kTcpRst))) {
+      // no syn/fin/rst set
+      seg.th.SetHdrLenFlags(sizeof(TcpHeader), flags | kTcpFin);
+      ++seg.tcp_len;
+      ++snd_lbb;
+      return;
+    }
+  }
+
+  auto buf = std::unique_ptr<MutUniqueIOBuf>(new MutUniqueIOBuf(
+      sizeof(TcpHeader) + sizeof(Ipv4Header) + sizeof(EthernetHeader)));
+  buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
+  auto dp = buf->GetMutDataPointer();
+  auto& tcp_header = dp.Get<TcpHeader>();
+  EnqueueSegment(tcp_header, std::move(buf), kTcpFin | kTcpAck);
+}
+
+void ebbrt::NetworkManager::TcpEntry::SendSegment(TcpSegment& segment) {
+  last_sent_ack = rcv_nxt;
+  segment.th.ackno = htonl(rcv_nxt);
+  segment.th.wnd = htons(kTcpWnd);
+  segment.th.checksum = 0;
+  segment.th.checksum =
+      IpPseudoCsum(*(segment.buf), kIpProtoTCP, address, std::get<0>(key));
+
+  network_manager->SendIp(CreateRefChain(*(segment.buf)), address,
+                          std::get<0>(key), kIpProtoTCP);
+}
+// void ebbrt::NetworkManager::TcpEntry::ParseOptions(const TcpHeader& th) {
+//   auto options_len = th.HdrLen() - sizeof(TcpHeader);
+
+//   size_t index = 0;
+//   while (index < options_len) {
+//     switch (th.options[index]) {
+//     case 0x00: /* End of options */ { return; }
+//     case 0x01: /* NOP */ {
+//       ++index;
+//       break;
+//     }
+//     case 0x02: /* MSS */ {
+//       if (index + 1 >= options_len || th.options[index + 1] != 4 ||
+//           index + 4 >= options_len)
+//         return;
+
+//       auto mss =
+//           ntohs(*reinterpret_cast<const uint16_t*>(&th.options[index +
+// 2]));
+//       mss_ = ((mss > kTcpMss) || (mss == 0)) ? kTcpMss : mss;
+//       index += 4;
+//       break;
+//     }
+//     default: {
+//       if (index + 1 >= options_len || th.options[index + 1] == 0)
+//         return;
+
+//       index += th.options[index + 1];
+//       break;
+//     }
+//   }
+// }
+
+void ebbrt::NetworkManager::TcpReset(uint32_t seqno, uint32_t ackno,
+                                     const Ipv4Address& local_ip,
+                                     const Ipv4Address& remote_ip,
+                                     uint16_t local_port,
+                                     uint16_t remote_port) {
   auto buf = std::unique_ptr<MutUniqueIOBuf>(new MutUniqueIOBuf(
       sizeof(TcpHeader) + sizeof(Ipv4Header) + sizeof(EthernetHeader)));
 
@@ -899,6 +1325,14 @@ void ebbrt::NetworkManager::Interface::TcpReset(uint32_t seqno, uint32_t ackno,
   tcp_header.checksum = IpPseudoCsum(*buf, kIpProtoTCP, local_ip, remote_ip);
 
   SendIp(std::move(buf), local_ip, remote_ip, kIpProtoTCP);
+}
+
+void ebbrt::NetworkManager::SendIp(std::unique_ptr<MutIOBuf> buf,
+                                   Ipv4Address src, Ipv4Address dst,
+                                   uint8_t proto) {
+  auto itf = IpRoute(dst);
+  if (likely(itf != nullptr))
+    itf->SendIp(std::move(buf), src, dst, proto);
 }
 
 // void ebbrt::NetworkManager::Interface::Send(std::unique_ptr<IOBuf>&& b) {

@@ -17,7 +17,7 @@ class IOBuf {
   class Iterator;
 
   IOBuf() noexcept;
-  IOBuf(const uint8_t* buf, size_t capacity) noexcept;
+  IOBuf(const uint8_t* data, size_t length) noexcept;
 
   virtual ~IOBuf() noexcept;
 
@@ -78,6 +78,17 @@ class IOBuf {
     prev_ = this;
     next_ = this;
     return std::unique_ptr<IOBuf>(this);
+  }
+
+  // Remove end and the rest of the chain from the chain that this is the head
+  // of. Returns end as a unique_ptr
+  std::unique_ptr<IOBuf> UnlinkEnd(IOBuf& end) {
+    auto new_end = end.prev_;
+    end.prev_ = prev_;
+    prev_ = new_end;
+    new_end->next_ = this;
+
+    return std::unique_ptr<IOBuf>(&end);
   }
 
   /* Remove this IOBuf from its current chain and return a unique_ptr to the
@@ -185,7 +196,7 @@ class MutIOBuf : public IOBuf {
   class Iterator;
 
   MutIOBuf() noexcept;
-  MutIOBuf(const uint8_t* buf, size_t capacity) noexcept;
+  MutIOBuf(const uint8_t* data, size_t length) noexcept;
   virtual ~MutIOBuf() {}
 
   uint8_t* MutData() { return const_cast<uint8_t*>(Data()); }

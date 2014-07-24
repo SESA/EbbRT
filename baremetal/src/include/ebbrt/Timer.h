@@ -18,6 +18,7 @@ class Timer : public MulticoreEbbStatic<Timer> {
  public:
   class Hook : public boost::intrusive::set_base_hook<> {
    public:
+    virtual ~Hook() {}
     virtual void Fire() = 0;
 
     bool operator==(const Hook& rhs) const {

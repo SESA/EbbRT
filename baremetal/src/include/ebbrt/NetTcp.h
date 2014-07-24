@@ -7,7 +7,8 @@
 
 namespace ebbrt {
 const constexpr size_t kTcpMss = 1460;
-const constexpr size_t kTcpWnd = 20 * kTcpMss;
+const constexpr uint16_t kTcpWnd = 20 * kTcpMss;
+const constexpr uint16_t kTcpCWnd = kTcpWnd;
 
 const constexpr uint16_t kTcpFin = 0x01;
 const constexpr uint16_t kTcpSyn = 0x02;
@@ -37,6 +38,7 @@ struct __attribute__((packed)) TcpHeader {
   uint16_t wnd;
   uint16_t checksum;
   uint16_t urgp;
+  char options[];
 };
 
 struct TcpInfo {

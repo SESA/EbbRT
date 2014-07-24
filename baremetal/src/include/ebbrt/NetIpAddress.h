@@ -106,4 +106,12 @@ template <> struct hash<ebbrt::Ipv4Address> {
 };
 }
 
+namespace boost {
+template <> struct hash<ebbrt::Ipv4Address> {
+  size_t operator()(const ebbrt::Ipv4Address& addr) {
+    return std::hash<ebbrt::Ipv4Address>()(addr);
+  }
+};
+}
+
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_NETIPADDRESS_H_
