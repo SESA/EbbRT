@@ -107,7 +107,8 @@ class SlabAllocator : public CacheAligned {
   void* operator new(size_t size, Nid nid);
   void operator delete(void* p);
 
-  void* Alloc(Nid nid = Cpu::GetMyNode());
+  void* Alloc();
+  void* Alloc(Nid nid);
   void Free(void* p);
 
  private:

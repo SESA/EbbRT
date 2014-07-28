@@ -267,7 +267,7 @@ ebbrt::SlabAllocator::Construct(size_t size) {
   auto id = ebb_allocator->AllocateLocal();
   auto allocator_root = new SlabAllocatorRoot(size);
   local_id_map->Insert(std::make_pair(id, allocator_root));
-  return EbbRef<ebbrt::SlabAllocator>{ id };
+  return EbbRef<ebbrt::SlabAllocator>{id};
 }
 
 ebbrt::SlabAllocator& ebbrt::SlabAllocator::HandleFault(EbbId id) {
@@ -311,18 +311,22 @@ void ebbrt::SlabAllocator::operator delete(void* p) {
   allocator.Free(p);
 }
 
+void* ebbrt::SlabAllocator::Alloc() {
+  auto ret = cache_.Alloc();
+  if (unlikely(ret == nullptr)) {
+    auto pfn = page_allocator->Alloc(cache_.root_.order(), Cpu::GetMyNode());
+    if (pfn == Pfn::None())
+      return nullptr;
+    cache_.AddSlab(pfn);
+    ret = cache_.Alloc();
+    kassert(ret != nullptr);
+  }
+  return ret;
+}
+
 void* ebbrt::SlabAllocator::Alloc(Nid nid) {
   if (nid == Cpu::GetMyNode()) {
-    auto ret = cache_.Alloc();
-    if (ret == nullptr) {
-      auto pfn = page_allocator->Alloc(cache_.root_.order(), nid);
-      if (pfn == Pfn::None())
-        return nullptr;
-      cache_.AddSlab(pfn);
-      ret = cache_.Alloc();
-      kassert(ret != nullptr);
-    }
-    return ret;
+    return Alloc();
   }
 
   auto& node_allocator = cache_.root_.GetNodeAllocator(nid);

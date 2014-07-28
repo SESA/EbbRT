@@ -122,7 +122,7 @@ extern "C" void* ebbrt_newlib_calloc(size_t num, size_t size) {
 
 extern "C" void* ebbrt_newlib_memalign(size_t alignment, size_t size) {
   size = std::max(size, alignment);
-  auto ptr = ebbrt::gp_allocator->Alloc(size);
+  auto ptr = ebbrt::gp_allocator->Alloc(size, alignment);
   ebbrt::kbugon(ebbrt::align::Down(ptr, alignment) != ptr,
                 "Memalign failed to allocate aligned region of memory");
   return ptr;
