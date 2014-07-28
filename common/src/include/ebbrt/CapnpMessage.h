@@ -39,17 +39,21 @@ class IOBufMessageReader : public capnp::MessageReader {
  public:
   IOBufMessageReader(std::unique_ptr<IOBuf>&& buf,
                      capnp::ReaderOptions options = capnp::ReaderOptions())
-      : capnp::MessageReader(options), buf_(std::move(buf)) {
-    auto p = buf_->GetDataPointer();
-    auto nseg = p.Get<uint32_t>();
-    auto p2 = buf_->GetDataPointer();
-    p2.Advance(align::Up(4 + 4 * nseg, 8));
+      : capnp::MessageReader(options), buf_(std::move(buf)),
+        dp_(buf_->GetDataPointer()) {
+    auto nseg = dp_.Get<uint32_t>() + 1;
+    uint32_t seg_sizes[nseg];  // NOLINT
+    for (uint32_t i = 0; i < nseg; ++i) {
+      seg_sizes[i] = dp_.Get<uint32_t>();
+    }
+    if (nseg % 2 == 0)
+      dp_.Advance(4);
+
     segments_.reserve(nseg);
     for (uint32_t i = 0; i < nseg; ++i) {
-      auto size = p.Get<uint32_t>();
-      segments_.emplace_back(reinterpret_cast<const capnp::word*>(p2.Data()),
-                             size);
-      p2.Advance(size * sizeof(capnp::word));
+      auto size = seg_sizes[i];
+      auto data = dp_.Get(size * sizeof(capnp::word));
+      segments_.emplace_back(reinterpret_cast<const capnp::word*>(data), size);
     }
   }
 
@@ -62,6 +66,7 @@ class IOBufMessageReader : public capnp::MessageReader {
  private:
   std::unique_ptr<IOBuf> buf_;
   std::vector<kj::ArrayPtr<const capnp::word>> segments_;
+  IOBuf::DataPointer dp_;
 };
 
 std::unique_ptr<IOBuf> AppendHeader(IOBufMessageBuilder& builder);

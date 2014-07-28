@@ -16,7 +16,7 @@ ebbrt::AppendHeader(ebbrt::IOBufMessageBuilder& builder) {
   auto header_size = align::Up(4 + 4 * nsegs, 8);
   auto header_buf = IOBuf::Create(header_size, true);
   auto h = reinterpret_cast<Header*>(header_buf->WritableData());
-  h->num_segments = nsegs;
+  h->num_segments = nsegs - 1;
   unsigned i = 0;
   for (auto& seg : segs) {
     h->segment_sizes[i] = seg.size();

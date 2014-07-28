@@ -6,9 +6,15 @@
 #define COMMON_SRC_INCLUDE_EBBRT_BUFFER_H_
 
 #include <cstring>
+#include <forward_list>
 #include <memory>
+#include <vector>
 
 #include <boost/iterator/iterator_facade.hpp>
+
+#ifdef __ebbrt__
+#include <ebbrt/Debug.h>
+#endif
 
 namespace ebbrt {
 namespace detail {
@@ -167,7 +173,7 @@ class IOBuf {
 
   class DataPointer {
    public:
-    explicit DataPointer(const IOBuf* p) : p_(p) {}
+    explicit DataPointer(const IOBuf* p) : start_(p), p_(p) {}
 
     const uint8_t* Data() {
       if (!p_ || p_->Length() - offset_ == 0)
@@ -176,36 +182,80 @@ class IOBuf {
       return p_->Data() + offset_;
     }
 
-    template <typename T> const T& Get() {
+    const uint8_t* GetNoAdvance(size_t len) {
       if (!p_)
         throw std::runtime_error("DataPointer::Get(): past end of buffer");
 
-      if (p_->Length() - offset_ < sizeof(T)) {
-        throw std::runtime_error(
-            "DataPointer::Get(): request straddles buffers");
+      if (p_->Length() - offset_ < len) {
+        // request straddles buffers, allocate a new chunk of memory to copy it
+        // into (so it is contiguous)
+        chunk_list_.emplace_front();
+        auto& chunk = chunk_list_.front();
+        chunk.reserve(len);
+        auto p = p_;
+        auto tmp_len = len;
+        auto offset = offset_;
+        while (tmp_len > 0 && p) {
+          auto remainder = p->Length() - offset;
+          auto data = p->Data() + offset;
+          chunk.insert(chunk.end(), data, data + remainder);
+          p = p->Next();
+          if (p == start_)
+            p = nullptr;
+          offset = 0;
+          tmp_len -= remainder;
+        }
+
+        if (!p && tmp_len > 0)
+          throw std::runtime_error("DataPointer::Get(): past end of buffer");
+
+        return chunk.data();
       }
 
-      auto ret = reinterpret_cast<const T*>(p_->Data() + offset_);
+      return p_->Data() + offset_;
+    }
+
+    template <typename T> const T& GetNoAdvance() {
+      return *reinterpret_cast<const T*>(GetNoAdvance(sizeof(T)));
+    }
+
+    const uint8_t* Get(size_t len) {
+      auto ret = GetNoAdvance(len);
+      Advance(len);
+      return ret;
+    }
+
+    template <typename T> const T& Get() {
+      const auto& ret = GetNoAdvance<T>();
       Advance(sizeof(T));
-      return *ret;
+      return ret;
     }
 
     void Advance(size_t size) {
-      if (!p_)
-        throw std::runtime_error("DataPointer::Advance(): past end of buffer");
-
-      auto remainder = p_->Length() - offset_;
-      if (remainder > size) {
-        offset_ += size;
-      } else {
-        p_ = p_->Next();
-        offset_ = size - remainder;
+      while (p_) {
+        auto remainder = p_->Length() - offset_;
+        if (remainder >= size) {
+          offset_ += size;
+          return;
+        } else {
+          p_ = p_->Next();
+          if (p_ == start_)
+            p_ = nullptr;
+          offset_ = 0;
+          size -= remainder;
+        }
       }
+#ifdef __ebbrt__
+      kabort("Advance fail\n");
+#endif
+      throw std::runtime_error("DataPointer::Advance(): past end of buffer");
     }
 
    private:
+    const IOBuf* start_{nullptr};
     const IOBuf* p_{nullptr};
     size_t offset_{0};
+    std::forward_list<std::vector<uint8_t>> chunk_list_;
   };
 
   DataPointer GetDataPointer() const { return DataPointer(this); }
