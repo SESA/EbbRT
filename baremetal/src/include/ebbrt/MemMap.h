@@ -47,7 +47,9 @@ struct Page {
     uint8_t order;
     struct SlabData {
       // In slab allocator
-      ExplicitlyConstructed<boost::intrusive::list_member_hook<>> member_hook;
+      ExplicitlyConstructed<boost::intrusive::list_member_hook<
+          boost::intrusive::link_mode<boost::intrusive::normal_link>>>
+      member_hook;
       ExplicitlyConstructed<CompactFreeObjectList> list;
       SlabCache* cache;
       size_t used;

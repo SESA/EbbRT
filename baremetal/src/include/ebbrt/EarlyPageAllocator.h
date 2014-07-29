@@ -36,7 +36,8 @@ class PageRange {
   void set_npages(size_t npages) noexcept { npages_ = npages; }
   void set_nid(Nid nid) noexcept { nid_ = nid; }
 
-  boost::intrusive::set_member_hook<> member_hook;
+  boost::intrusive::set_member_hook<
+      boost::intrusive::link_mode<boost::intrusive::normal_link>> member_hook;
 
  private:
   size_t npages_;
@@ -48,9 +49,12 @@ inline bool operator<(const PageRange& lhs, const PageRange& rhs) noexcept {
 }
 
 typedef boost::intrusive::set<  // NOLINT
-    PageRange, boost::intrusive::member_hook<
-                   PageRange, boost::intrusive::set_member_hook<>,
-                   &PageRange::member_hook>> FreePageTree;
+    PageRange,
+    boost::intrusive::member_hook<
+        PageRange,
+        boost::intrusive::set_member_hook<
+            boost::intrusive::link_mode<boost::intrusive::normal_link>>,
+        &PageRange::member_hook>> FreePageTree;
 extern ExplicitlyConstructed<FreePageTree> free_pages;
 
 template <typename F> void ReleaseFreePages(F f) {
