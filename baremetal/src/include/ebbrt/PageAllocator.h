@@ -36,12 +36,16 @@ class PageAllocator : public CacheAligned {
     Pfn pfn() const { return Pfn::Down(reinterpret_cast<uintptr_t>(this)); }
     Pfn GetBuddy(size_t order) const { return PfnToBuddy(pfn(), order); }
 
-    boost::intrusive::list_member_hook<> member_hook_;
+    boost::intrusive::list_member_hook<boost::intrusive::link_mode<
+        boost::intrusive::normal_link>> member_hook_;
   };
   typedef boost::intrusive::list<  // NOLINT
-      FreePage, boost::intrusive::member_hook<
-                    FreePage, boost::intrusive::list_member_hook<>,
-                    &FreePage::member_hook_>> FreePageList;
+      FreePage,
+      boost::intrusive::member_hook<
+          FreePage,
+          boost::intrusive::list_member_hook<
+              boost::intrusive::link_mode<boost::intrusive::normal_link>>,
+          &FreePage::member_hook_>> FreePageList;
 
   static inline Pfn PfnToBuddy(Pfn pfn, size_t order) {
     return Pfn(pfn.val() ^ (1 << order));

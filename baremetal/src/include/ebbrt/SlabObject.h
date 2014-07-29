@@ -12,19 +12,24 @@ class FreeObject {
  public:
   void* addr() { return this; }
 
-  boost::intrusive::slist_member_hook<> member_hook_;
+  boost::intrusive::slist_member_hook<
+      boost::intrusive::link_mode<boost::intrusive::normal_link>> member_hook_;
 };
 
 typedef boost::intrusive::slist<
     FreeObject, boost::intrusive::cache_last<true>,
-    boost::intrusive::member_hook<FreeObject,
-                                  boost::intrusive::slist_member_hook<>,
-                                  &FreeObject::member_hook_>> FreeObjectList;
+    boost::intrusive::member_hook<
+        FreeObject,
+        boost::intrusive::slist_member_hook<
+            boost::intrusive::link_mode<boost::intrusive::normal_link>>,
+        &FreeObject::member_hook_>> FreeObjectList;
 
 typedef boost::intrusive::slist<  // NOLINT
     FreeObject, boost::intrusive::constant_time_size<false>,
     boost::intrusive::member_hook<
-        FreeObject, boost::intrusive::slist_member_hook<>,
+        FreeObject,
+        boost::intrusive::slist_member_hook<
+            boost::intrusive::link_mode<boost::intrusive::normal_link>>,
         &FreeObject::member_hook_>> CompactFreeObjectList;
 }  // namespace ebbrt
 

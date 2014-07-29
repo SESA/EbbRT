@@ -50,7 +50,8 @@ class SlabCache {
 
  private:
   struct PageHookFunctor {
-    typedef boost::intrusive::list_member_hook<> hook_type;
+    typedef boost::intrusive::list_member_hook<
+        boost::intrusive::link_mode<boost::intrusive::normal_link>> hook_type;
     typedef hook_type* hook_ptr;
     typedef const hook_type* const_hook_ptr;
     typedef mem_map::Page value_type;
