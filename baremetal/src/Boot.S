@@ -51,7 +51,7 @@ gdt_end = .
 
 .globl _fpu_control_word
 _fpu_control_word:
-.word 0x37a //enable both division by zero and invalid operand exceptions
+.word 0x37f //mask all exceptions
 
 .bss
 .align 16
