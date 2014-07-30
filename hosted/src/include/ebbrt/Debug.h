@@ -10,9 +10,8 @@ namespace ebbrt {
 static __attribute__((noreturn)) void kabort() { abort(); }
 
 template <typename... Args>
-__attribute__((noreturn)) void kprintf(Args... args) {
+void kprintf(Args... args) {
   printf(args...);  // NOLINT
-  kabort();
 }
 
 template <typename... Args>
