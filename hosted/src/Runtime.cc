@@ -10,6 +10,13 @@
 #include <ebbrt/NodeAllocator.h>
 #include <ebbrt/Runtime.h>
 
+namespace ebbrt {
+  namespace runtime {
+    uint32_t frontend;
+    char *bootcmdline;
+  }
+}
+
 ebbrt::Runtime::Runtime() : initialized_(false), indices_(0) {}
 
 void ebbrt::Runtime::Initialize() {

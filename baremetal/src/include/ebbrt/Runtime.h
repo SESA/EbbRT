@@ -9,6 +9,7 @@
 
 namespace ebbrt {
 namespace runtime {
+  extern char *bootcmdline;
   uint32_t Frontend();
   void Init();
 }

@@ -23,6 +23,7 @@ class Runtime {
   Runtime();
 };
 namespace runtime {
+  extern char *bootcmdline;
   // dummy runtime init to keep compatability with baremetal
   void Init() __attribute__ ((unused));
 }

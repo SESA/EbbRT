@@ -7,6 +7,7 @@
 #include <cstring>
 
 #include <ebbrt/EarlyPageAllocator.h>
+#include <ebbrt/Runtime.h>
 
 void ebbrt::multiboot::Reserve(Information* mbi) {
   auto mbi_addr = reinterpret_cast<uintptr_t>(mbi);
@@ -16,6 +17,9 @@ void ebbrt::multiboot::Reserve(Information* mbi) {
     auto cmdline = reinterpret_cast<const char*>(cmdline_addr);
     auto len = std::strlen(cmdline);
     early_page_allocator::ReserveRange(cmdline_addr, cmdline_addr + len + 1);
+    ebbrt::runtime::bootcmdline = reinterpret_cast<char *>(cmdline_addr);
+  } else {
+    ebbrt::runtime::bootcmdline = NULL;
   }
 
   if (mbi->has_boot_modules_ && mbi->modules_count_ > 0) {

@@ -17,6 +17,7 @@
 namespace ebbrt {
   namespace runtime {
     uint32_t frontend;
+    char *bootcmdline;
   }
 }
 
