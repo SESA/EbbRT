@@ -25,6 +25,13 @@ void ebbrt::kprintf(const char* __restrict format, ...) {
 
 }
 
+void ebbrt::force_kprintf(const char* __restrict format, ...) {
+  va_list ap;
+  va_start(ap, format);
+  kvprintf(format, ap);
+  va_end(ap);
+}
+
 extern "C" void ebbrt_kabort(const char* __restrict format, ...) {
   va_list ap;
   va_start(ap, format);

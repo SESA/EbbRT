@@ -460,13 +460,17 @@ ACPI_STATUS AcpiOsSignal(UINT32 Function, void* Info) {
 }
 
 void ACPI_INTERNAL_VAR_XFACE AcpiOsPrintf(const char* Format, ...) {
+#ifndef __EBBRT_QUIET__
   va_list ap;
   va_start(ap, Format);
   ebbrt::kvprintf(Format, ap);
+#endif
 }
 
 void AcpiOsVprintf(const char* Format, va_list Args) {
+#ifndef __EBBRT_QUIET__
   ebbrt::kvprintf(Format, Args);
+#endif
 }
 
 void AcpiOsRedirectOutput(void* Destination) { EBBRT_UNIMPLEMENTED(); }
