@@ -7,6 +7,8 @@
 
 #include <memory>
 
+#include <boost/optional.hpp>
+
 namespace ebbrt {
 class Fdt {
  public:
@@ -34,9 +36,9 @@ class FdtReader {
  public:
   explicit FdtReader(const void* ptr);
 
-  size_t GetNodeOffset(const char* path);
-  uint16_t GetProperty16(size_t node_offset, const char* name);
-  uint32_t GetProperty32(size_t node_offset, const char* name);
+  boost::optional<size_t> GetNodeOffset(const char* path);
+  boost::optional<uint16_t> GetProperty16(size_t node_offset, const char* name);
+  boost::optional<uint32_t> GetProperty32(size_t node_offset, const char* name);
 
  private:
   const void* ptr_;

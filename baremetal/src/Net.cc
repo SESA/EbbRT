@@ -127,57 +127,66 @@ ebbrt::NetworkManager::Interface& ebbrt::NetworkManager::FirstInterface() {
   return interfaces_.front();
 }
 
-#ifndef __EBBRT_ENABLE_STATIC_IP__
 namespace {
+#ifndef __EBBRT_ENABLE_STATIC_IP__
 ebbrt::EventManager::EventContext* context;
-}
 #endif
+bool NetworkOverride(struct netif* netif) {
+  // If FDT HAS hardcoded default network info this overrides other
+  // configuration
+  ip_addr_t dip;
+  ip_addr_t dnm;
+  ip_addr_t dgw;
+  auto fdt = ebbrt::boot_fdt::Get();
+
+  auto runtime_node_offset = fdt.GetNodeOffset("/runtime");
+  if (!runtime_node_offset)
+    return false;
+
+  auto mydefaultip = fdt.GetProperty32(*runtime_node_offset, "eth0.ip");
+  if (!mydefaultip)
+    return false;
+
+  IP4_ADDR(&dip, ((*mydefaultip >> 24) & 0xFF), ((*mydefaultip >> 16) & 0xFF),
+           ((*mydefaultip >> 8) & 0xFF), ((*mydefaultip >> 0) & 0xFF));
+
+  auto mydefaultnm = fdt.GetProperty32(*runtime_node_offset, "eth0.netmask");
+  if (!mydefaultnm)
+    return false;
+
+  IP4_ADDR(&dnm, ((*mydefaultnm >> 24) & 0xFF), ((*mydefaultnm >> 16) & 0xFF),
+           ((*mydefaultnm >> 8) & 0xFF), ((*mydefaultnm >> 0) & 0xFF));
+
+  auto mydefaultgw = fdt.GetProperty32(*runtime_node_offset, "defaultgw");
+  if (!mydefaultgw)
+    return false;
+
+  IP4_ADDR(&dgw, ((*mydefaultgw >> 24) & 0xFF), ((*mydefaultgw >> 16) & 0xFF),
+           ((*mydefaultgw >> 8) & 0xFF), ((*mydefaultgw >> 0) & 0xFF));
+
+  netif_set_addr(netif, &dip, &dnm, &dgw);
+  netif_set_up(netif);
+  return true;
+}
+}  // namespace
 
 void ebbrt::NetworkManager::AcquireIPAddress() {
   kbugon(interfaces_.size() == 0, "No network interfaces identified!\n");
   auto netif = &interfaces_[0].netif_;
   netif_set_default(netif);
-  
 
-  try {
-    // If FDT HAS hardcoded default network info this overrides other configuration
-    ip_addr_t dip;
-    ip_addr_t dnm;
-    ip_addr_t dgw;
-    auto fdt = boot_fdt::Get();
-
-    auto mydefaultip = static_cast<uint32_t>(
-	fdt.GetProperty32(fdt.GetNodeOffset("/runtime"), "eth0.ip"));
-    IP4_ADDR(&dip, ((mydefaultip>>24)&0xFF), ((mydefaultip>>16)&0xFF), ((mydefaultip>>8)&0xFF),
-	     ((mydefaultip>>0)&0xFF));  
-
-    auto mydefaultnm = static_cast<uint32_t>(
-	fdt.GetProperty32(fdt.GetNodeOffset("/runtime"), "eth0.netmask"));
-    IP4_ADDR(&dnm, ((mydefaultnm>>24)&0xFF), ((mydefaultnm>>16)&0xFF), ((mydefaultnm>>8)&0xFF),
-	     ((mydefaultnm>>0)&0xFF));  
-
-    auto mydefaultgw = static_cast<uint32_t>(
-	fdt.GetProperty32(fdt.GetNodeOffset("/runtime"), "defaultgw"));
-
-    IP4_ADDR(&dgw, ((mydefaultgw>>24)&0xFF), ((mydefaultgw>>16)&0xFF), ((mydefaultgw>>8)&0xFF),
-	     ((mydefaultgw>>0)&0xFF));  
-
-    netif_set_addr(netif, &dip, &dnm, &dgw);
-    netif_set_up(netif);
-    return;
-  } catch (std::exception &e) {
-    // FDT does not contain default network config
+  if (!NetworkOverride(netif)) {
+// FDT does not contain default network config
 #ifdef __EBBRT_ENABLE_STATIC_IP__
     const auto& mac_addr = interfaces_[0].MacAddress();
     auto fdt = boot_fdt::Get();
-    auto net = static_cast<uint8_t>(
-				    fdt.GetProperty16(fdt.GetNodeOffset("/runtime"), "net"));
-    auto address = static_cast<uint32_t>(
-					 fdt.GetProperty32(fdt.GetNodeOffset("/runtime"), "address"));
+    auto runtime_node_offset = fdt.GetNodeOffset("/runtime");
+    auto net = *fdt.GetProperty16(*runtime_node_offset, "net");
+    auto address = *fdt.GetProperty32(*runtime_node_offset, "address");
 
     ip_addr_t addr;
-    IP4_ADDR(&addr, 10, ((address>>16)&0xFF), ((address>>8)&0xFF),
-	     mac_addr[5]);  // set addr to 10.net.net.last_mac_octet
+    IP4_ADDR(&addr, 10, ((address >> 16) & 0xFF), ((address >> 8) & 0xFF),
+             mac_addr[5]);  // set addr to 10.net.net.last_mac_octet
     ip_addr_t netmask;
     IP4_ADDR(&netmask, 255, 255, 255, 0);  // set netmask to 255.255.255.0
     ip_addr_t gw;

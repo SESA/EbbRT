@@ -122,32 +122,41 @@ void ebbrt::Fdt::IncreaseSpace() {
 
 ebbrt::FdtReader::FdtReader(const void* ptr) : ptr_(ptr) {}
 
-size_t ebbrt::FdtReader::GetNodeOffset(const char* path) {
+boost::optional<size_t> ebbrt::FdtReader::GetNodeOffset(const char* path) {
   auto err = fdt_path_offset(ptr_, path);
-  if (err < 0) {
-    throw std::runtime_error("fdt_path_offset failed");
-  }
+  if (err < 0)
+    return boost::optional<size_t>();
 
-  return err;
+  return boost::optional<size_t>(err);
 }
 
 namespace {
-const void* GetPropertyData(const void* fdt, size_t offset, const char* name) {
+boost::optional<const void*> GetPropertyData(const void* fdt, size_t offset,
+                                             const char* name) {
   auto prop = fdt_get_property(fdt, offset, name, nullptr);
-  if (prop == nullptr) {
-    throw std::runtime_error("fdt_get_property failed");
-  }
+  if (prop == nullptr)
+    return boost::optional<const void*>();
 
-  return static_cast<const void*>(prop->data);
+  return boost::optional<const void*>(static_cast<const void*>(prop->data));
 }
 }
 
-uint16_t ebbrt::FdtReader::GetProperty16(size_t offset, const char* name) {
-  auto val = *static_cast<const uint16_t*>(GetPropertyData(ptr_, offset, name));
-  return fdt16_to_cpu(val);
+boost::optional<uint16_t> ebbrt::FdtReader::GetProperty16(size_t offset,
+                                                          const char* name) {
+  auto prop_data = GetPropertyData(ptr_, offset, name);
+  if (!prop_data)
+    return boost::optional<uint16_t>();
+
+  auto val = *static_cast<const uint16_t*>(*prop_data);
+  return boost::optional<uint16_t>(fdt16_to_cpu(val));
 }
 
-uint32_t ebbrt::FdtReader::GetProperty32(size_t offset, const char* name) {
-  auto val = *static_cast<const uint32_t*>(GetPropertyData(ptr_, offset, name));
-  return fdt32_to_cpu(val);
+boost::optional<uint32_t> ebbrt::FdtReader::GetProperty32(size_t offset,
+                                                          const char* name) {
+  auto prop_data = GetPropertyData(ptr_, offset, name);
+  if (!prop_data)
+    return boost::optional<uint32_t>();
+
+  auto val = *static_cast<const uint32_t*>(*prop_data);
+  return boost::optional<uint32_t>(fdt32_to_cpu(val));
 }
