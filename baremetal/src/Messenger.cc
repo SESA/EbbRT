@@ -13,6 +13,12 @@ uint16_t ebbrt::Messenger::port_;
 ebbrt::Messenger::Messenger() {}
 
 void ebbrt::Messenger::StartListening(uint16_t port) {
+
+  if (LocalNetworkId().isNULL()) {
+    kprintf("ebbrt::Messenger::StartListening : LocalNetworkId is NULL NOT LISTENING\n");
+    return;
+  }
+
   port_ = port;
   tcp_.Bind(port);
   tcp_.Listen();
