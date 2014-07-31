@@ -15,8 +15,12 @@
 namespace ebbrt {
 __attribute__((no_instrument_function)) void kvprintf(
     const char* __restrict format, va_list va);
+#ifdef __EBBRT_QUIET__
+  template <typename... Args> void kprintf(Args... args) {}
+#else
 __attribute__((no_instrument_function)) void kprintf(
     const char* __restrict format, ...);
+#endif
 __attribute__((no_instrument_function)) void force_kprintf(
     const char* __restrict format, ...);
 
