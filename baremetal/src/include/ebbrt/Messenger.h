@@ -47,6 +47,7 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
                          sizeof(ip.addr));
     }
 
+    bool isNULL() { return ip.addr == 0; }
    private:
     struct ip_addr ip;
 

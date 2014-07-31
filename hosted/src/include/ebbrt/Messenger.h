@@ -22,6 +22,8 @@ class Messenger : public StaticSharedEbb<Messenger> {
   class NetworkId {
    public:
     NetworkId() {}
+    explicit NetworkId(uint32_t ip_h) : ip_((unsigned long)ip_h) {}
+
     explicit NetworkId(boost::asio::ip::address_v4 ip) : ip_(std::move(ip)) {}
 
     explicit NetworkId(std::string str) {
@@ -51,6 +53,8 @@ class Messenger : public StaticSharedEbb<Messenger> {
     std::string ToString() { return ip_.to_string(); }
 
     bool operator==(const NetworkId& rhs) { return ip_ == rhs.ip_; }
+
+    bool isNULL() { return ip_.to_ulong() == 0; }
 
    private:
     boost::asio::ip::address_v4 ip_;
