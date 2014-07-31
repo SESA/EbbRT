@@ -137,28 +137,59 @@ void ebbrt::NetworkManager::AcquireIPAddress() {
   kbugon(interfaces_.size() == 0, "No network interfaces identified!\n");
   auto netif = &interfaces_[0].netif_;
   netif_set_default(netif);
-#ifdef __EBBRT_ENABLE_STATIC_IP__
-  const auto& mac_addr = interfaces_[0].MacAddress();
-  auto fdt = boot_fdt::Get();
-  auto net = static_cast<uint8_t>(
-      fdt.GetProperty16(fdt.GetNodeOffset("/runtime"), "net"));
-  auto address = static_cast<uint32_t>(
-      fdt.GetProperty32(fdt.GetNodeOffset("/runtime"), "address"));
+  
 
-  ip_addr_t addr;
-  IP4_ADDR(&addr, 10, ((address>>16)&0xFF), ((address>>8)&0xFF),
-           mac_addr[5]);  // set addr to 10.net.net.last_mac_octet
-  ip_addr_t netmask;
-  IP4_ADDR(&netmask, 255, 255, 255, 0);  // set netmask to 255.255.255.0
-  ip_addr_t gw;
-  IP4_ADDR(&gw, 10, net, net, 1);  // set gw to 10.net.net.1
-  netif_set_addr(netif, &addr, &netmask, &gw);
-  netif_set_up(netif);
+  try {
+    // If FDT HAS hardcoded default network info this overrides other configuration
+    ip_addr_t dip;
+    ip_addr_t dnm;
+    ip_addr_t dgw;
+    auto fdt = boot_fdt::Get();
+
+    auto mydefaultip = static_cast<uint32_t>(
+	fdt.GetProperty32(fdt.GetNodeOffset("/runtime"), "eth0.ip"));
+    IP4_ADDR(&dip, ((mydefaultip>>24)&0xFF), ((mydefaultip>>16)&0xFF), ((mydefaultip>>8)&0xFF),
+	     ((mydefaultip>>0)&0xFF));  
+
+    auto mydefaultnm = static_cast<uint32_t>(
+	fdt.GetProperty32(fdt.GetNodeOffset("/runtime"), "eth0.netmask"));
+    IP4_ADDR(&dnm, ((mydefaultnm>>24)&0xFF), ((mydefaultnm>>16)&0xFF), ((mydefaultnm>>8)&0xFF),
+	     ((mydefaultnm>>0)&0xFF));  
+
+    auto mydefaultgw = static_cast<uint32_t>(
+	fdt.GetProperty32(fdt.GetNodeOffset("/runtime"), "defaultgw"));
+
+    IP4_ADDR(&dgw, ((mydefaultgw>>24)&0xFF), ((mydefaultgw>>16)&0xFF), ((mydefaultgw>>8)&0xFF),
+	     ((mydefaultgw>>0)&0xFF));  
+
+    netif_set_addr(netif, &dip, &dnm, &dgw);
+    netif_set_up(netif);
+    return;
+  } catch (std::exception &e) {
+    // FDT does not contain default network config
+#ifdef __EBBRT_ENABLE_STATIC_IP__
+    const auto& mac_addr = interfaces_[0].MacAddress();
+    auto fdt = boot_fdt::Get();
+    auto net = static_cast<uint8_t>(
+				    fdt.GetProperty16(fdt.GetNodeOffset("/runtime"), "net"));
+    auto address = static_cast<uint32_t>(
+					 fdt.GetProperty32(fdt.GetNodeOffset("/runtime"), "address"));
+
+    ip_addr_t addr;
+    IP4_ADDR(&addr, 10, ((address>>16)&0xFF), ((address>>8)&0xFF),
+	     mac_addr[5]);  // set addr to 10.net.net.last_mac_octet
+    ip_addr_t netmask;
+    IP4_ADDR(&netmask, 255, 255, 255, 0);  // set netmask to 255.255.255.0
+    ip_addr_t gw;
+    IP4_ADDR(&gw, 10, net, net, 1);  // set gw to 10.net.net.1
+    netif_set_addr(netif, &addr, &netmask, &gw);
+    netif_set_up(netif);
 #else
-  dhcp_start(netif);
-  context = new EventManager::EventContext;
-  event_manager->SaveContext(*context);
+    dhcp_start(netif);
+    context = new EventManager::EventContext;
+    event_manager->SaveContext(*context);
 #endif
+  }
 }
 
 namespace {

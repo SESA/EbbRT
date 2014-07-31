@@ -25,36 +25,49 @@ uint32_t ebbrt::runtime::Frontend() { return frontend; }
 
 void ebbrt::runtime::Init() {
 
-  auto reader = boot_fdt::Get();
-  auto offset = reader.GetNodeOffset("/runtime");
-  auto ip = reader.GetProperty32(offset, "address");
-  auto port = reader.GetProperty16(offset, "port");
-  auto allocation_id = reader.GetProperty16(offset, "allocation_id");
+  try {
+    auto reader = boot_fdt::Get();
+    auto offset = reader.GetNodeOffset("/runtime");
+    auto sid = reader.GetProperty16(offset, "EbbIDSpace");
+    ebb_allocator->SetIdSpace(sid);
+    auto GlobalIdMapIP = reader.GetProperty32(offset, "GlobalIdMapIP");
+    frontend = GlobalIdMapIP;
+    auto GlobalIdMapPort = reader.GetProperty16(offset, "GlobalIdMapPort");
+    auto port = GlobalIdMapPort;
+    kprintf("%x:%d\n", frontend, port);
+    messenger->StartListening(port);
+    global_id_map->SetAddress(frontend);
+  } catch (std::exception &e) {
+    auto reader = boot_fdt::Get();
+    auto offset = reader.GetNodeOffset("/runtime");
+    auto ip = reader.GetProperty32(offset, "address");
+    auto port = reader.GetProperty16(offset, "port");
+    auto allocation_id = reader.GetProperty16(offset, "allocation_id");
 
-  auto pcb = new NetworkManager::TcpPcb();
-  ip_addr_t addr;
-  addr.addr = htonl(ip);
-  EventManager::EventContext context;
-  pcb->Receive([pcb, &context](NetworkManager::TcpPcb& t,
-                               std::unique_ptr<IOBuf>&& b) {
-    if (b->Length() == 0) {
-      delete pcb;
-    } else {
-      auto message = IOBufMessageReader(std::move(b));
-      auto info = message.getRoot<RuntimeInfo>();
-
-      ebb_allocator->SetIdSpace(info.getEbbIdSpace());
-      frontend = info.getGlobalIdMapAddress();
-      const auto& port = info.getMessengerPort();
-      kprintf("%x:%d\n", frontend, port);
-      messenger->StartListening(port);
-      global_id_map->SetAddress(frontend);
-      event_manager->ActivateContext(std::move(context));
-    }
-  });
-  pcb->Connect(&addr, port);
-  event_manager->SaveContext(context);
-  auto buf = IOBuf::Create(sizeof(uint16_t));
-  *reinterpret_cast<uint16_t*>(buf->WritableData()) = htons(allocation_id);
-  pcb->Send(std::move(buf));
+    auto pcb = new NetworkManager::TcpPcb();
+    ip_addr_t addr;
+    addr.addr = htonl(ip);
+    EventManager::EventContext context;
+    pcb->Receive([pcb, &context](NetworkManager::TcpPcb& t,
+				 std::unique_ptr<IOBuf>&& b) {
+		   if (b->Length() == 0) {
+		     delete pcb;
+		   } else {
+		     auto message = IOBufMessageReader(std::move(b));
+		     auto info = message.getRoot<RuntimeInfo>();
+		     ebb_allocator->SetIdSpace(info.getEbbIdSpace());
+		     frontend = info.getGlobalIdMapAddress();
+		     const auto& port = info.getMessengerPort();
+		     kprintf("%x:%d\n", frontend, port);
+		     messenger->StartListening(port);
+		     global_id_map->SetAddress(frontend);
+		     event_manager->ActivateContext(std::move(context));
+		   }
+		 });
+    pcb->Connect(&addr, port);
+    event_manager->SaveContext(context);
+    auto buf = IOBuf::Create(sizeof(uint16_t));
+    *reinterpret_cast<uint16_t*>(buf->WritableData()) = htons(allocation_id);
+    pcb->Send(std::move(buf));
+  }
 }
