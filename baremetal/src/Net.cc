@@ -128,10 +128,12 @@ ebbrt::NetworkManager::Interface& ebbrt::NetworkManager::FirstInterface() {
 }
 
 namespace {
-#ifndef __EBBRT_ENABLE_STATIC_IP__
+#if __EBBRT_ENABLE_STATIC_IP__ != 1
 ebbrt::EventManager::EventContext* context;
 #endif
 bool NetworkOverride(struct netif* netif) {
+
+#if __EBBRT_ENABLE_FDT__
   // If FDT HAS hardcoded default network info this overrides other
   // configuration
   ip_addr_t dip;
@@ -167,6 +169,9 @@ bool NetworkOverride(struct netif* netif) {
   netif_set_addr(netif, &dip, &dnm, &dgw);
   netif_set_up(netif);
   return true;
+#else
+  return false;
+#endif // ifdef __EBBRT_ENABLE_FTD__
 }
 }  // namespace
 
@@ -177,7 +182,7 @@ void ebbrt::NetworkManager::AcquireIPAddress() {
 
   if (!NetworkOverride(netif)) {
 // FDT does not contain default network config
-#ifdef __EBBRT_ENABLE_STATIC_IP__
+#if __EBBRT_ENABLE_STATIC_IP__
     const auto& mac_addr = interfaces_[0].MacAddress();
     auto fdt = boot_fdt::Get();
     auto runtime_node_offset = fdt.GetNodeOffset("/runtime");
