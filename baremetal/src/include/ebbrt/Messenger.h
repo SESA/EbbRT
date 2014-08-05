@@ -28,8 +28,12 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
     explicit NetworkId(uint32_t ip_h) { ip.addr = htonl(ip_h); }
     explicit NetworkId(std::string str) {
       if (str.size() != 4)
+#if __EXCEPTIONS
         throw std::runtime_error(
             "Cannot build NetworkId from string, size mismatch");
+#else
+        exit(-1);
+#endif
 
       ip.addr = *reinterpret_cast<const uint32_t*>(str.data());
     }
@@ -37,7 +41,11 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
 
     static NetworkId FromBytes(const unsigned char* p, size_t len) {
       if (unlikely(len != 4))
+#if __EXCEPTIONS
         throw std::runtime_error("NetworkId::FromBytes length != 4");
+#else
+        exit(-1);
+#endif
 
       return NetworkId(ntohl(*reinterpret_cast<const uint32_t*>(p)));
     }
@@ -48,6 +56,7 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
     }
 
     bool isNULL() { return ip.addr == 0; }
+
    private:
     struct ip_addr ip;
 

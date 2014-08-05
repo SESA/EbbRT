@@ -177,14 +177,22 @@ class IOBuf {
 
     const uint8_t* Data() {
       if (!p_ || p_->Length() - offset_ == 0)
+#if __EXCEPTIONS
         throw std::runtime_error("DataPointer::Data() past end of buffer");
+#else
+        exit(-1);
+#endif
 
       return p_->Data() + offset_;
     }
 
     const uint8_t* GetNoAdvance(size_t len) {
       if (!p_)
+#if __EXCEPTIONS
         throw std::runtime_error("DataPointer::Get(): past end of buffer");
+#else
+        exit(-1);
+#endif
 
       if (p_->Length() - offset_ < len) {
         // request straddles buffers, allocate a new chunk of memory to copy it
@@ -207,7 +215,11 @@ class IOBuf {
         }
 
         if (!p && tmp_len > 0)
+#if __EXCEPTIONS
           throw std::runtime_error("DataPointer::Get(): past end of buffer");
+#else
+          exit(-1);
+#endif
 
         return chunk.data();
       }
@@ -248,7 +260,11 @@ class IOBuf {
 #ifdef __ebbrt__
       kabort("Advance fail\n");
 #endif
+#if __EXCEPTIONS
       throw std::runtime_error("DataPointer::Advance(): past end of buffer");
+#else
+      exit(-1);
+#endif
     }
 
    private:

@@ -543,24 +543,31 @@ inline Future<void> flatten(Future<Future<void>> fut) {
   auto ret = p.GetFuture();
   fut.Then(MoveBind([](Promise<void> prom, Future<Future<void>> fut) {
                       Future<void> inner;
+#if __EXCEPTIONS
                       try {
+#endif
                         inner = std::move(fut.Get());
+#if __EXCEPTIONS
                       }
                       catch (...) {
                         prom.SetException(std::current_exception());
                         return;
                       }
+#endif
 
                       inner.Then(
                           MoveBind([](Promise<void> prom, Future<void> fut) {
-                                     try {
-                                       fut.Get();
-                                       prom.SetValue();
-                                     }
-                                     catch (...) {
-                                       prom.SetException(
-                                           std::current_exception());
-                                     }
+#if __EXCEPTIONS
+      try {
+#endif
+        fut.Get();
+        prom.SetValue();
+#if __EXCEPTIONS
+      }
+      catch (...) {
+        prom.SetException(std::current_exception());
+      }
+#endif
                                    },
                                    std::move(prom)));
                     },
@@ -583,12 +590,16 @@ typename std::enable_if<
   auto bound_f = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
   ebbrt::event_manager->Spawn(
       MoveBind([](Promise<result_type> prom, bound_fn_type fn) {
+#if __EXCEPTIONS
                  try {
+#endif
                    prom.SetValue(fn());
+#if __EXCEPTIONS
                  }
                  catch (...) {
                    prom.SetException(std::current_exception());
                  }
+#endif
                },
                std::move(p), std::move(bound_f)));
   return flatten(std::move(ret));
@@ -608,13 +619,17 @@ typename std::enable_if<
   auto bound_f = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
   ebbrt::event_manager->Spawn(
       MoveBind([](Promise<void> prom, bound_fn_type fn) {
+#if __EXCEPTIONS
                  try {
+#endif
                    fn();
                    prom.SetValue();
+#if __EXCEPTIONS
                  }
                  catch (...) {
                    prom.SetException(std::current_exception());
                  }
+#endif
                },
                std::move(p), std::move(bound_f)));
   return flatten(std::move(ret));
@@ -754,8 +769,7 @@ template <typename Res> Future<Res> Future<Res>::Block() {
   return std::move(*ret);
 }
 
-template <typename Res> void 
-SharedFuture<Res>::Block() {
+template <typename Res> void SharedFuture<Res>::Block() {
   if (Ready())
     return;
 
@@ -859,14 +873,22 @@ __future_detail::State<Res>::ThenHelp(Launch policy, F&& func, R fut) {
       auto prom = Promise<result_type>();
       auto ret = prom.GetFuture();
       if (func_)
+#if __EXCEPTIONS
         throw std::runtime_error("Multiple thens on a future!");
+#else
+        exit(-1);
+#endif
       func_ = MoveBind([](Promise<result_type> prom, R fut, F fn) {
+#if __EXCEPTIONS
                          try {
+#endif
                            prom.SetValue(fn(std::move(fut)));
+#if __EXCEPTIONS
                          }
                          catch (...) {
                            prom.SetException(std::current_exception());
                          }
+#endif
                        },
                        std::move(prom), std::move(fut), std::move(func));
       return flatten(std::move(ret));
@@ -874,12 +896,16 @@ __future_detail::State<Res>::ThenHelp(Launch policy, F&& func, R fut) {
   }
   // We only get here if Ready is true
   if (policy == Launch::Sync) {
+#if __EXCEPTIONS
     try {
+#endif
       return flatten(MakeReadyFuture<result_type>(func(std::move(fut))));
+#if __EXCEPTIONS
     }
     catch (...) {
       return flatten(MakeFailedFuture<result_type>(std::current_exception()));
     }
+#endif
   } else {
     return Async(MoveBind([](F fn, R fut) { return fn(std::move(fut)); },
                           std::move(func), std::move(fut)));
@@ -901,14 +927,22 @@ __future_detail::State<void>::ThenHelp(Launch policy, F&& func, R fut) {
       auto prom = Promise<result_type>();
       auto ret = prom.GetFuture();
       if (func_)
+#if __EXCEPTIONS
         throw std::runtime_error("Multiple thens on a future!");
+#else
+        exit(-1);
+#endif
       func_ = MoveBind([](Promise<result_type> prom, R fut, F fn) {
+#if __EXCEPTIONS
                          try {
+#endif
                            prom.SetValue(fn(std::move(fut)));
+#if __EXCEPTIONS
                          }
                          catch (...) {
                            prom.SetException(std::current_exception());
                          }
+#endif
                        },
                        std::move(prom), std::move(fut), std::move(func));
       return flatten(std::move(ret));
@@ -916,12 +950,16 @@ __future_detail::State<void>::ThenHelp(Launch policy, F&& func, R fut) {
   }
   // We only get here if Ready is true
   if (policy == Launch::Sync) {
+#if __EXCEPTIONS
     try {
+#endif
       return flatten(MakeReadyFuture<result_type>(func(std::move(fut))));
+#if __EXCEPTIONS
     }
     catch (...) {
       return flatten(MakeFailedFuture<result_type>(std::current_exception()));
     }
+#endif
   } else {
     return Async(MoveBind([](F fn, R fut) { return fn(std::move(fut)); },
                           std::move(func), std::move(fut)));
@@ -944,15 +982,23 @@ __future_detail::State<Res>::ThenHelp(Launch policy, F&& func, R fut) {
       auto prom = Promise<result_type>();
       auto ret = prom.GetFuture();
       if (func_)
+#if __EXCEPTIONS
         throw std::runtime_error("Multiple thens on a future!");
+#else
+        exit(-1);
+#endif
       func_ = MoveBind([](Promise<result_type> prom, R fut, F fn) {
+#if __EXCEPTIONS
                          try {
+#endif
                            fn(std::move(fut));
                            prom.SetValue();
+#if __EXCEPTIONS
                          }
                          catch (...) {
                            prom.SetException(std::current_exception());
                          }
+#endif
                        },
                        std::move(prom), std::move(fut), std::move(func));
       return flatten(std::move(ret));
@@ -960,13 +1006,17 @@ __future_detail::State<Res>::ThenHelp(Launch policy, F&& func, R fut) {
   }
   // We only get here if Ready is true
   if (policy == Launch::Sync) {
+#if __EXCEPTIONS
     try {
+#endif
       func(std::move(fut));
       return flatten(MakeReadyFuture<result_type>());
+#if __EXCEPTIONS
     }
     catch (...) {
       return flatten(MakeFailedFuture<result_type>(std::current_exception()));
     }
+#endif
   } else {
     return Async(MoveBind([](F fn, R fut) { return fn(std::move(fut)); },
                           std::move(func), std::move(fut)));
@@ -988,15 +1038,23 @@ __future_detail::State<void>::ThenHelp(Launch policy, F&& func, R fut) {
       auto prom = Promise<result_type>();
       auto ret = prom.GetFuture();
       if (func_)
+#if __EXCEPTIONS
         throw std::runtime_error("Multiple thens on a future!");
+#else
+        exit(-1);
+#endif
       func_ = MoveBind([](Promise<result_type> prom, R fut, F fn) {
+#if __EXCEPTIONS
                          try {
+#endif
                            fn(std::move(fut));
                            prom.SetValue();
+#if __EXCEPTIONS
                          }
                          catch (...) {
                            prom.SetException(std::current_exception());
                          }
+#endif
                        },
                        std::move(prom), std::move(fut), std::move(func));
       return flatten(std::move(ret));
@@ -1004,13 +1062,17 @@ __future_detail::State<void>::ThenHelp(Launch policy, F&& func, R fut) {
   }
   // We only get here if Ready is true
   if (policy == Launch::Sync) {
+#if __EXCEPTIONS
     try {
+#endif
       func(std::move(fut));
       return flatten(MakeReadyFuture<result_type>());
+#if __EXCEPTIONS
     }
     catch (...) {
       return flatten(MakeFailedFuture<result_type>(std::current_exception()));
     }
+#endif
   } else {
     return Async(MoveBind([](F fn, R fut) { return fn(std::move(fut)); },
                           std::move(func), std::move(fut)));
@@ -1063,11 +1125,19 @@ __future_detail::State<void>::SetException(std::exception_ptr eptr) {
 
 template <typename Res> Res& __future_detail::State<Res>::Get() {
   if (!Ready()) {
+#if __EXCEPTIONS
     throw UnreadyFutureError("Get() called on unready future");
+#else
+    exit(-1);
+#endif
   }
 
   if (eptr_ != nullptr) {
+#if __EXCEPTIONS
     std::rethrow_exception(eptr_);
+#else
+    exit(-1);
+#endif
   }
 
   return val_;
@@ -1075,11 +1145,19 @@ template <typename Res> Res& __future_detail::State<Res>::Get() {
 
 inline void __future_detail::State<void>::Get() {
   if (!Ready()) {
+#if __EXCEPTIONS
     throw UnreadyFutureError("Get() called on unready future");
+#else
+    exit(-1);
+#endif
   }
 
   if (eptr_ != nullptr) {
+#if __EXCEPTIONS
     std::rethrow_exception(eptr_);
+#else
+    exit(-1);
+#endif
   }
 }
 
