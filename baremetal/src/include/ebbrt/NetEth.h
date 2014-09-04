@@ -79,15 +79,18 @@ class OperationQueue {
 
   template <typename F> void Push(F&& func) {
     OperationBase* next;
-    OperationBase* operation;
+    OperationBase* operation = new Operation<F>(std::forward<F>(func), nullptr);
+    // add link and compare and swap until it works
     do {
       next = queue_.load(std::memory_order_relaxed);
-      operation = new Operation<F>(std::forward<F>(func), next);
+      operation->next = next;
     } while (!queue_.compare_exchange_weak(next, operation,
                                            std::memory_order_release,
                                            std::memory_order_relaxed));
   }
 
+  // This will invoke all the operations and clear the queue. It must not be
+  // called concurrently with Push
   void InvokeAndClear(const EthernetAddress& addr) {
     auto current = queue_.load(std::memory_order_consume);
     while (current != nullptr) {
@@ -96,11 +99,6 @@ class OperationQueue {
       delete current;
       current = next;
     }
-  }
-
-  bool empty() const {
-    auto front = queue_.load(std::memory_order_consume);
-    return front == nullptr;
   }
 
  private:
@@ -116,16 +114,21 @@ struct ArpEntry {
     // If there was no previous address, then we should check the queue to send
     // packets
     if (!old) {
+      // This move construction is atomic so it will leave queue in an empty
+      // state
       auto q = std::move(queue);
+      // We are the only ones with access to q so it is safe to clear it
       q.InvokeAndClear(*ptr);
-      event_manager->DoRcu(
-          MoveBind([this, ptr](std::unique_ptr<EthernetAddress> old_addr) {
-                     // We shouldn't have any modifications to the queue anymore
-                     // so we can
-                     // just clear it
-                     queue.InvokeAndClear(*ptr);
-                   },
-                   std::move(old)));
+      // It is possible that an event read the old address before we did the
+      // exchange, and enqueued something after we moved queue. Therefore to
+      // catch all these scenarios we will clear the queue again after an RCU
+      // quiescent point has been reached, at which point we can be sure that
+      // all current and future readers will see the address
+      event_manager->DoRcu([this, ptr]() {
+        // We shouldn't have any modifications to the queue anymore
+        // so we can just clear it without moving it first
+        queue.InvokeAndClear(*ptr);
+      });
     }
   }
 

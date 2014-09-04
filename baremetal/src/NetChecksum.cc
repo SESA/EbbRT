@@ -3,19 +3,24 @@
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
 
+///
+/// This file implements (hopefully) high performance network checksum routines.
+///
 #include <ebbrt/Compiler.h>
 #include <ebbrt/NetChecksum.h>
 
 namespace {
-// Last step, fold a 32 bit sum to 16 bit and invert it
+// Fold a 32 bit sum to 16 bit then invert it
 uint16_t CsumFold(uint32_t sum) {
+  // Add the two 16 bit values in the top of the registers so the carry flag is
+  // set. Then, add the carry in. Finally, shift back so we get a 16 bit return
   auto lower_sum = sum << 16;
   sum &= 0xffff0000;
   asm("addl %[lower_sum], %[sum];"
       "adcl $0xffff,%[sum];"
       : [sum] "+r"(sum)
       : [lower_sum] "r"(lower_sum));
-  return sum >> 16;
+  return ~(sum >> 16);
 }
 
 uint16_t From32To16(uint32_t val) {
@@ -35,6 +40,7 @@ uint32_t Add32WithCarry(uint32_t a, uint32_t b) {
   return a;
 }
 
+// Compute checksum over a contiguous region of memory
 uint32_t Csum(const uint8_t* buf, size_t len) {
   if (unlikely(len == 0))
     return 0;
@@ -118,6 +124,7 @@ uint32_t Csum(const uint8_t* buf, size_t len) {
   return result;
 }
 
+// Checksum all buffers in an IOBuf without folding
 uint32_t IpCsumNoFold(const ebbrt::IOBuf& buf) {
   uint32_t ret = 0;
   for (auto& b : buf) {
@@ -127,6 +134,7 @@ uint32_t IpCsumNoFold(const ebbrt::IOBuf& buf) {
 }
 }  // namespace
 
+// Calculate the Ipv4 pseudo checksum with the provided header information
 uint16_t ebbrt::IpPseudoCsum(const IOBuf& buf, uint8_t proto, Ipv4Address src,
                              Ipv4Address dst) {
   auto sum = IpCsumNoFold(buf);
@@ -139,13 +147,13 @@ uint16_t ebbrt::IpPseudoCsum(const IOBuf& buf, uint8_t proto, Ipv4Address src,
       :
       [dst] "g"(dst.toU32()), [src] "g"(src.toU32()), [lenproto] "g"(lenproto));
 
-  return ~CsumFold(sum);
+  return CsumFold(sum);
 }
 
-uint16_t ebbrt::IpCsum(const IOBuf& buf) {
-  return ~CsumFold(IpCsumNoFold(buf));
-}
+// Checksum all buffers in an IOBuf
+uint16_t ebbrt::IpCsum(const IOBuf& buf) { return CsumFold(IpCsumNoFold(buf)); }
 
+// Checksum a region of memory
 uint16_t ebbrt::IpCsum(const uint8_t* buf, size_t len) {
-  return ~CsumFold(Csum(buf, len));
+  return CsumFold(Csum(buf, len));
 }
