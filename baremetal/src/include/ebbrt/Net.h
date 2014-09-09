@@ -18,7 +18,7 @@
 #include <ebbrt/NetEth.h>
 #include <ebbrt/NetIp.h>
 #include <ebbrt/NetTcp.h>
-#include <ebbrt/PoolAllocator.h>
+#include <ebbrt/SharedPoolAllocator.h>
 #include <ebbrt/RcuTable.h>
 #include <ebbrt/StaticSharedEbb.h>
 
@@ -271,12 +271,12 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
                &TcpEntry::hook, &TcpEntry::key,
                boost::hash<std::tuple<Ipv4Address, uint16_t, uint16_t>>>
   tcp_pcbs_{8};  // 256 buckets
-  EbbRef<PoolAllocator<uint16_t, 25>> udp_port_allocator_{
-      PoolAllocator<uint16_t, 25>::Create(49152, 65535,
-                                          ebb_allocator->AllocateLocal())};
-  EbbRef<PoolAllocator<uint16_t, 25>> tcp_port_allocator_{
-      PoolAllocator<uint16_t, 25>::Create(49152, 65535,
-                                          ebb_allocator->AllocateLocal())};
+  EbbRef<SharedPoolAllocator<uint16_t>> udp_port_allocator_{
+      SharedPoolAllocator<uint16_t>::Create(49152, 65535,
+                                            ebb_allocator->AllocateLocal())};
+  EbbRef<SharedPoolAllocator<uint16_t>> tcp_port_allocator_{
+      SharedPoolAllocator<uint16_t>::Create(49152, 65535,
+                                            ebb_allocator->AllocateLocal())};
 
   alignas(cache_size) std::mutex arp_write_lock_;
   alignas(cache_size) std::mutex udp_write_lock_;
