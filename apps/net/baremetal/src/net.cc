@@ -94,9 +94,11 @@ class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
 };
 
 void AppMain() {
-  listening_pcb.Bind(54321, [](ebbrt::NetworkManager::TcpPcb pcb) {
+  auto port = listening_pcb.Bind(0, [](ebbrt::NetworkManager::TcpPcb pcb) {
     ebbrt::kprintf("Connected\n");
     auto handler = new TcpHandler(std::move(pcb));
     handler->Install();
   });
+
+  ebbrt::kprintf("Listening on port %hu\n", port);
 }

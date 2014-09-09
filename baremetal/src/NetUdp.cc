@@ -11,13 +11,13 @@
 // Close a listening connection. Note that Receive could still be called until
 // the future is fulfilled
 ebbrt::Future<void> ebbrt::NetworkManager::UdpPcb::Close() {
-  // FIXME(dschatz): Port management is broken, this doesn't work
   if (entry_->port) {
-    // network_manager->udp_port_allocator_->Free(e->port);
+    network_manager->udp_port_allocator_->Free(entry_->port);
     std::lock_guard<std::mutex> guard(network_manager->udp_write_lock_);
     network_manager->udp_pcbs_.erase(*entry_);
+    entry_->port = 0;
   }
-  entry_->port = 0;
+  // wait for an RCU grace period to ensure that Receive can no longer be called
   return CallRcu([]() {});
 }
 
@@ -30,15 +30,17 @@ void ebbrt::NetworkManager::UdpPcb::UdpEntryDeleter::operator()(UdpEntry* e) {
 // Bind and listen on a port (0 to allocate one). The return value is the bound
 // port
 uint16_t ebbrt::NetworkManager::UdpPcb::Bind(uint16_t port) {
-  // FIXME(dschatz): Port management is broken, this doesn't work
   if (!port) {
     auto ret = network_manager->udp_port_allocator_->Allocate();
     if (!ret)
       throw std::runtime_error("Failed to allocate ephemeral port");
 
     port = *ret;
+  } else if (port >= 49162 &&
+             !network_manager->udp_port_allocator_->Reserve(port)) {
+    throw std::runtime_error("Failed to reserve specified port");
   }
-  // TODO(dschatz): check port is free
+
   entry_->port = port;
   {
     std::lock_guard<std::mutex> guard(network_manager->udp_write_lock_);

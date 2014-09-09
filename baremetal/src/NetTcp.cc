@@ -13,8 +13,6 @@
 // Destroy a listening tcp pcb
 void ebbrt::NetworkManager::ListeningTcpPcb::ListeningTcpEntryDeleter::
 operator()(ListeningTcpEntry* e) {
-  kabort("UNIMPLEMENTED: ListeningTcpEntry Delete\n");
-  // FIXME(dschatz): Port management is broken, this doesn't work
   if (e->port) {
     network_manager->tcp_port_allocator_->Free(e->port);
     std::lock_guard<std::mutex> guard(
@@ -43,8 +41,10 @@ uint16_t ebbrt::NetworkManager::ListeningTcpPcb::Bind(
       throw std::runtime_error("Failed to allocate ephemeral port");
 
     port = *ret;
+  } else if (port >= 49152 &&
+             !network_manager->tcp_port_allocator_->Reserve(port)) {
+    throw std::runtime_error("Failed to reserve specified port");
   }
-  // TODO(dschatz): else, check port is free and mark it as allocated
 
   entry_->port = port;
   entry_->accept_fn = std::move(accept);
