@@ -52,8 +52,8 @@ struct __attribute__((packed)) Ipv4Header {
         "addw %w[header_words], %w[sum];"  // sum lower 16 bits with upper 16
         "adcl $0, %[sum];"  // add carry
         "notl %[sum];"  // take the ones complement
-        :
-        [hptr] "+r"(hptr), [sum] "=r"(sum), [header_words] "+r"(header_words));
+        : [hptr] "+r"(hptr), [sum] "=r"(sum), [header_words] "+r"(header_words)
+        : "g"(*hptr));
 
     return sum;
   }
