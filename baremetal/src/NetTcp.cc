@@ -22,9 +22,8 @@ operator()(ListeningTcpEntry* e) {
   event_manager->DoRcu([e]() { delete e; });
 }
 
+// Destroy a connected tcp pcb
 void ebbrt::NetworkManager::TcpPcb::TcpEntryDeleter::operator()(TcpEntry* e) {
-  std::lock_guard<std::mutex> guard(network_manager->tcp_write_lock_);
-  network_manager->tcp_pcbs_.erase(*e);
   // The TcpPcb doesn't delete the entry just yet, instead the entry will delete
   // itself once it has closed the connection with the remote side.
   e->Close();
