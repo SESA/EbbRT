@@ -28,6 +28,11 @@ class UniqueIOBufOwner {
 
 typedef IOBufBase<UniqueIOBufOwner> UniqueIOBuf;
 typedef MutIOBufBase<UniqueIOBufOwner> MutUniqueIOBuf;
+
+// This exists to allocate the IOBuf and data in one allocation
+std::unique_ptr<MutUniqueIOBuf> MakeUniqueIOBuf(size_t capacity,
+                                                bool zero_memory = false);
+
 }  // namespace ebbrt
 
 #endif  // COMMON_SRC_INCLUDE_EBBRT_UNIQUEIOBUF_H_

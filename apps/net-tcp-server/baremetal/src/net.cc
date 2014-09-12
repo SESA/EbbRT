@@ -2,101 +2,79 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
+#include <tcp_handler.hpp>
 
-#include <ebbrt/Debug.h>
-#include <ebbrt/Net.h>
-#include <ebbrt/IOBufRef.h>
+#include <ebbrt/StaticIOBuf.h>
+#include <ebbrt/UniqueIOBuf.h>
 
 ebbrt::NetworkManager::ListeningTcpPcb listening_pcb;
-ebbrt::NetworkManager::TcpPcb connected_pcb;
 
-class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
+class EchoReceiver : public TcpHandler {
  public:
-  explicit TcpHandler(ebbrt::NetworkManager::TcpPcb pcb)
-      : pcb_(std::move(pcb)) {}
+  explicit EchoReceiver(ebbrt::NetworkManager::TcpPcb pcb)
+      : TcpHandler(std::move(pcb)) {}
+
+  // Callback to be invoked on a tcp segment receive event.
+  void Receive(std::unique_ptr<ebbrt::MutIOBuf> buf) override {
+    if (likely(buf)) {
+      // if buf is non-null then it points to a MutIOBuf which refers to the TCP
+      // payload
+
+      // This receiver just echos the data back
+      Send(std::move(buf));
+    } else {
+      // If buf was null then the remote closed its side of the connection, we
+      // close ours in response
+      Close();
+    }
+  }
+};
+
+class AllocingReceiver : public TcpHandler {
+ public:
+  explicit AllocingReceiver(ebbrt::NetworkManager::TcpPcb pcb)
+      : TcpHandler(std::move(pcb)) {}
 
   void Receive(std::unique_ptr<ebbrt::MutIOBuf> buf) override {
     if (likely(buf)) {
-      // echo back the data
-      Send(std::move(buf));
+      // Allocate a new buffer to hold 6 bytes
+      auto new_buf = ebbrt::MakeUniqueIOBuf(6);
+      // Fill it with the string
+      strcpy(reinterpret_cast<char*>(new_buf->MutData()), "test\n");  // NOLINT
+      // Send out the new buffer, note that the network stack will destroy the
+      // UniqueIOBuf once it is done with it, which will in turn free the
+      // underlying memory
+      Send(std::move(new_buf));
     } else {
-      // You may want to wait until the send queue is emptied to close
-      ebbrt::kprintf("Close\n");
-      pcb_.~TcpPcb();
+      Close();
     }
   }
+};
 
-  void WindowIncrease(uint16_t new_window) override {
-    pcb_.SetWindowNotify(false);
-    Send(std::move(buf_));
-  }
+class StaticReceiver : public TcpHandler {
+ public:
+  explicit StaticReceiver(ebbrt::NetworkManager::TcpPcb pcb)
+      : TcpHandler(std::move(pcb)) {}
 
-  void Send(std::unique_ptr<ebbrt::IOBuf> buf) {
-    // Do we have queued data?
-    if (likely(!buf_)) {
-      auto buf_len = buf->ComputeChainDataLength();
-      auto window_len = pcb_.RemoteWindowRemaining();
-
-      // Does the data length fit in the window?
-      if (likely(buf_len <= window_len)) {
-        pcb_.Send(std::move(buf));
-        return;
-      }
-
-      // iterate over all buffers in the chain, at the end of this loop buf
-      // should be null if the window is empty, otherwise enough data to fill
-      // the window. The rest of the data should be in buf_
-      for (auto& b : *buf) {
-        auto len = buf->Length();
-        if (len < window_len) {
-          window_len -= len;
-        } else {
-          if (&b == buf.get()) {
-            // The first buffer in the chain won't fit
-            buf_ = std::move(buf);
-            if (window_len > 0) {
-              buf = ebbrt::CreateRef(*buf_);
-              buf->TrimEnd(len - window_len);
-              buf_->Advance(window_len);
-            }
-          } else {
-            buf_ = buf->UnlinkEnd(b);
-            if (window_len > 0) {
-              auto ref = ebbrt::CreateRef(*buf_);
-              ref->TrimEnd(len - window_len);
-              buf->PrependChain(std::move(ref));
-              buf_->Advance(window_len);
-            }
-            pcb_.Send(std::move(buf));
-          }
-          break;
-        }
-      }
-      // If there was data to send, then do so
-      if (buf)
-        pcb_.Send(std::move(buf));
-      pcb_.SetWindowNotify(true);
+  void Receive(std::unique_ptr<ebbrt::MutIOBuf> buf) override {
+    static const char msg[] = "test\n";
+    if (likely(buf)) {
+      // Create a new IOBuf which refers to a static piece of memory.
+      auto new_buf =
+          std::unique_ptr<ebbrt::StaticIOBuf>(new ebbrt::StaticIOBuf(msg));
+      Send(std::move(new_buf));
     } else {
-      // queue buffer
-      if (!buf_) {
-        buf_ = std::move(buf);
-      } else {
-        buf_->PrependChain(std::move(buf));
-      }
+      Close();
     }
   }
-
-  void Install() { pcb_.InstallHandler(std::unique_ptr<ITcpHandler>(this)); }
-
- private:
-  std::unique_ptr<ebbrt::IOBuf> buf_;
-  ebbrt::NetworkManager::TcpPcb pcb_;
 };
 
 void AppMain() {
+  // Setup the listening pcb to listen on a random port
   auto port = listening_pcb.Bind(0, [](ebbrt::NetworkManager::TcpPcb pcb) {
+    // new connection callback
     ebbrt::kprintf("Connected\n");
-    auto handler = new TcpHandler(std::move(pcb));
+    auto handler = new EchoReceiver(std::move(pcb));
     handler->Install();
   });
 
