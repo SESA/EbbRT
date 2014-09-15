@@ -385,9 +385,11 @@ void ebbrt::NetworkManager::TcpEntry::Receive(const Ipv4Header& ih,
 
       rcv_nxt = info.seqno + info.tcplen;
 
-      // Upcall user application
-      buf->Advance(sizeof(TcpHeader));
-      handler->Receive(std::move(buf));
+      if (buf->ComputeChainDataLength() > sizeof(TcpHeader)) {
+        // Upcall user application
+        buf->Advance(sizeof(TcpHeader));
+        handler->Receive(std::move(buf));
+      }
 
       if (flags & kTcpFin) {
         state = kCloseWait;

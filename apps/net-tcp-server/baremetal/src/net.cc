@@ -44,6 +44,7 @@ class AllocingReceiver : public TcpHandler {
       // underlying memory
       Send(std::move(new_buf));
     } else {
+      ebbrt::kprintf("Close\n");
       Close();
     }
   }
