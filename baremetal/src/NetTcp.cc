@@ -208,8 +208,8 @@ void ebbrt::NetworkManager::ListeningTcpEntry::Input(
     entry->rcv_wnd = ntohs(th.wnd);
 
     // Create a SYN-ACK reply
-    auto buf = std::unique_ptr<MutUniqueIOBuf>(new MutUniqueIOBuf(
-        sizeof(TcpHeader) + sizeof(Ipv4Header) + sizeof(EthernetHeader)));
+    auto buf = MakeUniqueIOBuf(sizeof(TcpHeader) + sizeof(Ipv4Header) +
+                               sizeof(EthernetHeader));
     buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
     auto dp = buf->GetMutDataPointer();
     auto& tcp_header = dp.Get<TcpHeader>();
@@ -255,8 +255,8 @@ ebbrt::NetworkManager::TcpEntry::TcpEntry(MovableFunction<void(TcpPcb)>* accept)
 // Send on a TCP connection
 void ebbrt::NetworkManager::TcpEntry::Send(std::unique_ptr<IOBuf> buf) {
   // Prepend a header to the chain which will Ack any received data
-  auto header_buf = std::unique_ptr<MutUniqueIOBuf>(new MutUniqueIOBuf(
-      sizeof(TcpHeader) + sizeof(Ipv4Header) + sizeof(EthernetHeader)));
+  auto header_buf = MakeUniqueIOBuf(sizeof(TcpHeader) + sizeof(Ipv4Header) +
+                                    sizeof(EthernetHeader));
   header_buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
   header_buf->PrependChain(std::move(buf));
   auto dp = header_buf->GetMutDataPointer();
@@ -474,8 +474,8 @@ ebbrt::NetworkManager::TcpEntry::Output(ebbrt::clock::Wall::time_point now) {
 
 // Send an Ack with no data
 void ebbrt::NetworkManager::TcpEntry::SendEmptyAck() {
-  auto buf = std::unique_ptr<MutUniqueIOBuf>(new MutUniqueIOBuf(
-      sizeof(TcpHeader) + sizeof(Ipv4Header) + sizeof(EthernetHeader)));
+  auto buf = MakeUniqueIOBuf(sizeof(TcpHeader) + sizeof(Ipv4Header) +
+                             sizeof(EthernetHeader));
   buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
   auto dp = buf->GetMutDataPointer();
   auto& th = dp.Get<TcpHeader>();
@@ -523,8 +523,8 @@ void ebbrt::NetworkManager::TcpEntry::SendFin() {
   }
 
   // Otherwise create an empty segment with a Fin
-  auto buf = std::unique_ptr<MutUniqueIOBuf>(new MutUniqueIOBuf(
-      sizeof(TcpHeader) + sizeof(Ipv4Header) + sizeof(EthernetHeader)));
+  auto buf = MakeUniqueIOBuf(sizeof(TcpHeader) + sizeof(Ipv4Header) +
+                             sizeof(EthernetHeader));
   buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
   auto dp = buf->GetMutDataPointer();
   auto& tcp_header = dp.Get<TcpHeader>();
@@ -550,8 +550,8 @@ void ebbrt::NetworkManager::TcpReset(uint32_t seqno, uint32_t ackno,
                                      const Ipv4Address& remote_ip,
                                      uint16_t local_port,
                                      uint16_t remote_port) {
-  auto buf = std::unique_ptr<MutUniqueIOBuf>(new MutUniqueIOBuf(
-      sizeof(TcpHeader) + sizeof(Ipv4Header) + sizeof(EthernetHeader)));
+  auto buf = MakeUniqueIOBuf(sizeof(TcpHeader) + sizeof(Ipv4Header) +
+                             sizeof(EthernetHeader));
 
   buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
 

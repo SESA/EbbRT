@@ -119,8 +119,8 @@ void ebbrt::NetworkManager::Interface::SendUdp(UdpPcb& pcb, Ipv4Address addr,
     throw std::runtime_error("Send on unbound pcb");
 
   // Construct header
-  auto header_buf = std::unique_ptr<MutUniqueIOBuf>(new MutUniqueIOBuf(
-      sizeof(UdpHeader) + sizeof(Ipv4Header) + sizeof(EthernetHeader)));
+  auto header_buf = MakeUniqueIOBuf(sizeof(UdpHeader) + sizeof(Ipv4Header) +
+                                    sizeof(EthernetHeader));
   header_buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
   auto dp = header_buf->GetMutDataPointer();
   auto& udp_header = dp.Get<UdpHeader>();

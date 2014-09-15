@@ -141,8 +141,7 @@ ebbrt::NetworkManager::Interface::ReceiveArp(EthernetHeader& eth_header,
 
 // Request an ARP reply for a given entry
 void ebbrt::NetworkManager::Interface::EthArpRequest(ArpEntry& entry) {
-  auto buf = std::unique_ptr<MutUniqueIOBuf>(
-      new MutUniqueIOBuf(sizeof(EthernetHeader) + sizeof(ArpPacket)));
+  auto buf = MakeUniqueIOBuf(sizeof(EthernetHeader) + sizeof(ArpPacket));
   auto dp = buf->GetMutDataPointer();
   auto& eth_header = dp.Get<EthernetHeader>();
   auto& arp_packet = dp.Get<ArpPacket>();

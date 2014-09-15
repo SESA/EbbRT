@@ -10,21 +10,7 @@
 #include <ebbrt/IOBuf.h>
 
 namespace ebbrt {
-class UniqueIOBufOwner {
- public:
-  UniqueIOBufOwner(size_t capacity, bool zero_memory = false);
-
-  const uint8_t* Buffer() const;
-  size_t Capacity() const;
-
- private:
-  struct Deleter {
-    void operator()(uint8_t* p) { free(p); }
-  };
-
-  std::unique_ptr<uint8_t, Deleter> ptr_;
-  size_t capacity_;
-};
+class UniqueIOBufOwner;
 
 typedef IOBufBase<UniqueIOBufOwner> UniqueIOBuf;
 typedef MutIOBufBase<UniqueIOBufOwner> MutUniqueIOBuf;
@@ -32,6 +18,22 @@ typedef MutIOBufBase<UniqueIOBufOwner> MutUniqueIOBuf;
 // This exists to allocate the IOBuf and data in one allocation
 std::unique_ptr<MutUniqueIOBuf> MakeUniqueIOBuf(size_t capacity,
                                                 bool zero_memory = false);
+
+class UniqueIOBufOwner {
+ public:
+  UniqueIOBufOwner(uint8_t* p, size_t capacity);
+
+  const uint8_t* Buffer() const;
+  size_t Capacity() const;
+
+ private:
+  struct Deleter {
+    void operator()(uint8_t* p);
+  };
+
+  uint8_t* ptr_;
+  size_t capacity_;
+};
 
 }  // namespace ebbrt
 

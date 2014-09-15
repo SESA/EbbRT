@@ -7,8 +7,6 @@
 #include <ebbrt/StaticIOBuf.h>
 #include <ebbrt/UniqueIOBuf.h>
 
-ebbrt::NetworkManager::ListeningTcpPcb listening_pcb;
-
 class EchoReceiver : public TcpHandler {
  public:
   explicit EchoReceiver(ebbrt::NetworkManager::TcpPcb pcb)
@@ -69,12 +67,14 @@ class StaticReceiver : public TcpHandler {
   }
 };
 
+ebbrt::NetworkManager::ListeningTcpPcb listening_pcb;
+
 void AppMain() {
   // Setup the listening pcb to listen on a random port
   auto port = listening_pcb.Bind(0, [](ebbrt::NetworkManager::TcpPcb pcb) {
     // new connection callback
     ebbrt::kprintf("Connected\n");
-    auto handler = new EchoReceiver(std::move(pcb));
+    auto handler = new AllocingReceiver(std::move(pcb));
     handler->Install();
   });
 

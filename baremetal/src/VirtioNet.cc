@@ -75,8 +75,8 @@ void ebbrt::VirtioNetDriver::FillRxRing() {
     auto buf = allocator_->Alloc();
     if (unlikely(buf == nullptr))
       throw std::bad_alloc();
-    auto b = new MutUniqueIOBuf(2048);
-    bufs.emplace_back(std::unique_ptr<MutUniqueIOBuf>(b));
+
+    bufs.emplace_back(MakeUniqueIOBuf(2048));
   }
 
   auto it = rcv_queue.AddWritableBuffers(bufs.begin(), bufs.end());
@@ -272,8 +272,7 @@ uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
 
 void ebbrt::VirtioNetDriver::Send(std::unique_ptr<IOBuf> buf) {
   auto len = buf->ComputeChainDataLength();
-  auto b = std::unique_ptr<MutUniqueIOBuf>(
-      new MutUniqueIOBuf(len + sizeof(VirtioNetHeader)));
+  auto b = MakeUniqueIOBuf(len + sizeof(VirtioNetHeader));
   memset(b->MutData(), 0, sizeof(VirtioNetHeader));
   // if (csum_) {
   //   auto header_dp = b->GetWritableDataPointer();
