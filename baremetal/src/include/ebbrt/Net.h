@@ -74,7 +74,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
   class TcpPcb;
 
   struct ListeningTcpEntry : public CacheAligned {
-    void Input(const Ipv4Header& ih, const TcpHeader& th, const TcpInfo& info,
+    void Input(const Ipv4Header& ih, TcpHeader& th, TcpInfo& info,
                std::unique_ptr<MutIOBuf> buf);
     RcuHListHook hook;
     uint16_t port{0};
@@ -97,29 +97,33 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
 
   class ITcpHandler {
    public:
+    virtual void Close() = 0;
+    virtual void Abort() = 0;
     virtual void Receive(std::unique_ptr<MutIOBuf> buf) = 0;
-    virtual void WindowIncrease(uint16_t new_window) = 0;
+    virtual void SendWindowIncrease() = 0;
     virtual ~ITcpHandler() {}
   };
 
   struct TcpEntry : public CacheAligned, public Timer::Hook {
-    TcpEntry() = default;
-    TcpEntry(MovableFunction<void(TcpPcb)>*);
     void Fire() override;
     void EnqueueSegment(TcpHeader& th, std::unique_ptr<MutIOBuf> buf,
                         uint16_t flags);
-    void Input(const Ipv4Header& ih, const TcpHeader& th, const TcpInfo& info,
+    void Input(const Ipv4Header& ih, TcpHeader& th, TcpInfo& info,
                std::unique_ptr<MutIOBuf> buf);
-    void Receive(const Ipv4Header& ih, const TcpHeader& th, const TcpInfo& info,
-                 std::unique_ptr<MutIOBuf> buf);
+    bool Receive(const Ipv4Header& ih, TcpHeader& th, TcpInfo& info,
+                 std::unique_ptr<MutIOBuf> buf,
+                 ebbrt::clock::Wall::time_point now);
     size_t Output(ebbrt::clock::Wall::time_point now);
-    uint16_t WindowRemaining();
+    uint16_t SendWindowRemaining();
     void SetTimer(ebbrt::clock::Wall::time_point now);
     void SendSegment(TcpSegment& segment);
     void SendEmptyAck();
     void Close();
     void SendFin();
     void Send(std::unique_ptr<IOBuf> buf);
+    void Purge();
+    void DisableTimers();
+    void Destroy();
 
     RcuHListHook hook;
     Ipv4Address address;
@@ -127,19 +131,28 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     boost::container::list<TcpSegment> unacked_segments;
     boost::container::list<TcpSegment> pending_segments;
     enum State {
+      kClosed,
+      kSynSent,
       kSynReceived,
       kEstablished,
+      kFinWait1,
+      kFinWait2,
       kCloseWait,
+      kClosing,
       kLastAck,
-      kClosed
+      kTimeWait
     } state;
-    uint32_t snd_lbb;  // seqno of next byte to send
-    uint32_t rcv_nxt;  // The next byte we expect to be received
-    uint32_t last_sent_ack;  // The last ackno we sent
-    uint32_t lastack;  // next byte to be acked by receiver
-    uint16_t rcv_wnd;  // last window the remote receiver advertised
+    uint32_t snd_una;  // oldest unacknowledged sequence number
+    uint32_t snd_nxt;  // next sequence number to be sent
+    uint32_t snd_wnd;  // size of the send window
+    uint32_t snd_wl1;  // segment sequence number used for last window update
+    uint32_t snd_wl2;  // segment ack number used for last window update
+    uint32_t rcv_nxt;  // next sequence number expected on an incoming segment,
+    // also the lower edge of the receive window
+    uint16_t rcv_wnd;  // size of the receive window
+    uint32_t rcv_last_acked;  // The last received byte we acked
     ebbrt::clock::Wall::time_point retransmit;  // when to retransmit
-    MovableFunction<void(TcpPcb)>* accept_fn;
+    ebbrt::clock::Wall::time_point time_wait;  // when to leave time_wait state
     std::unique_ptr<ITcpHandler> handler;
     bool window_notify;
     bool timer_set;
@@ -150,7 +163,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     TcpPcb() = default;
     explicit TcpPcb(TcpEntry* entry) : entry_(entry) {}
     void InstallHandler(std::unique_ptr<ITcpHandler> handler);
-    uint16_t RemoteWindowRemaining();
+    uint16_t SendWindowRemaining();
     void SetWindowNotify(bool notify);
     void Send(std::unique_ptr<IOBuf> buf);
 
@@ -255,9 +268,9 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
   Future<void> StartDhcp();
   void SendIp(std::unique_ptr<MutIOBuf> buf, Ipv4Address src, Ipv4Address dst,
               uint8_t proto);
-  void TcpReset(uint32_t seqno, uint32_t ackno, const Ipv4Address& local_ip,
-                const Ipv4Address& remote_ip, uint16_t local_port,
-                uint16_t remote_port);
+  void TcpReset(bool ack, uint32_t seqno, uint32_t ackno,
+                const Ipv4Address& local_ip, const Ipv4Address& remote_ip,
+                uint16_t local_port, uint16_t remote_port);
   Interface* IpRoute(Ipv4Address dest);
 
   std::unique_ptr<Interface> interface_;

@@ -69,7 +69,6 @@ void ebbrt::NetworkManager::Interface::ReceiveDhcp(
 // The initial DHCP state, discover DHCP servers
 void ebbrt::NetworkManager::Interface::DhcpDiscover() {
   DhcpSetState(DhcpPcb::State::kSelecting);
-  kprintf("Discover\n");
   auto buf = MakeUniqueIOBuf(sizeof(DhcpMessage));
   auto dp = buf->GetMutDataPointer();
   auto& dhcp_message = dp.Get<DhcpMessage>();

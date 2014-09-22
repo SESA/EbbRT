@@ -15,21 +15,21 @@ class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
       : pcb_(std::move(pcb)) {}
 
   // Closes and destroys the PCB when all pending data is sent
-  void Close() {
+  void Shutdown() {
     if (buf_) {
-      close_ = true;
+      shutdown_ = true;
     } else {
       pcb_.~TcpPcb();
     }
   }
 
   // Callback to be invoked when the remote receive window has increased.
-  void WindowIncrease(uint16_t new_window) override {
+  void SendWindowIncrease() override {
     // Disable this callback
     pcb_.SetWindowNotify(false);
     // Send any enqueued data
     Send(std::move(buf_));
-    if (unlikely(close_ && !buf_)) {
+    if (unlikely(shutdown_ && !buf_)) {
       pcb_.~TcpPcb();
     }
   }
@@ -40,7 +40,7 @@ class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
     if (likely(!buf_)) {
       // no queued data
       auto buf_len = buf->ComputeChainDataLength();
-      auto window_len = pcb_.RemoteWindowRemaining();
+      auto window_len = pcb_.SendWindowRemaining();
 
       // Does the data length fit in the window?
       if (likely(buf_len <= window_len)) {
@@ -104,5 +104,5 @@ class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
  private:
   std::unique_ptr<ebbrt::IOBuf> buf_;
   ebbrt::NetworkManager::TcpPcb pcb_;
-  bool close_{false};
+  bool shutdown_{false};
 };
