@@ -56,6 +56,75 @@ uint16_t ebbrt::NetworkManager::ListeningTcpPcb::Bind(
   return port;
 }
 
+uint16_t ebbrt::NetworkManager::TcpPcb::Connect(Ipv4Address address,
+                                                uint16_t port,
+                                                uint16_t local_port) {
+  // ensure we have an interface to send to this IP
+  auto itf = network_manager->IpRoute(address);
+  if (!itf) {
+    throw std::runtime_error("No route to remote address for Connect");
+  }
+
+  if (!local_port) {
+    auto ret = network_manager->tcp_port_allocator_->Allocate();
+    if (!ret)
+      throw std::runtime_error("Failed to allocate ephemeral port");
+
+    local_port = *ret;
+  } else if (local_port >= 49152 &&
+             !network_manager->tcp_port_allocator_->Reserve(local_port)) {
+    throw std::runtime_error("Failed to reserve specified port");
+  }
+
+  // Setup state
+  entry_->address = itf->Address()->address;
+  std::get<0>(entry_->key) = address;
+  std::get<1>(entry_->key) = port;
+  std::get<2>(entry_->key) = local_port;
+  entry_->state = TcpEntry::State::kSynSent;
+  uint32_t iss = random::Get();
+  entry_->snd_una = iss;
+  entry_->snd_nxt = iss;  // EnqueueSegment will increment this by one
+  entry_->snd_wnd = kTcpWnd;
+  entry_->rcv_nxt = 0;
+  entry_->rcv_wnd = kTcpWnd;
+
+  // We need to insert the entry into the hash table at this point to avoid
+  // concurrent connection creation.
+  // TODO(dschatz): In order for this to be safe in the face of concurrency,
+  // we need to mark the entry as invalid so that data received on other cores
+  // do not try to concurrently access the entry
+  {
+    // ensure that all mutating operations on the hash table are serialized
+    std::lock_guard<std::mutex> lock(network_manager->tcp_write_lock_);
+    // double check that we haven't concurrently created this connection
+    auto found_entry = network_manager->tcp_pcbs_.find(entry_->key);
+    if (unlikely(found_entry)) {
+      // Concurrent SYNs raced and this one lost
+      // Delete the new entry and pass the packet along to the active one
+      throw std::runtime_error("Connection already created");
+    }
+
+    network_manager->tcp_pcbs_.insert(*entry_);
+  }
+
+  // TODO(dschatz): There should be a timeout to close the new connection if
+  // the handshake doesn't complete
+
+  auto new_buf = MakeUniqueIOBuf(sizeof(TcpHeader) + sizeof(Ipv4Header) +
+                                 sizeof(EthernetHeader));
+  new_buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
+  auto dp = new_buf->GetMutDataPointer();
+  auto& tcp_header = dp.Get<TcpHeader>();
+  entry_->EnqueueSegment(tcp_header, std::move(new_buf), kTcpSyn);
+
+  auto now = ebbrt::clock::Wall::Now();
+  entry_->Output(now);
+  entry_->SetTimer(now);
+
+  return local_port;
+}
+
 // Install a handler for TCP connection events (receive packet, window size
 // change, etc.)
 void ebbrt::NetworkManager::TcpPcb::InstallHandler(
@@ -373,7 +442,72 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
     const Ipv4Header& ih, TcpHeader& th, TcpInfo& info,
     std::unique_ptr<MutIOBuf> buf, ebbrt::clock::Wall::time_point now) {
   if (unlikely(state == kSynSent)) {
-    kabort("UNIMPLEMENTED: Active Open\n");
+    auto flags = th.Flags();
+    bool acceptable_ack = false;
+    if (flags & kTcpAck) {
+      // RFC 793 Page 66:
+      // If the ACK bit is set:
+      // If SEG.ACK =< ISS, or SEG.ACK > SND.NXT, send a reset (unless the RST
+      // bit is set, if so drop the segment and return)
+      if (TcpSeqLEQ(info.ackno, snd_una) || TcpSeqGT(info.ackno, snd_nxt)) {
+        if (!(flags & kTcpRst)) {
+          network_manager->TcpReset(false, info.ackno, 0, ih.dst, ih.src,
+                                    info.dst_port, info.src_port);
+          state = kClosed;
+          handler->Abort();
+          Purge();
+          DisableTimers();
+          Destroy();
+          return false;
+        } else {
+          return true;
+        }
+      }
+      acceptable_ack = true;
+    }
+
+    if (flags & kTcpRst) {
+      // RFC 793 Page 67:
+      // If the RST bit is set
+      // If the ACK was acceptable then signal the user "error: connection
+      // reset", drop the segment, enter CLOSED state, delete TCB, and return.
+      // Otherwise (no ACK) drop the segment and return.
+      if (acceptable_ack) {
+        state = kClosed;
+        handler->Abort();
+        Purge();
+        DisableTimers();
+        Destroy();
+        return false;
+      } else {
+        return true;
+      }
+    }
+
+    if (flags & kTcpSyn) {
+      // Either the ACK is acceptable or there is no ACK and no RST
+      kassert((flags & kTcpAck && acceptable_ack) ||
+              !(flags & (kTcpAck | kTcpRst)));
+      rcv_nxt = info.seqno + 1;
+      if (acceptable_ack) {
+        // Received a SYN-ACK
+        snd_una = info.ackno;
+        state = kEstablished;
+        snd_wnd = ntohs(th.wnd);
+        snd_wl1 = info.seqno;
+        snd_wl2 = info.ackno;
+
+        ClearAckedSegments(info);
+
+        if (info.tcplen > 1) {
+          kabort("UNIMPLEMENTED: Data with SYN packet\n");
+        }
+
+        handler->Connected();
+      } else {
+        kabort("UNIMPLEMENTED: Simultaneous Open\n");
+      }
+    }
   } else {
     // First check sequence number
     if (likely((rcv_wnd > 0 && TcpSeqBetween(rcv_nxt, info.seqno,
@@ -485,31 +619,7 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
               snd_wl2 = info.ackno;
             }
 
-            // Function to clear acked segments from a queue
-            auto clear_acked_segments = [&](
-                boost::container::list<TcpSegment>& queue) {
-              auto it = queue.begin();
-              while (it != queue.end()) {
-                if (TcpSeqGT(ntohl(it->th.seqno) + it->SeqLen(), info.ackno))
-                  break;
-                auto prev_it = it++;
-                queue.erase(prev_it);
-              }
-            };
-
-            // Remove all unacked segments that have been completely acked by
-            // this ACK
-            clear_acked_segments(unacked_segments);
-            // Its also possible to find pending segments which have been ACKed
-            // because we may have hit a retransmit timer which would cause them
-            // to be moved back to the pending_segments queue. Remove them
-            clear_acked_segments(pending_segments);
-
-            if (unacked_segments.empty()) {
-              // The only timer that could be active here is our retransmit
-              // timer so we are safe to disable all timers
-              DisableTimers();
-            }
+            ClearAckedSegments(info);
 
             if (window_notify) {
               // Upcall user that the send window has increased
@@ -655,6 +765,33 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
     }
   }
   return true;
+}
+
+void ebbrt::NetworkManager::TcpEntry::ClearAckedSegments(const TcpInfo& info) {
+  // Function to clear acked segments from a queue
+  auto clear_acked_segments = [&](boost::container::list<TcpSegment>& queue) {
+    auto it = queue.begin();
+    while (it != queue.end()) {
+      if (TcpSeqGT(ntohl(it->th.seqno) + it->SeqLen(), info.ackno))
+        break;
+      auto prev_it = it++;
+      queue.erase(prev_it);
+    }
+  };
+
+  // Remove all unacked segments that have been completely acked by
+  // this ACK
+  clear_acked_segments(unacked_segments);
+  // Its also possible to find pending segments which have been ACKed
+  // because we may have hit a retransmit timer which would cause them
+  // to be moved back to the pending_segments queue. Remove them
+  clear_acked_segments(pending_segments);
+
+  if (unacked_segments.empty()) {
+    // The only timer that could be active here is our retransmit
+    // timer so we are safe to disable all timers
+    DisableTimers();
+  }
 }
 
 // Fill out a header and enqueue the segment to be sent

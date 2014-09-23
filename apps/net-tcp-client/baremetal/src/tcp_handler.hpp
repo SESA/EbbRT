@@ -98,7 +98,6 @@ class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
       buf_->PrependChain(std::move(buf));
     }
   }
-
   // Install ourselves as the handler for the pcb
   void Install() { pcb_.InstallHandler(std::unique_ptr<ITcpHandler>(this)); }
 

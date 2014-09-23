@@ -100,6 +100,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     virtual void Close() = 0;
     virtual void Abort() = 0;
     virtual void Receive(std::unique_ptr<MutIOBuf> buf) = 0;
+    virtual void Connected() = 0;
     virtual void SendWindowIncrease() = 0;
     virtual ~ITcpHandler() {}
   };
@@ -114,6 +115,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
                  std::unique_ptr<MutIOBuf> buf,
                  ebbrt::clock::Wall::time_point now);
     size_t Output(ebbrt::clock::Wall::time_point now);
+    void ClearAckedSegments(const TcpInfo& info);
     uint16_t SendWindowRemaining();
     void SetTimer(ebbrt::clock::Wall::time_point now);
     void SendSegment(TcpSegment& segment);
@@ -153,6 +155,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     uint32_t rcv_last_acked;  // The last received byte we acked
     ebbrt::clock::Wall::time_point retransmit;  // when to retransmit
     ebbrt::clock::Wall::time_point time_wait;  // when to leave time_wait state
+    Promise<void> connected;
     std::unique_ptr<ITcpHandler> handler;
     bool window_notify;
     bool timer_set;
@@ -160,8 +163,10 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
 
   class TcpPcb {
    public:
-    TcpPcb() = default;
+    TcpPcb() : entry_(new TcpEntry()) {}
     explicit TcpPcb(TcpEntry* entry) : entry_(entry) {}
+    uint16_t Connect(Ipv4Address address, uint16_t port,
+                     uint16_t local_port = 0);
     void InstallHandler(std::unique_ptr<ITcpHandler> handler);
     uint16_t SendWindowRemaining();
     void SetWindowNotify(bool notify);
