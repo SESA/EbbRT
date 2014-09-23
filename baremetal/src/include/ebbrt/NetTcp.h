@@ -27,6 +27,11 @@ struct __attribute__((packed)) TcpHeader {
     hdrlen_flags = htons((header_words << 12) | flags);
   }
 
+  void SetFlags(uint16_t flags) {
+    hdrlen_flags &= ~htons(0xFFF);
+    hdrlen_flags |= htons(flags & 0xFFF);
+  }
+
   size_t HdrLen() const { return (ntohs(hdrlen_flags) >> 12) * 4; }
 
   uint16_t Flags() const { return ntohs(hdrlen_flags) & kTcpFlagMask; }

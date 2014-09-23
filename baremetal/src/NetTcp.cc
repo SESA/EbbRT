@@ -256,13 +256,17 @@ ebbrt::NetworkManager::TcpEntry::SetTimer(ebbrt::clock::Wall::time_point now) {
   if (timer_set)
     return;
 
-  if (now >= retransmit && now >= time_wait)
+  ebbrt::clock::Wall::time_point min_timer;
+  if (now >= retransmit && now >= time_wait) {
     return;
+  } else if (now >= retransmit) {
+    min_timer = time_wait;
+  } else {
+    min_timer = retransmit;
+  }
 
-  auto min_timer = std::min(retransmit, time_wait);
-  timer->Start(*this, std::chrono::duration_cast<std::chrono::microseconds>(
-                          min_timer - now),
-               /* repeat = */ false);
+  auto duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(min_timer - now);
   timer_set = true;
 }
 
@@ -684,7 +688,7 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
             if (flags & kTcpFin) {
               // remove FIN flag since it doesn't fit in the window
               auto flags = th.Flags() & ~kTcpFin;
-              const_cast<TcpHeader&>(th).SetHdrLenFlags(th.HdrLen(), flags);
+              const_cast<TcpHeader&>(th).SetFlags(flags);
               info.tcplen--;
             }
             // Received more data than our receive window can hold, trim the end
@@ -907,7 +911,7 @@ void ebbrt::NetworkManager::TcpEntry::SendFin() {
     auto flags = seg.th.Flags();
     if (!(flags & (kTcpSyn | kTcpFin | kTcpRst))) {
       // no syn/fin/rst set
-      seg.th.SetHdrLenFlags(seg.th.HdrLen(), flags | kTcpFin);
+      seg.th.SetFlags(flags | kTcpFin);
       ++seg.tcp_len;
       ++snd_nxt;
       return;
