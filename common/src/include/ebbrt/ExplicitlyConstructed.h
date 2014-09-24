@@ -15,20 +15,18 @@ template <typename T> class ExplicitlyConstructed {
     ::new (&storage_) T(std::forward<Args>(args)...);
   }
   void destruct() {
-    auto ptr = static_cast<T*>(static_cast<void*>(&storage_));
+    auto ptr = reinterpret_cast<T*>(&storage_);
     ptr->~T();
   }
 
-  const T* operator->() const {
-    return static_cast<T const*>(static_cast<void const*>(&storage_));
-  }
-  T* operator->() { return static_cast<T*>(static_cast<void*>(&storage_)); }
+  const T* operator->() const { return reinterpret_cast<T const*>(&storage_); }
 
-  const T& operator*() const {
-    return *static_cast<T const*>(static_cast<void const*>(&storage_));
-  }
+  T* operator->() { return reinterpret_cast<T*>(&storage_); }
 
-  T& operator*() { return *static_cast<T*>(static_cast<void*>(&storage_)); }
+  const T& operator*() const { return *reinterpret_cast<T const*>(&storage_); }
+
+  T& operator*() { return *reinterpret_cast<T*>(&storage_); }
+
   ExplicitlyConstructed() = default;
   ExplicitlyConstructed(const ExplicitlyConstructed&) = delete;
   ExplicitlyConstructed& operator=(const ExplicitlyConstructed&) = delete;
