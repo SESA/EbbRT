@@ -36,7 +36,6 @@ class AllocingReceiver : public TcpHandler {
     // UniqueIOBuf once it is done with it, which will in turn free the
     // underlying memory
     Send(std::move(new_buf));
-    Shutdown();
   }
 
   void Close() override { Shutdown(); }
@@ -64,6 +63,21 @@ class StaticReceiver : public TcpHandler {
 
 ebbrt::NetworkManager::ListeningTcpPcb listening_pcb;
 
+#ifdef TEST_ZERO_WINDOW
+// Timer class
+class Timer : public ebbrt::Timer::Hook {
+ public:
+  explicit Timer(ebbrt::NetworkManager::TcpPcb& pcb) : pcb_(pcb) {}
+  void Fire() override {
+    pcb_.SetReceiveWindow(ebbrt::kTcpWnd);
+    delete this;
+  }
+
+ private:
+  ebbrt::NetworkManager::TcpPcb& pcb_;
+};
+#endif
+
 void AppMain() {
   // Setup the listening pcb to listen on a random port
   auto port = listening_pcb.Bind(0, [](ebbrt::NetworkManager::TcpPcb pcb) {
@@ -71,6 +85,11 @@ void AppMain() {
     ebbrt::kprintf("Connected\n");
     auto handler = new EchoReceiver(std::move(pcb));
     handler->Install();
+#ifdef TEST_ZERO_WINDOW
+    handler->Pcb().SetReceiveWindow(0);
+    ebbrt::timer->Start(*new Timer(handler->Pcb()), std::chrono::seconds(10),
+                        /* repeat = */ false);
+#endif
   });
 
   ebbrt::kprintf("Listening on port %hu\n", port);

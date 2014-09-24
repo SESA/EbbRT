@@ -87,7 +87,8 @@ uint16_t ebbrt::NetworkManager::TcpPcb::Connect(Ipv4Address address,
   entry_->snd_nxt = iss;  // EnqueueSegment will increment this by one
   entry_->snd_wnd = kTcpWnd;
   entry_->rcv_nxt = 0;
-  entry_->rcv_wnd = kTcpWnd;
+  if (!entry_->rcv_wnd)
+    entry_->rcv_wnd = kTcpWnd;
 
   // We need to insert the entry into the hash table at this point to avoid
   // concurrent connection creation.
@@ -123,6 +124,11 @@ uint16_t ebbrt::NetworkManager::TcpPcb::Connect(Ipv4Address address,
   entry_->SetTimer(now);
 
   return local_port;
+}
+
+// Set the receive window to control pacing of the connection
+void ebbrt::NetworkManager::TcpPcb::SetReceiveWindow(uint16_t window) {
+  entry_->rcv_wnd = window;
 }
 
 // Install a handler for TCP connection events (receive packet, window size
@@ -267,6 +273,7 @@ ebbrt::NetworkManager::TcpEntry::SetTimer(ebbrt::clock::Wall::time_point now) {
 
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(min_timer - now);
+  timer->Start(*this, duration, /* repeat = */ false);
   timer_set = true;
 }
 

@@ -27,6 +27,7 @@ class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
   void SendWindowIncrease() override {
     // Disable this callback
     pcb_.SetWindowNotify(false);
+    pcb_.SetReceiveWindow(ebbrt::kTcpWnd);
     // Send any enqueued data
     Send(std::move(buf_));
     if (unlikely(shutdown_ && !buf_)) {
@@ -90,8 +91,8 @@ class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
       // There must be some data queued, so ask to be notified about a window
       // increase
       pcb_.SetWindowNotify(true);
-      // TODO(dschatz): We should also close the receive window (maybe after a
-      // certain amount has been queued), to pace this properly
+      // Close the receive window to pace this connection
+      pcb_.SetReceiveWindow(0);
     } else {
       // We already have data enqueued and to preserve ordering, that data must
       // go out first. In such a case, just enqueue the additional data
@@ -103,6 +104,8 @@ class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
   void Install() { pcb_.InstallHandler(std::unique_ptr<ITcpHandler>(this)); }
 
   void Connected() override {}
+
+  ebbrt::NetworkManager::TcpPcb& Pcb() { return pcb_; }
 
  private:
   std::unique_ptr<ebbrt::IOBuf> buf_;

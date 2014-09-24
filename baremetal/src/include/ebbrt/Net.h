@@ -169,6 +169,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
                      uint16_t local_port = 0);
     void InstallHandler(std::unique_ptr<ITcpHandler> handler);
     uint16_t SendWindowRemaining();
+    void SetReceiveWindow(uint16_t window);
     void SetWindowNotify(bool notify);
     void Send(std::unique_ptr<IOBuf> buf);
 
