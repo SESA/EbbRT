@@ -2,15 +2,14 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
-#include <tcp_handler.hpp>
-
+#include <ebbrt/NetTcpHandler.h>
 #include <ebbrt/StaticIOBuf.h>
 #include <ebbrt/UniqueIOBuf.h>
 
-class EchoReceiver : public TcpHandler {
+class EchoReceiver : public ebbrt::TcpHandler {
  public:
   explicit EchoReceiver(ebbrt::NetworkManager::TcpPcb pcb)
-      : TcpHandler(std::move(pcb)) {}
+      : ebbrt::TcpHandler(std::move(pcb)) {}
 
   // Callback to be invoked on a tcp segment receive event.
   void Receive(std::unique_ptr<ebbrt::MutIOBuf> buf) override {
@@ -22,10 +21,10 @@ class EchoReceiver : public TcpHandler {
   void Abort() override {}
 };
 
-class AllocingReceiver : public TcpHandler {
+class AllocingReceiver : public ebbrt::TcpHandler {
  public:
   explicit AllocingReceiver(ebbrt::NetworkManager::TcpPcb pcb)
-      : TcpHandler(std::move(pcb)) {}
+      : ebbrt::TcpHandler(std::move(pcb)) {}
 
   void Receive(std::unique_ptr<ebbrt::MutIOBuf> buf) override {
     // Allocate a new buffer to hold 6 bytes
@@ -43,10 +42,10 @@ class AllocingReceiver : public TcpHandler {
   void Abort() override {}
 };
 
-class StaticReceiver : public TcpHandler {
+class StaticReceiver : public ebbrt::TcpHandler {
  public:
   explicit StaticReceiver(ebbrt::NetworkManager::TcpPcb pcb)
-      : TcpHandler(std::move(pcb)) {}
+      : ebbrt::TcpHandler(std::move(pcb)) {}
 
   void Receive(std::unique_ptr<ebbrt::MutIOBuf> buf) override {
     static const char msg[] = "test\n";

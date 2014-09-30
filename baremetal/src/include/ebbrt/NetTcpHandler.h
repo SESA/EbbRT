@@ -2,12 +2,16 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
+#ifndef BAREMETAL_SRC_INCLUDE_EBBRT_NETTCPHANDLER_H_
+#define BAREMETAL_SRC_INCLUDE_EBBRT_NETTCPHANDLER_H_
+
 #include <ebbrt/Net.h>
 #include <ebbrt/Debug.h>
 #include <ebbrt/IOBufRef.h>
 
 // A handler which implements the ITcpHandler interface for a
 // connected tcp pcb. All callbacks are invoked on a single core.
+namespace ebbrt {
 class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
  public:
   // Constructor, just store the pcb
@@ -27,6 +31,7 @@ class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
   void SendWindowIncrease() override {
     // Disable this callback
     pcb_.SetWindowNotify(false);
+    pcb_.SetReceiveWindow(ebbrt::kTcpWnd);
     // Send any enqueued data
     Send(std::move(buf_));
     if (unlikely(shutdown_ && !buf_)) {
@@ -90,21 +95,27 @@ class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
       // There must be some data queued, so ask to be notified about a window
       // increase
       pcb_.SetWindowNotify(true);
-      // TODO(dschatz): We should also close the receive window (maybe after a
-      // certain amount has been queued), to pace this properly
+      // Close the receive window to pace this connection
+      pcb_.SetReceiveWindow(0);
     } else {
       // We already have data enqueued and to preserve ordering, that data must
       // go out first. In such a case, just enqueue the additional data
       buf_->PrependChain(std::move(buf));
     }
   }
+
   // Install ourselves as the handler for the pcb
   void Install() { pcb_.InstallHandler(std::unique_ptr<ITcpHandler>(this)); }
 
   void Connected() override {}
+
+  ebbrt::NetworkManager::TcpPcb& Pcb() { return pcb_; }
 
  private:
   std::unique_ptr<ebbrt::IOBuf> buf_;
   ebbrt::NetworkManager::TcpPcb pcb_;
   bool shutdown_{false};
 };
+}  // namespace ebbrt
+
+#endif  // BAREMETAL_SRC_INCLUDE_EBBRT_NETTCPHANDLER_H_

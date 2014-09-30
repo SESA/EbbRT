@@ -3,9 +3,10 @@
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include <ebbrt/Messenger.h>
-#include <ebbrt/NodeAllocator.h>
 
 #include <ebbrt/GlobalIdMap.h>
+#include <ebbrt/NodeAllocator.h>
+#include <ebbrt/UniqueIOBuf.h>
 
 namespace bai = boost::asio::ip;
 
@@ -18,9 +19,9 @@ ebbrt::Messenger::Messenger() {
   DoAccept(std::move(acceptor), std::move(socket));
 }
 
-ebbrt::Future<void>
-ebbrt::Messenger::Send(NetworkId to, EbbId id, uint64_t type_code,
-                       std::unique_ptr<const IOBuf>&& data) {
+ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to, EbbId id,
+                                           uint64_t type_code,
+                                           std::unique_ptr<IOBuf>&& data) {
   // make sure we have a pending connection
   auto ip = to.ip_.to_ulong();
   {
@@ -48,14 +49,15 @@ ebbrt::Messenger::Send(NetworkId to, EbbId id, uint64_t type_code,
   }
 
   // construct header
-  auto buf = IOBuf::Create(sizeof(Header));
-  auto h = reinterpret_cast<Header*>(buf->WritableData());
-  h->length = data->ComputeChainDataLength();
-  h->type_code = type_code;
-  h->id = id;
-  buf->AppendChain(std::unique_ptr<IOBuf>(const_cast<IOBuf*>(data.release())));
+  auto buf = MakeUniqueIOBuf(sizeof(Header));
+  auto dp = buf->GetMutDataPointer();
+  auto& h = dp.Get<Header>();
+  h.length = data->ComputeChainDataLength();
+  h.type_code = type_code;
+  h.id = id;
+  buf->PrependChain(std::move(data));
   return connection_map_[ip].Then(
-      MoveBind([](std::unique_ptr<const IOBuf> data,
+      MoveBind([](std::unique_ptr<IOBuf> data,
                   SharedFuture<std::weak_ptr<Session>> f) {
                  return f.Get().lock()->Send(std::move(data));
                },
@@ -115,7 +117,7 @@ class IOBufToCBS {
 }  // namespace
 
 ebbrt::Future<void>
-ebbrt::Messenger::Session::Send(std::unique_ptr<const IOBuf>&& data) {
+ebbrt::Messenger::Session::Send(std::unique_ptr<IOBuf>&& data) {
   auto p = new Promise<void>();
   auto ret = p->GetFuture();
   auto self(shared_from_this());
@@ -151,20 +153,18 @@ void ebbrt::Messenger::Session::ReadMessage() {
     throw std::runtime_error("Request to read undersized message!");
   }
 
-  auto buf = malloc(size);
-  if (buf == nullptr)
-    throw std::bad_alloc();
+  auto buf = MakeUniqueIOBuf(size).release();
 
   auto self(shared_from_this());
   boost::asio::async_read(
-      socket_, boost::asio::buffer(buf, size),
+      socket_, boost::asio::buffer(buf->MutData(), size),
       EventManager::WrapHandler([this, buf, size, self](
           const boost::system::error_code& ec, std::size_t /*length*/) {
         if (!ec) {
           auto& ref = GetMessagableRef(header_.id, header_.type_code);
           ref.ReceiveMessageInternal(
               NetworkId(socket_.remote_endpoint().address().to_v4()),
-              IOBuf::TakeOwnership(buf, size, std::free));
+              std::unique_ptr<MutIOBuf>(buf));
         }
         ReadHeader();
       }));

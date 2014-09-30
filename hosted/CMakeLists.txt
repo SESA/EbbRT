@@ -27,11 +27,12 @@ include_directories(${CMAKE_BINARY_DIR})
 
 add_library(EbbRT 
   ${CapnpSources}
-  ${CMAKE_SOURCE_DIR}/../common/src/Buffer.cc
   ${CMAKE_SOURCE_DIR}/../common/src/CapnpMessage.cc
   ${CMAKE_SOURCE_DIR}/../common/src/EbbAllocator.cc
   ${CMAKE_SOURCE_DIR}/../common/src/Fdt.cc
+  ${CMAKE_SOURCE_DIR}/../common/src/IOBuf.cc
   ${CMAKE_SOURCE_DIR}/../common/src/Message.cc
+  ${CMAKE_SOURCE_DIR}/../common/src/UniqueIOBuf.cc
   ${CMAKE_SOURCE_DIR}/src/ContextActivation.cc
   ${CMAKE_SOURCE_DIR}/src/Context.cc
   ${CMAKE_SOURCE_DIR}/src/EventManager.cc

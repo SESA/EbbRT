@@ -17,7 +17,7 @@ ebbrt::Future<void> Printer::Init() {
       kPrinterEbbId, ebbrt::messenger->LocalNetworkId().ToBytes());
 }
 
-void Printer::Print(std::string str) {}
+void Printer::Print(const char* str) {}
 
 void Printer::ReceiveMessage(ebbrt::Messenger::NetworkId nid,
                              std::unique_ptr<ebbrt::IOBuf>&& buffer) {

@@ -24,17 +24,14 @@ class EbbAllocator : public CacheAligned, public StaticSharedEbb<EbbAllocator> {
   EbbAllocator();
   EbbId AllocateLocal();
   EbbId Allocate();
-
- private:
 #ifdef __ebbrt__
   void SetIdSpace(uint16_t id_space);
 #endif
 
+ private:
   std::mutex lock_;
   boost::icl::interval_set<EbbId> free_ids_;
   boost::icl::interval_set<EbbId> free_global_ids_;
-
-  friend void ebbrt::runtime::Init();
 };
 
 constexpr auto ebb_allocator = EbbRef<EbbAllocator>(kEbbAllocatorId);

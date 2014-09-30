@@ -9,7 +9,7 @@
 
 #include <boost/asio.hpp>
 
-#include <ebbrt/Buffer.h>
+#include <ebbrt/IOBuf.h>
 #include <ebbrt/EbbRef.h>
 #include <ebbrt/Future.h>
 #include <ebbrt/StaticIds.h>
@@ -30,9 +30,7 @@ class Messenger : public StaticSharedEbb<Messenger> {
 
     std::string ToString() { return ip_.to_string(); }
 
-    bool operator==(const NetworkId &rhs) {
-      return ip_ == rhs.ip_;
-    }
+    bool operator==(const NetworkId& rhs) { return ip_ == rhs.ip_; }
 
    private:
     boost::asio::ip::address_v4 ip_;
@@ -43,7 +41,7 @@ class Messenger : public StaticSharedEbb<Messenger> {
   Messenger();
 
   Future<void> Send(NetworkId to, EbbId id, uint64_t type_code,
-                    std::unique_ptr<const IOBuf>&& data);
+                    std::unique_ptr<IOBuf>&& data);
   NetworkId LocalNetworkId();
 
  private:
@@ -58,7 +56,7 @@ class Messenger : public StaticSharedEbb<Messenger> {
     explicit Session(boost::asio::ip::tcp::socket socket);
 
     void Start();
-    Future<void> Send(std::unique_ptr<const IOBuf>&& data);
+    Future<void> Send(std::unique_ptr<IOBuf>&& data);
 
    private:
     void ReadHeader();

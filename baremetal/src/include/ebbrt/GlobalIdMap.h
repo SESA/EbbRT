@@ -28,14 +28,12 @@ class GlobalIdMap : public StaticSharedEbb<GlobalIdMap>,
 
   void ReceiveMessage(Messenger::NetworkId nid, std::unique_ptr<IOBuf>&& buf);
 
- private:
   static void SetAddress(uint32_t addr);
 
+ private:
   ebbrt::SpinLock lock_;
   std::unordered_map<uint64_t, Promise<std::string>> map_;
   uint64_t val_;
-
-  friend void ebbrt::runtime::Init();
 };
 
 constexpr auto global_id_map = EbbRef<GlobalIdMap>(kGlobalIdMapId);

@@ -6,6 +6,7 @@
 
 #include <ebbrt/LocalIdMap.h>
 #include <ebbrt/GlobalIdMap.h>
+#include <ebbrt/UniqueIOBuf.h>
 
 EBBRT_PUBLISH_TYPE(, Printer);
 
@@ -46,8 +47,10 @@ Printer& Printer::HandleFault(ebbrt::EbbId id) {
   return pr;
 }
 
-void Printer::Print(std::string str) {
-  auto buf = ebbrt::IOBuf::CopyBuffer(str);
+void Printer::Print(const char* str) {
+  auto len = strlen(str) + 1;
+  auto buf = ebbrt::MakeUniqueIOBuf(len);
+  snprintf(reinterpret_cast<char*>(buf->MutData()), len, "%s", str);
   SendMessage(remote_nid_, std::move(buf));
 }
 

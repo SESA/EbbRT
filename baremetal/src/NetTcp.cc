@@ -156,6 +156,16 @@ void ebbrt::NetworkManager::TcpPcb::Send(std::unique_ptr<IOBuf> buf) {
   entry_->Send(std::move(buf));
 }
 
+void ebbrt::NetworkManager::TcpPcb::Output() {
+  auto now = ebbrt::clock::Wall::Now();
+  entry_->Output(now);
+  entry_->SetTimer(now);
+}
+
+ebbrt::Ipv4Address ebbrt::NetworkManager::TcpPcb::GetRemoteAddress() {
+  return std::get<0>(entry_->key);
+}
+
 // Receive a TCP packet on an interface
 void
 ebbrt::NetworkManager::Interface::ReceiveTcp(const Ipv4Header& ih,

@@ -172,6 +172,8 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     void SetReceiveWindow(uint16_t window);
     void SetWindowNotify(bool notify);
     void Send(std::unique_ptr<IOBuf> buf);
+    void Output();
+    Ipv4Address GetRemoteAddress();
 
    private:
     struct TcpEntryDeleter {
