@@ -9,9 +9,13 @@
 
 #include <ebbrt/Pfn.h>
 #include <ebbrt/PMem.h>
+#include <ebbrt/Trans.h>
 
 namespace ebbrt {
 namespace vmem {
+const constexpr uintptr_t VMapBegin = 0xFFFF800000000000;
+const constexpr uintptr_t VMapEnd = trans::kVMemStart;
+
 class Pte {
  public:
   static const constexpr uint32_t kPermRead = 1 << 0;

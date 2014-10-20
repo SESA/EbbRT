@@ -31,38 +31,47 @@ ebbrt::Future<void> ebbrt::NetworkManager::Interface::StartDhcp() {
 
 void ebbrt::NetworkManager::Interface::ReceiveDhcp(
     Ipv4Address from_addr, uint16_t from_port, std::unique_ptr<MutIOBuf> buf) {
-  kbugon(Cpu::GetMine() != 0, "dhcp packet received while not on core 0!");
-  auto len = buf->ComputeChainDataLength();
+  // Ensure that Dhcp is handled on core 0
+  if (Cpu::GetMine() != 0) {
+    event_manager->SpawnRemote(
+        MoveBind([this, from_addr, from_port](std::unique_ptr<MutIOBuf> buf) {
+                   ReceiveDhcp(from_addr, from_port, std::move(buf));
+                 },
+                 std::move(buf)),
+        0);
+  } else {
+    auto len = buf->ComputeChainDataLength();
 
-  if (len < sizeof(DhcpMessage))
-    return;
-
-  auto dp = buf->GetDataPointer();
-  auto& dhcp_message = dp.Get<DhcpMessage>();
-
-  if (dhcp_message.op != kDhcpOpReply)
-    return;
-
-  if (ntohl(dhcp_message.xid) != dhcp_pcb_.xid)
-    return;
-
-  auto msg_type = DhcpGetOptionByte(dhcp_message, kDhcpOptionMessageType);
-  if (!msg_type)
-    return;
-
-  switch (*msg_type) {
-  case kDhcpOptionMessageTypeOffer:
-    if (dhcp_pcb_.state != DhcpPcb::State::kSelecting)
+    if (len < sizeof(DhcpMessage))
       return;
 
-    DhcpHandleOffer(dhcp_message);
-    break;
-  case kDhcpOptionMessageTypeAck:
-    if (dhcp_pcb_.state != DhcpPcb::State::kRequesting)
+    auto dp = buf->GetDataPointer();
+    auto& dhcp_message = dp.Get<DhcpMessage>();
+
+    if (dhcp_message.op != kDhcpOpReply)
       return;
 
-    DhcpHandleAck(dhcp_message);
-    break;
+    if (ntohl(dhcp_message.xid) != dhcp_pcb_.xid)
+      return;
+
+    auto msg_type = DhcpGetOptionByte(dhcp_message, kDhcpOptionMessageType);
+    if (!msg_type)
+      return;
+
+    switch (*msg_type) {
+    case kDhcpOptionMessageTypeOffer:
+      if (dhcp_pcb_.state != DhcpPcb::State::kSelecting)
+        return;
+
+      DhcpHandleOffer(dhcp_message);
+      break;
+    case kDhcpOptionMessageTypeAck:
+      if (dhcp_pcb_.state != DhcpPcb::State::kRequesting)
+        return;
+
+      DhcpHandleAck(dhcp_message);
+      break;
+    }
   }
 }
 

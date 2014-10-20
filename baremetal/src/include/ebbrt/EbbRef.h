@@ -16,9 +16,9 @@ template <class T> class EbbRef {
   constexpr explicit EbbRef(EbbId id = 0)
       : ref_(trans::kVMemStart + sizeof(LocalEntry) * id) {}
 
-  T* operator->() const { return &operator*(); }
+  T* __attribute__((const)) operator->() const { return &operator*(); }
 
-  T& operator*() const {
+  T& __attribute__((const)) operator*() const {
     auto lref = *reinterpret_cast<T**>(ref_);
     if (unlikely(lref == nullptr)) {
       auto id = (ref_ - trans::kVMemStart) / sizeof(LocalEntry);

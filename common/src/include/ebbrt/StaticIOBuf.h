@@ -14,6 +14,9 @@ class StaticIOBufOwner {
  public:
   explicit StaticIOBufOwner(const char* s) noexcept;
   StaticIOBufOwner(const uint8_t* ptr, size_t len) noexcept;
+  template <typename T>
+  explicit StaticIOBufOwner(const T& ref) noexcept
+      : StaticIOBufOwner(reinterpret_cast<const uint8_t*>(&ref), sizeof(T)) {}
 
   const uint8_t* Buffer() const;
   size_t Capacity() const;

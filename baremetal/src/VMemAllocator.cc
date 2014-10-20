@@ -10,6 +10,7 @@
 #include <ebbrt/Align.h>
 #include <ebbrt/Cpu.h>
 #include <ebbrt/LocalIdMap.h>
+#include <ebbrt/VMem.h>
 
 namespace {
 uintptr_t ReadCr2() {
@@ -38,8 +39,8 @@ ebbrt::VMemAllocator& ebbrt::VMemAllocator::HandleFault(EbbId id) {
 
 ebbrt::VMemAllocator::VMemAllocator() {
   regions_.emplace(std::piecewise_construct,
-                   std::forward_as_tuple(Pfn::Up(0xFFFF800000000000)),
-                   std::forward_as_tuple(Pfn::Down(trans::kVMemStart)));
+                   std::forward_as_tuple(Pfn::Up(vmem::VMapBegin)),
+                   std::forward_as_tuple(Pfn::Down(vmem::VMapEnd)));
 }
 
 ebbrt::Pfn

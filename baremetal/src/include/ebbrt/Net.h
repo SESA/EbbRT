@@ -27,7 +27,6 @@ class EthernetDevice {
  public:
   virtual void Send(std::unique_ptr<IOBuf> buf) = 0;
   virtual const EthernetAddress& GetMacAddress() = 0;
-  virtual void Poll() = 0;
   virtual ~EthernetDevice() {}
 };
 

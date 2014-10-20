@@ -12,10 +12,29 @@
 #include <ebbrt/Cpu.h>
 #include <ebbrt/LocalIdMap.h>
 #include <ebbrt/PageAllocator.h>
+#include <ebbrt/RcuTable.h>
 #include <ebbrt/Trace.h>
 #include <ebbrt/VMem.h>
 
+namespace {
+struct InterruptHandler {
+  ebbrt::RcuHListHook hook;
+  ebbrt::MovableFunction<void()> func;
+  uint8_t interrupt;
+};
+
+struct vec_data_t : public ebbrt::CacheAligned {
+  ebbrt::SpinLock lock;
+  uint8_t idx{34};
+  ebbrt::RcuHashTable<InterruptHandler, uint8_t, &InterruptHandler::hook,
+                      &InterruptHandler::interrupt> map{8};
+};
+
+ebbrt::ExplicitlyConstructed<vec_data_t> vec_data;
+}  // namespace
+
 void ebbrt::EventManager::Init() {
+  vec_data.construct();
   local_id_map->Insert(std::make_pair(kEventManagerId, RepMap()));
 }
 
@@ -158,7 +177,7 @@ void ebbrt::EventManager::FreeStack(Pfn stack) { free_stacks_.push(stack); }
 static_assert(ebbrt::Cpu::kMaxCpus <= 256, "adjust event id calculation");
 
 ebbrt::EventManager::EventManager(const RepMap& rm)
-    : reps_(rm), vector_idx_(34), next_event_id_(Cpu::GetMine() << 24),
+    : reps_(rm), next_event_id_(Cpu::GetMine() << 24),
       active_event_context_(next_event_id_++, AllocateStack()) {}
 
 void ebbrt::EventManager::Spawn(MovableFunction<void()> func,
@@ -289,8 +308,12 @@ void ebbrt::EventManager::ActivateContext(EventContext&& context) {
 }
 
 uint8_t ebbrt::EventManager::AllocateVector(MovableFunction<void()> func) {
-  auto vec = vector_idx_.fetch_add(1, std::memory_order_relaxed);
-  vector_map_.emplace(vec, std::move(func));
+  std::lock_guard<ebbrt::SpinLock> lock(vec_data->lock);
+  auto vec = vec_data->idx++;
+  auto handler = new InterruptHandler();
+  handler->interrupt = vec;
+  handler->func = std::move(func);
+  vec_data->map.insert(*handler);
   return vec;
 }
 
@@ -303,9 +326,9 @@ void ebbrt::EventManager::ProcessInterrupt(int num) {
   } else if (num == 33) {
     ReceiveToken();
   } else {
-    auto it = vector_map_.find(num);
-    kassert(it != vector_map_.end());
-    auto& f = it->second;
+    auto ih = vec_data->map.find(num);
+    kassert(ih != nullptr);
+    auto& f = ih->func;
     InvokeFunction(f);
   }
   Process();
