@@ -22,7 +22,3 @@
 [submodule "contrib/jmcadden"]
 	path = contrib/jmcadden
 	url = git@github.com:jmcddn/ebbrt-contrib.git
-[submodule "contrib/jappavoo"]
-	path = contrib/jappavoo
-	url = git@github.com:jappavoo/ebbrt-contrib.git
-	branch = master
