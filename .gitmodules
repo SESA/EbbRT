@@ -19,6 +19,3 @@
 [submodule "baremetal/ext/fdt"]
 	path = baremetal/ext/fdt
 	url = https://github.com/SESA/EbbRT-fdt.git
-[submodule "contrib/jmcadden"]
-	path = contrib/jmcadden
-	url = git@github.com:jmcddn/ebbrt-contrib.git
