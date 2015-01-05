@@ -6,6 +6,7 @@
 #define COMMON_SRC_INCLUDE_EBBRT_IOBUF_H_
 
 #include <forward_list>
+#include <memory>
 #include <vector>
 
 #include <boost/iterator/iterator_facade.hpp>
