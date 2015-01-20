@@ -904,6 +904,8 @@ void ebbrt::NetworkManager::TcpEntry::SendEmptyAck() {
 // segments to be acked before deleting the entry
 void ebbrt::NetworkManager::TcpEntry::Close() {
   switch (state) {
+  case kClosed:
+    break;
   case kCloseWait:
     // Passive close, Send FIN and wait for the last ack then terminate
     SendFin();
