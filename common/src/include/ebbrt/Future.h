@@ -754,6 +754,21 @@ template <typename Res> Future<Res> Future<Res>::Block() {
   return std::move(*ret);
 }
 
+template <typename Res> void SharedFuture<Res>::Block() {
+  if (Ready())
+    return;
+
+  ebbrt::EventManager::EventContext context;
+  Then(Launch::Async, [&context](ebbrt::SharedFuture<Res> fut) {
+    ebbrt::event_manager->ActivateContext(std::move(context));
+  });
+  ebbrt::event_manager->SaveContext(context);
+}
+
+template <typename Res> bool SharedFuture<Res>::Ready() const {
+  return state_->Ready();
+}
+
 template <typename Res> bool Future<Res>::Valid() const {
   return static_cast<bool>(state_);
 }
