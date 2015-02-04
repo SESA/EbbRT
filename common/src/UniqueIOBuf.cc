@@ -12,11 +12,9 @@ const uint8_t* ebbrt::UniqueIOBufOwner::Buffer() const { return ptr_; }
 
 size_t ebbrt::UniqueIOBufOwner::Capacity() const { return capacity_; }
 
-void ebbrt::UniqueIOBufOwner::Deleter::operator()(uint8_t* p) {
-  if (p != nullptr) {
-    auto ptr = p - sizeof(MutUniqueIOBuf);
-    free(ptr);
-  }
+void ebbrt::UniqueIOBufOwner::operator delete(void* ptr) {
+  // ptr came from malloc or calloc, so just free it
+  free(ptr);
 }
 
 std::unique_ptr<ebbrt::MutUniqueIOBuf>

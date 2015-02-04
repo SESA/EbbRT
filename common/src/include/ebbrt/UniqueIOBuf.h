@@ -21,18 +21,54 @@ std::unique_ptr<MutUniqueIOBuf> MakeUniqueIOBuf(size_t capacity,
 
 class UniqueIOBufOwner {
  public:
-  UniqueIOBufOwner(uint8_t* p, size_t capacity);
-
   const uint8_t* Buffer() const;
   size_t Capacity() const;
+  // delete must take into account the fact that the buffer and
+  // descriptor(this) are allocated together
+  void operator delete(void* ptr);
 
  private:
-  struct Deleter {
-    void operator()(uint8_t* p);
-  };
+  // Private because it should not be called directly, use MakeUniqueIOBuf
+  UniqueIOBufOwner(uint8_t* p, size_t capacity);
 
   uint8_t* ptr_;
   size_t capacity_;
+
+  friend class IOBufBase<UniqueIOBufOwner>;
+  friend class MutIOBufBase<UniqueIOBufOwner>;
+};
+
+// These template specializations ensure that the private constructor remains
+// hidden
+template <>
+class IOBufBase<UniqueIOBufOwner> : public UniqueIOBufOwner, public IOBuf {
+ public:
+  const uint8_t* Buffer() const override { return UniqueIOBufOwner::Buffer(); }
+
+  size_t Capacity() const override { return UniqueIOBufOwner::Capacity(); }
+
+ private:
+  IOBufBase(uint8_t* p, size_t capacity)
+      : UniqueIOBufOwner(p, capacity), IOBuf(p, capacity) {}
+
+  friend std::unique_ptr<MutUniqueIOBuf>
+  ebbrt::MakeUniqueIOBuf(size_t capacity, bool zero_memory);
+};
+
+template <>
+class MutIOBufBase<UniqueIOBufOwner> : public UniqueIOBufOwner,
+                                       public MutIOBuf {
+ public:
+  const uint8_t* Buffer() const override { return UniqueIOBufOwner::Buffer(); }
+
+  size_t Capacity() const override { return UniqueIOBufOwner::Capacity(); }
+
+ private:
+  MutIOBufBase(uint8_t* p, size_t capacity)
+      : UniqueIOBufOwner(p, capacity), MutIOBuf(p, capacity) {}
+
+  friend std::unique_ptr<MutUniqueIOBuf>
+  ebbrt::MakeUniqueIOBuf(size_t capacity, bool zero_memory);
 };
 
 }  // namespace ebbrt
