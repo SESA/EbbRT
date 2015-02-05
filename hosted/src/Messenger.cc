@@ -98,7 +98,7 @@ class IOBufToCBS {
  public:
   explicit IOBufToCBS(std::unique_ptr<const ebbrt::IOBuf>&& buf)
       : buf_(std::move(buf)) {
-    buf_vec_.reserve(buf_->CountChainElements());
+    buf_vec_.reserve(buf_->ComputeChainDataLength());
     for (auto& b : *buf_) {
       buf_vec_.emplace_back(b.Data(), b.Length());
     }
