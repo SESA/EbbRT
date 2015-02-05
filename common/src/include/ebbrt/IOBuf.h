@@ -123,18 +123,18 @@ class IOBuf {
       return p_->Data() + offset_;
     }
 
-    template <typename T> const T& GetNoAdvance() {
+    const uint8_t* GetNoAdvance(size_t size) {
       if (!p_)
         throw std::runtime_error("DataPointer::Get(): past end of buffer");
 
-      if (p_->Length() - offset_ < sizeof(T)) {
+      if (p_->Length() - offset_ < size) {
         // request straddles buffers, allocate a new chunk of memory to copy it
         // into (so it is contiguous)
         chunk_list.emplace_front();
         auto& chunk = chunk_list.front();
-        chunk.reserve(sizeof(T));
+        chunk.reserve(size);
         auto p = p_;
-        auto len = sizeof(T);
+        auto len = size;
         auto offset = offset_;
         while (len > 0 && p) {
           auto remainder = p->Length() - offset;
@@ -148,16 +148,24 @@ class IOBuf {
         if (!p && len > 0)
           throw std::runtime_error("DataPointer::Get(): past end of buffer");
 
-        return reinterpret_cast<const T&>(chunk.front());
+        return reinterpret_cast<const uint8_t*>(chunk.data());
       }
 
-      return *reinterpret_cast<const T*>(Data());
+      return Data();
+    }
+
+    template <typename T> const T& GetNoAdvance() {
+      return *reinterpret_cast<const T*>(GetNoAdvance(sizeof(T)));
+    }
+
+    const uint8_t* Get(size_t size) {
+      auto ret = GetNoAdvance(size);
+      Advance(size);
+      return ret;
     }
 
     template <typename T> const T& Get() {
-      auto& ret = GetNoAdvance<T>();
-      Advance(sizeof(T));
-      return ret;
+      return *reinterpret_cast<const T*>(Get(sizeof(T)));
     }
 
     void Advance(size_t size) {

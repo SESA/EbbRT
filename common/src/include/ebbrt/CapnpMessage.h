@@ -39,17 +39,16 @@ class IOBufMessageReader : public capnp::MessageReader {
  public:
   IOBufMessageReader(std::unique_ptr<IOBuf>&& buf,
                      capnp::ReaderOptions options = capnp::ReaderOptions())
-      : capnp::MessageReader(options), buf_(std::move(buf)) {
+      : capnp::MessageReader(options), buf_(std::move(buf)),
+        dp_(buf_->GetDataPointer()) {
     auto p = buf_->GetDataPointer();
     auto nseg = p.Get<uint32_t>();
-    auto p2 = buf_->GetDataPointer();
-    p2.Advance(align::Up(4 + 4 * nseg, 8));
+    dp_.Advance(align::Up(4 + 4 * nseg, 8));
     segments_.reserve(nseg);
     for (uint32_t i = 0; i < nseg; ++i) {
       auto size = p.Get<uint32_t>();
-      segments_.emplace_back(reinterpret_cast<const capnp::word*>(p2.Data()),
-                             size);
-      p2.Advance(size * sizeof(capnp::word));
+      auto ptr = dp_.Get(size * sizeof(capnp::word));
+      segments_.emplace_back(reinterpret_cast<const capnp::word*>(ptr), size);
     }
   }
 
@@ -62,6 +61,9 @@ class IOBufMessageReader : public capnp::MessageReader {
  private:
   std::unique_ptr<IOBuf> buf_;
   std::vector<kj::ArrayPtr<const capnp::word>> segments_;
+  // The lifetime of the pointers in segments_ must be less than the lifetime of
+  // this  datapointer, so we store it as a member.
+  IOBuf::DataPointer dp_;
 };
 
 std::unique_ptr<IOBuf> AppendHeader(IOBufMessageBuilder& builder);
