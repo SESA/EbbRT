@@ -12,9 +12,12 @@
 
 #include <ebbrt/EbbId.h>
 #include <ebbrt/LocalEntry.h>
+#include <ebbrt/EventContext.h>
 
 namespace ebbrt {
 class Runtime;
+class EventManager;
+
 class Context {
  public:
   explicit Context(Runtime& runtime);
@@ -29,6 +32,7 @@ class Context {
   void Reset();
   LocalEntry GetLocalEntry(EbbId id) { return local_table_[id]; }
   void SetLocalEntry(EbbId id, LocalEntry le) { local_table_[id] = le; }
+  operator size_t() const { return index_; }
 
   boost::asio::io_service io_service_;
 
@@ -36,6 +40,7 @@ class Context {
   Runtime& runtime_;
   size_t index_;
   std::unordered_map<EbbId, LocalEntry> local_table_;
+  EventContext active_event_context_;
 
   friend class Runtime;
   friend class EventManager;
