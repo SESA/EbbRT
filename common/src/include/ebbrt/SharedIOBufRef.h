@@ -17,15 +17,55 @@ typedef MutIOBufBase<SharedIOBufRefOwner> MutSharedIOBufRef;
 
 class SharedIOBufRefOwner {
  public:
+  struct CloneView_s {};
+  static const constexpr CloneView_s CloneView = {};
   explicit SharedIOBufRefOwner(std::unique_ptr<IOBuf>&& buf);
 
   const uint8_t* Buffer() const;
   size_t Capacity() const;
 
+ protected:
+  const IOBuf& GetRef() { return *buf_; }
  private:
   std::shared_ptr<IOBuf> buf_;
 };
 
+template <> class IOBufBase<SharedIOBufRefOwner> : public SharedIOBufRefOwner, public IOBuf {
+ public:
+  template <typename... Args>
+  explicit IOBufBase(Args&&... args)
+      : SharedIOBufRefOwner(std::forward<Args>(args)...),
+        IOBuf(SharedIOBufRefOwner::Buffer(), SharedIOBufRefOwner::Capacity()) {}
+
+  template <typename... Args>
+  explicit IOBufBase(SharedIOBufRefOwner::CloneView_s, Args&&... args)
+      : SharedIOBufRefOwner(std::forward<Args>(args)...),
+        IOBuf(SharedIOBufRefOwner::Buffer(), SharedIOBufRefOwner::Capacity()) {
+    IOBuf::SetView(SharedIOBufRefOwner::GetRef());
+  }
+
+  const uint8_t* Buffer() const override { return SharedIOBufRefOwner::Buffer(); }
+
+  size_t Capacity() const override { return SharedIOBufRefOwner::Capacity(); }
+};
+
+template <> class MutIOBufBase<SharedIOBufRefOwner> : public SharedIOBufRefOwner, public MutIOBuf {
+ public:
+  template <typename... Args>
+  explicit MutIOBufBase(Args&&... args)
+      : SharedIOBufRefOwner(std::forward<Args>(args)...),
+        MutIOBuf(SharedIOBufRefOwner::Buffer(), SharedIOBufRefOwner::Capacity()) {}
+
+  template <typename... Args>
+  explicit MutIOBufBase(SharedIOBufRefOwner::CloneView_s, Args&&... args)
+      : SharedIOBufRefOwner(std::forward<Args>(args)...),
+        MutIOBuf(SharedIOBufRefOwner::Buffer(), SharedIOBufRefOwner::Capacity()) {
+    MutIOBuf::SetView(SharedIOBufRefOwner::GetRef());
+  }
+  const uint8_t* Buffer() const override { return SharedIOBufRefOwner::Buffer(); }
+
+  size_t Capacity() const override { return SharedIOBufRefOwner::Capacity(); }
+};
 }  // namespace ebbrt
 
 #endif  // COMMON_SRC_INCLUDE_EBBRT_SHAREDIOBUFREF_H_

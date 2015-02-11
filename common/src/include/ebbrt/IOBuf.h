@@ -5,6 +5,7 @@
 #ifndef COMMON_SRC_INCLUDE_EBBRT_IOBUF_H_
 #define COMMON_SRC_INCLUDE_EBBRT_IOBUF_H_
 
+#include <cassert>
 #include <forward_list>
 #include <memory>
 #include <vector>
@@ -86,6 +87,9 @@ class IOBuf {
   std::unique_ptr<IOBuf> UnlinkEnd(IOBuf& end) {
     auto new_end = end.prev_;
     end.prev_ = prev_;
+    // if unlinking end of chain
+    if(end.next_ == this)
+      end.next_ = prev_;
     prev_ = new_end;
     new_end->next_ = this;
 
@@ -137,7 +141,7 @@ class IOBuf {
         auto len = size;
         auto offset = offset_;
         while (len > 0 && p) {
-          auto remainder = p->Length() - offset;
+          auto remainder = std::min(p->Length() - offset, len);
           auto data = p->Data() + offset;
           chunk.insert(chunk.end(), data, data + remainder);
           p = p->Next();
@@ -191,6 +195,14 @@ class IOBuf {
   };
 
   DataPointer GetDataPointer() const { return DataPointer(this); }
+
+ protected:
+  void SetView(const IOBuf& other) {
+    assert(Buffer() == other.Buffer());
+    assert(Capacity() == other.Capacity());
+    data_ = other.Data();
+    length_ = other.Length();
+  }
 
  private:
   IOBuf* next_{this};
