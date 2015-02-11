@@ -45,7 +45,11 @@ template <typename T, RcuHListHook T::*hookptr> class RcuHList {
     void increment() {
       auto& hook = node_->*hookptr;
       auto next = hook.next.load(std::memory_order_consume);
-      node_ = ::boost::intrusive::get_parent_from_member(next, hookptr);
+      if (!next) {
+        node_ = nullptr;
+      } else {
+        node_ = ::boost::intrusive::get_parent_from_member(next, hookptr);
+      }
     }
 
     template <typename OtherValue>
