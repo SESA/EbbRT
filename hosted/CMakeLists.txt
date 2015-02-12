@@ -31,6 +31,7 @@ add_library(EbbRT
   ${CMAKE_SOURCE_DIR}/../common/src/EbbAllocator.cc
   ${CMAKE_SOURCE_DIR}/../common/src/Fdt.cc
   ${CMAKE_SOURCE_DIR}/../common/src/IOBuf.cc
+  ${CMAKE_SOURCE_DIR}/../common/src/IOBufRef.cc
   ${CMAKE_SOURCE_DIR}/../common/src/Message.cc
   ${CMAKE_SOURCE_DIR}/../common/src/UniqueIOBuf.cc
   ${CMAKE_SOURCE_DIR}/../common/src/StaticIOBuf.cc
