@@ -77,7 +77,7 @@ extern "C"
   kbugon(started_once, "EbbRT reboot detected... aborting!\n");
   started_once = true;
 
-  kprintf("EbbRT Copyright 2013-2014 Boston University SESA Developers\n");
+  kprintf("EbbRT Copyright 2013-2015 Boston University SESA Developers\n");
 
   idt::Init();
   cpuid::Init();
