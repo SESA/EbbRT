@@ -41,14 +41,14 @@ uint32_t Add32WithCarry(uint32_t a, uint32_t b) {
 }
 
 // Compute checksum over a contiguous region of memory
-uint32_t Csum(const uint8_t* buf, size_t len) {
+uint32_t Csum(const uint8_t* buf, size_t len, size_t offset=0) {
   if (unlikely(len == 0))
     return 0;
 
   uint64_t result = 0;
 
-  auto odd = reinterpret_cast<uintptr_t>(buf) & 1;
-  if (unlikely(odd)) {
+  auto odd_ptr = reinterpret_cast<uintptr_t>(buf) & 1;
+  if (unlikely(odd_ptr)) {
     result = *buf << 8;
     --len;
     ++buf;
@@ -117,7 +117,7 @@ uint32_t Csum(const uint8_t* buf, size_t len) {
   if (len & 1)
     result += *buf;
   result = Add32WithCarry(result >> 32, result & 0xffffffff);
-  if (unlikely(odd)) {
+  if (unlikely(odd_ptr) ^ (offset & 1)) {
     result = From32To16(result);
     result = ((result >> 8) & 0xff) | ((result & 0xff) << 8);
   }
@@ -127,8 +127,10 @@ uint32_t Csum(const uint8_t* buf, size_t len) {
 // Checksum all buffers in an IOBuf without folding
 uint32_t IpCsumNoFold(const ebbrt::IOBuf& buf) {
   uint32_t ret = 0;
+  size_t offset = 0;
   for (auto& b : buf) {
-    ret = Add32WithCarry(ret, Csum(b.Data(), b.Length()));
+    ret = Add32WithCarry(ret, Csum(b.Data(), b.Length(), offset));
+    offset += b.Length();
   }
   return ret;
 }
