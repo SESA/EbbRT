@@ -17,6 +17,17 @@ ebbrt::IOBuf::~IOBuf() noexcept {
   }
 }
 
+void ebbrt::IOBuf::AdvanceChain(size_t amount) {
+  assert(ComputeChainDataLength() >= amount);
+  for (auto& buf : *this) {
+    auto advance_len = std::min(buf.Length(), amount);
+    buf.Advance(advance_len);
+    amount -= advance_len;
+    if (amount == 0)
+      break;
+  }
+}
+
 void ebbrt::IOBuf::PrependChain(std::unique_ptr<IOBuf> iobuf) {
   // Take ownership of the chain
   auto other = iobuf.release();

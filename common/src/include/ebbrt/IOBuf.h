@@ -50,11 +50,13 @@ class IOBuf {
   const IOBuf* Prev() const { return prev_; }
 
   void Advance(size_t amount) {
+    assert( length > amount );
     data_ += amount;
     length_ -= amount;
   }
 
   void Retreat(size_t amount) {
+    // todo assert
     data_ -= amount;
     length_ += amount;
   }
@@ -66,6 +68,8 @@ class IOBuf {
   size_t CountChainElements() const;
 
   size_t ComputeChainDataLength() const;
+
+  void AdvanceChain(size_t amount);
 
   void PrependChain(std::unique_ptr<IOBuf> iobuf);
   void AppendChain(std::unique_ptr<IOBuf> iobuf) {
