@@ -4,6 +4,8 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include <ebbrt/IOBufRef.h>
 
+const constexpr ebbrt::IOBufRefOwner::CloneView_s ebbrt::IOBufRefOwner::CloneView;
+
 ebbrt::IOBufRefOwner::IOBufRefOwner(const IOBuf& buf)
     : buffer_(buf.Buffer()), capacity_(buf.Capacity()) {}
 

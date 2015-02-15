@@ -44,7 +44,21 @@ template <> class IOBufBase<SharedIOBufRefOwner> : public SharedIOBufRefOwner, p
     IOBuf::SetView(SharedIOBufRefOwner::GetRef());
   }
 
-  const uint8_t* Buffer() const override { return SharedIOBufRefOwner::Buffer(); }
+  IOBufBase(SharedIOBufRefOwner::CloneView_s, const SharedIOBufRef& r)
+      : SharedIOBufRefOwner(r),
+        IOBuf(SharedIOBufRefOwner::Buffer(), SharedIOBufRefOwner::Capacity()) {
+    IOBuf::SetView(r);
+  }
+
+  IOBufBase(SharedIOBufRefOwner::CloneView_s, SharedIOBufRef& r)
+      : SharedIOBufRefOwner(r),
+        IOBuf(SharedIOBufRefOwner::Buffer(), SharedIOBufRefOwner::Capacity()) {
+    IOBuf::SetView(r);
+  }
+
+  const uint8_t* Buffer() const override {
+    return SharedIOBufRefOwner::Buffer();
+  }
 
   size_t Capacity() const override { return SharedIOBufRefOwner::Capacity(); }
 };
@@ -61,6 +75,17 @@ template <> class MutIOBufBase<SharedIOBufRefOwner> : public SharedIOBufRefOwner
       : SharedIOBufRefOwner(std::forward<Args>(args)...),
         MutIOBuf(SharedIOBufRefOwner::Buffer(), SharedIOBufRefOwner::Capacity()) {
     MutIOBuf::SetView(SharedIOBufRefOwner::GetRef());
+  }
+  MutIOBufBase(SharedIOBufRefOwner::CloneView_s, const MutSharedIOBufRef& r)
+      : SharedIOBufRefOwner(r),
+        MutIOBuf(SharedIOBufRefOwner::Buffer(), SharedIOBufRefOwner::Capacity()) {
+    MutIOBuf::SetView(r);
+  }
+
+  MutIOBufBase(SharedIOBufRefOwner::CloneView_s, MutSharedIOBufRef& r)
+      : SharedIOBufRefOwner(r),
+        MutIOBuf(SharedIOBufRefOwner::Buffer(), SharedIOBufRefOwner::Capacity()) {
+    MutIOBuf::SetView(r);
   }
   const uint8_t* Buffer() const override { return SharedIOBufRefOwner::Buffer(); }
 
