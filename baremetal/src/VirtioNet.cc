@@ -72,10 +72,6 @@ void ebbrt::VirtioNetDriver::FillRxRing() {
   bufs.reserve(num_bufs);
 
   for (size_t i = 0; i < num_bufs; ++i) {
-    auto buf = allocator_->Alloc();
-    if (unlikely(buf == nullptr))
-      throw std::bad_alloc();
-
     bufs.emplace_back(MakeUniqueIOBuf(2048));
   }
 
