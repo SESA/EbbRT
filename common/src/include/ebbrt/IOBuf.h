@@ -50,13 +50,13 @@ class IOBuf {
   const IOBuf* Prev() const { return prev_; }
 
   void Advance(size_t amount) {
-    assert( length > amount );
+    assert(length_ >= amount);
     data_ += amount;
     length_ -= amount;
   }
 
   void Retreat(size_t amount) {
-    // todo assert
+    assert((data_ - amount) >= Buffer());
     data_ -= amount;
     length_ += amount;
   }
