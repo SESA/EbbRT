@@ -122,10 +122,17 @@ class IOBuf {
 
   class DataPointer {
    public:
-    explicit DataPointer(const IOBuf* p) : p_{p} {}
+    explicit DataPointer(const IOBuf* p) : p_{p} {
+      assert(p->ComputeChainDataLength() > 0);
+      // Iterate past any empty buffers up front
+      while (p_->Length() == 0) {
+        p_ = p_->Next();
+      }
+    }
 
     const uint8_t* Data() {
-      if (!p_ || p_->Length() - offset_ == 0)
+      assert(p_->Length() > 0);
+      if (p_->Length() - offset_ == 0)
         throw std::runtime_error("DataPointer::Data() past end of buffer");
 
       return p_->Data() + offset_;
@@ -135,6 +142,7 @@ class IOBuf {
       if (!p_)
         throw std::runtime_error("DataPointer::Get(): past end of buffer");
 
+      assert(p_->Length() > 0);
       if (p_->Length() - offset_ < size) {
         // request straddles buffers, allocate a new chunk of memory to copy it
         // into (so it is contiguous)
@@ -144,7 +152,7 @@ class IOBuf {
         auto p = p_;
         auto len = size;
         auto offset = offset_;
-        while (len > 0 && p) {
+        while (len > 0) {
           auto remainder = std::min(p->Length() - offset, len);
           auto data = p->Data() + offset;
           chunk.insert(chunk.end(), data, data + remainder);
@@ -152,9 +160,6 @@ class IOBuf {
           offset = 0;
           len -= remainder;
         }
-
-        if (!p && len > 0)
-          throw std::runtime_error("DataPointer::Get(): past end of buffer");
 
         return reinterpret_cast<const uint8_t*>(chunk.data());
       }
@@ -177,7 +182,8 @@ class IOBuf {
     }
 
     void Advance(size_t size) {
-      while (size > 0 && p_) {
+      assert(p_->Length() > 0);
+      while (size > 0) {
         auto remainder = p_->Length() - offset_;
         if (remainder > size) {
           offset_ += size;
@@ -188,8 +194,9 @@ class IOBuf {
         size -= remainder;
       }
 
-      if (!p_ && size > 0)
-        throw std::runtime_error("DataPointer::Advance(): past end of buffer");
+      while (p_->Length() == 0) {
+        p_ = p_->Next();
+      }
     }
 
    private:
@@ -255,19 +262,24 @@ class MutIOBuf : public IOBuf {
 
   class MutDataPointer {
    public:
-    explicit MutDataPointer(MutIOBuf* p) : p_{p} {}
+    explicit MutDataPointer(MutIOBuf* p) : p_{p} {
+      assert(p->ComputeChainDataLength() > 0);
+      // Iterate past any empty buffers up front
+      while (p_->Length() == 0) {
+        p_ = p_->Next();
+      }
+    }
 
     uint8_t* Data() {
-      if (!p_ || p_->Length() - offset_ == 0)
+      assert(p_->Length() > 0);
+      if (p_->Length() - offset_ == 0)
         throw std::runtime_error("MutDataPointer::Data() past end of buffer");
 
       return p_->MutData() + offset_;
     }
 
     template <typename T> T& GetNoAdvance() {
-      if (!p_)
-        throw std::runtime_error("MutDataPointer::Get(): past end of buffer");
-
+      assert(p_->Length() > 0);
       if (p_->Length() - offset_ < sizeof(T)) {
         throw std::runtime_error(
             "MutDataPointer::Get(): request straddles buffer");
@@ -283,7 +295,8 @@ class MutIOBuf : public IOBuf {
     }
 
     void Advance(size_t size) {
-      while (size > 0 && p_) {
+      assert(p_->Length() > 0);
+      while (size > 0) {
         auto remainder = p_->Length() - offset_;
         if (remainder > size) {
           offset_ += size;
@@ -294,9 +307,9 @@ class MutIOBuf : public IOBuf {
         size -= remainder;
       }
 
-      if (!p_ && size > 0)
-        throw std::runtime_error(
-            "MutDataPointer::Advance(): past end of buffer");
+      while (p_->Length() == 0) {
+        p_ = p_->Next();
+      }
     }
 
    private:
