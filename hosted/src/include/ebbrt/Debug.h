@@ -11,8 +11,7 @@ namespace ebbrt {
   
   template <typename... Args>
   __attribute__((noreturn)) void kprintf(Args... args) {
-    printf(args...);
-    kabort();
+    printf(args...); // NOLINT
   }
   
   
@@ -27,6 +26,7 @@ namespace ebbrt {
       kabort(args...);
     }
   }
+
 }  // namespace ebbrt
 
 #endif  // HOSTED_SRC_INCLUDE_EBBRT_DEBUG_H_

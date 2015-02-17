@@ -35,11 +35,11 @@ class Connection : public ebbrt::TcpHandler {
     auto info = message.getRoot<RuntimeInfo>();
 
     ebbrt::ebb_allocator->SetIdSpace(info.getEbbIdSpace());
-    auto frontend = info.getGlobalIdMapAddress();
+    ebbrt::runtime::frontend = info.getGlobalIdMapAddress();
     const auto& port = info.getMessengerPort();
-    ebbrt::kprintf("%x:%d\n", frontend, port);
+    ebbrt::kprintf("%x:%d\n", ebbrt::runtime::frontend, port);
     ebbrt::messenger->StartListening(port);
-    ebbrt::global_id_map->SetAddress(frontend);
+    ebbrt::global_id_map->SetAddress(ebbrt::runtime::frontend);
     ebbrt::event_manager->ActivateContext(std::move(context_));
   }
 
