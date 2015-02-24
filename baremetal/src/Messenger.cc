@@ -17,6 +17,7 @@ ebbrt::Messenger::Connection::Connection(ebbrt::NetworkManager::TcpPcb pcb)
     : TcpHandler(std::move(pcb)) {}
 
 void ebbrt::Messenger::Connection::Receive(std::unique_ptr<MutIOBuf> b) {
+  kassert(b->Length() != 0);
   // If we already have queued data append this new data to the end
   if (buf_) {
     buf_->PrependChain(std::move(b));
@@ -24,6 +25,7 @@ void ebbrt::Messenger::Connection::Receive(std::unique_ptr<MutIOBuf> b) {
     buf_ = std::move(b);
   }
 
+  // process buffer chain
   while (buf_) {
     auto chain_len = buf_->ComputeChainDataLength();
     // Do we have enough data for a header?
@@ -39,19 +41,25 @@ void ebbrt::Messenger::Connection::Receive(std::unique_ptr<MutIOBuf> b) {
       // We have a full message
       msg = std::move(buf_);
     } else if (chain_len > message_len) {
+      // Handle the case when we've received multiple message in our buffer
+      // chain
+      //
       // After this loop msg should hold exactly one message and everything
       // else will be in buf_
       bool first = true;
       msg = std::move(buf_);
       for (auto& buf : *msg) {
+        // for each buffer
         auto buf_len = buf.Length();
         if (buf_len == message_len) {
-          // buf.Next() cannot be the head of the chain again because
-          // chain_len > message_len
+          // If the first buffer contains the full message
+          // Move the remainder of chain into buf_, while our message remains
+          // in msg_
           buf_ = std::unique_ptr<MutIOBuf>(
               static_cast<MutIOBuf*>(msg->UnlinkEnd(*buf.Next()).release()));
           break;
         } else if (buf_len > message_len) {
+          // Here we need to split the buffer
           std::unique_ptr<MutIOBuf> end;
           if (first) {
             end = std::move(msg);
@@ -64,9 +72,11 @@ void ebbrt::Messenger::Connection::Receive(std::unique_ptr<MutIOBuf> b) {
           auto remainder = end->Pop();
 
           // make a reference counted IOBuf to the end
-          auto rc_end = IOBuf::Create<MutSharedIOBufRef>(std::move(end));
+          auto rc_end = IOBuf::Create<MutSharedIOBufRef>(
+              SharedIOBufRef::CloneView, std::move(end));
           // create a copy (increments ref count)
-          buf_ = IOBuf::Create<MutSharedIOBufRef>(*rc_end);
+          buf_ = IOBuf::Create<MutSharedIOBufRef>(SharedIOBufRef::CloneView,
+                                                  *rc_end);
 
           // trim and append to msg
           rc_end->TrimEnd(buf_len - message_len);
@@ -85,21 +95,14 @@ void ebbrt::Messenger::Connection::Receive(std::unique_ptr<MutIOBuf> b) {
         message_len -= buf_len;
         first = false;
       }
-
     } else {
+      // since message_len > chain_len we wait for more data
       return;
     }
 
     // msg now holds exactly one message
     // trim the header
-    auto advance = sizeof(Header);
-    for (auto& buf : *msg) {
-      auto buf_len = buf.Length();
-      buf.Advance(advance);
-      if (buf_len >= advance)
-        break;
-      advance -= buf_len;
-    }
+    msg->AdvanceChain(sizeof(Header));
     auto& ref = GetMessagableRef(header.id, header.type_code);
     ref.ReceiveMessageInternal(NetworkId(Pcb().GetRemoteAddress()),
                                std::move(msg));
