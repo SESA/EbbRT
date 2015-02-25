@@ -128,6 +128,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     void Destroy();
 
     RcuHListHook hook;
+    size_t cpu;
     Ipv4Address address;
     std::tuple<Ipv4Address, uint16_t, uint16_t> key;
     boost::container::list<TcpSegment> unacked_segments;
@@ -157,6 +158,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     ebbrt::clock::Wall::time_point time_wait;  // when to leave time_wait state
     Promise<void> connected;
     std::unique_ptr<ITcpHandler> handler;
+    std::atomic_bool accepted{false};
     bool window_notify;
     bool timer_set;
   };
@@ -167,6 +169,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     explicit TcpPcb(TcpEntry* entry) : entry_(entry) {}
     uint16_t Connect(Ipv4Address address, uint16_t port,
                      uint16_t local_port = 0);
+    void BindCpu(size_t index);
     void InstallHandler(std::unique_ptr<ITcpHandler> handler);
     uint16_t SendWindowRemaining();
     void SetReceiveWindow(uint16_t window);

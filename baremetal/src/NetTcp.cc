@@ -77,6 +77,7 @@ uint16_t ebbrt::NetworkManager::TcpPcb::Connect(Ipv4Address address,
   }
 
   // Setup state
+  entry_->accepted = true;
   entry_->address = itf->Address()->address;
   std::get<0>(entry_->key) = address;
   std::get<1>(entry_->key) = port;
@@ -129,6 +130,11 @@ uint16_t ebbrt::NetworkManager::TcpPcb::Connect(Ipv4Address address,
 // Set the receive window to control pacing of the connection
 void ebbrt::NetworkManager::TcpPcb::SetReceiveWindow(uint16_t window) {
   entry_->rcv_wnd = window;
+}
+
+// Bind this connection to a core
+void ebbrt::NetworkManager::TcpPcb::BindCpu(size_t index) {
+  entry_->cpu = index;
 }
 
 // Install a handler for TCP connection events (receive packet, window size
@@ -204,7 +210,20 @@ ebbrt::NetworkManager::Interface::ReceiveTcp(const Ipv4Header& ih,
   auto key = std::make_tuple(ih.src, info.src_port, info.dst_port);
   auto entry = network_manager->tcp_pcbs_.find(key);
   if (entry) {
-    entry->Input(ih, tcp_header, info, std::move(buf));
+    kbugon(!entry->accepted,
+           "User's accept() call hasn't completed before more data arrived\n");
+    if (entry->cpu == Cpu::GetMine()) {
+      entry->Input(ih, tcp_header, info, std::move(buf));
+    } else {
+      // XXX: Really nervous about passing these references, but I think its all
+      // safe, for now
+      auto f = MoveBind([&ih, &tcp_header, entry](std::unique_ptr<MutIOBuf> buf,
+                                                  TcpInfo info) {
+                          entry->Input(ih, tcp_header, info, std::move(buf));
+                        },
+                        std::move(buf), std::move(info));
+      event_manager->SpawnRemote(std::move(f), entry->cpu);
+    }
   } else {
     // If no connection found, check listening pcbs
     auto entry =
@@ -341,6 +360,7 @@ ebbrt::NetworkManager::ListeningTcpEntry::Input(const Ipv4Header& ih,
     auto entry = new TcpEntry();
 
     // Setup entry initial state
+    entry->cpu = Cpu::GetMine();
     entry->address = ih.dst;
     std::get<0>(entry->key) = ih.src;
     std::get<1>(entry->key) = info.src_port;
@@ -351,9 +371,6 @@ ebbrt::NetworkManager::ListeningTcpEntry::Input(const Ipv4Header& ih,
 
     // We need to insert the entry into the hash table at this point to avoid
     // concurrent connection creation.
-    // TODO(dschatz): In order for this to be safe in the face of concurrency,
-    // we need to mark the entry as invalid so that data received on other cores
-    // do not try to concurrently access the entry
     {
       // ensure that all mutating operations on the hash table are serialized
       std::lock_guard<std::mutex> lock(network_manager->tcp_write_lock_);
@@ -393,11 +410,6 @@ ebbrt::NetworkManager::ListeningTcpEntry::Input(const Ipv4Header& ih,
     kassert(accept_fn);
     accept_fn(TcpPcb(entry));
 
-    // TODO(dschatz): Should mark the entry as valid here, so that future
-    // packets can be serviced
-
-    // TODO(dschatz): the accept function could bind this connection so this
-    // call should run on that core.
     // Pass along the received data for processing (in case there is more data)
     if (info.tcplen > 1) {
       // In this case the data would need to be queued until we reach the
@@ -405,9 +417,20 @@ ebbrt::NetworkManager::ListeningTcpEntry::Input(const Ipv4Header& ih,
       kabort("UNIMPLEMENTED: Data with SYN packet\n");
     }
 
-    auto now = ebbrt::clock::Wall::Now();
-    entry->Output(now);
-    entry->SetTimer(now);
+    auto f = [entry]() {
+      // mark entry as valid to receive data
+      entry->accepted = true;
+
+      auto now = ebbrt::clock::Wall::Now();
+      entry->Output(now);
+      entry->SetTimer(now);
+    };
+
+    if (entry->cpu == Cpu::GetMine()) {
+      f();
+    } else {
+      event_manager->SpawnRemote(std::move(f), entry->cpu);
+    }
   }
 }
 

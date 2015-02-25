@@ -82,6 +82,9 @@ void AppMain() {
   auto port = listening_pcb.Bind(0, [](ebbrt::NetworkManager::TcpPcb pcb) {
     // new connection callback
     ebbrt::kprintf("Connected\n");
+    static std::atomic<size_t> cpu_index{0};
+    auto index = cpu_index.fetch_add(1) % ebbrt::Cpu::Count();
+    pcb.BindCpu(index);
     auto handler = new EchoReceiver(std::move(pcb));
     handler->Install();
 #ifdef TEST_ZERO_WINDOW

@@ -330,6 +330,8 @@ void ebbrt::VirtioNetDriver::Send(std::unique_ptr<IOBuf> buf) {
     data += buf_it.Length();
   }
 
+  std::lock_guard<std::mutex> lock(send_mutex_);
+
   auto& send_queue = GetQueue(1);
   if (unlikely(send_queue.num_free_descriptors() < b->CountChainElements())) {
     FreeSentPackets();
