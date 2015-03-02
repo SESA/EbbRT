@@ -158,6 +158,7 @@ void ebbrt::NetworkManager::TcpPcb::SetWindowNotify(bool notify) {
 // window is large enough as the PCB will do no buffering
 void ebbrt::NetworkManager::TcpPcb::Send(std::unique_ptr<IOBuf> buf) {
   kassert(buf->ComputeChainDataLength() <= SendWindowRemaining());
+  kassert(buf->ComputeChainDataLength() <= 1460);
 
   entry_->Send(std::move(buf));
 }
@@ -813,7 +814,8 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
 
 void ebbrt::NetworkManager::TcpEntry::ClearAckedSegments(const TcpInfo& info) {
   // Function to clear acked segments from a queue
-  auto clear_acked_segments = [&](boost::container::list<TcpSegment>& queue) {
+  auto clear_acked_segments = [&info](
+      boost::container::list<TcpSegment>& queue) {
     auto it = queue.begin();
     while (it != queue.end()) {
       if (TcpSeqGT(ntohl(it->th.seqno) + it->SeqLen(), info.ackno))
