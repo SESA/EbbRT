@@ -5,6 +5,7 @@
 #ifndef COMMON_SRC_INCLUDE_EBBRT_IOBUF_H_
 #define COMMON_SRC_INCLUDE_EBBRT_IOBUF_H_
 
+#include <algorithm>
 #include <cassert>
 #include <forward_list>
 #include <memory>
@@ -92,8 +93,9 @@ class IOBuf {
     auto new_end = end.prev_;
     end.prev_ = prev_;
     // if unlinking end of chain
-    if(end.next_ == this)
-      end.next_ = prev_;
+    if (end.next_ == this)
+      end.next_ = &end;
+    prev_->next_ = &end;
     prev_ = new_end;
     new_end->next_ = this;
 
