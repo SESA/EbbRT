@@ -453,6 +453,10 @@ bool TcpSeqGT(uint32_t first, uint32_t second) {
 bool TcpSeqLEQ(uint32_t first, uint32_t second) {
   return ((int32_t)(first - second)) <= 0;
 }
+
+bool TcpSeqGEQ(uint32_t first, uint32_t second) {
+  return ((int32_t)(first - second)) >= 0;
+}
 }  // namespace
 
 // Send on a TCP connection
@@ -554,9 +558,106 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
       }
     }
   } else {
+    auto flags = th.Flags();
+
+    // XXX: I believe the spec says ACK processing must happen after validating
+    // the sequence, but that can cause poor performance in some degenerative
+    // cases so we do it here
+    if (likely(TcpSeqGEQ(info.seqno, rcv_nxt) && flags & kTcpAck &&
+               !(flags & kTcpSyn) && !(flags & kTcpRst))) {
+      // Common case: Not RST and not SYN
+      if (unlikely(state == kSynReceived)) {
+        // RFC 793 Page 72:
+        // If SND.UNA =< SEG.ACK =< SND.NXT then enter ESTABLISHED state and
+        // continue processing.
+        // If the segment acknowledgment is not acceptable, form a reset
+        // segment,
+        //    <SEQ=SEG.ACK><CTL=RST>
+        // and send it.
+        if (!TcpSeqBetween(info.ackno, snd_una + 1, snd_nxt)) {
+          network_manager->TcpReset(false, info.ackno, 0, ih.dst, ih.src,
+                                    info.dst_port, info.src_port);
+          return true;
+        }
+
+        state = kEstablished;
+        snd_wnd = ntohs(th.wnd);
+        snd_wl1 = info.seqno;
+        snd_wl2 = info.ackno;
+        // Fall through
+      }
+
+      if (likely(state <= kClosing)) {
+        // Common case: In a connected state
+        if (TcpSeqBetween(info.ackno, snd_una + 1, snd_nxt)) {
+          // ACK is for unacked data
+          snd_una = info.ackno;
+
+          if (TcpSeqLT(snd_wl1, info.seqno) ||
+              (snd_wl1 == info.seqno && TcpSeqLT(snd_wl2 + 1, info.ackno))) {
+            // RFC 793 page 72:
+            // "If SND.UNA < SEG.ACK =< SND.NXT, the send window should be
+            // updated.  If (SND.WL1 < SEG.SEQ or (SND.WL1 = SEG.SEQ and
+            // SND.WL2 =< SEG.ACK)), set SND.WND <- SEG.WND, set SND.WL1 <-
+            // SEG.SEQ, and set SND.WL2 <- SEG.ACK."
+            // ... "The check here prevents using old segments to update the
+            // window"
+            snd_wnd = ntohs(th.wnd);
+            snd_wl1 = info.seqno;
+            snd_wl2 = info.ackno;
+          }
+
+          ClearAckedSegments(info);
+
+          if (window_notify) {
+            // Upcall user that the send window has increased
+            handler->SendWindowIncrease();
+          }
+        } else if (unlikely(TcpSeqGT(info.ackno, snd_nxt))) {
+          // RFC 793: Page 72
+          // "If the ACK acks something not yet sent (SEG.ACK > SND.NXT) then
+          // send an ACK, drop the segment, and return."
+          SendEmptyAck();
+          return true;
+        } else {
+          // RFC 793: Page 72 (fixed by RFC 1122 page 94)
+          // "If the ACK is a duplicate (SEG.ACK <= SND.UNA), it can be
+          // ignored."
+        }
+
+        // Additional ACK processing for some closing states
+        if (unlikely(state > kEstablished)) {
+          if (state == kFinWait1) {
+            // If our FIN is now acknowledged we can enter FIN-WAIT-2 and
+            // continue
+            if (info.ackno == snd_nxt)
+              state = kFinWait2;
+          } else if (state == kClosing) {
+            // If our FIN is now acknowledged we can enter TIME-WAIT
+            if (info.ackno == snd_nxt) {
+              Purge();
+              DisableTimers();
+
+              time_wait = now + std::chrono::seconds(60);
+              state = kTimeWait;
+            }
+          }
+        }
+      } else if (state == kLastAck) {
+        if (info.ackno == snd_nxt) {
+          // Our Fin was acked, clean up everything
+          state = kClosed;
+          Purge();
+          DisableTimers();
+          Destroy();
+          return false;
+        }
+      }
+    }
+
     // First check sequence number
     if (likely((rcv_wnd > 0 && TcpSeqBetween(rcv_nxt, info.seqno,
-                                             info.seqno + info.tcplen - 1))) ||
+                                             info.seqno + info.tcplen))) ||
         (info.tcplen == 0 && info.seqno == rcv_nxt)) {
       // 1) Our receive window is open and this segment has in sequence data OR
       // 2) this sequence has zero length but is in sequence (even if our
@@ -565,8 +666,6 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
       // Trim the front
       buf->Advance(rcv_nxt - info.seqno);
       info.tcplen -= rcv_nxt - info.seqno;
-
-      auto flags = th.Flags();
 
       // Second check the RST bit
       if (unlikely(flags & kTcpRst)) {
@@ -621,96 +720,7 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
         DisableTimers();
         Destroy();
         return false;
-      } else if (likely(flags & kTcpAck)) {
-        // Common case: Not RST and not SYN, in sequence
-        if (unlikely(state == kSynReceived)) {
-          // RFC 793 Page 72:
-          // If SND.UNA =< SEG.ACK =< SND.NXT then enter ESTABLISHED state and
-          // continue processing.
-          // If the segment acknowledgment is not acceptable, form a reset
-          // segment,
-          //    <SEQ=SEG.ACK><CTL=RST>
-          // and send it.
-          if (!TcpSeqBetween(info.ackno, snd_una + 1, snd_nxt)) {
-            network_manager->TcpReset(false, info.ackno, 0, ih.dst, ih.src,
-                                      info.dst_port, info.src_port);
-            return true;
-          }
-
-          state = kEstablished;
-          snd_wnd = ntohs(th.wnd);
-          snd_wl1 = info.seqno;
-          snd_wl2 = info.ackno;
-          // Fall through
-        }
-
-        if (likely(state <= kClosing)) {
-          // Common case: In a connected state
-          if (TcpSeqBetween(info.ackno, snd_una + 1, snd_nxt)) {
-            // ACK is for unacked data
-            snd_una = info.ackno;
-
-            if (TcpSeqLT(snd_wl1, info.seqno) ||
-                (snd_wl1 == info.seqno && TcpSeqLT(snd_wl2 + 1, info.ackno))) {
-              // RFC 793 page 72:
-              // "If SND.UNA < SEG.ACK =< SND.NXT, the send window should be
-              // updated.  If (SND.WL1 < SEG.SEQ or (SND.WL1 = SEG.SEQ and
-              // SND.WL2 =< SEG.ACK)), set SND.WND <- SEG.WND, set SND.WL1 <-
-              // SEG.SEQ, and set SND.WL2 <- SEG.ACK."
-              // ... "The check here prevents using old segments to update the
-              // window"
-              snd_wnd = ntohs(th.wnd);
-              snd_wl1 = info.seqno;
-              snd_wl2 = info.ackno;
-            }
-
-            ClearAckedSegments(info);
-
-            if (window_notify) {
-              // Upcall user that the send window has increased
-              handler->SendWindowIncrease();
-            }
-          } else if (unlikely(TcpSeqGT(info.ackno, snd_nxt))) {
-            // RFC 793: Page 72
-            // "If the ACK acks something not yet sent (SEG.ACK > SND.NXT) then
-            // send an ACK, drop the segment, and return."
-            SendEmptyAck();
-            return true;
-          } else {
-            // RFC 793: Page 72 (fixed by RFC 1122 page 94)
-            // "If the ACK is a duplicate (SEG.ACK <= SND.UNA), it can be
-            // ignored."
-          }
-
-          // Additional ACK processing for some closing states
-          if (unlikely(state > kEstablished)) {
-            if (state == kFinWait1) {
-              // If our FIN is now acknowledged we can enter FIN-WAIT-2 and
-              // continue
-              if (info.ackno == snd_nxt)
-                state = kFinWait2;
-            } else if (state == kClosing) {
-              // If our FIN is now acknowledged we can enter TIME-WAIT
-              if (info.ackno == snd_nxt) {
-                Purge();
-                DisableTimers();
-
-                time_wait = now + std::chrono::seconds(60);
-                state = kTimeWait;
-              }
-            }
-          }
-        } else if (state == kLastAck) {
-          if (info.ackno == snd_nxt) {
-            // Our Fin was acked, clean up everything
-            state = kClosed;
-            Purge();
-            DisableTimers();
-            Destroy();
-            return false;
-          }
-        }
-      } else {
+      } else if (unlikely(!(flags & kTcpAck))) {
         // If a segment does not have a RST SYN or ACK then it gets dropped
         return true;
       }
@@ -790,13 +800,10 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
           time_wait = now + std::chrono::seconds(60);
         }
       }
-    } else {
-      // Several cases here:
-      // 1) Our receive window is closed and we received a zero length segment
-      // that was out of sequence
-      // 2) Our receive window is closed and we received a segment with data
-      // 3) The segment was not in sequence (We *should* queue in the case that
-      // the data is still in the window)
+    } else if (pending_segments.empty()) {
+      // We reach here if we received an out of sequence segment and we don't
+      // already have pending segments to send (due to this segment acking data
+      // and opening our window, letting us send more)
 
       // RFC 793 Page 69:
       // "If an incoming segment is not acceptable, an acknowledgment should be
@@ -975,7 +982,7 @@ void ebbrt::NetworkManager::TcpEntry::SendFin() {
 void ebbrt::NetworkManager::TcpEntry::SendSegment(TcpSegment& segment) {
   rcv_last_acked = rcv_nxt;
   segment.th.ackno = htonl(rcv_nxt);
-  segment.th.wnd = htons(snd_wnd);
+  segment.th.wnd = htons(rcv_wnd);
   segment.th.checksum = 0;
   segment.th.checksum =
       IpPseudoCsum(*(segment.buf), kIpProtoTCP, address, std::get<0>(key));
