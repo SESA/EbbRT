@@ -267,77 +267,32 @@ uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
 // }  // namespace
 
 void ebbrt::VirtioNetDriver::Send(std::unique_ptr<IOBuf> buf) {
-  auto len = buf->ComputeChainDataLength();
-  auto b = MakeUniqueIOBuf(len + sizeof(VirtioNetHeader));
-  memset(b->MutData(), 0, sizeof(VirtioNetHeader));
-  // if (csum_) {
-  //   auto header_dp = b->GetWritableDataPointer();
-  //   auto& header = header_dp.Get<VirtioNetHeader>();
-  //   auto dp = buf->GetWritableDataPointer();
-  //   auto& eh = dp.Get<ethernet_header>();
-  //   auto eth_type = ntohs(eh.ethertype);
-  //   ebbrt::kbugon(eth_type == kEtherTypeVLan, "VLAN csum not supported\n");
-  //   if (eth_type == kEtherTypeIP) {
-  //     auto& ih = dp.GetNoAdvance<ip_hdr>();
-  //     auto iphdr_hlen = IPH_HL(&ih) * 4;
-  //     ip_addr_t src;
-  //     ip_addr_copy(src, ih.src);
-  //     ip_addr_t dest;
-  //     ip_addr_copy(dest, ih.dest);
-  //     uint32_t acc = 0;
-  //     uint32_t addr = ip4_addr_get_u32(&src);
-  //     acc += (addr & 0xffffUL);
-  //     acc += ((addr >> 16) & 0xffffUL);
-  //     addr = ip4_addr_get_u32(&dest);
-  //     acc += (addr & 0xffffUL);
-  //     acc += ((addr >> 16) & 0xffffUL);
-  //     acc += (uint32_t)htons(buf->ComputeChainDataLength() -
-  //                            (sizeof(ethernet_header) + iphdr_hlen));
-
-  //     dp.Advance(iphdr_hlen);
-  //     switch (IPH_PROTO(&ih)) {
-  //     case IP_PROTO_UDP: {
-  //       acc += (uint32_t)htons((uint16_t)IP_PROTO_UDP);
-  //       header.flags |= VirtioNetHeader::kNeedsCsum;
-  //       auto& uh = dp.Get<udp_hdr>();
-  //       acc = FOLD_U32T(acc);
-  //       acc = FOLD_U32T(acc);
-  //       uh.chksum = acc & 0xffffUL;
-  //       header.csum_start = sizeof(ethernet_header) + iphdr_hlen;
-  //       header.csum_offset = 6;
-  //       break;
-  //     }
-  //     case IP_PROTO_TCP: {
-  //       acc += (uint32_t)htons((uint16_t)IP_PROTO_TCP);
-  //       header.flags |= VirtioNetHeader::kNeedsCsum;
-  //       auto& th = dp.Get<tcp_hdr>();
-  //       acc = FOLD_U32T(acc);
-  //       acc = FOLD_U32T(acc);
-  //       th.chksum = acc & 0xffffUL;
-  //       header.csum_start = sizeof(ethernet_header) + iphdr_hlen;
-  //       header.csum_offset = 16;
-  //       break;
-  //     }
-  //     }
-  //   }
-  // } else {
-  //   tx_csum(buf);
-  // }
-  // TODO(dschatz): Use indirect descriptors to avoid this copy
-  auto data = b->MutData() + sizeof(VirtioNetHeader);
-  for (auto& buf_it : *buf) {
-    memcpy(data, buf_it.Data(), buf_it.Length());
-    data += buf_it.Length();
-  }
-
+  std::unique_ptr<MutUniqueIOBuf> b;
   std::lock_guard<std::mutex> lock(send_mutex_);
 
   auto& send_queue = GetQueue(1);
-  if (unlikely(send_queue.num_free_descriptors() < b->CountChainElements())) {
-    FreeSentPackets();
-    if (unlikely(send_queue.num_free_descriptors() < b->CountChainElements())) {
-      return;  // Drop
+  send_queue.ClearUsedBuffers();
+  auto free_desc = send_queue.num_free_descriptors();
+  if (free_desc > buf->CountChainElements()) {
+    // we have enough descriptors to avoid a copy
+    b = MakeUniqueIOBuf(sizeof(VirtioNetHeader), /* zero_memory = */ true);
+    b->PrependChain(std::move(buf));
+  } else if (free_desc >= 1) {
+    // XXX: Maybe we should use indirect descriptors instead?
+    // copy into one buffer
+    auto len = buf->ComputeChainDataLength();
+    b = MakeUniqueIOBuf(len + sizeof(VirtioNetHeader));
+    memset(b->MutData(), 0, sizeof(VirtioNetHeader));
+    auto data = b->MutData() + sizeof(VirtioNetHeader);
+    for (auto& buf_it : *buf) {
+      memcpy(data, buf_it.Data(), buf_it.Length());
+      data += buf_it.Length();
     }
+  } else {
+    kprintf("Drop\n");
+    // kick to make it process more buffers, drop the send
+    send_queue.Kick();
+    return;
   }
 
   send_queue.AddReadableBuffer(std::move(b));
