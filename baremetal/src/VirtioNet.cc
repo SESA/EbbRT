@@ -273,11 +273,12 @@ void ebbrt::VirtioNetDriver::Send(std::unique_ptr<IOBuf> buf) {
   auto& send_queue = GetQueue(1);
   send_queue.ClearUsedBuffers();
   auto free_desc = send_queue.num_free_descriptors();
-  if (free_desc > buf->CountChainElements()) {
-    // we have enough descriptors to avoid a copy
-    b = MakeUniqueIOBuf(sizeof(VirtioNetHeader), /* zero_memory = */ true);
-    b->PrependChain(std::move(buf));
-  } else if (free_desc >= 1) {
+  // if (free_desc > buf->CountChainElements()) {
+  //   // we have enough descriptors to avoid a copy
+  //   b = MakeUniqueIOBuf(sizeof(VirtioNetHeader), /* zero_memory = */ true);
+  //   b->PrependChain(std::move(buf));
+  // } else
+  if (free_desc >= 1) {
     // XXX: Maybe we should use indirect descriptors instead?
     // copy into one buffer
     auto len = buf->ComputeChainDataLength();
