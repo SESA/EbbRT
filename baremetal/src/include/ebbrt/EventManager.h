@@ -116,7 +116,7 @@ class EventManager : Timer::Hook {
   std::queue<MovableFunction<void()>> curr_rcu_tasks_;
 
   struct RemoteData : CacheAligned {
-    std::mutex lock;
+    ebbrt::SpinLock lock;
     std::list<MovableFunction<void()>> tasks;
   } remote_;
 

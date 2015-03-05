@@ -268,7 +268,7 @@ uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
 
 void ebbrt::VirtioNetDriver::Send(std::unique_ptr<IOBuf> buf) {
   std::unique_ptr<MutUniqueIOBuf> b;
-  std::lock_guard<std::mutex> lock(send_mutex_);
+  std::lock_guard<ebbrt::SpinLock> lock(send_mutex_);
 
   auto& send_queue = GetQueue(1);
   send_queue.ClearUsedBuffers();

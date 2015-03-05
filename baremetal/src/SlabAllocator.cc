@@ -152,6 +152,7 @@ retry:
   // no free object in lock list, potentially check the list of remotely freed
   // objects
   if (remote_check) {
+    remote_check = false;
     ClaimRemoteFreeList();
 
     while (object_list_.size() > root_.hiwater())

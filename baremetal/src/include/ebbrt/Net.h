@@ -9,6 +9,8 @@
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #include <boost/container/list.hpp>
 #pragma GCC diagnostic pop
+#include <list>
+#include <tuple>
 
 #include <ebbrt/AtomicUniquePtr.h>
 #include <ebbrt/Clock.h>
@@ -19,6 +21,7 @@
 #include <ebbrt/NetIp.h>
 #include <ebbrt/NetTcp.h>
 #include <ebbrt/SharedPoolAllocator.h>
+#include <ebbrt/SpinLock.h>
 #include <ebbrt/RcuTable.h>
 #include <ebbrt/StaticSharedEbb.h>
 
@@ -302,10 +305,10 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
       SharedPoolAllocator<uint16_t>::Create(49152, 65535,
                                             ebb_allocator->AllocateLocal())};
 
-  alignas(cache_size) std::mutex arp_write_lock_;
-  alignas(cache_size) std::mutex udp_write_lock_;
-  alignas(cache_size) std::mutex listening_tcp_write_lock_;
-  alignas(cache_size) std::mutex tcp_write_lock_;
+  alignas(cache_size) ebbrt::SpinLock arp_write_lock_;
+  alignas(cache_size) ebbrt::SpinLock udp_write_lock_;
+  alignas(cache_size) ebbrt::SpinLock listening_tcp_write_lock_;
+  alignas(cache_size) ebbrt::SpinLock tcp_write_lock_;
 
   friend void ebbrt::Main(ebbrt::multiboot::Information* mbi);
 };

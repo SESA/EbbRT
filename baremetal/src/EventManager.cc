@@ -216,7 +216,7 @@ void ebbrt::EventManager::SpawnLocal(MovableFunction<void()> func,
 }
 
 void ebbrt::EventManager::AddRemoteTask(MovableFunction<void()> func) {
-  std::lock_guard<std::mutex> lock(remote_.lock);
+  std::lock_guard<ebbrt::SpinLock> lock(remote_.lock);
   remote_.tasks.emplace_back(std::move(func));
 }
 
@@ -298,7 +298,7 @@ void ebbrt::EventManager::ProcessInterrupt(int num) {
   apic::Eoi();
   if (num == 32) {
     // pull all remote tasks onto our queue
-    std::lock_guard<std::mutex> l(remote_.lock);
+    std::lock_guard<ebbrt::SpinLock> l(remote_.lock);
     tasks_.splice(tasks_.end(), std::move(remote_.tasks));
   } else if (num == 33) {
     ReceiveToken();

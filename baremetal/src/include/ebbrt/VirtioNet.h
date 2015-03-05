@@ -7,6 +7,7 @@
 
 #include <ebbrt/Net.h>
 #include <ebbrt/SlabAllocator.h>
+#include <ebbrt/SpinLock.h>
 #include <ebbrt/Virtio.h>
 
 namespace ebbrt {
@@ -50,7 +51,7 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
   size_t circ_buffer_head_;
   size_t circ_buffer_tail_;
   std::array<std::unique_ptr<MutIOBuf>, 256> circ_buffer_;
-  std::mutex send_mutex_;
+  ebbrt::SpinLock send_mutex_;
   bool csum_;
   bool guest_csum_;
 };

@@ -13,7 +13,7 @@
 ebbrt::Future<void> ebbrt::NetworkManager::UdpPcb::Close() {
   if (entry_->port) {
     network_manager->udp_port_allocator_->Free(entry_->port);
-    std::lock_guard<std::mutex> guard(network_manager->udp_write_lock_);
+    std::lock_guard<ebbrt::SpinLock> guard(network_manager->udp_write_lock_);
     network_manager->udp_pcbs_.erase(*entry_);
     entry_->port = 0;
   }
@@ -43,7 +43,7 @@ uint16_t ebbrt::NetworkManager::UdpPcb::Bind(uint16_t port) {
 
   entry_->port = port;
   {
-    std::lock_guard<std::mutex> guard(network_manager->udp_write_lock_);
+    std::lock_guard<ebbrt::SpinLock> guard(network_manager->udp_write_lock_);
     network_manager->udp_pcbs_.insert(*entry_);
   }
   return port;

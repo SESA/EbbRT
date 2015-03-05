@@ -15,7 +15,7 @@ void ebbrt::NetworkManager::ListeningTcpPcb::ListeningTcpEntryDeleter::
 operator()(ListeningTcpEntry* e) {
   if (e->port) {
     network_manager->tcp_port_allocator_->Free(e->port);
-    std::lock_guard<std::mutex> guard(
+    std::lock_guard<ebbrt::SpinLock> guard(
         network_manager->listening_tcp_write_lock_);
     network_manager->listening_tcp_pcbs_.erase(*e);
   }
@@ -49,7 +49,7 @@ uint16_t ebbrt::NetworkManager::ListeningTcpPcb::Bind(
   entry_->accept_fn = std::move(accept);
   {
     // ensure that all mutating operations on the hash table are serialized
-    std::lock_guard<std::mutex> guard(
+    std::lock_guard<ebbrt::SpinLock> guard(
         network_manager->listening_tcp_write_lock_);
     network_manager->listening_tcp_pcbs_.insert(*entry_);
   }
@@ -98,7 +98,7 @@ uint16_t ebbrt::NetworkManager::TcpPcb::Connect(Ipv4Address address,
   // do not try to concurrently access the entry
   {
     // ensure that all mutating operations on the hash table are serialized
-    std::lock_guard<std::mutex> lock(network_manager->tcp_write_lock_);
+    std::lock_guard<ebbrt::SpinLock> lock(network_manager->tcp_write_lock_);
     // double check that we haven't concurrently created this connection
     auto found_entry = network_manager->tcp_pcbs_.find(entry_->key);
     if (unlikely(found_entry)) {
@@ -328,7 +328,7 @@ void ebbrt::NetworkManager::TcpEntry::Purge() {
 // Remove a pcb from its list and destroy it
 void ebbrt::NetworkManager::TcpEntry::Destroy() {
   {
-    std::lock_guard<std::mutex> guard(network_manager->tcp_write_lock_);
+    std::lock_guard<ebbrt::SpinLock> guard(network_manager->tcp_write_lock_);
     network_manager->tcp_pcbs_.erase(*this);
   }
   event_manager->DoRcu([this]() { delete this; });
@@ -374,7 +374,7 @@ ebbrt::NetworkManager::ListeningTcpEntry::Input(const Ipv4Header& ih,
     // concurrent connection creation.
     {
       // ensure that all mutating operations on the hash table are serialized
-      std::lock_guard<std::mutex> lock(network_manager->tcp_write_lock_);
+      std::lock_guard<ebbrt::SpinLock> lock(network_manager->tcp_write_lock_);
       // double check that we haven't concurrently created this connection
       auto found_entry = network_manager->tcp_pcbs_.find(entry->key);
       if (unlikely(found_entry)) {

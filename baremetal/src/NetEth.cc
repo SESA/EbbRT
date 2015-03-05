@@ -107,7 +107,7 @@ ebbrt::NetworkManager::Interface::ReceiveArp(EthernetHeader& eth_header,
     if (!entry) {
       // RFC 826: If target address matches ours, and we didn't update the
       // entry, create it
-      std::lock_guard<std::mutex> guard(network_manager->arp_write_lock_);
+      std::lock_guard<ebbrt::SpinLock> guard(network_manager->arp_write_lock_);
 
       // double check for entry
       entry = network_manager->arp_cache_.find(arp_packet.spa);
