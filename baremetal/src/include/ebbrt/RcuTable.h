@@ -6,6 +6,7 @@
 #define BAREMETAL_SRC_INCLUDE_EBBRT_RCUTABLE_H_
 
 #include <cassert>
+#include <functional>
 
 #include <ebbrt/AtomicUniquePtr.h>
 #include <ebbrt/RcuList.h>
@@ -68,6 +69,13 @@ template <typename T, RcuHListHook T::*hookptr> class RcuBuckets {
   }
 
   std::size_t size() const { return size_; }
+
+  void clear() {
+    for (unsigned i = 0; i < size_; ++i) {
+      buckets_[i].clear();
+    }
+    std::atomic_thread_fence(std::memory_order_release);
+  }
 
   bucket_type& get_bucket(std::size_t index) {
     assert(index < size_);
@@ -181,6 +189,12 @@ class RcuHashTable {
         return &element;
     }
     return nullptr;
+  }
+
+  void clear() {
+    auto b = get_buckets();
+    assert(b);
+    b->clear();
   }
 
   void insert(T& val) {
