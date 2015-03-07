@@ -414,7 +414,7 @@ void ebbrt::pci::Device::SetMsixEntry(size_t entry, uint8_t vector,
                                       uint8_t dest) {
   auto& msix_bar = GetBar(msix_bar_idx_);
   auto offset = msix_table_offset_ + entry * kMsixTableEntrySize;
-  msix_bar.Write32(offset + kMsixTableEntryAddr, 0xFEE00000);
+  msix_bar.Write32(offset + kMsixTableEntryAddr, 0xFEE00000 | dest << 12);
   msix_bar.Write32(offset + kMsixTableEntryData, vector);
   MsixUnmaskEntry(entry);
 }
