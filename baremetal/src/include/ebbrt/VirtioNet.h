@@ -5,12 +5,15 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_VIRTIONET_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_VIRTIONET_H_
 
+#include <ebbrt/MulticoreEbb.h>
 #include <ebbrt/Net.h>
 #include <ebbrt/SlabAllocator.h>
 #include <ebbrt/SpinLock.h>
 #include <ebbrt/Virtio.h>
 
 namespace ebbrt {
+class VirtioNetRep;
+
 class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
                         public EthernetDevice {
  public:
@@ -18,15 +21,33 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
 
   explicit VirtioNetDriver(pci::Device& dev);
 
-  static void Create(pci::Device& dev) { new VirtioNetDriver(dev); }
+  static void Create(pci::Device& dev);
   static uint32_t GetDriverFeatures();
   void Send(std::unique_ptr<IOBuf> buf) override;
   const EthernetAddress& GetMacAddress() override;
-  void Poll() override;
 
  private:
   void FillRxRing();
   void FreeSentPackets();
+  void ReceivePoll();
+
+  EbbRef<VirtioNetRep> ebb_;
+  EthernetAddress mac_addr_;
+  NetworkManager::Interface& itf_;
+  VRing* ctrl_queue_;
+  bool multiqueue_;
+
+  friend class VirtioNetRep;
+};
+
+class VirtioNetRep : public MulticoreEbb<VirtioNetRep, VirtioNetDriver> {
+ public:
+  explicit VirtioNetRep(const VirtioNetDriver& root);
+  void Send(std::unique_ptr<IOBuf> buf);
+  void Receive();
+
+ private:
+  void FillRxRing();
   void ReceivePoll();
 
   struct VirtioNetHeader {
@@ -45,16 +66,14 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
     uint16_t csum_offset;
     uint16_t num_buffers;
   };
-  EbbRef<SlabAllocator> allocator_;
-  EthernetAddress mac_addr_;
-  NetworkManager::Interface& itf_;
+
+  const VirtioNetDriver& root_;
+  VirtioDriver<VirtioNetDriver>::VRing& rcv_queue_;
+  VirtioDriver<VirtioNetDriver>::VRing& snd_queue_;
   EventManager::IdleCallback receive_callback_;
   size_t circ_buffer_head_;
   size_t circ_buffer_tail_;
   std::array<std::unique_ptr<MutIOBuf>, 256> circ_buffer_;
-  ebbrt::SpinLock send_mutex_;
-  bool csum_;
-  bool guest_csum_;
 };
 }  // namespace ebbrt
 

@@ -381,7 +381,7 @@ template <typename VirtType> class VirtioDriver {
     AddDeviceStatus(kConfigAcknowledge | kConfigDriver);
   }
 
-  VRing& GetQueue(size_t index) { return *queues_[index]; }
+  VRing& GetQueue(size_t index) const { return *queues_[index]; }
 
   void AddDeviceStatus(uint8_t status) {
     auto s = GetDeviceStatus();
@@ -393,6 +393,10 @@ template <typename VirtType> class VirtioDriver {
 
   uint8_t DeviceConfigRead8(size_t idx) {
     return ConfigRead8(kDeviceConfiguration + idx);
+  }
+
+  uint16_t DeviceConfigRead16(size_t idx) {
+    return ConfigRead16(kDeviceConfiguration + idx);
   }
 
   uint32_t GetDeviceFeatures() { return ConfigRead32(kDeviceFeatures); }

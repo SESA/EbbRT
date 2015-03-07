@@ -15,46 +15,47 @@
 #include <ebbrt/LocalIdMap.h>
 
 namespace ebbrt {
-template <class T, class S> class MulticoreEbb {
+template <class T, class Root> class MulticoreEbb {
  public:
-  static EbbRef<T> Create(S s) {
-    auto id = ebb_allocator->AllocateLocal();
-    auto root = std::make_pair(RepMap(), std::move(s));
-    local_id_map->Insert(std::make_pair(id, std::move(root)));
+  static EbbRef<T> Create(Root* root, EbbId id = ebb_allocator->Allocate()) {
+    auto pair = std::make_pair(root, RepMap());
+    local_id_map->Insert(std::make_pair(id, std::move(pair)));
     return EbbRef<T>(id);
   }
   static T& HandleFault(EbbId id) {
+    T* rep;
     {
       LocalIdMap::ConstAccessor accessor;
       auto found = local_id_map->Find(accessor, id);
       if (!found)
         throw std::runtime_error("Failed to find root for MulticoreEbb");
 
-      auto root = boost::any_cast<Root>(accessor->second);
-      auto& rep_map = root.first;
+      auto pair = boost::any_cast<std::pair<Root*, RepMap>>(&accessor->second);
+      const auto& root = *(pair->first);
+      const auto& rep_map = pair->second;
       auto it = rep_map.find(Cpu::GetMine());
       if (it != rep_map.end()) {
-        EbbRef<T>::CacheRef(id, it->second.get());
-        return it->second.get();
+        EbbRef<T>::CacheRef(id, *it->second);
+        return *it->second;
       }
+      // we failed to find a rep, we must construct one
+      rep = new T(root);
     }
-    // we failed to find a rep, we must construct one
-    auto rep = new T;
+
     LocalIdMap::Accessor accessor;
     auto found = local_id_map->Find(accessor, id);
     if (!found)
       throw std::runtime_error("Failed to find root for MulticoreEbb");
 
-    auto root = boost::any_cast<Root>(accessor->second);
-    auto& rep_map = root.first;
-    rep_map[Cpu::GetMine()] = *rep;
+    auto pair = boost::any_cast<std::pair<Root*, RepMap>>(&accessor->second);
+    auto& rep_map = pair->second;
+    rep_map[Cpu::GetMine()] = rep;
     EbbRef<T>::CacheRef(id, *rep);
     return *rep;
   }
 
  private:
-  typedef boost::container::flat_map<size_t, std::reference_wrapper<T>> RepMap;
-  typedef std::pair<RepMap, S> Root;
+  typedef boost::container::flat_map<size_t, T*> RepMap;
 };
 
 }  // namespace ebbrt

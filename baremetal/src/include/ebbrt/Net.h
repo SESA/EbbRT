@@ -30,7 +30,6 @@ class EthernetDevice {
  public:
   virtual void Send(std::unique_ptr<IOBuf> buf) = 0;
   virtual const EthernetAddress& GetMacAddress() = 0;
-  virtual void Poll() = 0;
   virtual ~EthernetDevice() {}
 };
 
@@ -217,7 +216,6 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
                  std::unique_ptr<IOBuf> buf);
     void SendIp(std::unique_ptr<MutIOBuf> buf, Ipv4Address src, Ipv4Address dst,
                 uint8_t proto);
-    void Poll();
     const EthernetAddress& MacAddress();
     const ItfAddress* Address() const { return address_.get(); }
     void SetAddress(std::unique_ptr<ItfAddress> address) {
