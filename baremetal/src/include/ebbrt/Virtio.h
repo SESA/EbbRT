@@ -29,7 +29,7 @@ template <typename VirtType> class VirtioDriver {
     if (dev.GetVendorId() == kVirtioVendorId &&
         dev.GetDeviceId() == VirtType::kDeviceId) {
       dev.DumpAddress();
-      new VirtType(dev);
+      VirtType::Create(dev);
       return true;
     }
     return false;
@@ -58,7 +58,7 @@ template <typename VirtType> class VirtioDriver {
 
   class VRing {
    public:
-    VRing(VirtioDriver<VirtType>& driver, uint16_t qsize, size_t idx)
+    VRing(VirtioDriver<VirtType>& driver, uint16_t qsize, size_t idx, Nid nid)
         : driver_(driver), idx_(idx), qsize_(qsize), last_used_(0),
           avail_idx_(0), used_head_(0), free_head_(0), free_count_(qsize_),
           buf_references_(qsize_), event_indexes_(false) {
@@ -67,7 +67,7 @@ template <typename VirtType> class VirtioDriver {
                     4096) +
           align::Up(sizeof(uint16_t) * 3 + sizeof(UsedElem) * qsize, 4096);
       auto order = Fls(sz - 1) - pmem::kPageShift + 1;
-      auto page = page_allocator->Alloc(order);
+      auto page = page_allocator->Alloc(order, nid);
       kbugon(page == Pfn::None(), "virtio: page allocation failed");
       kprintf("VRING: %x\n", page.ToAddr());
       addr_ = reinterpret_cast<void*>(page.ToAddr());
@@ -162,7 +162,7 @@ template <typename VirtType> class VirtioDriver {
       return end;
     }
 
-    void AddReadableBuffer(std::unique_ptr<IOBuf> bufs) {
+    void AddBuffer(std::unique_ptr<IOBuf> bufs, size_t out_num) {
       auto len = bufs->CountChainElements();
       kassert(free_count_ >= len);
 
@@ -176,6 +176,11 @@ template <typename VirtType> class VirtioDriver {
         desc.addr = reinterpret_cast<uint64_t>(addr);
         desc.len = size;
         desc.flags |= Desc::Next;
+        if (out_num == 0) {
+          desc.flags |= Desc::Write;
+        } else {
+          --out_num;
+        }
         last_desc = free_head_;
         free_head_ = desc.next;
       }
@@ -374,13 +379,9 @@ template <typename VirtType> class VirtioDriver {
     Reset();
 
     AddDeviceStatus(kConfigAcknowledge | kConfigDriver);
-
-    SetupVirtQueues();
-
-    SetupFeatures();
   }
 
-  VRing& GetQueue(size_t index) { return queues_[index]; }
+  VRing& GetQueue(size_t index) { return *queues_[index]; }
 
   void AddDeviceStatus(uint8_t status) {
     auto s = GetDeviceStatus();
@@ -397,6 +398,29 @@ template <typename VirtType> class VirtioDriver {
   uint32_t GetDeviceFeatures() { return ConfigRead32(kDeviceFeatures); }
 
   uint32_t GetGuestFeatures() { return ConfigRead32(kGuestFeatures); }
+
+  uint32_t SetupFeatures() {
+    auto device_features = GetDeviceFeatures();
+    kprintf("Device features: %x\n", device_features);
+    auto driver_features = VirtType::GetDriverFeatures();
+    auto subset = device_features & driver_features;
+    SetGuestFeatures(subset);
+    return subset;
+  }
+
+  VRing& InitializeQueue(size_t idx, Nid nid = Cpu::GetMyNode()) {
+    SelectQueue(idx);
+    auto qsize = GetQueueSize();
+    kassert(qsize != 0);
+
+    queues_[idx].reset(new VRing(*this, qsize, idx, nid));
+    SetQueueAddr(queues_[idx]->addr());
+    SetQueueVector(idx);
+
+    return *queues_[idx];
+  }
+
+  void SetNumQueues(size_t nqueues) { queues_.resize(nqueues); }
 
  private:
   uint8_t ConfigRead8(size_t offset) { return bar0_.Read8(offset); }
@@ -436,42 +460,14 @@ template <typename VirtType> class VirtioDriver {
 
   void SetQueueVector(uint16_t index) { ConfigWrite16(kQueueVector, index); }
 
-  void SetupVirtQueues() {
-    while (1) {
-      auto idx = queues_.size();
-      SelectQueue(idx);
-      auto qsize = GetQueueSize();
-      if (qsize == 0)
-        return;
-
-      queues_.emplace_back(*this, qsize, idx);
-      SetQueueAddr(queues_.back().addr());
-      SetQueueVector(idx);
-    }
-  }
-
   void SetGuestFeatures(uint32_t features) {
     ConfigWrite32(kGuestFeatures, features);
-  }
-
-  void SetupFeatures() {
-    auto device_features = GetDeviceFeatures();
-    kprintf("Device features: %x\n", device_features);
-    auto driver_features = VirtType::GetDriverFeatures();
-
-    // driver_features |= 1 << kVirtioRingEventIdx;
-
-    auto subset = device_features & driver_features;
-
-    // kassert(subset & 1 << kVirtioRingEventIdx);
-
-    SetGuestFeatures(subset);
   }
 
   pci::Device& dev_;
   pci::Bar& bar0_;
 
-  std::vector<VRing> queues_;
+  std::vector<std::unique_ptr<VRing>> queues_;
 };
 }  // namespace ebbrt
 

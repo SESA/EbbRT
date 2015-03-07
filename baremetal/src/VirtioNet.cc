@@ -27,15 +27,34 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
       itf_(network_manager->NewInterface(*this)),
       receive_callback_([this]() { ReceivePoll(); }), circ_buffer_head_(0),
       circ_buffer_tail_(0) {
-  auto feat = GetGuestFeatures();
-  csum_ = feat & (1 << kCSum);
-  if (csum_) {
-    kprintf("VirtioNet: csum\n");
+  SetupFeatures();
+
+  auto rcv_vector = event_manager->AllocateVector([this]() {
+    auto& rcv_queue = GetQueue(0);
+    rcv_queue.DisableInterrupts();
+    receive_callback_.Start();
+  });
+
+  SetNumQueues(2);
+  auto& rcv_queue = InitializeQueue(0);
+  auto& snd_queue = InitializeQueue(1);
+
+  auto num_bufs = rcv_queue.num_free_descriptors();
+  auto bufs = std::vector<std::unique_ptr<MutIOBuf>>();
+  bufs.reserve(num_bufs);
+
+  for (size_t i = 0; i < num_bufs; ++i) {
+    bufs.emplace_back(MakeUniqueIOBuf(2048));
   }
-  guest_csum_ = feat & (1 << kGuestCSum);
-  if (guest_csum_) {
-    kprintf("VirtioNet: guest_csum\n");
-  }
+
+  auto it = rcv_queue.AddWritableBuffers(bufs.begin(), bufs.end());
+  kassert(it == bufs.end());
+
+  dev.SetMsixEntry(0, rcv_vector, 0);
+  // We disable the interrupt on packets being sent because we clear everytime
+  // send() gets called. Additionally the device will interrupt us if the queue
+  // is empty (so we will clear in some bounded time)
+  snd_queue.DisableInterrupts();
 
   for (int i = 0; i < 6; ++i) {
     mac_addr_[i] = DeviceConfigRead8(i);
@@ -46,21 +65,6 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
       static_cast<uint8_t>(mac_addr_[0]), static_cast<uint8_t>(mac_addr_[1]),
       static_cast<uint8_t>(mac_addr_[2]), static_cast<uint8_t>(mac_addr_[3]),
       static_cast<uint8_t>(mac_addr_[4]), static_cast<uint8_t>(mac_addr_[5]));
-
-  FillRxRing();
-
-  auto rcv_vector = event_manager->AllocateVector([this]() {
-    auto& rcv_queue = GetQueue(0);
-    rcv_queue.DisableInterrupts();
-    receive_callback_.Start();
-  });
-  dev.SetMsixEntry(0, rcv_vector, 0);
-
-  // We disable the interrupt on packets being sent because we clear everytime
-  // send() gets called. Additionally the device will interrupt us if the queue
-  // is empty (so we will clear in some bounded time)
-  auto& send_queue = GetQueue(1);
-  send_queue.DisableInterrupts();
 
   AddDeviceStatus(kConfigDriverOk);
 }
@@ -296,7 +300,7 @@ void ebbrt::VirtioNetDriver::Send(std::unique_ptr<IOBuf> buf) {
     return;
   }
 
-  send_queue.AddReadableBuffer(std::move(b));
+  send_queue.AddBuffer(std::move(b), 1);
 }
 
 const ebbrt::EthernetAddress& ebbrt::VirtioNetDriver::GetMacAddress() {

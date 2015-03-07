@@ -18,6 +18,7 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
 
   explicit VirtioNetDriver(pci::Device& dev);
 
+  static void Create(pci::Device& dev) { new VirtioNetDriver(dev); }
   static uint32_t GetDriverFeatures();
   void Send(std::unique_ptr<IOBuf> buf) override;
   const EthernetAddress& GetMacAddress() override;
