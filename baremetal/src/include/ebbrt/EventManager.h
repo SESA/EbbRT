@@ -102,8 +102,6 @@ class EventManager : Timer::Hook {
   const RepMap& reps_;
   std::stack<Pfn> free_stacks_;
   std::list<MovableFunction<void()>> tasks_;
-  std::unordered_map<uint8_t, MovableFunction<void()>> vector_map_;
-  std::atomic<uint8_t> vector_idx_;
   uint32_t next_event_id_;
   EventContext active_event_context_;
   std::stack<EventContext> sync_contexts_;
