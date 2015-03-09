@@ -26,9 +26,18 @@
 #include <ebbrt/StaticSharedEbb.h>
 
 namespace ebbrt {
+struct PacketInfo {
+  static const constexpr uint8_t kNeedsCsum = 1;
+
+  uint8_t flags{0};
+  uint16_t csum_start{0};
+  uint16_t csum_offset{0};
+};
+
 class EthernetDevice {
  public:
-  virtual void Send(std::unique_ptr<IOBuf> buf) = 0;
+  virtual void Send(std::unique_ptr<IOBuf> buf,
+                    PacketInfo pinfo = PacketInfo()) = 0;
   virtual const EthernetAddress& GetMacAddress() = 0;
   virtual ~EthernetDevice() {}
 };
@@ -211,11 +220,11 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
         : address_(nullptr), ether_dev_(ether_dev) {}
 
     void Receive(std::unique_ptr<MutIOBuf> buf);
-    void Send(std::unique_ptr<IOBuf> buf);
+    void Send(std::unique_ptr<IOBuf> buf, PacketInfo pinfo = PacketInfo());
     void SendUdp(UdpPcb& pcb, Ipv4Address addr, uint16_t port,
                  std::unique_ptr<IOBuf> buf);
     void SendIp(std::unique_ptr<MutIOBuf> buf, Ipv4Address src, Ipv4Address dst,
-                uint8_t proto);
+                uint8_t proto, PacketInfo pinfo = PacketInfo());
     const EthernetAddress& MacAddress();
     const ItfAddress* Address() const { return address_.get(); }
     void SetAddress(std::unique_ptr<ItfAddress> address) {
@@ -247,7 +256,8 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     void ReceiveDhcp(Ipv4Address from_addr, uint16_t from_port,
                      std::unique_ptr<MutIOBuf> buf);
     void EthArpSend(uint16_t proto, const Ipv4Header& ih,
-                    std::unique_ptr<MutIOBuf> buf);
+                    std::unique_ptr<MutIOBuf> buf,
+                    PacketInfo pinfo = PacketInfo());
     void EthArpRequest(ArpEntry& entry);
     void DhcpOption(DhcpMessage& message, uint8_t option_type,
                     uint8_t option_len);
@@ -279,7 +289,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
  private:
   Future<void> StartDhcp();
   void SendIp(std::unique_ptr<MutIOBuf> buf, Ipv4Address src, Ipv4Address dst,
-              uint8_t proto);
+              uint8_t proto, PacketInfo = PacketInfo());
   void TcpReset(bool ack, uint32_t seqno, uint32_t ackno,
                 const Ipv4Address& local_ip, const Ipv4Address& remote_ip,
                 uint16_t local_port, uint16_t remote_port);

@@ -23,7 +23,7 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
 
   static void Create(pci::Device& dev);
   static uint32_t GetDriverFeatures();
-  void Send(std::unique_ptr<IOBuf> buf) override;
+  void Send(std::unique_ptr<IOBuf> buf, PacketInfo pinfo) override;
   const EthernetAddress& GetMacAddress() override;
 
  private:
@@ -35,7 +35,6 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
   EthernetAddress mac_addr_;
   NetworkManager::Interface& itf_;
   VRing* ctrl_queue_;
-  bool multiqueue_;
 
   friend class VirtioNetRep;
 };
@@ -43,7 +42,7 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
 class VirtioNetRep : public MulticoreEbb<VirtioNetRep, VirtioNetDriver> {
  public:
   explicit VirtioNetRep(const VirtioNetDriver& root);
-  void Send(std::unique_ptr<IOBuf> buf);
+  void Send(std::unique_ptr<IOBuf> buf, PacketInfo pinfo);
   void Receive();
 
  private:

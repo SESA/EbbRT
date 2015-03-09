@@ -7,10 +7,10 @@
 #include <ebbrt/UniqueIOBuf.h>
 
 /// Send an Ethernet packet
-void
-ebbrt::NetworkManager::Interface::EthArpSend(uint16_t proto,
-                                             const Ipv4Header& ip_header,
-                                             std::unique_ptr<MutIOBuf> buf) {
+void ebbrt::NetworkManager::Interface::EthArpSend(uint16_t proto,
+                                                  const Ipv4Header& ip_header,
+                                                  std::unique_ptr<MutIOBuf> buf,
+                                                  PacketInfo pinfo) {
   buf->Retreat(sizeof(EthernetHeader));
   auto dp = buf->GetMutDataPointer();
   auto& eth_header = dp.Get<EthernetHeader>();
@@ -33,16 +33,17 @@ ebbrt::NetworkManager::Interface::EthArpSend(uint16_t proto,
     }
 
     // lambda to send the packet given the destination MAC address
-    auto send_func = MoveBind([this, proto](std::unique_ptr<MutIOBuf> buf,
-                                            EthernetAddress addr) {
-                                auto dp = buf->GetMutDataPointer();
-                                auto& eth_header = dp.Get<EthernetHeader>();
-                                eth_header.dst = addr;
-                                eth_header.src = MacAddress();
-                                eth_header.type = htons(proto);
-                                Send(std::move(buf));
-                              },
-                              std::move(buf));
+    auto send_func =
+        MoveBind([this, proto, pinfo](std::unique_ptr<MutIOBuf> buf,
+                                      EthernetAddress addr) {
+                   auto dp = buf->GetMutDataPointer();
+                   auto& eth_header = dp.Get<EthernetHeader>();
+                   eth_header.dst = addr;
+                   eth_header.src = MacAddress();
+                   eth_header.type = htons(proto);
+                   Send(std::move(buf), pinfo);
+                 },
+                 std::move(buf));
 
     // look up local_dest in arp cache
     auto entry = network_manager->arp_cache_.find(local_dest);

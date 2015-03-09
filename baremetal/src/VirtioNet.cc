@@ -45,9 +45,10 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
     : VirtioDriver<VirtioNetDriver>(dev),
       itf_(network_manager->NewInterface(*this)) {
   auto features = SetupFeatures();
-  multiqueue_ = features & (1 << kMq);
-
-  kbugon(!multiqueue_, "Device missing multiqueue support!\n");
+  auto multiqueue = features & (1 << kMq);
+  kbugon(!multiqueue, "Device missing multiqueue support!\n");
+  auto csum = features & (1 << kCSum);
+  kbugon(!csum, "Device missing checksum offloading support!\n");
 
   // Figure out max queue pairs supported
   auto max_queue_pairs = DeviceConfigRead16(8);
@@ -133,8 +134,7 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
 }
 
 uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
-  // return 1 << kCSum | 1 << kGuestCSum | 1 << kMac | 1 << kMrgRxbuf;
-  return 1 << kMac | 1 << kMrgRxbuf | 1 << kCtrlVq | 1 << kMq;
+  return 1 << kMac | 1 << kMrgRxbuf | 1 << kCtrlVq | 1 << kMq | 1 << kCSum;
 }
 
 // namespace {
@@ -320,11 +320,12 @@ ebbrt::VirtioNetRep::VirtioNetRep(const VirtioNetDriver& root)
       receive_callback_([this]() { ReceivePoll(); }), circ_buffer_head_(0),
       circ_buffer_tail_(0) {}
 
-void ebbrt::VirtioNetDriver::Send(std::unique_ptr<IOBuf> buf) {
-  ebb_->Send(std::move(buf));
+void ebbrt::VirtioNetDriver::Send(std::unique_ptr<IOBuf> buf,
+                                  PacketInfo pinfo) {
+  ebb_->Send(std::move(buf), std::move(pinfo));
 }
 
-void ebbrt::VirtioNetRep::Send(std::unique_ptr<IOBuf> buf) {
+void ebbrt::VirtioNetRep::Send(std::unique_ptr<IOBuf> buf, PacketInfo pinfo) {
   std::unique_ptr<MutUniqueIOBuf> b;
 
   snd_queue_.ClearUsedBuffers();
@@ -340,6 +341,12 @@ void ebbrt::VirtioNetRep::Send(std::unique_ptr<IOBuf> buf) {
     auto len = buf->ComputeChainDataLength();
     b = MakeUniqueIOBuf(len + sizeof(VirtioNetHeader));
     memset(b->MutData(), 0, sizeof(VirtioNetHeader));
+    if (pinfo.flags & PacketInfo::kNeedsCsum) {
+      auto header = reinterpret_cast<VirtioNetHeader*>(b->MutData());
+      header->flags |= VirtioNetHeader::kNeedsCsum;
+      header->csum_start = pinfo.csum_start;
+      header->csum_offset = pinfo.csum_offset;
+    }
     auto data = b->MutData() + sizeof(VirtioNetHeader);
     for (auto& buf_it : *buf) {
       memcpy(data, buf_it.Data(), buf_it.Length());

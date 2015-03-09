@@ -984,11 +984,16 @@ void ebbrt::NetworkManager::TcpEntry::SendSegment(TcpSegment& segment) {
   segment.th.ackno = htonl(rcv_nxt);
   segment.th.wnd = htons(rcv_wnd);
   segment.th.checksum = 0;
-  segment.th.checksum =
-      IpPseudoCsum(*(segment.buf), kIpProtoTCP, address, std::get<0>(key));
+  // XXX: check if checksum offloading is supported
+  // segment.th.checksum =
+  //     IpPseudoCsum(*(segment.buf), kIpProtoTCP, address, std::get<0>(key));
+  PacketInfo pinfo;
+  pinfo.flags |= PacketInfo::kNeedsCsum;
+  pinfo.csum_start = 34;  // 14 byte eth header + 20 byte ip header
+  pinfo.csum_offset = 16;  // checksum is 16 bytes into the TCP header
 
   network_manager->SendIp(CreateRefChain(*(segment.buf)), address,
-                          std::get<0>(key), kIpProtoTCP);
+                          std::get<0>(key), kIpProtoTCP, std::move(pinfo));
 }
 
 // Send a reset packet

@@ -40,6 +40,7 @@ const ebbrt::EthernetAddress& ebbrt::NetworkManager::Interface::MacAddress() {
   return ether_dev_.GetMacAddress();
 }
 
-void ebbrt::NetworkManager::Interface::Send(std::unique_ptr<IOBuf> b) {
-  ether_dev_.Send(std::move(b));
+void ebbrt::NetworkManager::Interface::Send(std::unique_ptr<IOBuf> b,
+                                            PacketInfo pinfo) {
+  ether_dev_.Send(std::move(b), std::move(pinfo));
 }

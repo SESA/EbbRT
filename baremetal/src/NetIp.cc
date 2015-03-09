@@ -90,17 +90,17 @@ ebbrt::NetworkManager::Interface::ReceiveIp(EthernetHeader& eth_header,
 
 void ebbrt::NetworkManager::SendIp(std::unique_ptr<MutIOBuf> buf,
                                    Ipv4Address src, Ipv4Address dst,
-                                   uint8_t proto) {
+                                   uint8_t proto, PacketInfo pinfo) {
   // find the interface to route to, then send it on that interface
   auto itf = IpRoute(dst);
   if (likely(itf != nullptr))
-    itf->SendIp(std::move(buf), src, dst, proto);
+    itf->SendIp(std::move(buf), src, dst, proto, std::move(pinfo));
 }
 
 // Send IP packet out on this interface
 void ebbrt::NetworkManager::Interface::SendIp(std::unique_ptr<MutIOBuf> buf,
                                               Ipv4Address src, Ipv4Address dst,
-                                              uint8_t proto) {
+                                              uint8_t proto, PacketInfo pinfo) {
   buf->Retreat(sizeof(Ipv4Header));
   auto dp = buf->GetMutDataPointer();
   auto& ih = dp.Get<Ipv4Header>();
@@ -118,7 +118,7 @@ void ebbrt::NetworkManager::Interface::SendIp(std::unique_ptr<MutIOBuf> buf,
 
   kassert(ih.ComputeChecksum() == 0);
 
-  EthArpSend(kEthTypeIp, ih, std::move(buf));
+  EthArpSend(kEthTypeIp, ih, std::move(buf), pinfo);
 }
 
 // This finds the interface to send on, given a destination

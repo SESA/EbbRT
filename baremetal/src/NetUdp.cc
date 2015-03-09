@@ -129,13 +129,14 @@ void ebbrt::NetworkManager::Interface::SendUdp(UdpPcb& pcb, Ipv4Address addr,
   udp_header.length = htons(buf->ComputeChainDataLength() + sizeof(UdpHeader));
   udp_header.checksum = 0;
 
-  // Append data and checksum the whole packet
+  // Append data
   header_buf->AppendChain(std::move(buf));
-  auto csum = IpPseudoCsum(*header_buf, kIpProtoUDP, src_addr, addr);
-  if (unlikely(csum == 0x0000))
-    csum = 0xffff;
-  udp_header.checksum = csum;
-  kassert(IpPseudoCsum(*header_buf, kIpProtoUDP, src_addr, addr) == 0);
 
-  SendIp(std::move(header_buf), src_addr, addr, kIpProtoUDP);
+  // XXX: check if checksum offloading is supported
+  PacketInfo pinfo;
+  pinfo.flags |= PacketInfo::kNeedsCsum;
+  pinfo.csum_start = 34;
+  pinfo.csum_offset = 6;
+
+  SendIp(std::move(header_buf), src_addr, addr, kIpProtoUDP, std::move(pinfo));
 }
