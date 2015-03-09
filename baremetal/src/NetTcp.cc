@@ -191,8 +191,9 @@ ebbrt::NetworkManager::Interface::ReceiveTcp(const Ipv4Header& ih,
   if (unlikely(addr->isBroadcast(ih.dst) || ih.dst.isMulticast()))
     return;
 
-  if (unlikely(IpPseudoCsum(*buf, ih.proto, ih.src, ih.dst)))
-    return;
+  // XXX: Check if rxcsum is supported
+  // if (unlikely(IpPseudoCsum(*buf, ih.proto, ih.src, ih.dst)))
+  //   return;
 
   auto hdr_len = tcp_header.HdrLen();
   if (unlikely(hdr_len < sizeof(TcpHeader) || hdr_len > packet_len))

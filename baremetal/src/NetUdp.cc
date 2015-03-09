@@ -75,9 +75,10 @@ ebbrt::NetworkManager::Interface::ReceiveUdp(Ipv4Header& ip_header,
   // trim any excess off the packet
   buf->TrimEnd(packet_len - ntohs(udp_header.length));
 
-  if (udp_header.checksum &&
-      IpPseudoCsum(*buf, ip_header.proto, ip_header.src, ip_header.dst))
-    return;
+  // XXX: Check if rxcsum supported
+  // if (udp_header.checksum &&
+  //     IpPseudoCsum(*buf, ip_header.proto, ip_header.src, ip_header.dst))
+  //   return;
 
   auto entry = network_manager->udp_pcbs_.find(ntohs(udp_header.dst_port));
 
