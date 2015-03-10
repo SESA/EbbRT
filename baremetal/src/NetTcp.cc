@@ -990,8 +990,6 @@ void ebbrt::NetworkManager::TcpEntry::SendSegment(TcpSegment& segment) {
   segment.th.wnd = htons(rcv_wnd);
   segment.th.checksum = 0;
   // XXX: check if checksum offloading is supported
-  // segment.th.checksum =
-  //     IpPseudoCsum(*(segment.buf), kIpProtoTCP, address, std::get<0>(key));
   segment.th.checksum =
       OffloadPseudoCsum(*(segment.buf), kIpProtoTCP, address, std::get<0>(key));
   PacketInfo pinfo;
