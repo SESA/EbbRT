@@ -539,6 +539,7 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
       kassert((flags & kTcpAck && acceptable_ack) ||
               !(flags & (kTcpAck | kTcpRst)));
       rcv_nxt = info.seqno + 1;
+      rcv_last_acked = info.seqno;
       if (acceptable_ack) {
         // Received a SYN-ACK
         snd_una = info.ackno;
