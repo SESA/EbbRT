@@ -145,7 +145,7 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
 
 uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
   return 1 << kMac | 1 << kMrgRxbuf | 1 << kCtrlVq | 1 << kMq | 1 << kCSum |
-         1 << kGuestCSum | 1 << kHostTso4;
+         1 << kGuestCSum | 1 << kHostTso4 | 1 << kHostUfo;
 }
 
 ebbrt::VirtioNetRep::VirtioNetRep(const VirtioNetDriver& root)
@@ -163,6 +163,7 @@ void ebbrt::VirtioNetRep::Send(std::unique_ptr<IOBuf> buf, PacketInfo pinfo) {
   std::unique_ptr<MutUniqueIOBuf> b;
 
   snd_queue_.ClearUsedBuffers();
+  VirtioNetHeader* header;
   auto free_desc = snd_queue_.num_free_descriptors();
   // if (free_desc > buf->CountChainElements()) {
   //   // we have enough descriptors to avoid a copy
@@ -175,12 +176,7 @@ void ebbrt::VirtioNetRep::Send(std::unique_ptr<IOBuf> buf, PacketInfo pinfo) {
     auto len = buf->ComputeChainDataLength();
     b = MakeUniqueIOBuf(len + sizeof(VirtioNetHeader));
     memset(b->MutData(), 0, sizeof(VirtioNetHeader));
-    if (pinfo.flags & PacketInfo::kNeedsCsum) {
-      auto header = reinterpret_cast<VirtioNetHeader*>(b->MutData());
-      header->flags |= VirtioNetHeader::kNeedsCsum;
-      header->csum_start = pinfo.csum_start;
-      header->csum_offset = pinfo.csum_offset;
-    }
+    header = reinterpret_cast<VirtioNetHeader*>(b->MutData());
     auto data = b->MutData() + sizeof(VirtioNetHeader);
     for (auto& buf_it : *buf) {
       memcpy(data, buf_it.Data(), buf_it.Length());
@@ -193,6 +189,17 @@ void ebbrt::VirtioNetRep::Send(std::unique_ptr<IOBuf> buf, PacketInfo pinfo) {
     return;
   }
 
+  kassert(header != nullptr);
+  if (pinfo.flags & PacketInfo::kNeedsCsum) {
+    header->flags |= VirtioNetHeader::kNeedsCsum;
+    header->csum_start = pinfo.csum_start;
+    header->csum_offset = pinfo.csum_offset;
+  }
+  if (pinfo.gso_type != PacketInfo::kGsoNone) {
+    header->gso_type = pinfo.gso_type;
+    header->hdr_len = pinfo.hdr_len;
+    header->gso_size = pinfo.gso_size;
+  }
   snd_queue_.AddBuffer(std::move(b), 1);
 }
 

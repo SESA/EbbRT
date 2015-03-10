@@ -11,6 +11,9 @@ void ebbrt::NetworkManager::Interface::EthArpSend(uint16_t proto,
                                                   const Ipv4Header& ip_header,
                                                   std::unique_ptr<MutIOBuf> buf,
                                                   PacketInfo pinfo) {
+  pinfo.csum_start += sizeof(EthernetHeader);
+  pinfo.hdr_len += sizeof(EthernetHeader);
+
   buf->Retreat(sizeof(EthernetHeader));
   auto dp = buf->GetMutDataPointer();
   auto& eth_header = dp.Get<EthernetHeader>();

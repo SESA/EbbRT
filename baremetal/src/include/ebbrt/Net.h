@@ -28,8 +28,15 @@
 namespace ebbrt {
 struct PacketInfo {
   static const constexpr uint8_t kNeedsCsum = 1;
+  static const constexpr uint8_t kGsoNone = 0;
+  static const constexpr uint8_t kGsoTcpv4 = 1;
+  static const constexpr uint8_t kGsoUdp = 3;
+  static const constexpr uint8_t kGsoTcpv6 = 4;
 
   uint8_t flags{0};
+  uint8_t gso_type{0};
+  uint16_t hdr_len{0};
+  uint16_t gso_size{0};
   uint16_t csum_start{0};
   uint16_t csum_offset{0};
 };

@@ -157,7 +157,12 @@ void ebbrt::NetworkManager::TcpPcb::SetWindowNotify(bool notify) {
 // window is large enough as the PCB will do no buffering
 void ebbrt::NetworkManager::TcpPcb::Send(std::unique_ptr<IOBuf> buf) {
   kassert(buf->ComputeChainDataLength() <= SendWindowRemaining());
-  kassert(buf->ComputeChainDataLength() <= 1460);
+  const constexpr size_t max_ipv4_header_size = 60;
+  const constexpr size_t max_tcp_header_size = 60;
+  const constexpr size_t max_ipv4_packet_size = UINT16_MAX;
+  const constexpr size_t max_tcp_segment_size =
+      max_ipv4_packet_size - max_tcp_header_size - max_ipv4_header_size;
+  kassert(buf->ComputeChainDataLength() <= max_tcp_segment_size);
 
   entry_->Send(std::move(buf));
 }
@@ -930,7 +935,7 @@ void ebbrt::NetworkManager::TcpEntry::SendEmptyAck() {
 
   PacketInfo pinfo;
   pinfo.flags |= PacketInfo::kNeedsCsum;
-  pinfo.csum_start = 34;  // 14 byte eth header + 20 byte ip header
+  pinfo.csum_start = 0;
   pinfo.csum_offset = 16;  // checksum is 16 bytes into the TCP header
 
   network_manager->SendIp(std::move(buf), address, std::get<0>(key),
@@ -994,8 +999,16 @@ void ebbrt::NetworkManager::TcpEntry::SendSegment(TcpSegment& segment) {
       OffloadPseudoCsum(*(segment.buf), kIpProtoTCP, address, std::get<0>(key));
   PacketInfo pinfo;
   pinfo.flags |= PacketInfo::kNeedsCsum;
-  pinfo.csum_start = 34;  // 14 byte eth header + 20 byte ip header
+  pinfo.csum_start = 0;
   pinfo.csum_offset = 16;  // checksum is 16 bytes into the TCP header
+
+  // XXX: Actually store the MSS instead of making this assumption
+  size_t mss = 1460;
+  if (segment.tcp_len > mss) {
+    pinfo.gso_type = PacketInfo::kGsoTcpv4;
+    pinfo.hdr_len = segment.th.HdrLen();
+    pinfo.gso_size = mss;
+  }
 
   network_manager->SendIp(CreateRefChain(*(segment.buf)), address,
                           std::get<0>(key), kIpProtoTCP, std::move(pinfo));
@@ -1027,7 +1040,7 @@ void ebbrt::NetworkManager::TcpReset(bool ack, uint32_t seqno, uint32_t ackno,
 
   PacketInfo pinfo;
   pinfo.flags |= PacketInfo::kNeedsCsum;
-  pinfo.csum_start = 34;  // 14 byte eth header + 20 byte ip header
+  pinfo.csum_start = 0;  // 14 byte eth header + 20 byte ip header
   pinfo.csum_offset = 16;  // checksum is 16 bytes into the TCP header
 
   SendIp(std::move(buf), local_ip, remote_ip, kIpProtoTCP, pinfo);

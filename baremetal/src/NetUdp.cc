@@ -105,6 +105,13 @@ void ebbrt::NetworkManager::UdpPcb::SendTo(Ipv4Address addr, uint16_t port,
 void ebbrt::NetworkManager::Interface::SendUdp(UdpPcb& pcb, Ipv4Address addr,
                                                uint16_t port,
                                                std::unique_ptr<IOBuf> buf) {
+  const constexpr size_t max_ipv4_header_size = 60;
+  const constexpr size_t max_udp_header_size = 8;
+  const constexpr size_t max_ipv4_packet_size = UINT16_MAX;
+  const constexpr size_t max_udp_segment_size =
+      max_ipv4_packet_size - max_udp_header_size - max_ipv4_header_size;
+  auto data_size = buf->ComputeChainDataLength();
+  kassert(data_size <= max_udp_segment_size);
   // Get source address
   auto itf_addr = Address();
   Ipv4Address src_addr;
@@ -127,7 +134,7 @@ void ebbrt::NetworkManager::Interface::SendUdp(UdpPcb& pcb, Ipv4Address addr,
   auto& udp_header = dp.Get<UdpHeader>();
   udp_header.src_port = htons(src_port);
   udp_header.dst_port = htons(port);
-  udp_header.length = htons(buf->ComputeChainDataLength() + sizeof(UdpHeader));
+  udp_header.length = htons(data_size + sizeof(UdpHeader));
   udp_header.checksum = 0;
 
   // Append data
@@ -139,7 +146,15 @@ void ebbrt::NetworkManager::Interface::SendUdp(UdpPcb& pcb, Ipv4Address addr,
   // XXX: check if checksum offloading is supported
   PacketInfo pinfo;
   pinfo.flags |= PacketInfo::kNeedsCsum;
-  pinfo.csum_start = 34;
+  pinfo.csum_start = 0;
   pinfo.csum_offset = 6;
+
+  // XXX: Actually get the MTU size, and figure this out
+  size_t max_data_length = 1460;
+  if (data_size > max_data_length) {
+    pinfo.gso_type = PacketInfo::kGsoUdp;
+    pinfo.hdr_len = 8;
+    pinfo.gso_size = max_data_length;
+  }
   SendIp(std::move(header_buf), src_addr, addr, kIpProtoUDP, std::move(pinfo));
 }
