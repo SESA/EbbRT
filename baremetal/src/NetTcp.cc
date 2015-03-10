@@ -88,8 +88,7 @@ uint16_t ebbrt::NetworkManager::TcpPcb::Connect(Ipv4Address address,
   entry_->snd_nxt = iss;  // EnqueueSegment will increment this by one
   entry_->snd_wnd = kTcpWnd;
   entry_->rcv_nxt = 0;
-  if (!entry_->rcv_wnd)
-    entry_->rcv_wnd = kTcpWnd;
+  entry_->rcv_wnd = kTcpWnd;
 
   // We need to insert the entry into the hash table at this point to avoid
   // concurrent connection creation.
