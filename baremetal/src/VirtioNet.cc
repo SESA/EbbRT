@@ -57,6 +57,8 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
   kbugon(!multiqueue, "Device missing multiqueue support!\n");
   auto csum = features & (1 << kCSum);
   kbugon(!csum, "Device missing checksum offloading support!\n");
+  auto tso4 = features & (1 << kHostTso4);
+  kbugon(!tso4, "Device missing tcp segmentation offload support\n");
 
   // Figure out max queue pairs supported
   auto max_queue_pairs = DeviceConfigRead16(8);
@@ -143,7 +145,7 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
 
 uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
   return 1 << kMac | 1 << kMrgRxbuf | 1 << kCtrlVq | 1 << kMq | 1 << kCSum |
-         1 << kGuestCSum;
+         1 << kGuestCSum | 1 << kHostTso4;
 }
 
 ebbrt::VirtioNetRep::VirtioNetRep(const VirtioNetDriver& root)

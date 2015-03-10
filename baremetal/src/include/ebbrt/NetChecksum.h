@@ -12,6 +12,8 @@
 #include <ebbrt/NetIp.h>
 
 namespace ebbrt {
+uint16_t OffloadPseudoCsum(const IOBuf& buf, uint8_t proto, Ipv4Address src,
+                           Ipv4Address dst);
 uint16_t IpPseudoCsum(const IOBuf& buf, uint8_t proto, Ipv4Address src,
                       Ipv4Address dst);
 uint16_t IpCsum(const IOBuf& buf);

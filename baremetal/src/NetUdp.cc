@@ -133,11 +133,13 @@ void ebbrt::NetworkManager::Interface::SendUdp(UdpPcb& pcb, Ipv4Address addr,
   // Append data
   header_buf->AppendChain(std::move(buf));
 
+  udp_header.checksum =
+      OffloadPseudoCsum(*header_buf, kIpProtoUDP, src_addr, addr);
+
   // XXX: check if checksum offloading is supported
   PacketInfo pinfo;
   pinfo.flags |= PacketInfo::kNeedsCsum;
   pinfo.csum_start = 34;
   pinfo.csum_offset = 6;
-
   SendIp(std::move(header_buf), src_addr, addr, kIpProtoUDP, std::move(pinfo));
 }

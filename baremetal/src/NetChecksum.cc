@@ -41,7 +41,7 @@ uint32_t Add32WithCarry(uint32_t a, uint32_t b) {
 }
 
 // Compute checksum over a contiguous region of memory
-uint32_t Csum(const uint8_t* buf, size_t len, size_t offset=0) {
+uint32_t Csum(const uint8_t* buf, size_t len, size_t offset = 0) {
   if (unlikely(len == 0))
     return 0;
 
@@ -134,13 +134,12 @@ uint32_t IpCsumNoFold(const ebbrt::IOBuf& buf) {
   }
   return ret;
 }
-}  // namespace
 
-// Calculate the Ipv4 pseudo checksum with the provided header information
-uint16_t ebbrt::IpPseudoCsum(const IOBuf& buf, uint8_t proto, Ipv4Address src,
-                             Ipv4Address dst) {
-  auto sum = IpCsumNoFold(buf);
-  uint32_t lenproto = (buf.ComputeChainDataLength() + proto) << 8;
+// Calculate IPv4 pseudo header checksum
+uint32_t PseudoCsum(uint16_t len, uint8_t proto, ebbrt::Ipv4Address src,
+                    ebbrt::Ipv4Address dst) {
+  uint32_t sum = 0;
+  uint32_t lenproto = (ebbrt::ntohs(len) << 16) + (proto << 8);
   asm("addl %[dst], %[sum];"
       "adcl %[src], %[sum];"
       "adcl %[lenproto], %[sum];"
@@ -148,8 +147,22 @@ uint16_t ebbrt::IpPseudoCsum(const IOBuf& buf, uint8_t proto, Ipv4Address src,
       : [sum] "+r"(sum)
       :
       [dst] "g"(dst.toU32()), [src] "g"(src.toU32()), [lenproto] "g"(lenproto));
+  return sum;
+}
+}  // namespace
 
-  return CsumFold(sum);
+uint16_t ebbrt::OffloadPseudoCsum(const IOBuf& buf, uint8_t proto,
+                                  Ipv4Address src, Ipv4Address dst) {
+  return From32To16(PseudoCsum(buf.ComputeChainDataLength(), proto, src, dst));
+}
+
+// Calculate the Ipv4 pseudo checksum with the provided header information
+uint16_t ebbrt::IpPseudoCsum(const IOBuf& buf, uint8_t proto, Ipv4Address src,
+                             Ipv4Address dst) {
+  auto sum = IpCsumNoFold(buf);
+  auto header_sum = PseudoCsum(buf.ComputeChainDataLength(), proto, src, dst);
+
+  return CsumFold(Add32WithCarry(sum, header_sum));
 }
 
 // Checksum all buffers in an IOBuf

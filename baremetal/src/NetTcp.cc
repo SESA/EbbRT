@@ -926,11 +926,15 @@ void ebbrt::NetworkManager::TcpEntry::SendEmptyAck() {
   rcv_last_acked = rcv_nxt;
   th.ackno = htonl(rcv_nxt);
   th.wnd = htons(rcv_wnd);
-  th.checksum = 0;
-  th.checksum = IpPseudoCsum(*buf, kIpProtoTCP, address, std::get<0>(key));
+  th.checksum = OffloadPseudoCsum(*buf, kIpProtoTCP, address, std::get<0>(key));
+
+  PacketInfo pinfo;
+  pinfo.flags |= PacketInfo::kNeedsCsum;
+  pinfo.csum_start = 34;  // 14 byte eth header + 20 byte ip header
+  pinfo.csum_offset = 16;  // checksum is 16 bytes into the TCP header
 
   network_manager->SendIp(std::move(buf), address, std::get<0>(key),
-                          kIpProtoTCP);
+                          kIpProtoTCP, pinfo);
 }
 
 // When Close() is called we will send a FIN and wait for all outstanding
@@ -988,6 +992,8 @@ void ebbrt::NetworkManager::TcpEntry::SendSegment(TcpSegment& segment) {
   // XXX: check if checksum offloading is supported
   // segment.th.checksum =
   //     IpPseudoCsum(*(segment.buf), kIpProtoTCP, address, std::get<0>(key));
+  segment.th.checksum =
+      OffloadPseudoCsum(*(segment.buf), kIpProtoTCP, address, std::get<0>(key));
   PacketInfo pinfo;
   pinfo.flags |= PacketInfo::kNeedsCsum;
   pinfo.csum_start = 34;  // 14 byte eth header + 20 byte ip header
@@ -1017,9 +1023,14 @@ void ebbrt::NetworkManager::TcpReset(bool ack, uint32_t seqno, uint32_t ackno,
   tcp_header.ackno = htonl(ackno);
   tcp_header.SetHdrLenFlags(sizeof(TcpHeader), kTcpRst | (ack ? kTcpAck : 0));
   tcp_header.wnd = htons(kTcpWnd);
-  tcp_header.checksum = 0;
   tcp_header.urgp = 0;
-  tcp_header.checksum = IpPseudoCsum(*buf, kIpProtoTCP, local_ip, remote_ip);
+  tcp_header.checksum =
+      OffloadPseudoCsum(*buf, kIpProtoTCP, local_ip, remote_ip);
 
-  SendIp(std::move(buf), local_ip, remote_ip, kIpProtoTCP);
+  PacketInfo pinfo;
+  pinfo.flags |= PacketInfo::kNeedsCsum;
+  pinfo.csum_start = 34;  // 14 byte eth header + 20 byte ip header
+  pinfo.csum_offset = 16;  // checksum is 16 bytes into the TCP header
+
+  SendIp(std::move(buf), local_ip, remote_ip, kIpProtoTCP, pinfo);
 }

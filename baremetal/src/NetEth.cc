@@ -23,7 +23,7 @@ void ebbrt::NetworkManager::Interface::EthArpSend(uint16_t proto,
     eth_header.dst.fill(0xff);
     eth_header.src = MacAddress();
     eth_header.type = htons(proto);
-    Send(std::move(buf));
+    Send(std::move(buf), pinfo);
   } else if (ip_header.dst.isMulticast()) {
     kabort("UNIMPLEMENTED: Multicast send\n");
   } else if (addr) {
