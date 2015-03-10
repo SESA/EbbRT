@@ -116,7 +116,7 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
     bufs.reserve(num_bufs);
 
     for (size_t i = 0; i < num_bufs; ++i) {
-      bufs.emplace_back(MakeUniqueIOBuf(2048));
+      bufs.emplace_back(MakeUniqueIOBuf(65562));
     }
 
     auto it = rcv_queue.AddWritableBuffers(bufs.begin(), bufs.end());
@@ -144,8 +144,9 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
 }
 
 uint32_t ebbrt::VirtioNetDriver::GetDriverFeatures() {
-  return 1 << kMac | 1 << kMrgRxbuf | 1 << kCtrlVq | 1 << kMq | 1 << kCSum |
-         1 << kGuestCSum | 1 << kHostTso4 | 1 << kHostUfo;
+  return 1 << kCSum | 1 << kGuestCSum | 1 << kMac | 1 << kGuestTso4 |
+         1 << kGuestUfo | 1 << kHostTso4 | 1 << kHostUfo | 1 << kMrgRxbuf |
+         1 << kCtrlVq | 1 << kMq;
 }
 
 ebbrt::VirtioNetRep::VirtioNetRep(const VirtioNetDriver& root)
@@ -260,7 +261,7 @@ void ebbrt::VirtioNetRep::FillRxRing() {
   bufs.reserve(num_bufs);
 
   for (size_t i = 0; i < num_bufs; ++i) {
-    bufs.emplace_back(MakeUniqueIOBuf(2048));
+    bufs.emplace_back(MakeUniqueIOBuf(65562));
   }
 
   auto it = rcv_queue_.AddWritableBuffers(bufs.begin(), bufs.end());
