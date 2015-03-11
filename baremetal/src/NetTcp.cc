@@ -112,12 +112,15 @@ uint16_t ebbrt::NetworkManager::TcpPcb::Connect(Ipv4Address address,
   // TODO(dschatz): There should be a timeout to close the new connection if
   // the handshake doesn't complete
 
-  auto new_buf = MakeUniqueIOBuf(sizeof(TcpHeader) + sizeof(Ipv4Header) +
-                                 sizeof(EthernetHeader));
+  auto optlen = 4;  // for MSS
+  auto new_buf = MakeUniqueIOBuf(optlen + sizeof(TcpHeader) +
+                                 sizeof(Ipv4Header) + sizeof(EthernetHeader));
   new_buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
   auto dp = new_buf->GetMutDataPointer();
   auto& tcp_header = dp.Get<TcpHeader>();
-  entry_->EnqueueSegment(tcp_header, std::move(new_buf), kTcpSyn);
+  auto opts = reinterpret_cast<uint32_t*>((&tcp_header) + 1);
+  *opts = htonl(0x02040000 | (1460 & 0xFFFF));
+  entry_->EnqueueSegment(tcp_header, std::move(new_buf), kTcpSyn, optlen);
 
   auto now = ebbrt::clock::Wall::Now();
   entry_->Output(now);
@@ -405,12 +408,16 @@ ebbrt::NetworkManager::ListeningTcpEntry::Input(const Ipv4Header& ih,
     entry->rcv_wnd = ntohs(th.wnd);
 
     // Create a SYN-ACK reply
-    auto new_buf = MakeUniqueIOBuf(sizeof(TcpHeader) + sizeof(Ipv4Header) +
-                                   sizeof(EthernetHeader));
+    auto optlen = 4;  // for MSS
+    auto new_buf = MakeUniqueIOBuf(optlen + sizeof(TcpHeader) +
+                                   sizeof(Ipv4Header) + sizeof(EthernetHeader));
     new_buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
     auto dp = new_buf->GetMutDataPointer();
     auto& tcp_header = dp.Get<TcpHeader>();
-    entry->EnqueueSegment(tcp_header, std::move(new_buf), kTcpSyn | kTcpAck);
+    auto opts = reinterpret_cast<uint32_t*>((&tcp_header) + 1);
+    *opts = htonl(0x02040000 | (1460 & 0xFFFF));
+    entry->EnqueueSegment(tcp_header, std::move(new_buf), kTcpSyn | kTcpAck,
+                          optlen);
 
     // Upcall application with new connection
     kassert(accept_fn);
@@ -855,14 +862,15 @@ void ebbrt::NetworkManager::TcpEntry::ClearAckedSegments(const TcpInfo& info) {
 
 // Fill out a header and enqueue the segment to be sent
 void ebbrt::NetworkManager::TcpEntry::EnqueueSegment(
-    TcpHeader& th, std::unique_ptr<MutIOBuf> buf, uint16_t flags) {
+    TcpHeader& th, std::unique_ptr<MutIOBuf> buf, uint16_t flags,
+    uint16_t optlen) {
   auto packet_len = buf->ComputeChainDataLength();
-  auto tcp_len =
-      packet_len - sizeof(TcpHeader) + ((flags & (kTcpSyn | kTcpFin)) ? 1 : 0);
+  auto tcp_len = packet_len - sizeof(TcpHeader) - optlen +
+                 ((flags & (kTcpSyn | kTcpFin)) ? 1 : 0);
   th.src_port = htons(std::get<2>(key));
   th.dst_port = htons(std::get<1>(key));
   th.seqno = htonl(snd_nxt);
-  th.SetHdrLenFlags(sizeof(TcpHeader), flags);
+  th.SetHdrLenFlags(sizeof(TcpHeader) + optlen, flags);
   // ackno, wnd, and checksum are set in Output()
   th.urgp = 0;
 

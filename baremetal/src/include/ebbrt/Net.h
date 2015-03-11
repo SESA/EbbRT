@@ -126,7 +126,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
   struct TcpEntry : public CacheAligned, public Timer::Hook {
     void Fire() override;
     void EnqueueSegment(TcpHeader& th, std::unique_ptr<MutIOBuf> buf,
-                        uint16_t flags);
+                        uint16_t flags, uint16_t optlen = 0);
     void Input(const Ipv4Header& ih, TcpHeader& th, TcpInfo& info,
                std::unique_ptr<MutIOBuf> buf);
     bool Receive(const Ipv4Header& ih, TcpHeader& th, TcpInfo& info,
