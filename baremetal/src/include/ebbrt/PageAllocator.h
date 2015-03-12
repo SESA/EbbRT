@@ -5,6 +5,11 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_PAGEALLOCATOR_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_PAGEALLOCATOR_H_
 
+// #define PAGE_CHECKER
+
+#ifdef PAGE_CHECKER
+#include <boost/container/static_vector.hpp>
+#endif
 #include <boost/intrusive/list.hpp>
 
 #include <ebbrt/CacheAligned.h>
@@ -55,12 +60,30 @@ class PageAllocator : public CacheAligned {
   static void EarlyFreePage(Pfn start, size_t order, Nid nid);
   Pfn AllocLocal(size_t order, size_t max_addr);
   void FreePageNoCoalesce(Pfn pfn, size_t order);
+#ifdef PAGE_CHECKER
+  bool Validate() const;
+  bool AllocateAndCheck(Pfn pfn, size_t order);
+  bool Release(Pfn pfn, size_t order);
+#endif
 
   static ExplicitlyConstructed<boost::container::static_vector<
       PageAllocator, numa::kMaxNodes>> allocators;
   SpinLock lock_;
   Nid nid_;
   std::array<FreePageList, kMaxOrder + 1> free_page_lists;
+
+#ifdef PAGE_CHECKER
+  struct Allocation {
+    Pfn pfn;
+    size_t npages;
+    bool operator==(const Allocation& rhs) {
+      return pfn == rhs.pfn && npages == rhs.npages;
+    }
+    bool operator<(const Allocation& rhs) { return (pfn + npages) <= rhs.pfn; }
+  };
+  static const constexpr size_t kMaxAllocations = 10000;
+  boost::container::static_vector<Allocation, kMaxAllocations> allocations_;
+#endif
 
   friend void ebbrt::vmem::ApInit(size_t index);
   friend void ebbrt::trans::ApInit(size_t index);
