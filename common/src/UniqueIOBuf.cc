@@ -22,7 +22,7 @@ ebbrt::MakeUniqueIOBuf(size_t capacity, bool zero_memory) {
   auto size = sizeof(MutUniqueIOBuf) + capacity;
   void* b;
   if (zero_memory) {
-    b = std::calloc(size, 1);
+    b = std::calloc(1, size);
   } else {
     b = std::malloc(size);
   }
