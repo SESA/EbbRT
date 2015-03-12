@@ -21,7 +21,7 @@ namespace bai = boost::asio::ip;
 
 ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket,
                                        uint32_t net_addr)
-    : socket_(std::move(socket)), net_addr_(net_addr) {}
+  : socket_(std::move(socket)), net_addr_(net_addr) { }
 
 namespace {
 class IOBufToCBS {
@@ -88,6 +88,7 @@ void ebbrt::NodeAllocator::Session::Start() {
 }
 
 ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
+  dir_[0] = 0;
   auto acceptor = std::make_shared<bai::tcp::acceptor>(
       active_context->io_service_, bai::tcp::endpoint(bai::tcp::v4(), 0));
   auto socket = std::make_shared<bai::tcp::socket>(active_context->io_service_);
@@ -115,6 +116,14 @@ ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
 }
 
 ebbrt::NodeAllocator::~NodeAllocator() {
+  if (dir_[0]) {
+    std::cout << "OUTPUT FROM NODES: " << std::endl;
+    std::string cmd  = "/bin/cat " + std::string(dir_) + "/*/stdout";
+    int rc = system(cmd.c_str());
+    if (rc < 0) {
+      std::cout << "ERROR: system rc =" << rc << " for command: " << cmd << std::endl;
+    }
+  }
   std::cout << "Node Allocator destructor! " << std::endl;
   char network[100];
   snprintf(network, sizeof(network), "%d", network_id_);
@@ -200,6 +209,22 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path) {
   std::getline(input, num_str);
   auto num = std::stoi(num_str);
   std::cout << num << std::endl;
+
+  if (dir_[0]==0)   {
+    std::string line;
+    while (std::getline(input, line)) { 
+      unsigned found = line.find_last_of("/\\");
+      if ( found && line.substr(found+1) == std::string("stdout") ) {
+        std::string dir = line.substr(0,found);
+	found =  dir.find_last_of("/\\");
+	bzero(dir_, sizeof(dir_));
+	strncpy(dir_, line.substr(0,found).c_str(), sizeof(dir_));
+	dir_[sizeof(dir_)]=0;
+	printf("dir: %s\n", dir_);
+        break;
+      }
+    }
+  }
 
   return NodeDescriptor(num, promise_map_[allocation_id].GetFuture());
 }

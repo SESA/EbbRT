@@ -55,6 +55,7 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   int network_id_;
   uint32_t net_addr_;
   uint16_t port_;
+  char dir_[160];
 
   friend class Session;
   friend class Messenger;

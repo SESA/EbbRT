@@ -26,6 +26,9 @@ class EventManager : public StaticSharedEbb<EventManager>, public CacheAligned {
   void Spawn(ebbrt::MovableFunction<void()> func) {
     Spawn(std::move(func),active_context);
   }
+  void SpawnRemote(ebbrt::MovableFunction<void()> func, ebbrt::Context *ctxt) {
+    Spawn(std::move(func), ctxt);
+  }
   void ActivateContext(EventManager::EventContext&& context);
   void SaveContext(EventManager::EventContext& context);
 
