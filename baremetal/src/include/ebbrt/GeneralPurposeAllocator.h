@@ -8,9 +8,11 @@
 #include <array>
 
 #include <ebbrt/CacheAligned.h>
+#include <ebbrt/CpuAsm.h>
 #include <ebbrt/Debug.h>
 #include <ebbrt/SlabAllocator.h>
 #include <ebbrt/Trans.h>
+#include <ebbrt/VMemAllocator.h>
 
 namespace ebbrt {
 template <size_t... sizes_in>
@@ -56,11 +58,84 @@ class GeneralPurposeAllocator : public CacheAligned {
   void* Alloc(size_t size) {
     Indexer<0, sizes_in...> i;
     auto index = i(size);
-    kbugon(index == -1, "Attempt to allocate %u bytes not supported\n", size);
-    auto ret = allocators_[index]->Alloc();
-    kbugon(ret == nullptr,
-           "Failed to allocate from this NUMA node, should try others\n");
-    return ret;
+    if (likely(index != -1)) {
+      auto ret = allocators_[index]->Alloc();
+      kbugon(ret == nullptr,
+             "Failed to allocate from this NUMA node, should try others\n");
+      return ret;
+    }
+    const constexpr size_t large_page_size = 2 * 1024 * 1024;
+    const constexpr size_t large_page_order = 9;
+    auto sz = align::Up(size, large_page_size);
+    auto npages = sz / pmem::kPageSize;
+    auto pages_per_large_page = large_page_size / pmem::kPageSize;
+    // Need to allocate a virtual region
+    auto vfn = vmem_allocator->Alloc(npages, pages_per_large_page);
+    kbugon(vfn == Pfn::None(), "Failed to allocated virtual region\n");
+    auto pte_root = vmem::Pte(ReadCr3());
+    auto vaddr = vfn.ToAddr();
+    vmem::TraversePageTable(
+        pte_root, vaddr, vaddr + sz, 0, 4,
+        [](vmem::Pte& entry, uint64_t base_virt, size_t level) {
+          kassert(!entry.Present() && level == 1);
+          auto pfn = page_allocator->Alloc(large_page_order);
+          kbugon(pfn == Pfn::None(),
+                 "Failed to allocate page in gp allocator\n");
+          entry.SetLarge(pfn.ToAddr());
+          std::atomic_thread_fence(std::memory_order_release);
+        },
+        [](vmem::Pte& entry) {
+          auto page = page_allocator->Alloc();
+          kbugon(page == Pfn::None(),
+                 "Failed to allocate page in gp allocator\n");
+          auto page_addr = page.ToAddr();
+          new (reinterpret_cast<void*>(page_addr)) vmem::Pte[512];
+          entry.SetNormal(page_addr);
+          return true;
+        });
+    return reinterpret_cast<void*>(vaddr);
+  }
+
+  void* Alloc(size_t size, size_t alignment) {
+    Indexer<0, sizes_in...> i;
+    auto index = i(size);
+    if (likely(index != -1)) {
+      auto ret = allocators_[index]->Alloc();
+      kbugon(ret == nullptr,
+             "Failed to allocate from this NUMA node, should try others\n");
+      return ret;
+    }
+    const constexpr size_t large_page_size = 2 * 1024 * 1024;
+    const constexpr size_t large_page_order = 9;
+    auto sz = align::Up(size, large_page_size);
+    auto npages = sz / pmem::kPageSize;
+    auto align = align::Up(alignment, large_page_size);
+    auto align_pages = align / pmem::kPageSize;
+    // Need to allocate a virtual region
+    auto vfn = vmem_allocator->Alloc(npages, align_pages);
+    kbugon(vfn == Pfn::None(), "Failed to allocated virtual region\n");
+    auto pte_root = vmem::Pte(ReadCr3());
+    auto vaddr = vfn.ToAddr();
+    vmem::TraversePageTable(
+        pte_root, vaddr, vaddr + sz, 0, 4,
+        [](vmem::Pte& entry, uint64_t base_virt, size_t level) {
+          kassert(!entry.Present() && level == 1);
+          auto pfn = page_allocator->Alloc(large_page_order);
+          kbugon(pfn == Pfn::None(),
+                 "Failed to allocate page in gp allocator\n");
+          entry.SetLarge(pfn.ToAddr());
+          std::atomic_thread_fence(std::memory_order_release);
+        },
+        [](vmem::Pte& entry) {
+          auto page = page_allocator->Alloc();
+          kbugon(page == Pfn::None(),
+                 "Failed to allocate page in gp allocator\n");
+          auto page_addr = page.ToAddr();
+          new (reinterpret_cast<void*>(page_addr)) vmem::Pte[512];
+          entry.SetNormal(page_addr);
+          return true;
+        });
+    return reinterpret_cast<void*>(vaddr);
   }
 
   void* AllocNid(size_t size, Nid nid = Cpu::GetMyNode()) {
@@ -76,6 +151,10 @@ class GeneralPurposeAllocator : public CacheAligned {
   void Free(void* p) {
     if (p == nullptr)
       return;
+    if (reinterpret_cast<uintptr_t>(p) > 0xFFFF800000000000) {
+      kprintf("UNIMPLEMENTED: Free Large memory region\n");
+      return;
+    }
     auto page = mem_map::AddrToPage(p);
     kassert(page != nullptr);
 
