@@ -5,6 +5,8 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_MESSENGER_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_MESSENGER_H_
 
+#include <string>
+
 #include <ebbrt/CacheAligned.h>
 #include <ebbrt/Future.h>
 #include <ebbrt/NetTcpHandler.h>
@@ -35,6 +37,15 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
       ip = Ipv4Address(*reinterpret_cast<const uint32_t*>(str.data()));
     }
     bool operator==(const NetworkId& rhs) { return ip == rhs.ip; }
+
+    static NetworkId FromBytes(const unsigned char* p, size_t len) {
+      assert(len == 4);
+      return NetworkId(ntohl(*reinterpret_cast<const uint32_t*>(p)));
+    }
+
+    std::string ToBytes() {
+      return std::string(reinterpret_cast<const char*>(ip.toArray().data()), 4);
+    }
 
    private:
     Ipv4Address ip;
