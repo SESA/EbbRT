@@ -84,7 +84,7 @@ class MovableFunctionImp
 
   MovableFunctionImp& operator=(const MovableFunctionImp&) = delete;
   ReturnType CallFunc(ParamTypes... p) override {
-    return f_(std::move<ParamTypes>(p)...);
+    return f_(std::forward<ParamTypes>(p)...);
   }
 
  private:
