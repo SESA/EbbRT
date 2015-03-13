@@ -46,6 +46,10 @@ ebbrt::Future<std::string> ebbrt::GlobalIdMap::Get(EbbId id) {
   return p.GetFuture();
 }
 
+ebbrt::Future<void> ebbrt::GlobalIdMap::Set(EbbId id, std::string str) {
+  EBBRT_UNIMPLEMENTED();
+}
+
 void ebbrt::GlobalIdMap::ReceiveMessage(Messenger::NetworkId nid,
                                         std::unique_ptr<IOBuf>&& b) {
   auto reader = IOBufMessageReader(std::move(b));
