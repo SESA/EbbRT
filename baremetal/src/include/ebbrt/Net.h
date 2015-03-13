@@ -172,6 +172,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     // also the lower edge of the receive window
     uint16_t rcv_wnd;  // size of the receive window
     uint32_t rcv_last_acked;  // The last received byte we acked
+    bool close_window{false};
     ebbrt::clock::Wall::time_point retransmit;  // when to retransmit
     ebbrt::clock::Wall::time_point time_wait;  // when to leave time_wait state
     Promise<void> connected;
@@ -190,7 +191,8 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     void BindCpu(size_t index);
     void InstallHandler(std::unique_ptr<ITcpHandler> handler);
     uint16_t SendWindowRemaining();
-    void SetReceiveWindow(uint16_t window);
+    void OpenWindow();
+    void CloseWindow();
     void SetWindowNotify(bool notify);
     void Send(std::unique_ptr<IOBuf> buf);
     void Output();

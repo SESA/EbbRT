@@ -29,11 +29,13 @@ class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
 
   // Callback to be invoked when the remote receive window has increased.
   void SendWindowIncrease() override {
-    // Disable this callback
-    pcb_.SetWindowNotify(false);
-    pcb_.SetReceiveWindow(ebbrt::kTcpWnd);
     // Send any enqueued data
     Send(std::move(buf_));
+    if (!buf_) {
+      // Disable this callback
+      pcb_.SetWindowNotify(false);
+      pcb_.OpenWindow();
+    }
     if (unlikely(shutdown_ && !buf_)) {
       pcb_.~TcpPcb();
     }
@@ -96,7 +98,7 @@ class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
       // increase
       pcb_.SetWindowNotify(true);
       // Close the receive window to pace this connection
-      pcb_.SetReceiveWindow(0);
+      pcb_.CloseWindow();
     } else {
       // We already have data enqueued and to preserve ordering, that data must
       // go out first. In such a case, just enqueue the additional data

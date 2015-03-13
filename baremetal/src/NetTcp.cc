@@ -27,6 +27,9 @@ void ebbrt::NetworkManager::TcpPcb::TcpEntryDeleter::operator()(TcpEntry* e) {
   // The TcpPcb doesn't delete the entry just yet, instead the entry will delete
   // itself once it has closed the connection with the remote side.
   e->Close();
+  auto now = ebbrt::clock::Wall::Now();
+  e->Output(now);
+  e->SetTimer(now);
 }
 
 // Bind a Listening PCB to a port (0 will be randomly assigned a new port).
@@ -129,9 +132,13 @@ uint16_t ebbrt::NetworkManager::TcpPcb::Connect(Ipv4Address address,
   return local_port;
 }
 
-// Set the receive window to control pacing of the connection
-void ebbrt::NetworkManager::TcpPcb::SetReceiveWindow(uint16_t window) {
-  entry_->rcv_wnd = window;
+void ebbrt::NetworkManager::TcpPcb::OpenWindow() {
+  entry_->close_window = false;
+  entry_->rcv_wnd = kTcpWnd;
+}
+
+void ebbrt::NetworkManager::TcpPcb::CloseWindow() {
+  entry_->close_window = true;
 }
 
 // Bind this connection to a core
@@ -761,6 +768,9 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
           }
 
           rcv_nxt = info.seqno + info.tcplen;
+          if (unlikely(close_window)) {
+            rcv_wnd -= info.tcplen;
+          }
 
           buf->Advance(hdr_len);
           handler->Receive(std::move(buf));
