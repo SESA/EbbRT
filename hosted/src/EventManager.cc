@@ -6,7 +6,9 @@
 
 #include <ebbrt/Context.h>
 
-void ebbrt::EventManager::Spawn(MovableFunction<void()> func, ebbrt::Context *ctxt) {
+void ebbrt::EventManager::Spawn(MovableFunction<void()> func, 
+				ebbrt::Context *ctxt, 
+				bool force_async) {
   // movable function cannot be copied so we put it on the heap
   auto f = new MovableFunction<void()>(std::move(func));
   // async dispatch

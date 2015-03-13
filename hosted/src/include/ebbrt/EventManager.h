@@ -22,9 +22,10 @@ const constexpr auto event_manager = EbbRef<EventManager>(kEventManagerId);
 class EventManager : public StaticSharedEbb<EventManager>, public CacheAligned {
   public:
   typedef ebbrt::EventContext EventContext;
-  void Spawn(ebbrt::MovableFunction<void()> func, ebbrt::Context *ctxt);
-  void Spawn(ebbrt::MovableFunction<void()> func) {
-    Spawn(std::move(func),active_context);
+  void Spawn(ebbrt::MovableFunction<void()> func, ebbrt::Context *ctxt, 
+	     bool force_async=false);
+  void Spawn(ebbrt::MovableFunction<void()> func, bool force_async=false) {
+    Spawn(std::move(func),active_context,force_async);
   }
   void SpawnRemote(ebbrt::MovableFunction<void()> func, ebbrt::Context *ctxt) {
     Spawn(std::move(func), ctxt);
