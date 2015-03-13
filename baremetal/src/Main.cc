@@ -174,7 +174,9 @@ extern "C"
                        if (AppMain) {
                          event_manager->SpawnLocal([=]() { AppMain(); });
                        }
+#if __EBBRT_ENABLE_NETWORKING__
                      });
+#endif
                    },
                    /* force_async = */ true);
   event_manager->StartProcessingEvents();
