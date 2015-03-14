@@ -10,7 +10,7 @@
         .cfi_restore \reg
 .endm
 
-.macro INTERRUPT_ENTRY name, handler, has_error_code
+.macro INTERRUPT_ENTRY name, handler, has_error_code, fpu
         .align 8
         .global \name
         \name :
@@ -39,11 +39,15 @@
         PUSHQ_CFI %r15
         sub $520, %rsp
         .cfi_adjust_cfa_offset 520
+        .if \fpu == 1
         fwait
         fxsave (%rsp)
+        .endif
         mov %rsp, %rdi
         call \handler
+        .if \fpu == 1
         fxrstor (%rsp)
+        .endif
         add $520, %rsp
         .cfi_adjust_cfa_offset -520
         POPQ_CFI %r15
@@ -67,11 +71,11 @@
 .endm
 
 .macro INTERRUPT_ERROR_ENTRY name, handler
-        INTERRUPT_ENTRY \name, \handler, 1
+        INTERRUPT_ENTRY \name, \handler, 1, 1
 .endm
 
 .macro INTERRUPT_NOERROR_ENTRY name, handler
-        INTERRUPT_ENTRY \name, \handler, 0
+        INTERRUPT_ENTRY \name, \handler, 0, 1
 .endm
 
 .cfi_sections .eh_frame, .debug_frame
@@ -90,7 +94,7 @@ INTERRUPT_ERROR_ENTRY IntNp, SegmentNotPresent
 INTERRUPT_ERROR_ENTRY IntSs, StackFaultException
 INTERRUPT_ERROR_ENTRY IntGp, GeneralProtectionException
 INTERRUPT_ERROR_ENTRY IntPf, PageFaultException
-INTERRUPT_NOERROR_ENTRY IntMf, X87FpuFloatingPointError
+INTERRUPT_ENTRY IntMf, X87FpuFloatingPointError, 0, 0
 INTERRUPT_ERROR_ENTRY IntAc, AlignmentCheckException
 INTERRUPT_NOERROR_ENTRY IntMc, MachineCheckException
 INTERRUPT_NOERROR_ENTRY IntXm, SimdFloatingPointException
