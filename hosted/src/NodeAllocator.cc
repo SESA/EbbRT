@@ -19,6 +19,10 @@
 
 namespace bai = boost::asio::ip;
 
+int ebbrt::NodeAllocator::DefaultCpus;
+int ebbrt::NodeAllocator::DefaultRam;
+int ebbrt::NodeAllocator::DefaultNumaNodes;
+
 ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket,
                                        uint32_t net_addr)
   : socket_(std::move(socket)), net_addr_(net_addr) { }
@@ -89,6 +93,17 @@ void ebbrt::NodeAllocator::Session::Start() {
 
 ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
   dir_[0] = 0;
+  {
+    char *str =getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_CPUS");
+    DefaultCpus = (str) ? atoi(str) : kDefaultCpus;
+    str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_RAM");
+    DefaultRam = (str) ? atoi(str) : kDefaultRam;
+    str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_NUMANODES");
+    DefaultNumaNodes = (str) ? atoi(str) : kDefaultNumaNodes;
+    std::cout << "NodeAllocator::Init() DefaultCpus=" << DefaultCpus 
+	      << " DefaultNumaNodes=" << DefaultNumaNodes 
+	    << " DefaultRam=" << DefaultRam << std::endl;
+  }
   auto acceptor = std::make_shared<bai::tcp::acceptor>(
       active_context->io_service_, bai::tcp::endpoint(bai::tcp::v4(), 0));
   auto socket = std::make_shared<bai::tcp::socket>(active_context->io_service_);
@@ -150,7 +165,11 @@ ebbrt::NodeAllocator::DoAccept(std::shared_ptr<bai::tcp::acceptor> acceptor,
 }
 
 ebbrt::NodeAllocator::NodeDescriptor
-ebbrt::NodeAllocator::AllocateNode(std::string binary_path) {
+ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
+				   int cpus,
+				   int numaNodes,
+				   int ram) 
+{
   auto fdt = Fdt();
   fdt.BeginNode("/");
   fdt.BeginNode("runtime");
@@ -188,8 +207,17 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path) {
 
   char network[100];
   snprintf(network, sizeof(network), "%d", network_id_);
-  std::string command = "/opt/khpy/kh alloc -g " + std::string(network) + " " +
-                        binary_path + " " + fname.native();
+
+  std::string command = "/opt/khpy/kh alloc" +
+    std::string(" --ram ") + std::to_string(ram)  +
+    std::string(" --cpu ") + std::to_string(cpus) +
+    std::string(" --numa ") + std::to_string(numaNodes) +
+#ifndef NDEBUG
+    " -g" +
+#endif
+    std::string(" ") + std::string(network) + " " +
+    binary_path + " " + fname.native();
+
   std::cout << "executing " << command << std::endl;
   auto f = popen(command.c_str(), "r");
   if (f == nullptr) {

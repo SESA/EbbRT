@@ -15,7 +15,16 @@
 
 namespace ebbrt {
 class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
+  static const constexpr int kDefaultCpus=2; 
+  static const constexpr int kDefaultNumaNodes=2;
+  static const constexpr int kDefaultRam=2;  
+  static int DefaultCpus;
+  static int DefaultNumaNodes;
+  static int DefaultRam;
  public:
+
+  static void InitDefaults();
+
   NodeAllocator();
   ~NodeAllocator();
 
@@ -31,7 +40,14 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
     uint16_t node_id_;
     ebbrt::Future<ebbrt::Messenger::NetworkId> net_id_;
   };
-  NodeDescriptor AllocateNode(std::string binary_path);
+  NodeDescriptor AllocateNode(std::string binary_path) {
+    return AllocateNode(binary_path, DefaultCpus, DefaultNumaNodes,
+		 DefaultRam);
+  }
+  NodeDescriptor AllocateNode(std::string binary_path, 
+			      int cpus,
+			      int numNodes,
+			      int ram);
   void FreeNode(uint16_t node_id);
 
  private:
