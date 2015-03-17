@@ -17,7 +17,7 @@ ebbrt::AppendHeader(ebbrt::IOBufMessageBuilder& builder) {
   auto header_buf = MakeUniqueIOBuf(header_size, true);
   auto dp = header_buf->GetMutDataPointer();
   auto& h = dp.Get<Header>();
-  h.num_segments = nsegs;
+  h.num_segments = nsegs - 1;
   unsigned i = 0;
   for (auto& seg : segs) {
     h.segment_sizes[i] = seg.size();

@@ -41,18 +41,23 @@ class IOBufMessageReader : public capnp::MessageReader {
                      capnp::ReaderOptions options = capnp::ReaderOptions())
       : capnp::MessageReader(options), buf_(std::move(buf)),
         dp_(buf_->GetDataPointer()) {
-    auto p = buf_->GetDataPointer();
-    auto nseg = p.Get<uint32_t>();
-    dp_.Advance(align::Up(4 + 4 * nseg, 8));
+    auto nseg = dp_.Get<uint32_t>() + 1;
+    uint32_t seg_sizes[nseg];  // NOLINT
+    for (uint32_t i = 0; i < nseg; ++i) {
+      seg_sizes[i] = dp_.Get<uint32_t>();
+    }
+    if (nseg % 2 == 0)
+      dp_.Advance(4);
+
     segments_.reserve(nseg);
     for (uint32_t i = 0; i < nseg; ++i) {
-      auto size = p.Get<uint32_t>();
-      auto ptr = dp_.Get(size * sizeof(capnp::word));
-      segments_.emplace_back(reinterpret_cast<const capnp::word*>(ptr), size);
+      auto size = seg_sizes[i];
+      auto data = dp_.Get(size * sizeof(capnp::word));
+      segments_.emplace_back(reinterpret_cast<const capnp::word*>(data), size);
     }
   }
 
-  virtual kj::ArrayPtr<const capnp::word> getSegment(uint id) override {
+  kj::ArrayPtr<const capnp::word> getSegment(uint id) override {
     return segments_[id];
   }
 
