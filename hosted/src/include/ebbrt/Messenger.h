@@ -5,13 +5,16 @@
 #ifndef HOSTED_SRC_INCLUDE_EBBRT_MESSENGER_H_
 #define HOSTED_SRC_INCLUDE_EBBRT_MESSENGER_H_
 
+#include <algorithm>
 #include <mutex>
+#include <string>
 
 #include <boost/asio.hpp>
 
-#include <ebbrt/IOBuf.h>
+#include <ebbrt/Compiler.h>
 #include <ebbrt/EbbRef.h>
 #include <ebbrt/Future.h>
+#include <ebbrt/IOBuf.h>
 #include <ebbrt/StaticIds.h>
 #include <ebbrt/StaticSharedEbb.h>
 
@@ -22,6 +25,14 @@ class Messenger : public StaticSharedEbb<Messenger> {
    public:
     NetworkId() {}
     explicit NetworkId(boost::asio::ip::address_v4 ip) : ip_(std::move(ip)) {}
+
+    static NetworkId FromBytes(const unsigned char* p, size_t len) {
+      if (unlikely(len != 4))
+        throw std::runtime_error("NetworkId::FromBytes length != 4");
+      std::array<unsigned char, 4> bytes;
+      std::copy(p, p + 4, bytes.begin());
+      return NetworkId(boost::asio::ip::address_v4(bytes));
+    }
 
     std::string ToBytes() {
       auto a = ip_.to_bytes();
