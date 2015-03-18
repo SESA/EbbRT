@@ -23,6 +23,37 @@ class Wall {
 };
 
 std::chrono::nanoseconds Uptime() noexcept;
+std::chrono::nanoseconds SystemTime() noexcept;
+std::chrono::nanoseconds TscToNano(uint64_t tsc) noexcept;
+
+class HighResTimer {
+ public:
+  void tick() __attribute__((always_inline)) {
+    asm volatile("cpuid;"
+                 "rdtsc;"
+                 "mov %%edx, %0;"
+                 "mov %%eax, %1;"
+                 : "=r"(cycles_high_), "=r"(cycles_low_)::"%rax", "%rbx",
+                   "%rcx", "%rdx");
+  }
+  std::chrono::nanoseconds tock() __attribute__((always_inline)) {
+    uint32_t cycles_high1, cycles_low1;
+    asm volatile("rdtscp;"
+                 "mov %%edx, %0;"
+                 "mov %%eax, %1;"
+                 "cpuid;"
+                 : "=r"(cycles_high1), "=r"(cycles_low1)::"%rax", "%rbx",
+                   "%rcx", "%rdx");
+    auto start = (((uint64_t)cycles_high_ << 32) | cycles_low_);
+    auto end = (((uint64_t)cycles_high1 << 32 | cycles_low1));
+    auto sample = end - start;
+    return TscToNano(sample);
+  }
+
+ private:
+  uint32_t cycles_low_;
+  uint32_t cycles_high_;
+};
 }  // namespace clock
 }  // namespace ebbrt
 

@@ -46,38 +46,6 @@ void SetupSystemTime() {
                     reinterpret_cast<uint64_t>(&vcpu_time_info) | 1);
 }
 
-std::chrono::nanoseconds SystemTime() {
-  uint32_t version;
-  uint64_t tsc = 0;
-  uint64_t system_time = 0;
-  uint32_t tsc_to_system_mul = 0;
-  int8_t tsc_shift = 0;
-  do {
-    if ((version = vcpu_time_info.version.load(std::memory_order_relaxed)) % 2)
-      continue;
-
-    std::atomic_thread_fence(std::memory_order_acquire);
-    tsc = vcpu_time_info.tsc_timestamp.load(std::memory_order_relaxed);
-    system_time = vcpu_time_info.system_time.load(std::memory_order_relaxed);
-    tsc_to_system_mul =
-        vcpu_time_info.tsc_to_system_mul.load(std::memory_order_relaxed);
-    tsc_shift = vcpu_time_info.tsc_shift.load(std::memory_order_relaxed);
-    std::atomic_thread_fence(std::memory_order_acquire);
-  } while (version != vcpu_time_info.version.load(std::memory_order_relaxed));
-
-  auto time = ebbrt::rdtsc() - tsc;
-  if (tsc_shift >= 0)
-    time <<= tsc_shift;
-  else
-    time >>= -tsc_shift;
-  uint64_t tmp;
-  asm("mulq %[multiplier];"
-      "shrd $32, %[hi], %[lo]"
-      : [lo] "+a"(time), [hi] "=d"(tmp)
-      : [multiplier] "rm"(static_cast<uint64_t>(tsc_to_system_mul)));
-  return std::chrono::nanoseconds(system_time + time);
-}
-
 ebbrt::clock::Wall::time_point WallClockBoot() {
   uint32_t version, sec, nsec;
   do {
@@ -111,4 +79,63 @@ ebbrt::clock::Wall::time_point ebbrt::clock::Wall::Now() noexcept {
 
 std::chrono::nanoseconds ebbrt::clock::Uptime() noexcept {
   return SystemTime() - boot_system_time;
+}
+
+std::chrono::nanoseconds ebbrt::clock::SystemTime() noexcept {
+  uint32_t version;
+  uint64_t tsc = 0;
+  uint64_t system_time = 0;
+  uint32_t tsc_to_system_mul = 0;
+  int8_t tsc_shift = 0;
+  do {
+    if ((version = vcpu_time_info.version.load(std::memory_order_relaxed)) % 2)
+      continue;
+
+    std::atomic_thread_fence(std::memory_order_acquire);
+    tsc = vcpu_time_info.tsc_timestamp.load(std::memory_order_relaxed);
+    system_time = vcpu_time_info.system_time.load(std::memory_order_relaxed);
+    tsc_to_system_mul =
+        vcpu_time_info.tsc_to_system_mul.load(std::memory_order_relaxed);
+    tsc_shift = vcpu_time_info.tsc_shift.load(std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_acquire);
+  } while (version != vcpu_time_info.version.load(std::memory_order_relaxed));
+
+  auto time = ebbrt::rdtsc() - tsc;
+  if (tsc_shift >= 0)
+    time <<= tsc_shift;
+  else
+    time >>= -tsc_shift;
+  uint64_t tmp;
+  asm("mulq %[multiplier];"
+      "shrd $32, %[hi], %[lo]"
+      : [lo] "+a"(time), [hi] "=d"(tmp)
+      : [multiplier] "rm"(static_cast<uint64_t>(tsc_to_system_mul)));
+  return std::chrono::nanoseconds(system_time + time);
+}
+
+std::chrono::nanoseconds ebbrt::clock::TscToNano(uint64_t tsc) noexcept {
+  uint32_t version;
+  uint32_t tsc_to_system_mul = 0;
+  int8_t tsc_shift = 0;
+  do {
+    if ((version = vcpu_time_info.version.load(std::memory_order_relaxed)) % 2)
+      continue;
+
+    std::atomic_thread_fence(std::memory_order_acquire);
+    tsc_to_system_mul =
+        vcpu_time_info.tsc_to_system_mul.load(std::memory_order_relaxed);
+    tsc_shift = vcpu_time_info.tsc_shift.load(std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_acquire);
+  } while (version != vcpu_time_info.version.load(std::memory_order_relaxed));
+
+  if (tsc_shift >= 0)
+    tsc <<= tsc_shift;
+  else
+    tsc >>= -tsc_shift;
+  uint64_t tmp;
+  asm("mulq %[multiplier];"
+      "shrd $32, %[hi], %[lo]"
+      : [lo] "+a"(tsc), [hi] "=d"(tmp)
+      : [multiplier] "rm"(static_cast<uint64_t>(tsc_to_system_mul)));
+  return std::chrono::nanoseconds(tsc);
 }

@@ -7,10 +7,26 @@
 
 namespace ebbrt {
 inline uint64_t rdtsc() {
-  uint32_t hi, lo;
-  asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
-  return ((uint64_t)lo) | (((uint64_t)hi) << 32);
+  uint64_t tsc;
+  asm volatile("rdtsc;"
+               "shl $32,%%rdx;"
+               "or %%rdx,%%rax"
+               : "=a"(tsc)
+               :
+               : "%rcx", "%rdx");
+  return tsc;
 }
+
+inline uint64_t rdtscp() {
+  uint64_t tsc;
+  asm volatile("rdtscp;"
+               "shl $32,%%rdx;"
+               "or %%rdx,%%rax"
+               : "=a"(tsc)
+               :
+               : "%rcx", "%rdx");
+  return tsc;
 }
+}  // namespace ebbrt
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_RDTSC_H_
