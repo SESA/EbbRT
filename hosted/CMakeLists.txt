@@ -36,6 +36,7 @@ add_library(EbbRT
   ${CMAKE_SOURCE_DIR}/../common/src/UniqueIOBuf.cc
   ${CMAKE_SOURCE_DIR}/../common/src/StaticIOBuf.cc
   ${CMAKE_SOURCE_DIR}/../common/src/SharedIOBufRef.cc
+  ${CMAKE_SOURCE_DIR}/src/Clock.cc
   ${CMAKE_SOURCE_DIR}/src/ContextActivation.cc
   ${CMAKE_SOURCE_DIR}/src/Context.cc
   ${CMAKE_SOURCE_DIR}/src/EventManager.cc
