@@ -307,6 +307,13 @@ void ebbrt::EventManager::ActivateContext(EventContext&& context) {
   }
 }
 
+void ebbrt::EventManager::ActivateContextSync(EventContext&& context) {
+  kassert(context.cpu == Cpu::GetMine());
+  sync_contexts_.emplace(std::move(active_event_context_));
+  active_event_context_ = std::move(context);
+  SaveContextAndActivate(sync_contexts_.top(), active_event_context_);
+}
+
 uint8_t ebbrt::EventManager::AllocateVector(MovableFunction<void()> func) {
   std::lock_guard<ebbrt::SpinLock> lock(vec_data->lock);
   auto vec = vec_data->idx++;
