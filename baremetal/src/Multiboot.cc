@@ -8,14 +8,18 @@
 
 #include <ebbrt/EarlyPageAllocator.h>
 
+uintptr_t ebbrt::multiboot::cmdline_addr_;
+uintptr_t ebbrt::multiboot::cmdline_len_;
+
 void ebbrt::multiboot::Reserve(Information* mbi) {
   auto mbi_addr = reinterpret_cast<uintptr_t>(mbi);
   early_page_allocator::ReserveRange(mbi_addr, mbi_addr + sizeof(*mbi));
   if (mbi->has_command_line_) {
-    uintptr_t cmdline_addr = mbi->command_line_;
-    auto cmdline = reinterpret_cast<const char*>(cmdline_addr);
-    auto len = std::strlen(cmdline);
-    early_page_allocator::ReserveRange(cmdline_addr, cmdline_addr + len + 1);
+    cmdline_addr_ = mbi->command_line_;
+    auto cmdline = reinterpret_cast<const char*>(cmdline_addr_);
+    cmdline_len_ = std::strlen(cmdline);
+    early_page_allocator::ReserveRange(cmdline_addr_, 
+				       cmdline_addr_ + cmdline_len_ + 1);
   }
 
   if (mbi->has_boot_modules_ && mbi->modules_count_ > 0) {
