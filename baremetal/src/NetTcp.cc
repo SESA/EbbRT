@@ -770,7 +770,7 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
             info.tcplen = rcv_wnd;
           }
 
-          rcv_nxt = info.seqno + info.tcplen;
+          rcv_nxt += info.tcplen;
           if (unlikely(close_window)) {
             rcv_wnd -= info.tcplen;
           }
