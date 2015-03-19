@@ -236,7 +236,7 @@ ebbrt::NetworkManager::ListeningTcpPcb listening_pcb;
 
 void AppMain() {
 #ifdef TX
-  pcb.Connect(ebbrt::Ipv4Address({10, 1, 81, 95}), 49152);
+  pcb.Connect(ebbrt::Ipv4Address({192, 168, 4, 104}), 49152);
 #else
   auto port = listening_pcb.Bind(0, [](ebbrt::NetworkManager::TcpPcb pcb) {
 #endif
