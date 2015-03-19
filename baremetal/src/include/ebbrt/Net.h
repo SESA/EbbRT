@@ -179,7 +179,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     std::unique_ptr<ITcpHandler> handler;
     std::atomic_bool accepted{false};
     bool window_notify;
-    bool timer_set;
+    bool timer_set{false};
   };
 
   class TcpPcb {

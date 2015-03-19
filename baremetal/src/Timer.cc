@@ -58,6 +58,11 @@ ebbrt::Timer::Timer() {
 }
 
 void ebbrt::Timer::SetTimer(std::chrono::microseconds from_now) {
+  if (unlikely(from_now.count() == 0)) {
+    msr::Write(msr::kX2apicDcr, 0xb);
+    msr::Write(msr::kX2apicInitCount, 1);
+    return;
+  }
   uint64_t ticks = from_now.count();
   ticks *= ticks_per_us_;
   // determine timer divider
@@ -76,6 +81,7 @@ void ebbrt::Timer::SetTimer(std::chrono::microseconds from_now) {
   } else {
     divider_set = divider;
   }
+  kassert(ticks > 0);
   msr::Write(msr::kX2apicDcr, divider_set);
   msr::Write(msr::kX2apicInitCount, ticks);
 }
@@ -102,8 +108,9 @@ void ebbrt::Timer::Stop(Hook& hook) {
   } else {
     auto now = clock::Wall::Now().time_since_epoch();
     auto fire_time = timers_.begin()->fire_time_;
-    if (now < fire_time)
+    if (now < fire_time) {
       SetTimer(std::chrono::duration_cast<std::chrono::microseconds>(fire_time -
                                                                      now));
+    }
   }
 }
