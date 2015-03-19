@@ -87,8 +87,9 @@ class NetPipeReceiver : public ebbrt::TcpHandler {
         bwdata[n].bps = bwdata[n].bits / (bwdata[n].t * 1024 * 1024);
         bwdata[n].repeat = nrepeat;
 #ifdef TX
-        ebbrt::kprintf("%8d %lf %12.8lf\n", bwdata[n].bits / 8, bwdata[n].bps,
-                       bwdata[n].t);
+        // ebbrt::kprintf("%8d %lf %12.8lf\n", bwdata[n].bits / 8,
+        // bwdata[n].bps,
+        //                bwdata[n].t);
         ebbrt::kprintf(" %8.2lf Mbps in %10.2lf usec\n", bwdata[n].bps,
                        tlast * 1.0e6);
 #endif
@@ -212,7 +213,7 @@ class NetPipeReceiver : public ebbrt::TcpHandler {
   static const constexpr int trials = 3;
   static const constexpr int kNSamp = 8000;
   static const constexpr size_t nbuff = 3;
-  static const constexpr int perturbation = 3;
+  static const constexpr int perturbation = 0;
   static const constexpr size_t start = 1;
   static const constexpr int end = 1000000;
   enum states { SYNC, RPC, GET_REPEAT };
