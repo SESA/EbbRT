@@ -5,6 +5,8 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_NETTCPHANDLER_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_NETTCPHANDLER_H_
 
+#include <algorithm>
+
 #include <ebbrt/Net.h>
 #include <ebbrt/Debug.h>
 #include <ebbrt/IOBufRef.h>
@@ -45,12 +47,20 @@ class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
   void Send(std::unique_ptr<ebbrt::IOBuf> buf) {
     kassert(buf);
     if (likely(!buf_)) {
+    keep_sending:
       // no queued data
       auto buf_len = buf->ComputeChainDataLength();
-      auto window_len = pcb_.SendWindowRemaining();
 
+      const constexpr size_t max_ipv4_header_size = 60;
+      const constexpr size_t max_tcp_header_size = 60;
+      const constexpr size_t max_ipv4_packet_size = UINT16_MAX;
+      const constexpr size_t max_tcp_segment_size =
+          max_ipv4_packet_size - max_tcp_header_size - max_ipv4_header_size;
+
+      size_t window_size = pcb_.SendWindowRemaining();
+      auto send_size = std::min(window_size, max_tcp_segment_size);
       // Does the data length fit in the window?
-      if (likely(buf_len <= window_len)) {
+      if (likely(buf_len <= send_size)) {
         pcb_.Send(std::move(buf));
         return;
       }
@@ -61,38 +71,44 @@ class TcpHandler : public ebbrt::NetworkManager::ITcpHandler {
       // data should be in buf_
       for (auto& b : *buf) {
         auto len = b.Length();
-        if (len < window_len) {
+        if (len < send_size) {
           // This buffer fits in the window, no truncation necessary
-          window_len -= len;
+          send_size -= len;
         } else if (&b == buf.get()) {
           // The first buffer in the chain won't fit
           buf_ = std::move(buf);
-          if (window_len > 0) {
+          if (send_size > 0) {
             // If there is any space in the window, send what we can to buf to
             // be sent out and leave
             // the rest in buf_
             buf = ebbrt::CreateRef(*buf_);
-            buf->TrimEnd(len - window_len);  // trim off what won't fit
-            buf_->Advance(window_len);  // advance past what we will send out
+            buf->TrimEnd(len - send_size);  // trim off what won't fit
+            buf_->Advance(send_size);  // advance past what we will send out
           }
           break;
         } else {
           // A non-first buffer in the chain won't fit
           buf_ = buf->UnlinkEnd(b);  // remove the rest of the chain from buf
-          if (window_len > 0) {
+          if (send_size > 0) {
             // If there is any space in the window, append what we can to buf to
             // be sent out and leave the rest in buf_
             auto ref = ebbrt::CreateRef(*buf_);
-            ref->TrimEnd(len - window_len);
+            ref->TrimEnd(len - send_size);
             buf->PrependChain(std::move(ref));
-            buf_->Advance(window_len);
+            buf_->Advance(send_size);
           }
           break;
         }
       }
+
       // If there was data to send, then do so
       if (buf)
         pcb_.Send(std::move(buf));
+
+      if (buf_len > max_tcp_segment_size && send_size < window_size) {
+        buf = std::move(buf_);
+        goto keep_sending;
+      }
 
       // There must be some data queued, so ask to be notified about a window
       // increase

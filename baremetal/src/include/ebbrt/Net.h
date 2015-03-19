@@ -134,7 +134,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
                  ebbrt::clock::Wall::time_point now);
     size_t Output(ebbrt::clock::Wall::time_point now);
     void ClearAckedSegments(const TcpInfo& info);
-    uint16_t SendWindowRemaining();
+    size_t SendWindowRemaining();
     void SetTimer(ebbrt::clock::Wall::time_point now);
     void SendSegment(TcpSegment& segment);
     void SendEmptyAck();
@@ -170,7 +170,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     uint32_t snd_wl2;  // segment ack number used for last window update
     uint32_t rcv_nxt;  // next sequence number expected on an incoming segment,
     // also the lower edge of the receive window
-    uint16_t rcv_wnd;  // size of the receive window
+    size_t rcv_wnd;  // size of the receive window
     uint32_t rcv_last_acked;  // The last received byte we acked
     bool close_window{false};
     ebbrt::clock::Wall::time_point retransmit;  // when to retransmit
@@ -190,7 +190,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
                      uint16_t local_port = 0);
     void BindCpu(size_t index);
     void InstallHandler(std::unique_ptr<ITcpHandler> handler);
-    uint16_t SendWindowRemaining();
+    size_t SendWindowRemaining();
     void OpenWindow();
     void CloseWindow();
     void SetWindowNotify(bool notify);

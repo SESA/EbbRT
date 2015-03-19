@@ -89,7 +89,7 @@ uint16_t ebbrt::NetworkManager::TcpPcb::Connect(Ipv4Address address,
   uint32_t iss = random::Get();
   entry_->snd_una = iss;
   entry_->snd_nxt = iss;  // EnqueueSegment will increment this by one
-  entry_->snd_wnd = kTcpWnd;
+  entry_->snd_wnd = TcpWindow16(kTcpWnd);
   entry_->rcv_nxt = 0;
   entry_->rcv_wnd = kTcpWnd;
 
@@ -154,7 +154,7 @@ void ebbrt::NetworkManager::TcpPcb::InstallHandler(
 }
 
 // How large is the remote window?
-uint16_t ebbrt::NetworkManager::TcpPcb::SendWindowRemaining() {
+size_t ebbrt::NetworkManager::TcpPcb::SendWindowRemaining() {
   return entry_->SendWindowRemaining();
 }
 
@@ -411,8 +411,7 @@ ebbrt::NetworkManager::ListeningTcpEntry::Input(const Ipv4Header& ih,
 
     entry->snd_una = start_seq;
     entry->snd_wnd = ntohs(th.wnd);
-    // XXX: For now we use the same initial window as the remote side
-    entry->rcv_wnd = ntohs(th.wnd);
+    entry->rcv_wnd = kTcpWnd;
 
     // Create a SYN-ACK reply
     auto optlen = 4;  // for MSS
@@ -490,8 +489,12 @@ void ebbrt::NetworkManager::TcpEntry::Send(std::unique_ptr<IOBuf> buf) {
   EnqueueSegment(tcp_header, std::move(header_buf), kTcpAck);
 }
 
-uint16_t ebbrt::NetworkManager::TcpEntry::SendWindowRemaining() {
+size_t ebbrt::NetworkManager::TcpEntry::SendWindowRemaining() {
+#ifdef LARGE_WINDOW_HACK
+  return (1 << 21) - static_cast<size_t>((snd_nxt - snd_una));
+#else
   return snd_wnd - (snd_nxt - snd_una);
+#endif
 }
 
 // Input on a TCP connection
@@ -897,7 +900,8 @@ ebbrt::NetworkManager::TcpEntry::Output(ebbrt::clock::Wall::time_point now) {
   // try to send as many pending segments as will fit in the window
   size_t sent = 0;
   for (; it != pending_segments.end() &&
-             TcpSeqLEQ(ntohl(it->th.seqno) + it->tcp_len, snd_una + snd_wnd);
+             TcpSeqLEQ(ntohl(it->th.seqno) + it->tcp_len,
+                       snd_nxt + SendWindowRemaining());
        ++it) {
     SendSegment(*it);
     ++sent;
@@ -948,7 +952,7 @@ void ebbrt::NetworkManager::TcpEntry::SendEmptyAck() {
   th.urgp = 0;
   rcv_last_acked = rcv_nxt;
   th.ackno = htonl(rcv_nxt);
-  th.wnd = htons(rcv_wnd);
+  th.wnd = htons(TcpWindow16(rcv_wnd));
   th.checksum = OffloadPseudoCsum(*buf, kIpProtoTCP, address, std::get<0>(key));
 
   PacketInfo pinfo;
@@ -1010,7 +1014,7 @@ void ebbrt::NetworkManager::TcpEntry::SendFin() {
 void ebbrt::NetworkManager::TcpEntry::SendSegment(TcpSegment& segment) {
   rcv_last_acked = rcv_nxt;
   segment.th.ackno = htonl(rcv_nxt);
-  segment.th.wnd = htons(rcv_wnd);
+  segment.th.wnd = htons(TcpWindow16(rcv_wnd));
   segment.th.checksum = 0;
   // XXX: check if checksum offloading is supported
   segment.th.checksum =
@@ -1051,7 +1055,7 @@ void ebbrt::NetworkManager::TcpReset(bool ack, uint32_t seqno, uint32_t ackno,
   tcp_header.seqno = htonl(seqno);
   tcp_header.ackno = htonl(ackno);
   tcp_header.SetHdrLenFlags(sizeof(TcpHeader), kTcpRst | (ack ? kTcpAck : 0));
-  tcp_header.wnd = htons(kTcpWnd);
+  tcp_header.wnd = htons(TcpWindow16(kTcpWnd));
   tcp_header.urgp = 0;
   tcp_header.checksum =
       OffloadPseudoCsum(*buf, kIpProtoTCP, local_ip, remote_ip);
