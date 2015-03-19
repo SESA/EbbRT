@@ -218,7 +218,9 @@ void ebbrt::VirtioNetRep::Receive() {
 }
 
 void ebbrt::VirtioNetRep::ReceivePoll() {
+#ifndef VIRTIO_NET_POLL
 process:
+#endif
   rcv_queue_.ProcessUsedBuffers([this](std::unique_ptr<MutIOBuf> buf) {
     circ_buffer_[circ_buffer_head_ % 256] = std::move(buf);
     ++circ_buffer_head_;
@@ -228,7 +230,9 @@ process:
   });
   // If there are no used buffers, turn on interrupts and stop this poll
   if (circ_buffer_head_ == circ_buffer_tail_) {
-    // if (!rcv_queue_.HasUsedBuffer()) {
+#if VIRTIO_NET_POLL
+    return;
+#else
     rcv_queue_.EnableInterrupts();
     // Double check to avoid race
     if (likely(!rcv_queue_.HasUsedBuffer())) {
@@ -239,6 +243,7 @@ process:
       rcv_queue_.DisableInterrupts();
       goto process;
     }
+#endif
   }
 
   kassert(circ_buffer_head_ != circ_buffer_tail_);
