@@ -82,8 +82,9 @@ struct Module {
 
 void Reserve(Information* mbi);
 
-  extern uintptr_t cmdline_addr_;
-  extern uintptr_t cmdline_len_;
+extern uintptr_t cmdline_addr_;
+extern uintptr_t cmdline_len_;
+extern struct Information* info;
 
 }  // namespace multiboot
 }  // namespace ebbrt

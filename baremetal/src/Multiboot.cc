@@ -10,8 +10,10 @@
 
 uintptr_t ebbrt::multiboot::cmdline_addr_;
 uintptr_t ebbrt::multiboot::cmdline_len_;
+ebbrt::multiboot::Information* ebbrt::multiboot::info;
 
 void ebbrt::multiboot::Reserve(Information* mbi) {
+  info = mbi;
   auto mbi_addr = reinterpret_cast<uintptr_t>(mbi);
   early_page_allocator::ReserveRange(mbi_addr, mbi_addr + sizeof(*mbi));
   if (mbi->has_command_line_) {
