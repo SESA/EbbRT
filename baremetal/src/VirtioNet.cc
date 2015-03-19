@@ -166,12 +166,15 @@ void ebbrt::VirtioNetRep::Send(std::unique_ptr<IOBuf> buf, PacketInfo pinfo) {
   snd_queue_.ClearUsedBuffers();
   VirtioNetHeader* header;
   auto free_desc = snd_queue_.num_free_descriptors();
-  // if (free_desc > buf->CountChainElements()) {
-  //   // we have enough descriptors to avoid a copy
-  //   b = MakeUniqueIOBuf(sizeof(VirtioNetHeader), /* zero_memory = */ true);
-  //   b->PrependChain(std::move(buf));
-  // } else
-  if (free_desc >= 1) {
+#ifdef VIRTIO_ZERO_COPY
+  if (free_desc > buf->CountChainElements()) {
+    // we have enough descriptors to avoid a copy
+    b = MakeUniqueIOBuf(sizeof(VirtioNetHeader), /* zero_memory = */ true);
+    header = reinterpret_cast<VirtioNetHeader*>(b->MutData());
+    b->PrependChain(std::move(buf));
+  } else  // NOLINT
+#endif
+      if (free_desc >= 1) {
     // XXX: Maybe we should use indirect descriptors instead?
     // copy into one buffer
     auto len = buf->ComputeChainDataLength();
@@ -201,7 +204,8 @@ void ebbrt::VirtioNetRep::Send(std::unique_ptr<IOBuf> buf, PacketInfo pinfo) {
     header->hdr_len = pinfo.hdr_len;
     header->gso_size = pinfo.gso_size;
   }
-  snd_queue_.AddBuffer(std::move(b), 1);
+  auto elements = b->CountChainElements();
+  snd_queue_.AddBuffer(std::move(b), elements);
 }
 
 const ebbrt::EthernetAddress& ebbrt::VirtioNetDriver::GetMacAddress() {
