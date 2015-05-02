@@ -60,32 +60,7 @@ ebbrt::clock::Wall::time_point WallClockBoot() {
                                         std::chrono::nanoseconds(nsec));
 }
 
-ebbrt::ExplicitlyConstructed<ebbrt::clock::PvClock> the_clock;
-}  // namespace
-
-void ebbrt::clock::PvClock::ApInit() { SetupSystemTime(); }
-
-ebbrt::clock::PvClock* ebbrt::clock::PvClock::GetClock() {
-  the_clock.construct();
-  return &*the_clock;
-}
-
-ebbrt::clock::PvClock::PvClock() {
-  msr::Write(msr::kKvmWallClockNew, reinterpret_cast<uint64_t>(&wall_clock));
-
-  SetupSystemTime();
-  boot_system_time = SystemTime();
-}
-
-ebbrt::clock::Wall::time_point ebbrt::clock::PvClock::Now() noexcept {
-  return WallClockBoot() + SystemTime();
-}
-
-std::chrono::nanoseconds ebbrt::clock::PvClock::Uptime() noexcept {
-  return SystemTime() - boot_system_time;
-}
-
-std::chrono::nanoseconds ebbrt::clock::PvClock::SystemTime() noexcept {
+std::chrono::nanoseconds SystemTime() noexcept {
   uint32_t version;
   uint64_t tsc = 0;
   uint64_t system_time = 0;
@@ -115,6 +90,31 @@ std::chrono::nanoseconds ebbrt::clock::PvClock::SystemTime() noexcept {
       : [lo] "+a"(time), [hi] "=d"(tmp)
       : [multiplier] "rm"(static_cast<uint64_t>(tsc_to_system_mul)));
   return std::chrono::nanoseconds(system_time + time);
+}
+
+ebbrt::ExplicitlyConstructed<ebbrt::clock::PvClock> the_clock;
+}  // namespace
+
+void ebbrt::clock::PvClock::ApInit() { SetupSystemTime(); }
+
+ebbrt::clock::PvClock* ebbrt::clock::PvClock::GetClock() {
+  the_clock.construct();
+  return &*the_clock;
+}
+
+ebbrt::clock::PvClock::PvClock() {
+  msr::Write(msr::kKvmWallClockNew, reinterpret_cast<uint64_t>(&wall_clock));
+
+  SetupSystemTime();
+  boot_system_time = SystemTime();
+}
+
+ebbrt::clock::Wall::time_point ebbrt::clock::PvClock::Now() noexcept {
+  return WallClockBoot() + SystemTime();
+}
+
+std::chrono::nanoseconds ebbrt::clock::PvClock::Uptime() noexcept {
+  return SystemTime() - boot_system_time;
 }
 
 std::chrono::nanoseconds

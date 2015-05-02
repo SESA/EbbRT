@@ -18,7 +18,6 @@ class PvClock : public Clock {
   void ApInit() override;
   Wall::time_point Now() noexcept override;
   std::chrono::nanoseconds Uptime() noexcept override;
-  std::chrono::nanoseconds SystemTime() noexcept override;
   std::chrono::nanoseconds TscToNano(uint64_t tsc) noexcept override;
 };
 }  // namespace clock

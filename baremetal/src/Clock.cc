@@ -31,10 +31,6 @@ std::chrono::nanoseconds ebbrt::clock::Uptime() noexcept {
   return the_clock->Uptime();
 }
 
-std::chrono::nanoseconds ebbrt::clock::SystemTime() noexcept {
-  return the_clock->SystemTime();
-}
-
 std::chrono::nanoseconds ebbrt::clock::TscToNano(uint64_t tsc) noexcept {
   return the_clock->TscToNano(tsc);
 }

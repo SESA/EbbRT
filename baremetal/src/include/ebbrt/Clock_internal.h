@@ -14,7 +14,6 @@ class Clock {
   virtual void ApInit() = 0;
   virtual Wall::time_point Now() noexcept = 0;
   virtual std::chrono::nanoseconds Uptime() noexcept = 0;
-  virtual std::chrono::nanoseconds SystemTime() noexcept = 0;
   virtual std::chrono::nanoseconds TscToNano(uint64_t tsc) noexcept = 0;
 };
 }
