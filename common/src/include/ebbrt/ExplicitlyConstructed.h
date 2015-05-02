@@ -5,6 +5,7 @@
 #ifndef COMMON_SRC_INCLUDE_EBBRT_EXPLICITLYCONSTRUCTED_H_
 #define COMMON_SRC_INCLUDE_EBBRT_EXPLICITLYCONSTRUCTED_H_
 
+#include <new>
 #include <type_traits>
 #include <utility>
 
