@@ -13,14 +13,12 @@ ebbrt::clock::Clock* the_clock;
 }  // namespace
 
 void ebbrt::clock::Init() {
-  kprintf("Clock Init\n");
   if (cpuid::features.kvm_clocksource2) {
     the_clock = PvClock::GetClock();
   } else {
     EBBRT_UNIMPLEMENTED();
     // the_clock = ...
   }
-  kprintf("Clock Init2\n");
 }
 
 void ebbrt::clock::ApInit() { the_clock->ApInit(); }
