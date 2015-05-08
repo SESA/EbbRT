@@ -6,6 +6,7 @@
 
 #include <ebbrt/Cpuid.h>
 #include <ebbrt/Debug.h>
+#include <ebbrt/PitClock.h>
 #include <ebbrt/PvClock.h>
 
 namespace {
@@ -16,8 +17,7 @@ void ebbrt::clock::Init() {
   if (cpuid::features.kvm_clocksource2) {
     the_clock = PvClock::GetClock();
   } else {
-    EBBRT_UNIMPLEMENTED();
-    // the_clock = ...
+    the_clock = PitClock::GetClock();
   }
 }
 
