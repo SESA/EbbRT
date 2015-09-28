@@ -65,7 +65,8 @@ SECTIONS
 		*(.data.*)
 	}
 
-        .tdata : ALIGN(64)
+        . = ALIGN(64);
+        .tdata  :
         {
                 tls_start = ABSOLUTE(.);
                 *(.tdata)
