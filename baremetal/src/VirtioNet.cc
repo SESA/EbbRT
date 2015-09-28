@@ -230,7 +230,7 @@ process:
   });
   // If there are no used buffers, turn on interrupts and stop this poll
   if (circ_buffer_head_ == circ_buffer_tail_) {
-#if VIRTIO_NET_POLL
+#ifdef VIRTIO_NET_POLL
     return;
 #else
     rcv_queue_.EnableInterrupts();
