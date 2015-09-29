@@ -413,7 +413,7 @@ void ebbrt::EventManager::Fire() {
 }
 
 void ebbrt::EventManager::StartTimer() {
-  timer->Start(*this, std::chrono::milliseconds(10),
+  timer->Start(*this, std::chrono::milliseconds(1),
                /* repeat = */ false);
 }
 
