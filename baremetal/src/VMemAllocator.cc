@@ -127,7 +127,7 @@ void ebbrt::VMemAllocator::HandlePageFault(idt::ExceptionFrame* ef) {
   } else {
     auto it = regions_.lower_bound(Pfn::Down(fault_addr));
     if (it == regions_.end() || it->second.end() < Pfn::Up(fault_addr)) {
-      kprintf("Could not find region for %llx\n", fault_addr);
+      kprintf("Page fault for address %llx, no handler for it\n", fault_addr);
       ebbrt::kprintf("SS: %#018" PRIx64 " RSP: %#018" PRIx64 "\n", ef->ss,
                      ef->rsp);
       ebbrt::kprintf("FLAGS: %#018" PRIx64 "\n",
