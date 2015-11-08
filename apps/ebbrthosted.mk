@@ -9,9 +9,9 @@ ebbrt_hostedinc = ${EBBRT_SRCDIR}/hosted/src/include
 ebbrt_commoninc = ${EBBRT_SRCDIR}/common/src/include 
 
 ifeq ($(strip ${EBBRT_BUILDTYPE}),Debug)
-  OPTFLAGS ?= -O0 -g
+  OPTFLAGS ?= -O0 -g 
 else ifeq ($(strip ${EBBRT_BUILDTYPE}),Release)
-  OPTFLAGS ?= -O4 -flto
+  OPTFLAGS ?= -O4 -flto 
 else 
   $(error EBBRT_BUILDTYPE must be set to either Debug or Release)
 endif
@@ -65,8 +65,8 @@ app_capnp_gens := $(app_capnp_cxx) $(app_capnp_h) $(app_capnp_objects)
 
 ${target}: $(app_objects) $(ebbrt_lib) $(bm_imgs)
 	$(CXX) $(OPTFLAGS)  -Wl,--whole-archive $(app_objects) $(ebbrt_lib) -Wl,--no-whole-archive \
-	-lboost_coroutine -lboost_context -lboost_filesystem -lboost_system \
-	-lcapnp -lkj -lfdt -ltbb  -pthread -o $@
+	-lboost_coroutine -lboost_context -lboost_filesystem  \
+	-lcapnp -lkj -lfdt -ltbb  -pthread $(EBBRT_APP_LINK) -o $@
 	@echo CREATED: $(abspath ${target})
 
 $(app_objects): $(app_capnp_objects)
