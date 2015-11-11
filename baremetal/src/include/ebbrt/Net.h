@@ -246,6 +246,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
       void Fire() override;
 
       UdpPcb udp_pcb;
+      DhcpMessage last_offer;
       enum State { kInactive, kSelecting, kRequesting, kBound } state;
       uint32_t xid;
       size_t tries;

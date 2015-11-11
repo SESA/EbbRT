@@ -109,6 +109,8 @@ void ebbrt::NetworkManager::Interface::DhcpHandleOffer(
   if (!server_id_opt)
     return;
 
+  dhcp_pcb_.last_offer = dhcp_message;
+
   timer->Stop(dhcp_pcb_);
   const auto& offered_ip = dhcp_message.yiaddr;
 
@@ -199,7 +201,9 @@ ebbrt::NetworkManager::Interface::DhcpHandleAck(const DhcpMessage& message) {
 void ebbrt::NetworkManager::Interface::DhcpPcb::Fire() {
   switch (state) {
   case DhcpPcb::State::kRequesting: {
-    kabort("UNIMPLEMENTED: Dhcp request timeout\n");
+    auto itf =
+        boost::intrusive::get_parent_from_member(this, &Interface::dhcp_pcb_);
+    itf->DhcpHandleOffer(last_offer);
     break;
   }
   case DhcpPcb::State::kSelecting: {
