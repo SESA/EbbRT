@@ -4,15 +4,15 @@ else
  $(info EBBRT_SRCDIR set to $(EBBRT_SRCDIR))
 endif
 
-ebbrt_hosted = ${EBBRT_SRCDIR}/hosted	
+ebbrt_hosted = ${EBBRT_SRCDIR}/hosted
 ebbrt_hostedinc = ${EBBRT_SRCDIR}/hosted/src/include
-ebbrt_commoninc = ${EBBRT_SRCDIR}/common/src/include 
+ebbrt_commoninc = ${EBBRT_SRCDIR}/common/src/include
 
 ifeq ($(strip ${EBBRT_BUILDTYPE}),Debug)
-  OPTFLAGS ?= -O0 -g 
+  OPTFLAGS ?= -O0 -g
 else ifeq ($(strip ${EBBRT_BUILDTYPE}),Release)
-  OPTFLAGS ?= -O4 -flto 
-else 
+  OPTFLAGS ?= -O4 -flto
+else
   $(error EBBRT_BUILDTYPE must be set to either Debug or Release)
 endif
 
@@ -26,7 +26,7 @@ CXXFLAGS := -std=c++11 $(INCLUDES) $(OPTFLAGS)
 ebbrt_libdir := lib
 ebbrt_lib := ${ebbrt_libdir}/libEbbRT.a
 
-# default is to have at least one baremetal image that matches 
+# default is to have at least one baremetal image that matches
 # the name of our target
 ifeq ($(strip ${EBBRT_BM_IMGS}),)
   EBBRT_BM_IMGS=$(abspath ../../../baremetal/build/$(EBBRT_BUILDTYPE)/$(target))
@@ -78,9 +78,9 @@ ${ebbrt_libdir}/Makefile: ${ebbrt_libdir}
 	(cd $(ebbrt_libdir); cmake -DCMAKE_BUILD_TYPE=${EBBRT_BUILDTYPE} ${ebbrt_hosted})
 
 ${ebbrt_lib}: ${ebbrt_libdir}/Makefile
-	$(MAKE) -C ${ebbrt_libdir} 
+	$(MAKE) -C ${ebbrt_libdir}
 
-${bm_imgdir}: 
+${bm_imgdir}:
 	mkdir ${bm_imgdir}
 
 ${bm_imgs}: ${bm_imgdir} ${EBBRT_BM_IMGS}
