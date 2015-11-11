@@ -31,17 +31,6 @@ int main(int argc, char** argv) {
                         int signal_number) { c.io_service_.stop(); });
     Printer::Init().Then([bindir](ebbrt::Future<void> f) {
       f.Get();
-      char c;
-      std::cin >> c;
-      ebbrt::node_allocator->AllocateNode(bindir.string());
-      ebbrt::node_allocator->AllocateNode(bindir.string());
-      ebbrt::node_allocator->AllocateNode(bindir.string());
-      ebbrt::node_allocator->AllocateNode(bindir.string());
-      ebbrt::node_allocator->AllocateNode(bindir.string());
-      ebbrt::node_allocator->AllocateNode(bindir.string());
-      ebbrt::node_allocator->AllocateNode(bindir.string());
-      ebbrt::node_allocator->AllocateNode(bindir.string());
-      ebbrt::node_allocator->AllocateNode(bindir.string());
       ebbrt::node_allocator->AllocateNode(bindir.string());
     });
   }
