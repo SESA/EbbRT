@@ -30,6 +30,7 @@ class VirtioNetDriver : public VirtioDriver<VirtioNetDriver>,
   void FillRxRing();
   void FreeSentPackets();
   void ReceivePoll();
+  void Start();
 
   EbbRef<VirtioNetRep> ebb_;
   EthernetAddress mac_addr_;

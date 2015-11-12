@@ -47,6 +47,12 @@ void ebbrt::VirtioNetDriver::Create(pci::Device& dev) {
   auto virt_dev = new VirtioNetDriver(dev);
   virt_dev->ebb_ =
       VirtioNetRep::Create(virt_dev, ebb_allocator->AllocateLocal());
+
+  // Start interrupts after ebb_ has been created
+  // else could encounter race condition
+  // where we try to access ebb_ when interrupt fires
+  // and it hasn't been created yet
+  virt_dev->Start();
 }
 
 ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
@@ -139,7 +145,10 @@ ebbrt::VirtioNetDriver::VirtioNetDriver(pci::Device& dev)
       static_cast<uint8_t>(mac_addr_[0]), static_cast<uint8_t>(mac_addr_[1]),
       static_cast<uint8_t>(mac_addr_[2]), static_cast<uint8_t>(mac_addr_[3]),
       static_cast<uint8_t>(mac_addr_[4]), static_cast<uint8_t>(mac_addr_[5]));
+}
 
+void ebbrt::VirtioNetDriver::Start() {
+  // enables interrupts to process packets
   AddDeviceStatus(kConfigDriverOk);
 }
 
