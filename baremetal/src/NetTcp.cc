@@ -612,8 +612,8 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
 
       if (likely(state <= kClosing)) {
         // Common case: In a connected state
-        if (TcpSeqBetween(info.ackno, snd_una + 1, snd_nxt)) {
-          // ACK is for unacked data
+        if (TcpSeqBetween(info.ackno, snd_una, snd_nxt)) {
+          // SND.UNA =< SEG.ACK =< SND.NEXT
           snd_una = info.ackno;
 
           if (TcpSeqLT(snd_wl1, info.seqno) ||
