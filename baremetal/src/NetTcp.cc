@@ -616,8 +616,9 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
           // SND.UNA =< SEG.ACK =< SND.NEXT
           snd_una = info.ackno;
 
-          if (TcpSeqLT(snd_wl1, info.seqno) ||
-              (snd_wl1 == info.seqno && TcpSeqLT(snd_wl2 + 1, info.ackno))) {
+          if (TcpSeqBetween(info.ackno, snd_una + 1, snd_nxt) ||
+              TcpSeqLT(snd_wl1, info.seqno) ||
+              (snd_wl1 == info.seqno && TcpSeqLEQ(snd_wl2, info.ackno))) {
             // RFC 793 page 72:
             // "If SND.UNA < SEG.ACK =< SND.NXT, the send window should be
             // updated.  If (SND.WL1 < SEG.SEQ or (SND.WL1 = SEG.SEQ and
