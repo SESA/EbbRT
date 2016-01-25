@@ -1,8 +1,8 @@
 The Elastic Building Block Runtime (EbbRT)
 =====
 
-** This is a research project out of the Boston University Computer
-   Science Department **
+**This is a research project out of the Boston University Computer
+   Science Department**
 
 Computers used to be large, expensive and centrally owned. Operating
 systems were designed to multiplex hardware across multiple
