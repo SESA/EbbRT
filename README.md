@@ -68,8 +68,8 @@ modified GNU toolchain (gcc, binutils, libstdc++) and newlib (libc)
 that provide an x86_64-ebbrt target. Application code targeting the
 native library OS is compiled with this toolchain and the resulting
 binary is a bootable ELF linked with the library OS. We provide C and
-C++ standard library implemen- tations which make it straightforward
-to use many third party software libraries.
+C++ standard library implementations which make it straightforward to
+use many third party software libraries.
 
 ## Further Reading
 
