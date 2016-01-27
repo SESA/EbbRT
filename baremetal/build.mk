@@ -40,7 +40,8 @@ EBBRT_INCLUDES := \
 	-iquote $(EBBRT_BAREMETAL_PATH)/ext/lwip/include/ipv4/ \
 	-iquote $(CURDIR) \
 	-include $(EBBRT_CONFIG) \
-	$(EBBRT_APP_INCLUDES)
+	$(EBBRT_APP_INCLUDES) \
+	$(EBBRT_APP_CPPFLAGS)
 
 EBBRT_CPPFLAGS = -U ebbrt -MD -MT $@ -MP $(EBBRT_OPTFLAGS) -Wall -Werror \
 	-fno-stack-protector $(EBBRT_INCLUDES)
