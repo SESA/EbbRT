@@ -75,6 +75,12 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
     Future<Connection*> GetFuture();
 
    private:
+    static double occupancy_ratio_;
+    static uint8_t preallocate_chain_len_;
+    void preallocated(std::unique_ptr<ebbrt::MutIOBuf> buf);
+    void many_payloads(std::unique_ptr<ebbrt::MutIOBuf> buf);
+
+    uint32_t preallocate_;
     std::unique_ptr<ebbrt::MutIOBuf> buf_;
     ebbrt::Promise<Connection*> promise_;
   };
