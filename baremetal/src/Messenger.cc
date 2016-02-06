@@ -10,8 +10,6 @@
 #include <ebbrt/UniqueIOBuf.h>
 
 uint16_t ebbrt::Messenger::port_;
-double ebbrt::Messenger::Connection::occupancy_ratio_ = 0.2;
-uint8_t ebbrt::Messenger::Connection::preallocate_chain_len_ = 100;
 
 ebbrt::Messenger::Messenger() {}
 
@@ -87,13 +85,13 @@ void ebbrt::Messenger::Connection::Receive(std::unique_ptr<MutIOBuf> b) {
     many_payloads(std::move(b));
   } else {
     // preallocate buffer if payload occupancy ratio drops below threshold
-    if (buf_->CountChainElements() % preallocate_chain_len_ == 0) {
+    if (buf_->CountChainElements() % kPreallocateChainLen == 0) {
       size_t capacity = 0;
       for (auto& buf : *buf_) {
         capacity += buf.Capacity();
       }
       auto ratio = (double)buffer_len / (double)capacity;
-      if (ratio < occupancy_ratio_) {
+      if (ratio < kOccupancyRatio) {
         // allocate message buffer and coalesce chain
         auto newbuf = MakeUniqueIOBuf(message_len, false);
         auto dp = newbuf->GetMutDataPointer();
