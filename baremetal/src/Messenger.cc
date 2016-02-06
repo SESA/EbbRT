@@ -95,8 +95,6 @@ void ebbrt::Messenger::Connection::Receive(std::unique_ptr<MutIOBuf> b) {
       auto ratio = (double)buffer_len / (double)capacity;
       if (ratio < occupancy_ratio_) {
         // allocate message buffer and coalesce chain
-        //kprintf("Messanger: low payload occupancy ratio %f (%d/%d), " "coalescing...\n",
-        //        chain_len, message_len, ratio);
         auto newbuf = MakeUniqueIOBuf(message_len, false);
         auto dp = newbuf->GetMutDataPointer();
         for (auto& buf : *buf_) {
@@ -105,9 +103,9 @@ void ebbrt::Messenger::Connection::Receive(std::unique_ptr<MutIOBuf> b) {
           dp.Advance(len);
           preallocate_ += len;
         }
-        assert(newbuf.CountChainElements() == 1);
-        assert(newbuf.ComputeChainDataLenght() == message_len);
-        assert(preallocate == chain_len);
+        assert(newbuf->CountChainElements() == 1);
+        assert(newbuf->ComputeChainDataLength() == message_len);
+        assert(preallocate_ == buffer_len);
         buf_ = std::move(newbuf);
       }
     }
