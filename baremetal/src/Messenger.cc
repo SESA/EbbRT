@@ -19,9 +19,9 @@ ebbrt::Messenger::Connection::Connection(ebbrt::NetworkManager::TcpPcb pcb)
 void ebbrt::Messenger::Connection::preallocated(std::unique_ptr<MutIOBuf> b) {
 
   auto len = b->Length();
-  buf_->Advance(preallocate_);
-  std::memcpy(reinterpret_cast<void*>(buf_->MutData()), b->Data(), len);
-  buf_->Retreat(preallocate_);
+  auto ptr = buf_->MutData();
+  ptr += preallocate_;
+  std::memcpy(reinterpret_cast<void*>(ptr), b->Data(), len);
 
   auto dp = buf_->GetMutDataPointer();
   preallocate_ += len;
