@@ -490,33 +490,33 @@ void WhenAllHelper(std::shared_ptr<std::vector<ContainerVal>>& container,
                 std::forward<T>(futures)...);
 }
 
-// template <typename T>
-// Future<std::vector<T>> when_all(std::vector<Future<T>>& vec) {
-//   if (vec.empty()) {
-//     return MakeReadyFuture<std::vector<T>>();
-//   }
+template <typename T>
+Future<std::vector<T>> when_all(std::vector<Future<T>>& vec) {
+  if (vec.empty()) {
+    return MakeReadyFuture<std::vector<T>>();
+  }
 
-//   auto retvec = std::make_shared<std::vector<T>>(vec.size());
-//   auto count = std::make_shared<std::atomic_size_t>(vec.size());
-//   auto promise = std::make_shared<Promise<std::vector<T>>>();
-//   auto ret = promise->GetFuture();
-//   for (int i = 0; i < vec.size(); ++i) {
-//     vec[i].Then([=](Future<T> val) {
-//       try {
-//         (*retvec)[i] = std::move(val.Get());
-//       }
-//       catch (...) {
-//         promise->SetException(std::current_exception());
-//         return;
-//       }
-//       if (count->fetch_sub(1) == 1) {
-//         // we are the last to fulfill
-//         promise->SetValue(std::move(*retvec));
-//       }
-//     });
-//   }
-//   return std::move(ret);
-// }
+  auto retvec = std::make_shared<std::vector<T>>(vec.size());
+  auto count = std::make_shared<std::atomic_size_t>(vec.size());
+  auto promise = std::make_shared<Promise<std::vector<T>>>();
+  auto ret = promise->GetFuture();
+  for (uint32_t i = 0; i < vec.size(); i++) {
+    vec[i].Then([=](Future<T> val) {
+      try {
+        (*retvec)[i] = std::move(val.Get());
+      }
+      catch (...) {
+        promise->SetException(std::current_exception());
+        return;
+      }
+      if (count->fetch_sub(1) == 1) {
+        // we are the last to fulfill
+        promise->SetValue(std::move(*retvec));
+      }
+    });
+  }
+  return std::move(ret);
+}
 
 template <typename Res>
 Future<typename Flatten<Res>::type> flatten(Future<Res> fut) {
