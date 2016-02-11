@@ -20,14 +20,14 @@ using ebbrt::EventContext;
 const constexpr auto event_manager = EbbRef<EventManager>(kEventManagerId);
 
 class EventManager : public StaticSharedEbb<EventManager>, public CacheAligned {
-  public:
+ public:
   typedef ebbrt::EventContext EventContext;
-  void Spawn(ebbrt::MovableFunction<void()> func, ebbrt::Context *ctxt, 
-	     bool force_async=false);
-  void Spawn(ebbrt::MovableFunction<void()> func, bool force_async=false) {
-    Spawn(std::move(func),active_context,force_async);
+  void Spawn(ebbrt::MovableFunction<void()> func, ebbrt::Context* ctxt,
+             bool force_async = false);
+  void Spawn(ebbrt::MovableFunction<void()> func, bool force_async = false) {
+    Spawn(std::move(func), active_context, force_async);
   }
-  void SpawnRemote(ebbrt::MovableFunction<void()> func, ebbrt::Context *ctxt) {
+  void SpawnRemote(ebbrt::MovableFunction<void()> func, ebbrt::Context* ctxt) {
     Spawn(std::move(func), ctxt);
   }
   void ActivateContext(EventManager::EventContext&& context);
@@ -38,16 +38,16 @@ class EventManager : public StaticSharedEbb<EventManager>, public CacheAligned {
     explicit HandlerWrapper(const F& f) : f_(f) {}
     explicit HandlerWrapper(F&& f) : f_(std::move(f)) {}
     template <typename... Args> void operator()(Args&&... args) {
-      ebbrt::Context *ctxt=active_context;
-      ctxt->active_event_context_.coro =
-          boost::coroutines::coroutine<void()>(std::bind(
-	       [this,ctxt](boost::coroutines::coroutine<void()>::caller_type& ca,
-                     Args&&... args) {
-                ctxt->active_event_context_.caller = &ca;
-                ca();
-                f_(std::forward<Args>(args)...);
-              },
-              std::placeholders::_1, std::forward<Args>(args)...));
+      ebbrt::Context* ctxt = active_context;
+      ctxt->active_event_context_.coro = boost::coroutines::coroutine<void()>(
+          std::bind([this, ctxt](
+                        boost::coroutines::coroutine<void()>::caller_type& ca,
+                        Args&&... args) {
+                      ctxt->active_event_context_.caller = &ca;
+                      ca();
+                      f_(std::forward<Args>(args)...);
+                    },
+                    std::placeholders::_1, std::forward<Args>(args)...));
       ctxt->active_event_context_.coro();
     }
 
