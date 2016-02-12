@@ -31,13 +31,11 @@ void ebbrt::Messenger::Connection::preallocated(std::unique_ptr<MutIOBuf> b) {
   if (preallocate_ == message_len) {
     kassert(buf_->Length() == message_len);
     // pass along received message
-    std::unique_ptr<MutIOBuf> msg;
-    msg = std::move(buf_);
     preallocate_ = 0;
-    msg->AdvanceChain(sizeof(Header));
+    buf_->AdvanceChain(sizeof(Header));
     auto& ref = GetMessagableRef(header.id, header.type_code);
     ref.ReceiveMessageInternal(NetworkId(Pcb().GetRemoteAddress()),
-                               std::move(msg));
+                               std::move(buf_));
   }
   kassert(preallocate_ <= message_len);
   return;
@@ -75,12 +73,10 @@ void ebbrt::Messenger::Connection::Receive(std::unique_ptr<MutIOBuf> b) {
 
   // pass message along, or buffer partial message
   if (likely(buffer_len == message_len)) {
-    std::unique_ptr<MutIOBuf> msg;
-    msg = std::move(buf_);
-    msg->AdvanceChain(sizeof(Header));
+    buf_->AdvanceChain(sizeof(Header));
     auto& ref = GetMessagableRef(header.id, header.type_code);
     ref.ReceiveMessageInternal(NetworkId(Pcb().GetRemoteAddress()),
-                               std::move(msg));
+                               std::move(buf_));
   } else if (buffer_len > message_len) {
     many_payloads(std::move(b));
   } else {
