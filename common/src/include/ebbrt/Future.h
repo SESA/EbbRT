@@ -51,9 +51,24 @@ Async(F&& f, Args&&... args);
 namespace __future_detail {
 struct MakeReadyFutureTag {};
 
+struct ExceptionPtrWrapper {
+  std::exception_ptr eptr_;
+  ExceptionPtrWrapper() = default; 
+  ExceptionPtrWrapper(std::exception_ptr ptr) : eptr_(std::move(ptr)) {}
+  ExceptionPtrWrapper(const ExceptionPtrWrapper& other) = default;
+  ExceptionPtrWrapper& operator=(const ExceptionPtrWrapper&) = default;
+  ExceptionPtrWrapper& operator=(ExceptionPtrWrapper&&) = default;
+  ExceptionPtrWrapper(ExceptionPtrWrapper&& other) = default;
+  virtual ~ExceptionPtrWrapper() {
+    if (eptr_) {
+        std::rethrow_exception(eptr_);
+    }
+  }
+};
+
 template <typename Res> class State {
   Res val_;
-  std::exception_ptr eptr_;
+  ExceptionPtrWrapper eptr_;
   MovableFunction<void()> func_;
   std::atomic_bool ready_;
   std::mutex mutex_;
@@ -95,7 +110,7 @@ template <typename Res> class State {
 };
 
 template <> class State<void> {
-  std::exception_ptr eptr_;
+  ExceptionPtrWrapper eptr_;
   MovableFunction<void()> func_;
   std::atomic_bool ready_;
   std::mutex mutex_;
@@ -1065,8 +1080,8 @@ template <typename Res> Res& __future_detail::State<Res>::Get() {
     throw UnreadyFutureError("Get() called on unready future");
   }
 
-  if (eptr_ != nullptr) {
-    std::rethrow_exception(eptr_);
+  if (eptr_.eptr_ != nullptr) {
+    std::rethrow_exception(eptr_.eptr_);
   }
 
   return val_;
@@ -1077,8 +1092,8 @@ inline void __future_detail::State<void>::Get() {
     throw UnreadyFutureError("Get() called on unready future");
   }
 
-  if (eptr_ != nullptr) {
-    std::rethrow_exception(eptr_);
+  if (eptr_.eptr_ != nullptr) {
+    std::rethrow_exception(eptr_.eptr_);
   }
 }
 
