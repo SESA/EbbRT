@@ -24,12 +24,21 @@ void ebbrt::EventManager::Spawn(MovableFunction<void()> func,
           ca();
           // store the caller for later if we need to save the context
           ctxt->active_event_context_.caller = &ca;
-          (*f)();
+          try {
+            (*f)();
+          }
+          catch (std::exception& e) {
+          fprintf(stderr, "Unhandled exception caught: %s\n", e.what());
+            std::abort();
+          }
+          catch (...) {
+          fprintf(stderr, "Unhandled exception caught \n");
+            std::abort();
+          }
           delete f;
         });
     ctxt->active_event_context_.coro();
   });
-
 }
 
 void

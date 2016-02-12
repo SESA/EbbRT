@@ -45,7 +45,18 @@ class EventManager : public StaticSharedEbb<EventManager>, public CacheAligned {
                         Args&&... args) {
                       ctxt->active_event_context_.caller = &ca;
                       ca();
-                      f_(std::forward<Args>(args)...);
+                      try {
+                        f_(std::forward<Args>(args)...);
+                      }
+                      catch (std::exception& e) {
+                        fprintf(stderr, "Unhandled exception caught: %s\n",
+                                e.what());
+                        std::abort();
+                      }
+                      catch (...) {
+                        fprintf(stderr, "Unhandled exception caught \n");
+                        std::abort();
+                      }
                     },
                     std::placeholders::_1, std::forward<Args>(args)...));
       ctxt->active_event_context_.coro();
