@@ -32,6 +32,19 @@ class EventManager : public StaticSharedEbb<EventManager>, public CacheAligned {
   }
   void ActivateContext(EventManager::EventContext&& context);
   void SaveContext(EventManager::EventContext& context);
+  void InvokeFunction(MovableFunction<void()>* f) {
+    try {
+      (*f)();
+    }
+    catch (std::exception& e) {
+      fprintf(stderr, "Unhandled exception caught: %s\n", e.what());
+      std::abort();
+    }
+    catch (...) {
+      fprintf(stderr, "Unhandled exception caught \n");
+      std::abort();
+    }
+  }
 
   template <typename F> class HandlerWrapper {
    public:
