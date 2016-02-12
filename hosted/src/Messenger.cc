@@ -89,7 +89,9 @@ void ebbrt::Messenger::DoAccept(
 uint16_t ebbrt::Messenger::GetPort() { return port_; }
 
 ebbrt::Messenger::Session::Session(bai::tcp::socket socket)
-    : socket_(std::move(socket)) {}
+    : socket_(std::move(socket)) {
+      socket_.set_option(boost::asio::ip::tcp::no_delay(true));
+}
 
 void ebbrt::Messenger::Session::Start() { ReadHeader(); }
 

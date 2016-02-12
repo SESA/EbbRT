@@ -16,97 +16,95 @@ ebbrt::Messenger::Messenger() {}
 ebbrt::Messenger::Connection::Connection(ebbrt::NetworkManager::TcpPcb pcb)
     : TcpHandler(std::move(pcb)) {}
 
+void ebbrt::Messenger::Connection::preallocated(std::unique_ptr<MutIOBuf> b) {
+
+  auto len = b->Length();
+  auto ptr = buf_->MutData();
+  ptr += preallocate_;
+  std::memcpy(reinterpret_cast<void*>(ptr), b->Data(), len);
+
+  auto dp = buf_->GetMutDataPointer();
+  preallocate_ += len;
+  auto& header = dp.Get<Header>();
+  auto message_len = sizeof(Header) + header.length;
+
+  if (preallocate_ == message_len) {
+    kassert(buf_->Length() == message_len);
+    // pass along received message
+    preallocate_ = 0;
+    buf_->AdvanceChain(sizeof(Header));
+    auto& ref = GetMessagableRef(header.id, header.type_code);
+    ref.ReceiveMessageInternal(NetworkId(Pcb().GetRemoteAddress()),
+                               std::move(buf_));
+  }
+  kassert(preallocate_ <= message_len);
+  return;
+}
+
+void ebbrt::Messenger::Connection::many_payloads(std::unique_ptr<MutIOBuf> b) {
+  // FIXME: Support for multiple messages in a payload
+  EBBRT_UNIMPLEMENTED();
+  return;
+}
+
 void ebbrt::Messenger::Connection::Receive(std::unique_ptr<MutIOBuf> b) {
   kassert(b->Length() != 0);
-  // If we already have queued data append this new data to the end
+  kassert(b->IsChained() == false);
+
+  // processes preallocated message buffer
+  if (preallocate_) {
+    preallocated(std::move(b));
+    return;
+  }
+  // process buffer chain
   if (buf_) {
     buf_->PrependChain(std::move(b));
   } else {
     buf_ = std::move(b);
   }
+  // process message
+  auto buffer_len = buf_->ComputeChainDataLength();
+  if (buffer_len < sizeof(Header)) {
+    return;
+  }
+  auto dp = buf_->GetDataPointer();
+  auto& header = dp.Get<Header>();
+  auto message_len = sizeof(Header) + header.length;
 
-  // process buffer chain
-  while (buf_) {
-    auto chain_len = buf_->ComputeChainDataLength();
-    // Do we have enough data for a header?
-    if (chain_len < sizeof(Header))
-      return;
-
-    auto dp = buf_->GetDataPointer();
-    auto& header = dp.Get<Header>();
-    auto message_len = sizeof(Header) + header.length;
-
-    std::unique_ptr<MutIOBuf> msg;
-    if (likely(chain_len == message_len)) {
-      // We have a full message
-      msg = std::move(buf_);
-    } else if (chain_len > message_len) {
-      // Handle the case when we've received multiple message in our buffer
-      // chain
-      //
-      // After this loop msg should hold exactly one message and everything
-      // else will be in buf_
-      bool first = true;
-      msg = std::move(buf_);
-      for (auto& buf : *msg) {
-        // for each buffer
-        auto buf_len = buf.Length();
-        if (buf_len == message_len) {
-          // If the first buffer contains the full message
-          // Move the remainder of chain into buf_, while our message remains
-          // in msg_
-          buf_ = std::unique_ptr<MutIOBuf>(
-              static_cast<MutIOBuf*>(msg->UnlinkEnd(*buf.Next()).release()));
-          break;
-        } else if (buf_len > message_len) {
-          // Here we need to split the buffer
-          std::unique_ptr<MutIOBuf> end;
-          if (first) {
-            end = std::move(msg);
-          } else {
-            auto tmp_end =
-                static_cast<MutIOBuf*>(msg->UnlinkEnd(buf).release());
-            end = std::unique_ptr<MutIOBuf>(tmp_end);
-          }
-
-          auto remainder = end->Pop();
-
-          // make a reference counted IOBuf to the end
-          auto rc_end = IOBuf::Create<MutSharedIOBufRef>(
-              SharedIOBufRef::CloneView, std::move(end));
-          // create a copy (increments ref count)
-          buf_ = IOBuf::Create<MutSharedIOBufRef>(SharedIOBufRef::CloneView,
-                                                  *rc_end);
-
-          // trim and append to msg
-          rc_end->TrimEnd(buf_len - message_len);
-          if (first) {
-            msg = std::move(rc_end);
-          } else {
-            msg->PrependChain(std::move(rc_end));
-          }
-
-          // advance and attach remainder to
-          buf_->Advance(message_len);
-          if (remainder)
-            buf_->PrependChain(std::move(remainder));
-          break;
-        }
-        message_len -= buf_len;
-        first = false;
-      }
-    } else {
-      // since message_len > chain_len we wait for more data
-      return;
-    }
-
-    // msg now holds exactly one message
-    // trim the header
-    msg->AdvanceChain(sizeof(Header));
+  // pass message along, or buffer partial message
+  if (likely(buffer_len == message_len)) {
+    buf_->AdvanceChain(sizeof(Header));
     auto& ref = GetMessagableRef(header.id, header.type_code);
     ref.ReceiveMessageInternal(NetworkId(Pcb().GetRemoteAddress()),
-                               std::move(msg));
+                               std::move(buf_));
+  } else if (buffer_len > message_len) {
+    many_payloads(std::move(b));
+  } else {
+    // preallocate buffer if payload occupancy ratio drops below threshold
+    if (buf_->CountChainElements() % kPreallocateChainLen == 0) {
+      size_t capacity = 0;
+      for (auto& buf : *buf_) {
+        capacity += buf.Capacity();
+      }
+      auto ratio = (double)buffer_len / (double)capacity;
+      if (ratio < kOccupancyRatio) {
+        // allocate message buffer and coalesce chain
+        auto newbuf = MakeUniqueIOBuf(message_len, false);
+        auto dp = newbuf->GetMutDataPointer();
+        for (auto& buf : *buf_) {
+          auto len = buf.Length();
+          std::memcpy(reinterpret_cast<void*>(dp.Data()), buf.Data(), len);
+          dp.Advance(len);
+          preallocate_ += len;
+        }
+        assert(newbuf->CountChainElements() == 1);
+        assert(newbuf->ComputeChainDataLength() == message_len);
+        assert(preallocate_ == buffer_len);
+        buf_ = std::move(newbuf);
+      }
+    }
   }
+  return;
 }
 
 void ebbrt::Messenger::Connection::Connected() { promise_.SetValue(this); }
