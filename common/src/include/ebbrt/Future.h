@@ -500,7 +500,7 @@ Future<std::vector<T>> when_all(std::vector<Future<T>>& vec) {
   auto count = std::make_shared<std::atomic_size_t>(vec.size());
   auto promise = std::make_shared<Promise<std::vector<T>>>();
   auto ret = promise->GetFuture();
-  for (uint32_t i = 0; i < vec.size(); i++) {
+  for (auto i = 0u; i < vec.size(); i++) {
     vec[i].Then([=](Future<T> val) {
       try {
         (*retvec)[i] = std::move(val.Get());
