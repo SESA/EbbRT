@@ -26,14 +26,14 @@ void ebbrt::Messenger::Connection::check_preallocate() {
   auto dp = buf_->GetDataPointer();
   auto& header = dp.Get<Header>();
   auto message_len = sizeof(Header) + header.length;
-  auto ratio = (double)buffer_len / (double)capacity;
+  auto ratio = static_cast<double>(buffer_len) / static_cast<double>(capacity);
   if (ratio < kOccupancyRatio) {
     // allocate message buffer and coalesce chain
     auto newbuf = MakeUniqueIOBuf(message_len, false);
     auto dp = newbuf->GetMutDataPointer();
     for (auto& buf : *buf_) {
       auto len = buf.Length();
-      std::memcpy(reinterpret_cast<void*>(dp.Data()), buf.Data(), len);
+      std::memcpy(static_cast<void*>(dp.Data()), buf.Data(), len);
       dp.Advance(len);
       preallocate_ += len;
     }
