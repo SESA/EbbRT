@@ -183,12 +183,12 @@ class GeneralPurposeAllocator : public CacheAligned {
   };
 
   template <size_t index, size_t... tail> struct Indexer {
-    size_t operator()(size_t size) { return -1; }
+    ssize_t operator()(size_t size) { return -1; }
   };
 
   template <size_t index, size_t head, size_t... tail>
   struct Indexer<index, head, tail...> {
-    size_t operator()(size_t size) {
+    ssize_t operator()(size_t size) {
       if (size <= head) {
         return index;
       } else {
