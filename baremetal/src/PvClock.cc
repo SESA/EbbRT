@@ -13,9 +13,9 @@
 
 namespace {
 struct pvclock_wall_clock {
-  std::atomic<volatile uint32_t> version;
-  std::atomic<volatile uint32_t> sec;
-  std::atomic<volatile uint32_t> nsec;
+  volatile std::atomic<uint32_t> version;
+  volatile std::atomic<uint32_t> sec;
+  volatile std::atomic<uint32_t> nsec;
 };
 
 static_assert(sizeof(pvclock_wall_clock) == 12,
@@ -24,14 +24,14 @@ static_assert(sizeof(pvclock_wall_clock) == 12,
 pvclock_wall_clock wall_clock;
 
 struct pvclock_vcpu_time_info {
-  std::atomic<volatile uint32_t> version;
-  std::atomic<volatile uint32_t> pad0;
-  std::atomic<volatile uint64_t> tsc_timestamp;
-  std::atomic<volatile uint64_t> system_time;
-  std::atomic<volatile uint32_t> tsc_to_system_mul;
-  std::atomic<volatile int8_t> tsc_shift;
-  std::atomic<volatile uint8_t> flags;
-  std::atomic<volatile uint8_t> pad[2];
+  volatile std::atomic<uint32_t> version;
+  volatile std::atomic<uint32_t> pad0;
+  volatile std::atomic<uint64_t> tsc_timestamp;
+  volatile std::atomic<uint64_t> system_time;
+  volatile std::atomic<uint32_t> tsc_to_system_mul;
+  volatile std::atomic<int8_t> tsc_shift;
+  volatile std::atomic<uint8_t> flags;
+  volatile std::atomic<uint8_t> pad[2];
 };
 
 static_assert(sizeof(pvclock_vcpu_time_info) == 32,

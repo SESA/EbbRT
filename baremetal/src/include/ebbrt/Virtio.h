@@ -78,13 +78,13 @@ template <typename VirtType> class VirtioDriver {
           static_cast<char*>(addr_) + qsize_ * sizeof(Desc)));
       auto avail_ring_end = static_cast<void*>(&avail_->ring[qsize_]);
       used_event_ =
-          reinterpret_cast<std::atomic<volatile uint16_t>*>(avail_ring_end);
+          reinterpret_cast<volatile std::atomic<uint16_t>*>(avail_ring_end);
       auto avail_end = static_cast<char*>(avail_ring_end) + sizeof(uint16_t);
       auto next_addr = align::Up(static_cast<void*>(avail_end), 4096);
       used_ = static_cast<Used*>(next_addr);
       auto used_ring_end = static_cast<void*>(&used_->ring[qsize_]);
       avail_event_ =
-          reinterpret_cast<std::atomic<volatile uint16_t>*>(used_ring_end);
+          reinterpret_cast<volatile std::atomic<uint16_t>*>(used_ring_end);
 
       for (unsigned i = 0; i < qsize_; ++i)
         desc_[i].next = i + 1;
@@ -335,7 +335,7 @@ template <typename VirtType> class VirtioDriver {
       static const constexpr uint16_t kNoInterrupt = 1;
 
       std::atomic<uint16_t> flags;
-      std::atomic<volatile uint16_t> idx;
+      volatile std::atomic<uint16_t> idx;
       uint16_t ring[];
     };
 
@@ -348,7 +348,7 @@ template <typename VirtType> class VirtioDriver {
       static const constexpr uint16_t kNoNotify = 1;
 
       std::atomic<uint16_t> flags;
-      std::atomic<volatile uint16_t> idx;
+      volatile std::atomic<uint16_t> idx;
       UsedElem ring[];
     };
 
@@ -358,8 +358,8 @@ template <typename VirtType> class VirtioDriver {
     Desc* desc_;
     Avail* avail_;
     Used* used_;
-    std::atomic<volatile uint16_t>* avail_event_;
-    std::atomic<volatile uint16_t>* used_event_;
+    volatile std::atomic<uint16_t>* avail_event_;
+    volatile std::atomic<uint16_t>* used_event_;
     uint16_t qsize_;
     uint16_t last_used_;
     uint16_t avail_idx_;
