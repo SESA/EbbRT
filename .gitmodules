@@ -10,12 +10,12 @@
 [submodule "baremetal/ext/capnp"]
 	path = baremetal/ext/capnp
 	url = https://github.com/SESA/EbbRT-capnp.git
-[submodule "baremetal/ext/toolchain"]
-	path = baremetal/ext/toolchain
-	url = https://github.com/SESA/EbbRT-Toolchain.git
 [submodule "baremetal/ext/tbb"]
 	path = baremetal/ext/tbb
 	url = https://github.com/SESA/EbbRT-tbb
 [submodule "baremetal/ext/fdt"]
 	path = baremetal/ext/fdt
 	url = https://github.com/SESA/EbbRT-fdt.git
+[submodule "baremetal/ext/toolchain"]
+	path = baremetal/ext/EbbRT-toolchain
+	url = https://github.com/SESA/EbbRT-toolchain.git
