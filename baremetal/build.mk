@@ -24,8 +24,8 @@ EBBRT_BAREMETAL_PATH := $(EBBRT_PATH)/baremetal/
 EBBRT_COMMON_PATH := $(EBBRT_PATH)/common/
 VPATH := $(EBBRT_BAREMETAL_PATH) $(EBBRT_BAREMETAL_PATH)/src $(EBBRT_COMMON_PATH) $(EBBRT_COMMON_PATH)/src $(EBBRT_APP_VPATH)
 
-EBBRT_CXX := $(EBBRT_BAREMETAL_PATH)/ext/toolchain/bin/x86_64-pc-ebbrt-g++
-EBBRT_CC := $(EBBRT_BAREMETAL_PATH)/ext/toolchain/bin/x86_64-pc-ebbrt-gcc
+EBBRT_CXX := $(EBBRT_BAREMETAL_PATH)/ext/EbbRT-toolchain/install/bin/x86_64-pc-ebbrt-g++
+EBBRT_CC := $(EBBRT_BAREMETAL_PATH)/ext/EbbRT-toolchain/install/bin/x86_64-pc-ebbrt-gcc
 EBBRT_CAPNP := capnp
 
 EBBRT_INCLUDES := \
@@ -45,7 +45,7 @@ EBBRT_INCLUDES := \
 
 EBBRT_CPPFLAGS = -U ebbrt -MD -MT $@ -MP $(EBBRT_OPTFLAGS) -Wall -Werror \
 	-fno-stack-protector $(EBBRT_INCLUDES)
-EBBRT_CXXFLAGS = -std=gnu++11 -ftemplate-backtrace-limit=0
+EBBRT_CXXFLAGS = -std=gnu++14 -ftemplate-backtrace-limit=0
 EBBRT_CFLAGS = -std=gnu99
 EBBRT_ASFLAGS = -MD -MT $@ -MP $(EBBRT_OPTFLAGS) -DASSEMBLY
 
