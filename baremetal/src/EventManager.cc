@@ -280,7 +280,7 @@ void ebbrt::EventManager::ActivateContext(EventContext&& context) {
     // if we are activting on the same core as the context was
     // saved on then we need not syncronize and know that we
     // can Spawn Locally
-    SpawnLocal(MoveBind([this](EventContext c) {
+    SpawnLocal([this, c = std::move(context)]() mutable {
                           // ActivatePrivate(std::move(c))
                           FreeStack(active_event_context_.stack);
                           // We need to switch the event stack because we only
@@ -289,22 +289,21 @@ void ebbrt::EventManager::ActivateContext(EventContext&& context) {
                           Cpu::GetMine().SetEventStack(stack_top);
                           active_event_context_ = std::move(c);
                           ActivateContextAndReturn(active_event_context_);
-                        },
-                        std::move(context)),
-               /* force_async = */ true);
+      },
+      /* force_async = */ true);
   } else {
-    auto rep_iter = reps_.find(context.cpu);
+    auto cpu = context.cpu;
+    auto rep_iter = reps_.find(cpu);
     auto rep = rep_iter->second;
-    SpawnRemote(MoveBind([rep](EventContext c) {
+    SpawnRemote([rep, c = std::move(context)]() mutable {
                            // event_manager->ActivatePrivate(std::move(c))
                            rep->FreeStack(rep->active_event_context_.stack);
                            auto stack_top = (c.stack + kStackPages).ToAddr();
                            Cpu::GetMine().SetEventStack(stack_top);
                            rep->active_event_context_ = std::move(c);
                            ActivateContextAndReturn(rep->active_event_context_);
-                         },
-                         std::move(context)),
-                context.cpu);  // SpawnRemote Argument 2
+      },
+      cpu);  // SpawnRemote Argument 2
   }
 }
 

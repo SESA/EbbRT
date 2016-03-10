@@ -233,11 +233,15 @@ ebbrt::NetworkManager::Interface::ReceiveTcp(const Ipv4Header& ih,
     } else {
       // XXX: Really nervous about passing these references, but I think its all
       // safe, for now
-      auto f = MoveBind([&ih, &tcp_header, entry](std::unique_ptr<MutIOBuf> buf,
-                                                  TcpInfo info) {
-                          entry->Input(ih, tcp_header, info, std::move(buf));
-                        },
-                        std::move(buf), std::move(info));
+      auto f = [
+        &ih,
+        &tcp_header,
+        entry,
+        buf = std::move(buf),
+        info = std::move(info)
+      ]() mutable {
+        entry->Input(ih, tcp_header, info, std::move(buf));
+      };
       event_manager->SpawnRemote(std::move(f), entry->cpu);
     }
   } else {

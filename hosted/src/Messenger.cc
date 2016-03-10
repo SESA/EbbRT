@@ -56,12 +56,9 @@ ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to, EbbId id,
   h.type_code = type_code;
   h.id = id;
   buf->PrependChain(std::move(data));
-  return connection_map_[ip].Then(
-      MoveBind([](std::unique_ptr<IOBuf> data,
-                  SharedFuture<std::weak_ptr<Session>> f) {
-                 return f.Get().lock()->Send(std::move(data));
-               },
-               std::move(buf)));
+  return connection_map_[ip].Then([data = std::move(buf)](
+      SharedFuture<std::weak_ptr<Session>>
+          f) mutable { return f.Get().lock()->Send(std::move(data)); });
 }
 
 void ebbrt::Messenger::DoAccept(
@@ -90,7 +87,7 @@ uint16_t ebbrt::Messenger::GetPort() { return port_; }
 
 ebbrt::Messenger::Session::Session(bai::tcp::socket socket)
     : socket_(std::move(socket)) {
-      socket_.set_option(boost::asio::ip::tcp::no_delay(true));
+  socket_.set_option(boost::asio::ip::tcp::no_delay(true));
 }
 
 void ebbrt::Messenger::Session::Start() { ReadHeader(); }
