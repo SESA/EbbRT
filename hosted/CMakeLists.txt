@@ -4,7 +4,7 @@ project(EbbRT)
 SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 
 list(APPEND CMAKE_CXX_FLAGS
-     "-std=c++0x -Wall -Werror ${CMAKE_CXX_FLAGS}")
+     "-std=c++14 -Wall -Werror ${CMAKE_CXX_FLAGS}")
 
 find_package(Boost 1.53.0 REQUIRED COMPONENTS filesystem system)
 include_directories(${Boost_INCLUDE_DIRS})

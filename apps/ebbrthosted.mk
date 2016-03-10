@@ -21,7 +21,7 @@ INCLUDES := \
 	-I $(ebbrt_commoninc) \
 	-iquote $(CURDIR)
 
-CXXFLAGS := -std=c++11 $(INCLUDES) $(OPTFLAGS)
+CXXFLAGS := -std=c++14 $(INCLUDES) $(OPTFLAGS)
 
 ebbrt_libdir := lib
 ebbrt_lib := ${ebbrt_libdir}/libEbbRT.a
