@@ -196,7 +196,8 @@ SaveContextAndSwitch(uintptr_t first_param, uintptr_t stack,
 
 void ebbrt::EventManager::CallSync(uintptr_t mgr) {
   auto pmgr = reinterpret_cast<EventManager*>(mgr);
-  pmgr->InvokeFunction(pmgr->sync_spawn_fn_);
+  auto fn = std::move(pmgr->sync_spawn_fn_);
+  pmgr->InvokeFunction(fn);
   // In the case that the event blocked, it will only be reactivated on a
   // "fresh" event. Therefore if the sync_contexts_ stack is empty, we just go
   // back to the event loop
