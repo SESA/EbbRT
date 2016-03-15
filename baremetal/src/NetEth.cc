@@ -36,17 +36,15 @@ void ebbrt::NetworkManager::Interface::EthArpSend(uint16_t proto,
     }
 
     // lambda to send the packet given the destination MAC address
-    auto send_func =
-        MoveBind([this, proto, pinfo](std::unique_ptr<MutIOBuf> buf,
-                                      EthernetAddress addr) {
-                   auto dp = buf->GetMutDataPointer();
-                   auto& eth_header = dp.Get<EthernetHeader>();
-                   eth_header.dst = addr;
-                   eth_header.src = MacAddress();
-                   eth_header.type = htons(proto);
-                   Send(std::move(buf), pinfo);
-                 },
-                 std::move(buf));
+    auto send_func = [ this, proto, pinfo, buf = std::move(buf) ](
+        EthernetAddress addr) mutable {
+      auto dp = buf->GetMutDataPointer();
+      auto& eth_header = dp.Get<EthernetHeader>();
+      eth_header.dst = addr;
+      eth_header.src = MacAddress();
+      eth_header.type = htons(proto);
+      Send(std::move(buf), pinfo);
+    };
 
     // look up local_dest in arp cache
     auto entry = network_manager->arp_cache_.find(local_dest);

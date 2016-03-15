@@ -42,12 +42,11 @@ typename std::enable_if<
     Future<typename Flatten<typename std::result_of<F(Args...)>::type>::type>>::
     type
     CallRcuHelper(F&& f, Args&&... args) {
-  typedef decltype(std::bind(std::forward<F>(f), std::forward<Args>(args)...))
-      bound_fn_type;
   auto p = Promise<void>();
   auto ret = p.GetFuture();
   auto bound_f = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
-  event_manager->DoRcu(MoveBind([](Promise<void> prom, bound_fn_type fn) {
+  event_manager->DoRcu([prom = std::move(p),
+                        fn = std::move(bound_f)]() mutable {
                                   try {
                                     fn();
                                     prom.SetValue();
@@ -55,8 +54,7 @@ typename std::enable_if<
                                   catch (...) {
                                     prom.SetException(std::current_exception());
                                   }
-                                },
-                                std::move(p), std::move(bound_f)));
+                                });
   return flatten(std::move(ret));
 }
 

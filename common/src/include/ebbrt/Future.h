@@ -11,6 +11,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <ebbrt/EventManager.h>
@@ -53,15 +54,16 @@ struct MakeReadyFutureTag {};
 
 struct ExceptionPtrWrapper {
   std::exception_ptr eptr_;
-  ExceptionPtrWrapper() = default; 
-  ExceptionPtrWrapper(std::exception_ptr ptr) : eptr_(std::move(ptr)) {}
+  ExceptionPtrWrapper() = default;
+  explicit ExceptionPtrWrapper(std::exception_ptr ptr)
+      : eptr_(std::move(ptr)) {}
   ExceptionPtrWrapper(const ExceptionPtrWrapper& other) = default;
   ExceptionPtrWrapper& operator=(const ExceptionPtrWrapper&) = default;
   ExceptionPtrWrapper& operator=(ExceptionPtrWrapper&&) = default;
   ExceptionPtrWrapper(ExceptionPtrWrapper&& other) = default;
   virtual ~ExceptionPtrWrapper() {
     if (eptr_) {
-        std::rethrow_exception(eptr_);
+      std::rethrow_exception(eptr_);
     }
   }
 };
@@ -527,59 +529,51 @@ template <typename Res>
 Future<typename Flatten<Res>::type> flatten(Future<Future<Res>> fut) {
   auto p = Promise<Res>();
   auto ret = p.GetFuture();
-  fut.Then(MoveBind([](Promise<Res> prom, Future<Future<Res>> fut) {
-                      Future<Res> inner;
-                      try {
-                        inner = std::move(fut.Get());
-                      }
-                      catch (...) {
-                        prom.SetException(std::current_exception());
-                        return;
-                      }
+  fut.Then([prom = std::move(p)](Future<Future<Res>> fut) mutable {
+    Future<Res> inner;
+    try {
+      inner = std::move(fut.Get());
+    }
+    catch (...) {
+      prom.SetException(std::current_exception());
+      return;
+    }
 
-                      inner.Then(
-                          MoveBind([](Promise<Res> prom, Future<Res> fut) {
-                                     try {
-                                       prom.SetValue(std::move(fut.Get()));
-                                     }
-                                     catch (...) {
-                                       prom.SetException(
-                                           std::current_exception());
-                                     }
-                                   },
-                                   std::move(prom)));
-                    },
-                    std::move(p)));
+    inner.Then([prom = std::move(prom)](Future<Res> fut) mutable {
+      try {
+        prom.SetValue(std::move(fut.Get()));
+      }
+      catch (...) {
+        prom.SetException(std::current_exception());
+      }
+    });
+  });
   return flatten(std::move(ret));
 }
 
 inline Future<void> flatten(Future<Future<void>> fut) {
   auto p = Promise<void>();
   auto ret = p.GetFuture();
-  fut.Then(MoveBind([](Promise<void> prom, Future<Future<void>> fut) {
-                      Future<void> inner;
-                      try {
-                        inner = std::move(fut.Get());
-                      }
-                      catch (...) {
-                        prom.SetException(std::current_exception());
-                        return;
-                      }
+  fut.Then([prom = std::move(p)](Future<Future<void>> fut) mutable {
+    Future<void> inner;
+    try {
+      inner = std::move(fut.Get());
+    }
+    catch (...) {
+      prom.SetException(std::current_exception());
+      return;
+    }
 
-                      inner.Then(
-                          MoveBind([](Promise<void> prom, Future<void> fut) {
-                                     try {
-                                       fut.Get();
-                                       prom.SetValue();
-                                     }
-                                     catch (...) {
-                                       prom.SetException(
-                                           std::current_exception());
-                                     }
-                                   },
-                                   std::move(prom)));
-                    },
-                    std::move(p)));
+    inner.Then([prom = std::move(prom)](Future<void> fut) mutable {
+      try {
+        fut.Get();
+        prom.SetValue();
+      }
+      catch (...) {
+        prom.SetException(std::current_exception());
+      }
+    });
+  });
   return ret;
 }
 
@@ -591,21 +585,18 @@ typename std::enable_if<
     type
     AsyncHelper(F&& f, Args&&... args) {
   typedef typename std::result_of<F(Args...)>::type result_type;
-  typedef decltype(std::bind(std::forward<F>(f), std::forward<Args>(args)...))
-      bound_fn_type;
   auto p = Promise<result_type>();
   auto ret = p.GetFuture();
   auto bound_f = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
   ebbrt::event_manager->Spawn(
-      MoveBind([](Promise<result_type> prom, bound_fn_type fn) {
+    [prom = std::move(p), fn = std::move(bound_f)]() mutable {
                  try {
                    prom.SetValue(fn());
                  }
                  catch (...) {
                    prom.SetException(std::current_exception());
                  }
-               },
-               std::move(p), std::move(bound_f)));
+    });
   return flatten(std::move(ret));
 }
 
@@ -616,22 +607,21 @@ typename std::enable_if<
     Future<typename Flatten<typename std::result_of<F(Args...)>::type>::type>>::
     type
     AsyncHelper(F&& f, Args&&... args) {
-  typedef decltype(std::bind(std::forward<F>(f), std::forward<Args>(args)...))
-      bound_fn_type;
   auto p = Promise<void>();
   auto ret = p.GetFuture();
   auto bound_f = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
-  ebbrt::event_manager->Spawn(
-      MoveBind([](Promise<void> prom, bound_fn_type fn) {
-                 try {
-                   fn();
-                   prom.SetValue();
-                 }
-                 catch (...) {
-                   prom.SetException(std::current_exception());
-                 }
-               },
-               std::move(p), std::move(bound_f)));
+  ebbrt::event_manager->Spawn([
+    prom = std::move(p),
+    fn = std::move(bound_f)
+  ]() mutable {
+    try {
+      fn();
+      prom.SetValue();
+    }
+    catch (...) {
+      prom.SetException(std::current_exception());
+    }
+  });
   return flatten(std::move(ret));
 }
 
@@ -874,15 +864,18 @@ __future_detail::State<Res>::ThenHelp(Launch policy, F&& func, R fut) {
       auto ret = prom.GetFuture();
       if (func_)
         throw std::runtime_error("Multiple thens on a future!");
-      func_ = MoveBind([](Promise<result_type> prom, R fut, F fn) {
-                         try {
-                           prom.SetValue(fn(std::move(fut)));
-                         }
-                         catch (...) {
-                           prom.SetException(std::current_exception());
-                         }
-                       },
-                       std::move(prom), std::move(fut), std::move(func));
+      func_ = [
+        prom = std::move(prom),
+        fut = std::move(fut),
+        fn = std::forward<F>(func)
+      ]() mutable {
+        try {
+          prom.SetValue(fn(std::move(fut)));
+        }
+        catch (...) {
+          prom.SetException(std::current_exception());
+        }
+      };
       return flatten(std::move(ret));
     }
   }
@@ -895,8 +888,10 @@ __future_detail::State<Res>::ThenHelp(Launch policy, F&& func, R fut) {
       return flatten(MakeFailedFuture<result_type>(std::current_exception()));
     }
   } else {
-    return Async(MoveBind([](F fn, R fut) { return fn(std::move(fut)); },
-                          std::move(func), std::move(fut)));
+    return Async([
+      fn = std::forward<F>(func),
+      fut = std::move(fut)
+    ]() mutable { return fn(std::move(fut)); });
   }
 }
 
@@ -916,15 +911,18 @@ __future_detail::State<void>::ThenHelp(Launch policy, F&& func, R fut) {
       auto ret = prom.GetFuture();
       if (func_)
         throw std::runtime_error("Multiple thens on a future!");
-      func_ = MoveBind([](Promise<result_type> prom, R fut, F fn) {
-                         try {
-                           prom.SetValue(fn(std::move(fut)));
-                         }
-                         catch (...) {
-                           prom.SetException(std::current_exception());
-                         }
-                       },
-                       std::move(prom), std::move(fut), std::move(func));
+      func_ = [
+        prom = std::move(prom),
+        fut = std::move(fut),
+        fn = std::forward<F>(func)
+      ]() mutable {
+        try {
+          prom.SetValue(fn(std::move(fut)));
+        }
+        catch (...) {
+          prom.SetException(std::current_exception());
+        }
+      };
       return flatten(std::move(ret));
     }
   }
@@ -937,8 +935,10 @@ __future_detail::State<void>::ThenHelp(Launch policy, F&& func, R fut) {
       return flatten(MakeFailedFuture<result_type>(std::current_exception()));
     }
   } else {
-    return Async(MoveBind([](F fn, R fut) { return fn(std::move(fut)); },
-                          std::move(func), std::move(fut)));
+    return Async([
+      fn = std::forward<F>(func),
+      fut = std::move(fut)
+    ]() mutable { return fn(std::move(fut)); });
   }
 }
 
@@ -959,16 +959,19 @@ __future_detail::State<Res>::ThenHelp(Launch policy, F&& func, R fut) {
       auto ret = prom.GetFuture();
       if (func_)
         throw std::runtime_error("Multiple thens on a future!");
-      func_ = MoveBind([](Promise<result_type> prom, R fut, F fn) {
-                         try {
-                           fn(std::move(fut));
-                           prom.SetValue();
-                         }
-                         catch (...) {
-                           prom.SetException(std::current_exception());
-                         }
-                       },
-                       std::move(prom), std::move(fut), std::move(func));
+      func_ = [
+        prom = std::move(prom),
+        fut = std::move(fut),
+        fn = std::forward<F>(func)
+      ]() mutable {
+        try {
+          fn(std::move(fut));
+          prom.SetValue();
+        }
+        catch (...) {
+          prom.SetException(std::current_exception());
+        }
+      };
       return flatten(std::move(ret));
     }
   }
@@ -982,8 +985,10 @@ __future_detail::State<Res>::ThenHelp(Launch policy, F&& func, R fut) {
       return flatten(MakeFailedFuture<result_type>(std::current_exception()));
     }
   } else {
-    return Async(MoveBind([](F fn, R fut) { return fn(std::move(fut)); },
-                          std::move(func), std::move(fut)));
+    return Async([
+      fn = std::forward<F>(func),
+      fut = std::move(fut)
+    ]() mutable { return fn(std::move(fut)); });
   }
 }
 
@@ -1003,16 +1008,19 @@ __future_detail::State<void>::ThenHelp(Launch policy, F&& func, R fut) {
       auto ret = prom.GetFuture();
       if (func_)
         throw std::runtime_error("Multiple thens on a future!");
-      func_ = MoveBind([](Promise<result_type> prom, R fut, F fn) {
-                         try {
-                           fn(std::move(fut));
-                           prom.SetValue();
-                         }
-                         catch (...) {
-                           prom.SetException(std::current_exception());
-                         }
-                       },
-                       std::move(prom), std::move(fut), std::move(func));
+      func_ = [
+        prom = std::move(prom),
+        fut = std::move(fut),
+        fn = std::forward<F>(func)
+      ]() mutable {
+        try {
+          fn(std::move(fut));
+          prom.SetValue();
+        }
+        catch (...) {
+          prom.SetException(std::current_exception());
+        }
+      };
       return flatten(std::move(ret));
     }
   }
@@ -1026,8 +1034,10 @@ __future_detail::State<void>::ThenHelp(Launch policy, F&& func, R fut) {
       return flatten(MakeFailedFuture<result_type>(std::current_exception()));
     }
   } else {
-    return Async(MoveBind([](F fn, R fut) { return fn(std::move(fut)); },
-                          std::move(func), std::move(fut)));
+    return Async([
+      fn = std::forward<F>(func),
+      fut = std::move(fut)
+    ]() mutable { return fn(std::move(fut)); });
   }
 }
 
@@ -1058,7 +1068,7 @@ inline void __future_detail::State<void>::SetValue() {
 template <typename Res>
 void __future_detail::State<Res>::SetException(std::exception_ptr eptr) {
   std::lock_guard<std::mutex> lock{mutex_};
-  eptr_ = std::move(eptr);
+  eptr_ = ExceptionPtrWrapper(std::move(eptr));
   ready_ = true;
   if (func_) {
     ebbrt::event_manager->Spawn(std::move(func_));
@@ -1068,7 +1078,7 @@ void __future_detail::State<Res>::SetException(std::exception_ptr eptr) {
 inline void
 __future_detail::State<void>::SetException(std::exception_ptr eptr) {
   std::lock_guard<std::mutex> lock{mutex_};
-  eptr_ = std::move(eptr);
+  eptr_ = ExceptionPtrWrapper(std::move(eptr));
   ready_ = true;
   if (func_) {
     ebbrt::event_manager->Spawn(std::move(func_));

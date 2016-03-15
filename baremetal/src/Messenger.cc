@@ -66,7 +66,7 @@ void ebbrt::Messenger::Connection::preallocated(std::unique_ptr<MutIOBuf> b) {
 void
 ebbrt::Messenger::Connection::process_message(std::unique_ptr<MutIOBuf> b) {
   auto dp = b->GetDataPointer();
-  // TODO: get rid of datapointer
+  // TODO(dschatz): get rid of datapointer
   auto& header = dp.Get<Header>();
   b->AdvanceChain(sizeof(Header));
   auto& ref = GetMessagableRef(header.id, header.type_code);
@@ -237,10 +237,9 @@ ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to, EbbId id,
   // Cast to non const is ok because we then take the whole chain as const
   buf->PrependChain(std::move(data));
 
-  return connection_map_[to.ip].Then(
-      MoveBind([](std::unique_ptr<IOBuf>&& data, SharedFuture<Connection*> f) {
-                 f.Get()->Send(std::move(data));
-                 f.Get()->Pcb().Output();
-               },
-               std::move(buf)));
+  return connection_map_[to.ip]
+      .Then([data = std::move(buf)](SharedFuture<Connection*> f) mutable {
+        f.Get()->Send(std::move(data));
+        f.Get()->Pcb().Output();
+      });
 }

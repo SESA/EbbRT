@@ -8,64 +8,6 @@
 #include <memory>
 
 namespace ebbrt {
-template <int...> struct seq {};
-
-template <int N, int... S> struct gens : gens<N - 1, N - 1, S...> {};
-
-template <int... S> struct gens<0, S...> {
-  typedef seq<S...> type;
-};
-
-template <typename F, typename... BoundArgs> class MoveLambda {
- public:
-  MoveLambda() = delete;
-  MoveLambda(const F& f, BoundArgs&&... args)
-      : args_{std::forward<BoundArgs>(args)...}, f_(f) {}
-  MoveLambda(F&& f, BoundArgs&&... args)
-      : args_(std::forward<BoundArgs>(args)...), f_(std::move(f)) {}
-  MoveLambda(const MoveLambda&) = delete;
-  MoveLambda(MoveLambda&& other) = default;
-
-  MoveLambda& operator=(const MoveLambda&) = delete;
-  MoveLambda& operator=(MoveLambda&& other) = default;
-
-  template <typename... CallArgs>
-  typename std::result_of<
-      F(typename std::remove_reference<BoundArgs>::type..., CallArgs...)>::type
-  operator()(CallArgs&&... call_args) {
-    return call(typename gens<sizeof...(BoundArgs)>::type(),
-                std::forward<CallArgs>(call_args)...);
-  }
-
- private:
-  template <typename... CallArgs, int... S>
-  typename std::result_of<
-      F(typename std::remove_reference<BoundArgs>::type..., CallArgs...)>::type
-  call(seq<S...>, CallArgs&&... call_args) {
-    return f_(std::move(std::get<S>(args_))...,
-              std::forward<CallArgs>(call_args)...);
-  }
-
-  template <class T> struct special_decay {
-    using type = typename std::decay<T>::type;
-  };
-
-  template <class T> struct special_decay<std::reference_wrapper<T>> {
-    using type = T&;
-  };
-
-  template <class T> using special_decay_t = typename special_decay<T>::type;
-
-  std::tuple<special_decay_t<BoundArgs>...> args_;
-  F f_;
-};
-
-template <class F, class... BoundArgs>
-MoveLambda<F, BoundArgs...> MoveBind(F&& f, BoundArgs&&... args) {
-  return MoveLambda<F, BoundArgs...>(std::forward<F>(f),
-                                     std::forward<BoundArgs>(args)...);
-}
-
 template <typename ReturnType, typename... ParamTypes>
 class MovableFunctionBase {
  public:
