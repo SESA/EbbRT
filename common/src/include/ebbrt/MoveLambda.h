@@ -12,6 +12,7 @@ template <typename ReturnType, typename... ParamTypes>
 class MovableFunctionBase {
  public:
   virtual ReturnType CallFunc(ParamTypes... p) = 0;
+  virtual ~MovableFunctionBase() {}
 };
 
 template <typename F, typename ReturnType, typename... ParamTypes>
