@@ -43,7 +43,8 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   };
   NodeDescriptor AllocateNode(std::string binary_path, int cpus = DefaultCpus,
                               int numNodes = DefaultNumaNodes,
-                              int ram = DefaultRam, std::string arguments=DefaultArguments);
+                              int ram = DefaultRam,
+                              std::string arguments = DefaultArguments);
   void FreeNode(uint16_t node_id);
 
  private:
