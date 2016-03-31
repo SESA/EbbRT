@@ -22,6 +22,7 @@ namespace bai = boost::asio::ip;
 int ebbrt::NodeAllocator::DefaultCpus;
 int ebbrt::NodeAllocator::DefaultRam;
 int ebbrt::NodeAllocator::DefaultNumaNodes;
+std::string ebbrt::NodeAllocator::DefaultArguments;
 
 ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket,
                                        uint32_t net_addr)
@@ -100,9 +101,13 @@ ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
     DefaultRam = (str) ? atoi(str) : kDefaultRam;
     str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_NUMANODES");
     DefaultNumaNodes = (str) ? atoi(str) : kDefaultNumaNodes;
+    str  = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_ARGUMENTS");
+    DefaultArguments = (str) ? std::string(str) : std::string(" ");
+
     std::cout << "NodeAllocator::Init() DefaultCpus=" << DefaultCpus 
 	      << " DefaultNumaNodes=" << DefaultNumaNodes 
-	    << " DefaultRam=" << DefaultRam << std::endl;
+	    << " DefaultRam=" << DefaultRam 
+      << " DefaultArguments="<< DefaultArguments << std::endl;
   }
   auto acceptor = std::make_shared<bai::tcp::acceptor>(
       active_context->io_service_, bai::tcp::endpoint(bai::tcp::v4(), 0));
@@ -168,7 +173,8 @@ ebbrt::NodeAllocator::NodeDescriptor
 ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
 				   int cpus,
 				   int numaNodes,
-				   int ram) 
+				   int ram, 
+           std::string arguments) 
 {
   auto fdt = Fdt();
   fdt.BeginNode("/");
@@ -215,6 +221,7 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
 #ifndef NDEBUG
     " -g" +
 #endif
+    std::string(" ") + arguments +
     std::string(" ") + std::string(network) + " " +
     binary_path + " " + fname.native();
 
