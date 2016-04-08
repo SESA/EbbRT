@@ -94,7 +94,7 @@ To build an EbbRT application run `make` in the application's directory. Make su
 
 ## Further Reading
 
-[Our latest technical report (PDF)](doc/tech-report.pdf)
+[Our latest technical report (PDF)](http://www.cs.bu.edu/techreports/pdf/2016-002-ebbrt.pdf)
 
 ## Contact
 
