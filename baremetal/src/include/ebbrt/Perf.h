@@ -124,6 +124,7 @@ typedef struct {
 
 class PerfCounter {
  public:
+  PerfCounter();
   PerfCounter(PerfEvent e);
   ~PerfCounter();
   void Clear();

@@ -14,6 +14,8 @@ thread_local uint64_t perf_global_ctrl{0};  // stored activated counters
 thread_local uint8_t pmcs{0};  // stores allocated gp counters
 };
 
+ebbrt::perf::PerfCounter::PerfCounter() : evt_{ebbrt::perf::PerfEvent::nil_event} {};
+
 ebbrt::perf::PerfCounter::~PerfCounter() {
 
   if (evt_ == PerfEvent::nil_event) {
