@@ -3,24 +3,11 @@
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
 
-#include <ebbrt/Cpuid.h>
-
 #include <cstdint>
 #include <cstring>
+#include <ebbrt/Cpuid.h>
 
 namespace {
-struct Result {
-  uint32_t eax;
-  uint32_t ebx;
-  uint32_t ecx;
-  uint32_t edx;
-};
-
-Result Cpuid(uint32_t leaf) {
-  Result r;
-  asm("cpuid" : "=a"(r.eax), "=b"(r.ebx), "=c"(r.ecx), "=d"(r.edx) : "a"(leaf));
-  return r;
-}
 
 struct VendorId {
   uint32_t ebx;
@@ -48,6 +35,12 @@ constexpr size_t nr_cpuid_bits = sizeof(cpuid_bits) / sizeof(CpuidBit);
 }  // namespace
 
 ebbrt::cpuid::Features ebbrt::cpuid::features;
+
+ebbrt::cpuid::Result ebbrt::cpuid::Cpuid(uint32_t leaf) {
+  Result r;
+  asm("cpuid" : "=a"(r.eax), "=b"(r.ebx), "=c"(r.ecx), "=d"(r.edx) : "a"(leaf));
+  return r;
+}
 
 void ebbrt::cpuid::Init() {
   for (size_t i = 0; i < nr_cpuid_bits; ++i) {
