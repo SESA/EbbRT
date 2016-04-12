@@ -188,9 +188,8 @@ ebbrt::Ipv4Address ebbrt::NetworkManager::TcpPcb::GetRemoteAddress() {
 }
 
 // Receive a TCP packet on an interface
-void
-ebbrt::NetworkManager::Interface::ReceiveTcp(const Ipv4Header& ih,
-                                             std::unique_ptr<MutIOBuf> buf) {
+void ebbrt::NetworkManager::Interface::ReceiveTcp(
+    const Ipv4Header& ih, std::unique_ptr<MutIOBuf> buf) {
   auto packet_len = buf->ComputeChainDataLength();
 
   // Ensure we have a header
@@ -234,11 +233,7 @@ ebbrt::NetworkManager::Interface::ReceiveTcp(const Ipv4Header& ih,
       // XXX: Really nervous about passing these references, but I think its all
       // safe, for now
       auto f = [
-        &ih,
-        &tcp_header,
-        entry,
-        buf = std::move(buf),
-        info = std::move(info)
+        &ih, &tcp_header, entry, buf = std::move(buf), info = std::move(info)
       ]() mutable {
         entry->Input(ih, tcp_header, info, std::move(buf));
       };
@@ -306,8 +301,8 @@ void ebbrt::NetworkManager::TcpEntry::Fire() {
 }
 
 // Set the timer if it is not already set and we have the need to
-void
-ebbrt::NetworkManager::TcpEntry::SetTimer(ebbrt::clock::Wall::time_point now) {
+void ebbrt::NetworkManager::TcpEntry::SetTimer(
+    ebbrt::clock::Wall::time_point now) {
   if (timer_set)
     return;
 
@@ -354,10 +349,9 @@ void ebbrt::NetworkManager::TcpEntry::Destroy() {
 }
 
 // Input tcp segment to a listening PCB
-void
-ebbrt::NetworkManager::ListeningTcpEntry::Input(const Ipv4Header& ih,
-                                                TcpHeader& th, TcpInfo& info,
-                                                std::unique_ptr<MutIOBuf> buf) {
+void ebbrt::NetworkManager::ListeningTcpEntry::Input(
+    const Ipv4Header& ih, TcpHeader& th, TcpInfo& info,
+    std::unique_ptr<MutIOBuf> buf) {
   auto flags = th.Flags();
 
   if (flags & kTcpRst)
@@ -852,16 +846,16 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
 
 void ebbrt::NetworkManager::TcpEntry::ClearAckedSegments(const TcpInfo& info) {
   // Function to clear acked segments from a queue
-  auto clear_acked_segments = [&info](
-      boost::container::list<TcpSegment>& queue) {
-    auto it = queue.begin();
-    while (it != queue.end()) {
-      if (TcpSeqGT(ntohl(it->th.seqno) + it->SeqLen(), info.ackno))
-        break;
-      auto prev_it = it++;
-      queue.erase(prev_it);
-    }
-  };
+  auto clear_acked_segments =
+      [&info](boost::container::list<TcpSegment>& queue) {
+        auto it = queue.begin();
+        while (it != queue.end()) {
+          if (TcpSeqGT(ntohl(it->th.seqno) + it->SeqLen(), info.ackno))
+            break;
+          auto prev_it = it++;
+          queue.erase(prev_it);
+        }
+      };
 
   // Remove all unacked segments that have been completely acked by
   // this ACK
@@ -905,8 +899,8 @@ ebbrt::NetworkManager::TcpEntry::Output(ebbrt::clock::Wall::time_point now) {
   // try to send as many pending segments as will fit in the window
   size_t sent = 0;
   for (; it != pending_segments.end() &&
-             TcpSeqLEQ(ntohl(it->th.seqno) + it->tcp_len,
-                       snd_nxt + SendWindowRemaining());
+         TcpSeqLEQ(ntohl(it->th.seqno) + it->tcp_len,
+                   snd_nxt + SendWindowRemaining());
        ++it) {
     SendSegment(*it);
     ++sent;

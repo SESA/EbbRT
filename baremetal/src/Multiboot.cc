@@ -20,8 +20,8 @@ void ebbrt::multiboot::Reserve(Information* mbi) {
     cmdline_addr_ = mbi->command_line_;
     auto cmdline = reinterpret_cast<const char*>(cmdline_addr_);
     cmdline_len_ = std::strlen(cmdline);
-    early_page_allocator::ReserveRange(cmdline_addr_, 
-				       cmdline_addr_ + cmdline_len_ + 1);
+    early_page_allocator::ReserveRange(cmdline_addr_,
+                                       cmdline_addr_ + cmdline_len_ + 1);
   }
 
   if (mbi->has_boot_modules_ && mbi->modules_count_ > 0) {

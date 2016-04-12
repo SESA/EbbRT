@@ -9,7 +9,8 @@ namespace ebbrt {
 namespace console {
 __attribute__((no_instrument_function)) void Init() noexcept;
 __attribute__((no_instrument_function)) void Write(const char* str) noexcept;
-__attribute__((no_instrument_function)) int  Write(const char* buf, int len) noexcept;
+__attribute__((no_instrument_function)) int Write(const char* buf,
+                                                  int len) noexcept;
 }
 }
 

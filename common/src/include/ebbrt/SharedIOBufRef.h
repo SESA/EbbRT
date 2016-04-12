@@ -26,11 +26,14 @@ class SharedIOBufRefOwner {
 
  protected:
   const IOBuf& GetRef() { return *buf_; }
+
  private:
   std::shared_ptr<IOBuf> buf_;
 };
 
-template <> class IOBufBase<SharedIOBufRefOwner> : public SharedIOBufRefOwner, public IOBuf {
+template <>
+class IOBufBase<SharedIOBufRefOwner> : public SharedIOBufRefOwner,
+                                       public IOBuf {
  public:
   template <typename... Args>
   explicit IOBufBase(Args&&... args)
@@ -63,31 +66,37 @@ template <> class IOBufBase<SharedIOBufRefOwner> : public SharedIOBufRefOwner, p
   size_t Capacity() const override { return SharedIOBufRefOwner::Capacity(); }
 };
 
-template <> class MutIOBufBase<SharedIOBufRefOwner> : public SharedIOBufRefOwner, public MutIOBuf {
+template <>
+class MutIOBufBase<SharedIOBufRefOwner> : public SharedIOBufRefOwner,
+                                          public MutIOBuf {
  public:
   template <typename... Args>
   explicit MutIOBufBase(Args&&... args)
       : SharedIOBufRefOwner(std::forward<Args>(args)...),
-        MutIOBuf(SharedIOBufRefOwner::Buffer(), SharedIOBufRefOwner::Capacity()) {}
+        MutIOBuf(SharedIOBufRefOwner::Buffer(),
+                 SharedIOBufRefOwner::Capacity()) {}
 
   template <typename... Args>
   explicit MutIOBufBase(SharedIOBufRefOwner::CloneView_s, Args&&... args)
       : SharedIOBufRefOwner(std::forward<Args>(args)...),
-        MutIOBuf(SharedIOBufRefOwner::Buffer(), SharedIOBufRefOwner::Capacity()) {
+        MutIOBuf(SharedIOBufRefOwner::Buffer(),
+                 SharedIOBufRefOwner::Capacity()) {
     MutIOBuf::SetView(SharedIOBufRefOwner::GetRef());
   }
   MutIOBufBase(SharedIOBufRefOwner::CloneView_s, const MutSharedIOBufRef& r)
-      : SharedIOBufRefOwner(r),
-        MutIOBuf(SharedIOBufRefOwner::Buffer(), SharedIOBufRefOwner::Capacity()) {
+      : SharedIOBufRefOwner(r), MutIOBuf(SharedIOBufRefOwner::Buffer(),
+                                         SharedIOBufRefOwner::Capacity()) {
     MutIOBuf::SetView(r);
   }
 
   MutIOBufBase(SharedIOBufRefOwner::CloneView_s, MutSharedIOBufRef& r)
-      : SharedIOBufRefOwner(r),
-        MutIOBuf(SharedIOBufRefOwner::Buffer(), SharedIOBufRefOwner::Capacity()) {
+      : SharedIOBufRefOwner(r), MutIOBuf(SharedIOBufRefOwner::Buffer(),
+                                         SharedIOBufRefOwner::Capacity()) {
     MutIOBuf::SetView(r);
   }
-  const uint8_t* Buffer() const override { return SharedIOBufRefOwner::Buffer(); }
+  const uint8_t* Buffer() const override {
+    return SharedIOBufRefOwner::Buffer();
+  }
 
   size_t Capacity() const override { return SharedIOBufRefOwner::Capacity(); }
 };

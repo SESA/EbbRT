@@ -10,8 +10,8 @@
 
 namespace ebbrt {
 namespace trace {
-__attribute__((no_instrument_function)) void Init() ;
-__attribute__((no_instrument_function)) void Dump() ;
+__attribute__((no_instrument_function)) void Init();
+__attribute__((no_instrument_function)) void Dump();
 __attribute__((no_instrument_function)) void Enable();
 __attribute__((no_instrument_function)) void Disable();
 __attribute__((no_instrument_function)) void AddNote(std::string);
@@ -102,7 +102,6 @@ typedef struct {
     } __attribute__((packed));
   };
 } trace_entry;
-
-}
-}
-#endif 
+}  // namespace trace
+}  // namespace ebbrt
+#endif  // BAREMETAL_SRC_INCLUDE_EBBRT_TRACE_H_

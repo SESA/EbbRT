@@ -14,8 +14,8 @@
 #include <ebbrt/Debug.h>
 #include <ebbrt/ExplicitlyConstructed.h>
 #include <ebbrt/Numa.h>
-#include <ebbrt/Pfn.h>
 #include <ebbrt/PMem.h>
+#include <ebbrt/Pfn.h>
 #include <ebbrt/SlabObject.h>
 
 namespace ebbrt {
@@ -49,7 +49,7 @@ struct Page {
       // In slab allocator
       ExplicitlyConstructed<boost::intrusive::list_member_hook<
           boost::intrusive::link_mode<boost::intrusive::normal_link>>>
-      member_hook;
+          member_hook;
       ExplicitlyConstructed<CompactFreeObjectList> list;
       SlabCache* cache;
       size_t used;

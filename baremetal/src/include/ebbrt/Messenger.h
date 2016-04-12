@@ -80,7 +80,8 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
     void check_preallocate();
     void preallocated(std::unique_ptr<MutIOBuf> buf);
     void process_message(std::unique_ptr<MutIOBuf> b);
-    std::unique_ptr<MutIOBuf> process_message_chain(std::unique_ptr<MutIOBuf> b);
+    std::unique_ptr<MutIOBuf>
+    process_message_chain(std::unique_ptr<MutIOBuf> b);
 
     uint32_t preallocate_;
     std::unique_ptr<ebbrt::MutIOBuf> buf_;

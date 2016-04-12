@@ -40,7 +40,8 @@ void MapApicToNode(size_t apic_id, Nid nid);
 void AddMemBlock(Nid nid, Pfn start, Pfn End);
 
 extern ebbrt::ExplicitlyConstructed<
-    boost::container::static_vector<Node, kMaxNodes>> nodes;
+    boost::container::static_vector<Node, kMaxNodes>>
+    nodes;
 
 }  // namespace numa
 }  // namespace ebbrt

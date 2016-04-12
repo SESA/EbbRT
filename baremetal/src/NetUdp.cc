@@ -50,15 +50,15 @@ uint16_t ebbrt::NetworkManager::UdpPcb::Bind(uint16_t port) {
 }
 
 // Setup the receive function for a UDP pcb
-void ebbrt::NetworkManager::UdpPcb::Receive(MovableFunction<
-    void(Ipv4Address, uint16_t, std::unique_ptr<MutIOBuf>)> func) {
+void ebbrt::NetworkManager::UdpPcb::Receive(
+    MovableFunction<void(Ipv4Address, uint16_t, std::unique_ptr<MutIOBuf>)>
+        func) {
   entry_->func = std::move(func);
 }
 
 // Receive UDP packet on an interface
-void
-ebbrt::NetworkManager::Interface::ReceiveUdp(Ipv4Header& ip_header,
-                                             std::unique_ptr<MutIOBuf> buf) {
+void ebbrt::NetworkManager::Interface::ReceiveUdp(
+    Ipv4Header& ip_header, std::unique_ptr<MutIOBuf> buf) {
   auto packet_len = buf->ComputeChainDataLength();
 
   // Ensure we have a header

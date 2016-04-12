@@ -5,9 +5,9 @@
 #ifndef HOSTED_SRC_INCLUDE_EBBRT_EBBREF_H_
 #define HOSTED_SRC_INCLUDE_EBBRT_EBBREF_H_
 
+#include <ebbrt/Context.h>
 #include <ebbrt/EbbId.h>
 #include <ebbrt/LocalEntry.h>
-#include <ebbrt/Context.h>
 
 namespace ebbrt {
 template <class T> class EbbRef {
@@ -37,9 +37,7 @@ template <class T> class EbbRef {
     active_context->SetLocalEntry(id, le);
   }
 
-  operator EbbId() const {
-    return ebbid_;
-  }
+  operator EbbId() const { return ebbid_; }
 
  private:
   EbbId ebbid_;

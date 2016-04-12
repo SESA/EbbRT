@@ -4,7 +4,8 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include <ebbrt/SharedIOBufRef.h>
 
-const constexpr ebbrt::SharedIOBufRefOwner::CloneView_s ebbrt::SharedIOBufRefOwner::CloneView;
+const constexpr ebbrt::SharedIOBufRefOwner::CloneView_s
+    ebbrt::SharedIOBufRefOwner::CloneView;
 
 ebbrt::SharedIOBufRefOwner::SharedIOBufRefOwner(std::unique_ptr<IOBuf>&& buf)
     : buf_(std::move(buf)) {}

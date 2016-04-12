@@ -20,9 +20,9 @@
 #include <ebbrt/NetEth.h>
 #include <ebbrt/NetIp.h>
 #include <ebbrt/NetTcp.h>
+#include <ebbrt/RcuTable.h>
 #include <ebbrt/SharedPoolAllocator.h>
 #include <ebbrt/SpinLock.h>
-#include <ebbrt/RcuTable.h>
 #include <ebbrt/StaticSharedEbb.h>
 
 namespace ebbrt {
@@ -55,7 +55,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     RcuHListHook hook;
     uint16_t port{0};
     MovableFunction<void(Ipv4Address, uint16_t, std::unique_ptr<MutIOBuf>)>
-    func;
+        func;
   };
 
   class Interface;
@@ -64,8 +64,9 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
    public:
     UdpPcb() : entry_{new UdpEntry()} {}
     uint16_t Bind(uint16_t port);
-    void Receive(MovableFunction<
-        void(Ipv4Address, uint16_t, std::unique_ptr<MutIOBuf>)> func);
+    void Receive(
+        MovableFunction<void(Ipv4Address, uint16_t, std::unique_ptr<MutIOBuf>)>
+            func);
     void SendTo(Ipv4Address addr, uint16_t port, std::unique_ptr<IOBuf> buf);
     Future<void> Close();
 
@@ -307,15 +308,16 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
 
   std::unique_ptr<Interface> interface_;
   RcuHashTable<ArpEntry, Ipv4Address, &ArpEntry::hook, &ArpEntry::paddr>
-  arp_cache_{8};  // 256 buckets
+      arp_cache_{8};  // 256 buckets
   RcuHashTable<UdpEntry, uint16_t, &UdpEntry::hook, &UdpEntry::port> udp_pcbs_{
       8};  // 256 buckets
   RcuHashTable<ListeningTcpEntry, uint16_t, &ListeningTcpEntry::hook,
-               &ListeningTcpEntry::port> listening_tcp_pcbs_{8};  // 256 buckets
+               &ListeningTcpEntry::port>
+      listening_tcp_pcbs_{8};  // 256 buckets
   RcuHashTable<TcpEntry, std::tuple<Ipv4Address, uint16_t, uint16_t>,
                &TcpEntry::hook, &TcpEntry::key,
                boost::hash<std::tuple<Ipv4Address, uint16_t, uint16_t>>>
-  tcp_pcbs_{8};  // 256 buckets
+      tcp_pcbs_{8};  // 256 buckets
   EbbRef<SharedPoolAllocator<uint16_t>> udp_port_allocator_{
       SharedPoolAllocator<uint16_t>::Create(49152, 65535,
                                             ebb_allocator->AllocateLocal())};

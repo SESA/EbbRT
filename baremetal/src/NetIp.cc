@@ -28,9 +28,8 @@ bool ebbrt::NetworkManager::Interface::ItfAddress::isLocalNetwork(
 }
 
 // Receive an Ipv4 packet
-void
-ebbrt::NetworkManager::Interface::ReceiveIp(EthernetHeader& eth_header,
-                                            std::unique_ptr<MutIOBuf> buf) {
+void ebbrt::NetworkManager::Interface::ReceiveIp(
+    EthernetHeader& eth_header, std::unique_ptr<MutIOBuf> buf) {
   auto packet_len = buf->ComputeChainDataLength();
 
   if (unlikely(packet_len < sizeof(Ipv4Header)))

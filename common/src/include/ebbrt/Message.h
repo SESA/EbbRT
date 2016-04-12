@@ -19,7 +19,7 @@ struct Hasher {
   std::size_t operator()(uint64_t val) const { return val; }
 };
 extern std::unordered_map<uint64_t, MessagableBase& (*)(EbbId), Hasher>
-fault_map;
+    fault_map;
 
 template <typename T> class Messagable : public MessagableBase {
  public:

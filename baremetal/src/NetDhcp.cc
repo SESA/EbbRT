@@ -33,12 +33,9 @@ void ebbrt::NetworkManager::Interface::ReceiveDhcp(
     Ipv4Address from_addr, uint16_t from_port, std::unique_ptr<MutIOBuf> buf) {
   if (Cpu::GetMine() != 0) {
     event_manager->SpawnRemote(
-        [
-          this,
-          from_addr,
-          from_port,
-          buf = std::move(buf)
-        ]() mutable { ReceiveDhcp(from_addr, from_port, std::move(buf)); },
+        [ this, from_addr, from_port, buf = std::move(buf) ]() mutable {
+          ReceiveDhcp(from_addr, from_port, std::move(buf));
+        },
         0);
   } else {
     auto len = buf->ComputeChainDataLength();
@@ -151,8 +148,8 @@ void ebbrt::NetworkManager::Interface::DhcpHandleOffer(
 }
 
 // A server acked our request for the offered address
-void
-ebbrt::NetworkManager::Interface::DhcpHandleAck(const DhcpMessage& message) {
+void ebbrt::NetworkManager::Interface::DhcpHandleAck(
+    const DhcpMessage& message) {
   timer->Stop(dhcp_pcb_);
 
   auto now = ebbrt::clock::Wall::Now();

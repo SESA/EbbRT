@@ -11,8 +11,8 @@
 #include <boost/asio.hpp>
 
 #include <ebbrt/EbbId.h>
-#include <ebbrt/LocalEntry.h>
 #include <ebbrt/EventContext.h>
+#include <ebbrt/LocalEntry.h>
 
 namespace ebbrt {
 class Runtime;

@@ -12,9 +12,9 @@ namespace clock {
 class PitClock : public Clock {
  public:
   static PitClock* GetClock();
-  
+
   PitClock();
-  
+
   void ApInit() override;
   Wall::time_point Now() noexcept override;
   std::chrono::nanoseconds Uptime() noexcept override;

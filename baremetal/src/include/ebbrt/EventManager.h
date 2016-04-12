@@ -14,6 +14,7 @@
 #include <boost/container/flat_map.hpp>
 #include <boost/utility.hpp>
 
+#include <ebbrt/Cpu.h>
 #include <ebbrt/Isr.h>
 #include <ebbrt/Main.h>
 #include <ebbrt/MoveLambda.h>
@@ -21,7 +22,6 @@
 #include <ebbrt/Timer.h>
 #include <ebbrt/Trans.h>
 #include <ebbrt/VMemAllocator.h>
-#include <ebbrt/Cpu.h>
 
 namespace ebbrt {
 
@@ -52,8 +52,7 @@ class EventManager : Timer::Hook {
   class IdleCallback : boost::noncopyable {
    public:
     template <typename F>
-    explicit IdleCallback(F&& f)
-        : f_(std::forward<F>(f)), started_(false) {}
+    explicit IdleCallback(F&& f) : f_(std::forward<F>(f)), started_(false) {}
 
     void Start();
     void Stop();

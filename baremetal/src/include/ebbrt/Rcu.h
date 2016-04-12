@@ -17,21 +17,20 @@ typename std::enable_if<
     type
     CallRcuHelper(F&& f, Args&&... args) {
   typedef typename std::result_of<F(Args...)>::type result_type;
-  typedef decltype(std::bind(std::forward<F>(f), std::forward<Args>(args)...))
-      bound_fn_type;
+  typedef decltype(
+      std::bind(std::forward<F>(f), std::forward<Args>(args)...)) bound_fn_type;
   auto p = Promise<result_type>();
   auto ret = p.GetFuture();
   auto bound_f = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
-  event_manager->DoRcu(
-      MoveBind([](Promise<result_type> prom, bound_fn_type fn) {
-                 try {
-                   prom.SetValue(fn());
-                 }
-                 catch (...) {
-                   prom.SetException(std::current_exception());
-                 }
-               },
-               std::move(p), std::move(bound_f)));
+  event_manager->DoRcu(MoveBind(
+      [](Promise<result_type> prom, bound_fn_type fn) {
+        try {
+          prom.SetValue(fn());
+        } catch (...) {
+          prom.SetException(std::current_exception());
+        }
+      },
+      std::move(p), std::move(bound_f)));
   return flatten(std::move(ret));
 }
 
@@ -45,16 +44,15 @@ typename std::enable_if<
   auto p = Promise<void>();
   auto ret = p.GetFuture();
   auto bound_f = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
-  event_manager->DoRcu([prom = std::move(p),
-                        fn = std::move(bound_f)]() mutable {
-                                  try {
-                                    fn();
-                                    prom.SetValue();
-                                  }
-                                  catch (...) {
-                                    prom.SetException(std::current_exception());
-                                  }
-                                });
+  event_manager->DoRcu(
+      [ prom = std::move(p), fn = std::move(bound_f) ]() mutable {
+        try {
+          fn();
+          prom.SetValue();
+        } catch (...) {
+          prom.SetException(std::current_exception());
+        }
+      });
   return flatten(std::move(ret));
 }
 

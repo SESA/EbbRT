@@ -27,7 +27,8 @@ struct vec_data_t : public ebbrt::CacheAligned {
   ebbrt::SpinLock lock;
   uint8_t idx{34};
   ebbrt::RcuHashTable<InterruptHandler, uint8_t, &InterruptHandler::hook,
-                      &InterruptHandler::interrupt> map{8};
+                      &InterruptHandler::interrupt>
+      map{8};
 };
 
 ebbrt::ExplicitlyConstructed<vec_data_t> vec_data;
@@ -99,9 +100,8 @@ class EventStackFaultHandler : public ebbrt::VMemAllocator::PageFaultHandler {
   std::unordered_map<ebbrt::Pfn, ebbrt::Pfn> mappings_;
 };
 
-extern "C" __attribute__((noreturn)) void SwitchStack(uintptr_t first_param,
-                                                      uintptr_t stack,
-                                                      void (*func)(uintptr_t));
+extern "C" __attribute__((noreturn)) void
+SwitchStack(uintptr_t first_param, uintptr_t stack, void (*func)(uintptr_t));
 
 void ebbrt::EventManager::StartProcessingEvents() {
   auto stack_top = (active_event_context_.stack + kStackPages).ToAddr();
@@ -120,11 +120,9 @@ template <typename F> void ebbrt::EventManager::InvokeFunction(F&& f) {
     ++generation_count_[generation % 2];
     f();
     --generation_count_[generation % 2];
-  }
-  catch (std::exception& e) {
+  } catch (std::exception& e) {
     ebbrt::kabort("Unhandled exception caught: %s\n", e.what());
-  }
-  catch (...) {
+  } catch (...) {
     ebbrt::kabort("Unhandled exception caught!\n");
   }
 }
@@ -284,30 +282,30 @@ void ebbrt::EventManager::ActivateContext(EventContext&& context) {
     // if we are activting on the same core as the context was
     // saved on then we need not syncronize and know that we
     // can Spawn Locally
-    SpawnLocal([this, c = std::move(context)]() mutable {
-                          // ActivatePrivate(std::move(c))
-                          FreeStack(active_event_context_.stack);
-                          // We need to switch the event stack because we only
-                          // set it at the top of process
-                          auto stack_top = (c.stack + kStackPages).ToAddr();
-                          Cpu::GetMine().SetEventStack(stack_top);
-                          active_event_context_ = std::move(c);
-                          ActivateContextAndReturn(active_event_context_);
-      },
-      /* force_async = */ true);
+    SpawnLocal([ this, c = std::move(context) ]() mutable {
+      // ActivatePrivate(std::move(c))
+      FreeStack(active_event_context_.stack);
+      // We need to switch the event stack because we only
+      // set it at the top of process
+      auto stack_top = (c.stack + kStackPages).ToAddr();
+      Cpu::GetMine().SetEventStack(stack_top);
+      active_event_context_ = std::move(c);
+      ActivateContextAndReturn(active_event_context_);
+    },
+               /* force_async = */ true);
   } else {
     auto cpu = context.cpu;
     auto rep_iter = reps_.find(cpu);
     auto rep = rep_iter->second;
-    SpawnRemote([rep, c = std::move(context)]() mutable {
-                           // event_manager->ActivatePrivate(std::move(c))
-                           rep->FreeStack(rep->active_event_context_.stack);
-                           auto stack_top = (c.stack + kStackPages).ToAddr();
-                           Cpu::GetMine().SetEventStack(stack_top);
-                           rep->active_event_context_ = std::move(c);
-                           ActivateContextAndReturn(rep->active_event_context_);
-      },
-      cpu);  // SpawnRemote Argument 2
+    SpawnRemote([ rep, c = std::move(context) ]() mutable {
+      // event_manager->ActivatePrivate(std::move(c))
+      rep->FreeStack(rep->active_event_context_.stack);
+      auto stack_top = (c.stack + kStackPages).ToAddr();
+      Cpu::GetMine().SetEventStack(stack_top);
+      rep->active_event_context_ = std::move(c);
+      ActivateContextAndReturn(rep->active_event_context_);
+    },
+                cpu);  // SpawnRemote Argument 2
   }
 }
 

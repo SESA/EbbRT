@@ -16,7 +16,7 @@
 
 ebbrt::ExplicitlyConstructed<boost::container::static_vector<
     ebbrt::PageAllocator, ebbrt::numa::kMaxNodes>>
-ebbrt::PageAllocator::allocators;
+    ebbrt::PageAllocator::allocators;
 
 void ebbrt::PageAllocator::Init() {
   allocators.construct();
@@ -83,9 +83,10 @@ ebbrt::Pfn ebbrt::PageAllocator::AllocLocal(size_t order, uint64_t max_addr) {
   auto this_order = order;
   while (this_order <= kMaxOrder) {
     auto& list = free_page_lists[this_order];
-    auto it = std::find_if(
-        list.begin(), list.end(),
-        [max_addr](const FreePage& p) { return p.pfn().ToAddr() < max_addr; });
+    auto it =
+        std::find_if(list.begin(), list.end(), [max_addr](const FreePage& p) {
+          return p.pfn().ToAddr() < max_addr;
+        });
     if (it != list.end()) {
       fp = &*it;
       list.erase(it);

@@ -9,7 +9,8 @@
 
 namespace {
 ebbrt::ExplicitlyConstructed<
-    boost::container::static_vector<ebbrt::Cpu, ebbrt::Cpu::kMaxCpus>> cpus;
+    boost::container::static_vector<ebbrt::Cpu, ebbrt::Cpu::kMaxCpus>>
+    cpus;
 }
 
 thread_local ebbrt::Cpu* ebbrt::Cpu::my_cpu_tls_;

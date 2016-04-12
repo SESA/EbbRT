@@ -63,6 +63,7 @@ void ebbrt::console::Write(const char* str) noexcept {
 
 int ebbrt::console::Write(const char* buf, int len) noexcept {
   std::lock_guard<SpinLock> lock(*console_lock);
-  for (int i=0; i<len; i++) WriteLocked(buf[i]);
+  for (int i = 0; i < len; i++)
+    WriteLocked(buf[i]);
   return len;
 }

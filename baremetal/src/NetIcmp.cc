@@ -8,10 +8,9 @@
 #include <ebbrt/NetIcmp.h>
 // Receive an ICMP packet. Currently, if we get a request (ping) we just send
 // back a reply
-void
-ebbrt::NetworkManager::Interface::ReceiveIcmp(EthernetHeader& eth_header,
-                                              Ipv4Header& ip_header,
-                                              std::unique_ptr<MutIOBuf> buf) {
+void ebbrt::NetworkManager::Interface::ReceiveIcmp(
+    EthernetHeader& eth_header, Ipv4Header& ip_header,
+    std::unique_ptr<MutIOBuf> buf) {
   auto packet_len = buf->ComputeChainDataLength();
 
   if (unlikely(packet_len < sizeof(IcmpHeader)))

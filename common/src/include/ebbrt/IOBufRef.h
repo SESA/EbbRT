@@ -31,8 +31,9 @@ std::unique_ptr<IOBufRef> CreateRef(const IOBuf& buf);
 std::unique_ptr<MutIOBufRef> CreateRef(const MutIOBuf& buf);
 std::unique_ptr<IOBufRef> CreateRefChain(const IOBuf& buf);
 std::unique_ptr<MutIOBufRef> CreateRefChain(const MutIOBuf& buf);
-  
-template <> class IOBufBase<IOBufRefOwner> : public IOBufRefOwner, public IOBuf {
+
+template <>
+class IOBufBase<IOBufRefOwner> : public IOBufRefOwner, public IOBuf {
  public:
   explicit IOBufBase(const IOBuf& buf)
       : IOBufRefOwner(buf),
@@ -49,7 +50,8 @@ template <> class IOBufBase<IOBufRefOwner> : public IOBufRefOwner, public IOBuf 
   size_t Capacity() const override { return IOBufRefOwner::Capacity(); }
 };
 
-template <> class MutIOBufBase<IOBufRefOwner> : public IOBufRefOwner, public MutIOBuf {
+template <>
+class MutIOBufBase<IOBufRefOwner> : public IOBufRefOwner, public MutIOBuf {
  public:
   explicit MutIOBufBase(const IOBuf& buf)
       : IOBufRefOwner(buf),

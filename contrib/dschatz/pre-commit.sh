@@ -19,7 +19,7 @@ do
         continue
     fi
     $GIT_ROOT/contrib/dschatz/cpplint.py \
-        --filter=-build/include_order,-runtime/references,-build/c++11 "$GIT_ROOT/$file"
+        --filter=-build/include_order,-runtime/references,-build/c++11,-whitespace/operators "$GIT_ROOT/$file"
     if [ $? -ne 0 ]; then
         let RESULT=1
         continue

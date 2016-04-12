@@ -66,29 +66,29 @@ void ebbrt::NodeAllocator::Session::Start() {
   auto self(shared_from_this());
   async_write(
       socket_, IOBufToCBS(AppendHeader(message)),
-      EventManager::WrapHandler([this, self](
-          const boost::system::error_code& error,
-          std::size_t /*bytes_transferred*/) {
+      EventManager::WrapHandler([this,
+                                 self](const boost::system::error_code& error,
+                                       std::size_t /*bytes_transferred*/) {
         if (error) {
           throw std::runtime_error("Node allocator failed to configure node");
         }
         auto val = new uint16_t;
         async_read(socket_, boost::asio::buffer(reinterpret_cast<char*>(val),
                                                 sizeof(uint16_t)),
-                   EventManager::WrapHandler([this, self, val](
-                       const boost::system::error_code& error,
-                       std::size_t /*bytes_transferred*/) {
-                     if (error) {
-                       throw std::runtime_error(
-                           "Node allocator failed to configure node");
-                     }
-                     auto v = ntohs(*val);
-                     auto& pmap = node_allocator->promise_map_;
-                     assert(pmap.find(v) != pmap.end());
-                     pmap[v].SetValue(Messenger::NetworkId(
-                         socket_.remote_endpoint().address().to_v4()));
-                     pmap.erase(v);
-                   }));
+                   EventManager::WrapHandler(
+                       [this, self, val](const boost::system::error_code& error,
+                                         std::size_t /*bytes_transferred*/) {
+                         if (error) {
+                           throw std::runtime_error(
+                               "Node allocator failed to configure node");
+                         }
+                         auto v = ntohs(*val);
+                         auto& pmap = node_allocator->promise_map_;
+                         assert(pmap.find(v) != pmap.end());
+                         pmap[v].SetValue(Messenger::NetworkId(
+                             socket_.remote_endpoint().address().to_v4()));
+                         pmap.erase(v);
+                       }));
       }));
 }
 
@@ -156,18 +156,17 @@ ebbrt::NodeAllocator::~NodeAllocator() {
   }
 }
 
-void
-ebbrt::NodeAllocator::DoAccept(std::shared_ptr<bai::tcp::acceptor> acceptor,
-                               std::shared_ptr<bai::tcp::socket> socket) {
-  acceptor->async_accept(*socket,
-                         EventManager::WrapHandler([this, acceptor, socket](
-                             boost::system::error_code ec) {
-                           if (!ec) {
-                             std::make_shared<Session>(std::move(*socket),
-                                                       net_addr_)->Start();
-                             DoAccept(std::move(acceptor), std::move(socket));
-                           }
-                         }));
+void ebbrt::NodeAllocator::DoAccept(
+    std::shared_ptr<bai::tcp::acceptor> acceptor,
+    std::shared_ptr<bai::tcp::socket> socket) {
+  acceptor->async_accept(
+      *socket, EventManager::WrapHandler([this, acceptor, socket](
+                   boost::system::error_code ec) {
+        if (!ec) {
+          std::make_shared<Session>(std::move(*socket), net_addr_)->Start();
+          DoAccept(std::move(acceptor), std::move(socket));
+        }
+      }));
 }
 
 ebbrt::NodeAllocator::NodeDescriptor

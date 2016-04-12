@@ -2,13 +2,13 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
-#include <ctime>
 #include <cstdint>
-#include <string.h>
-#include <ebbrt/Cpu.h>
+#include <ctime>
 #include <ebbrt/Clock.h>
-#include <ebbrt/Trace.h>
+#include <ebbrt/Cpu.h>
 #include <ebbrt/Debug.h>
+#include <ebbrt/Trace.h>
+#include <string.h>
 
 namespace {
 const constexpr size_t MAX_TRACE = 1000000;

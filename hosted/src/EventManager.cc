@@ -10,17 +10,11 @@ void ebbrt::EventManager::Spawn(MovableFunction<void()> func,
                                 ebbrt::Context* ctxt, bool force_async) {
   // movable function cannot be copied so we put it on the heap
   auto f = new MovableFunction<void()>(std::move(func));
-// async dispatch
-#if 0
-  if (ctxt == active_context)  printf("Local: "); else printf("Remote: ");
-  printf("%zd->%zd\n", active_context->index_, ctxt->index_);
-#endif
-
+  // async dispatch
   ctxt->io_service_.post([f, this, ctxt]() {
     // create and run a new coroutine to run the event on
-    ctxt->active_event_context_.coro =
-        boost::coroutines::coroutine<void()>([f, this, ctxt](
-            boost::coroutines::coroutine<void()>::caller_type& ca) {
+    ctxt->active_event_context_.coro = boost::coroutines::coroutine<void()>(
+        [f, this, ctxt](boost::coroutines::coroutine<void()>::caller_type& ca) {
           ca();
           // store the caller for later if we need to save the context
           ctxt->active_event_context_.caller = &ca;
@@ -31,8 +25,8 @@ void ebbrt::EventManager::Spawn(MovableFunction<void()> func,
   });
 }
 
-void
-ebbrt::EventManager::ActivateContext(EventManager::EventContext&& context) {
+void ebbrt::EventManager::ActivateContext(
+    EventManager::EventContext&& context) {
   auto c = new EventManager::EventContext(std::move(context));
   ebbrt::Context* ctxt = active_context;
   ctxt->io_service_.post([c, this, ctxt]() {

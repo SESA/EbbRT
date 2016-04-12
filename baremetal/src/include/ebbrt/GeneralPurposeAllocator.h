@@ -206,11 +206,11 @@ class GeneralPurposeAllocator : public CacheAligned {
 
 template <size_t... sizes_in>
 std::array<SlabAllocatorRoot*, sizeof...(sizes_in)>
-GeneralPurposeAllocator<sizes_in...>::allocator_roots;
+    GeneralPurposeAllocator<sizes_in...>::allocator_roots;
 
 template <size_t... sizes_in>
 std::array<GeneralPurposeAllocator<sizes_in...>*, Cpu::kMaxCpus>
-GeneralPurposeAllocator<sizes_in...>::reps;
+    GeneralPurposeAllocator<sizes_in...>::reps;
 
 template <size_t... sizes_in>
 SlabAllocatorRoot* GeneralPurposeAllocator<sizes_in...>::rep_allocator;
@@ -219,8 +219,8 @@ SlabAllocatorRoot* GeneralPurposeAllocator<sizes_in...>::rep_allocator;
 typedef GeneralPurposeAllocator<
     8, 16, 32, 64, 96, 128, 192, 256, 512, 1024, 2 * 1024, 4 * 1024, 8 * 1024,
     16 * 1024, 32 * 1024, 64 * 1024, 128 * 1024, 256 * 1024, 512 * 1024,
-    1024 * 1024, 2 * 1024 * 1024, 4 * 1024 * 1024,
-    8 * 1024 * 1024> GeneralPurposeAllocatorType;
+    1024 * 1024, 2 * 1024 * 1024, 4 * 1024 * 1024, 8 * 1024 * 1024>
+    GeneralPurposeAllocatorType;
 
 constexpr auto gp_allocator =
     EbbRef<GeneralPurposeAllocatorType>(kGpAllocatorId);

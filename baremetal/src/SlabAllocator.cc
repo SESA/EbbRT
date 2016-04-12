@@ -62,26 +62,26 @@ ebbrt::Pfn AddrToSlabPfn(void* addr, size_t order) {
 ebbrt::ExplicitlyConstructed<ebbrt::SlabAllocatorRoot> slab_root_allocator;
 ebbrt::ExplicitlyConstructed<boost::container::static_vector<
     ebbrt::SlabAllocatorNode, ebbrt::numa::kMaxNodes>>
-slab_root_allocator_node_allocators;
+    slab_root_allocator_node_allocators;
 ebbrt::ExplicitlyConstructed<
     boost::container::static_vector<ebbrt::SlabAllocator, ebbrt::Cpu::kMaxCpus>>
-slab_root_allocator_cpu_allocators;
+    slab_root_allocator_cpu_allocators;
 
 ebbrt::ExplicitlyConstructed<ebbrt::SlabAllocatorRoot> slab_node_allocator;
 ebbrt::ExplicitlyConstructed<boost::container::static_vector<
     ebbrt::SlabAllocatorNode, ebbrt::numa::kMaxNodes>>
-slab_node_allocator_node_allocators;
+    slab_node_allocator_node_allocators;
 ebbrt::ExplicitlyConstructed<
     boost::container::static_vector<ebbrt::SlabAllocator, ebbrt::Cpu::kMaxCpus>>
-slab_node_allocator_cpu_allocators;
+    slab_node_allocator_cpu_allocators;
 
 ebbrt::ExplicitlyConstructed<ebbrt::SlabAllocatorRoot> slab_cpu_allocator;
 ebbrt::ExplicitlyConstructed<boost::container::static_vector<
     ebbrt::SlabAllocatorNode, ebbrt::numa::kMaxNodes>>
-slab_cpu_allocator_node_allocators;
+    slab_cpu_allocator_node_allocators;
 ebbrt::ExplicitlyConstructed<
     boost::container::static_vector<ebbrt::SlabAllocator, ebbrt::Cpu::kMaxCpus>>
-slab_cpu_allocator_cpu_allocators;
+    slab_cpu_allocator_cpu_allocators;
 }  // namespace
 
 void ebbrt::slab::Init() {

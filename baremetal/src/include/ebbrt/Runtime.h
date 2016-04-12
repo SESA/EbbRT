@@ -9,8 +9,8 @@
 
 namespace ebbrt {
 namespace runtime {
-  uint32_t Frontend();
-  void Init();
+uint32_t Frontend();
+void Init();
 }
 }
 

@@ -7,25 +7,24 @@
 
 namespace ebbrt {
 
-  static __attribute__((noreturn)) void kabort() { abort(); }
-  
-  template <typename... Args>
-  __attribute__((noreturn)) void kprintf(Args... args) {
-    printf(args...); // NOLINT
-  }
-  
-  
-  template <typename... Args>
-  __attribute__((noreturn)) void kabort(const Args&... args) {
-    kprintf(args...);
+static __attribute__((noreturn)) void kabort() { abort(); }
+
+template <typename... Args>
+__attribute__((noreturn)) void kprintf(Args... args) {
+  printf(args...);  // NOLINT
+}
+
+template <typename... Args>
+__attribute__((noreturn)) void kabort(const Args&... args) {
+  kprintf(args...);
   kabort();
+}
+
+template <typename... Args> void kbugon(bool expr, const Args&... args) {
+  if (expr) {
+    kabort(args...);
   }
-  
-  template <typename... Args> void kbugon(bool expr, const Args&... args) {
-    if (expr) {
-      kabort(args...);
-    }
-  }
+}
 
 }  // namespace ebbrt
 

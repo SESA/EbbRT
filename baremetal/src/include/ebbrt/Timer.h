@@ -6,6 +6,7 @@
 #define BAREMETAL_SRC_INCLUDE_EBBRT_TIMER_H_
 
 #include <chrono>
+#include <set>
 
 #include <boost/intrusive/set.hpp>
 
