@@ -79,7 +79,7 @@ void ebbrt::NetworkManager::Interface::ReceiveDhcp(
 // The initial DHCP state, discover DHCP servers
 void ebbrt::NetworkManager::Interface::DhcpDiscover() {
   DhcpSetState(DhcpPcb::State::kSelecting);
-  auto buf = MakeUniqueIOBuf(sizeof(DhcpMessage));
+  auto buf = MakeUniqueIOBuf(sizeof(DhcpMessage), true);
   auto dp = buf->GetMutDataPointer();
   auto& dhcp_message = dp.Get<DhcpMessage>();
 
@@ -119,7 +119,7 @@ void ebbrt::NetworkManager::Interface::DhcpHandleOffer(
   DhcpSetState(DhcpPcb::State::kRequesting);
 
   // create response which accepts the offer
-  auto buf = MakeUniqueIOBuf(sizeof(DhcpMessage));
+  auto buf = MakeUniqueIOBuf(sizeof(DhcpMessage), true);
   auto dp = buf->GetMutDataPointer();
   auto& new_dhcp_message = dp.Get<DhcpMessage>();
   DhcpCreateMessage(new_dhcp_message);
