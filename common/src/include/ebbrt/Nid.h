@@ -50,4 +50,4 @@ inline size_t operator-(const Nid& lhs, const Nid& rhs) {
 
 }  // namespace ebbrt
 
-#endif  // BAREMETAL_SRC_INCLUDE_EBBRT_NID_H_
+#endif  // COMMON_SRC_INCLUDE_EBBRT_NID_H_

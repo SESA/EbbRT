@@ -11,13 +11,13 @@
 namespace ebbrt {
 template <typename T, typename Deleter = std::default_delete<T>>
 class atomic_unique_ptr {
-  std::atomic<T *> ptr_;
+  std::atomic<T*> ptr_;
   Deleter deleter_;
 
-public:
-  explicit atomic_unique_ptr(T *ptr) : ptr_(ptr), deleter_(Deleter()) {}
+ public:
+  explicit atomic_unique_ptr(T* ptr) : ptr_(ptr), deleter_(Deleter()) {}
 
-  atomic_unique_ptr(atomic_unique_ptr &&other)
+  atomic_unique_ptr(atomic_unique_ptr&& other)
       : ptr_(other.exchange(nullptr).release()),
         deleter_(std::move(other.deleter_)) {}
   ~atomic_unique_ptr() {
@@ -25,18 +25,18 @@ public:
     if (p)
       deleter_(p);
   }
-  T *get() const { return ptr_.load(std::memory_order_consume); }
-  T *operator->() const { return get(); }
-  T &operator*() const { return *get(); }
-  void store(T *desired) {
+  T* get() const { return ptr_.load(std::memory_order_consume); }
+  T* operator->() const { return get(); }
+  T& operator*() const { return *get(); }
+  void store(T* desired) {
     auto p = exchange(desired);
     if (!p)
       deleter_(p.release());
   }
-  std::unique_ptr<T> exchange(T *desired) {
+  std::unique_ptr<T> exchange(T* desired) {
     return std::unique_ptr<T>(
         ptr_.exchange(desired, std::memory_order_release));
   }
 };
-} // namespace ebbrt
-#endif // COMMON_SRC_INCLUDE_EBBRT_ATOMICUNIQUEPTR_H_
+}  // namespace ebbrt
+#endif  // COMMON_SRC_INCLUDE_EBBRT_ATOMICUNIQUEPTR_H_

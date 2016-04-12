@@ -7,9 +7,9 @@
 
 #include <algorithm>
 
-#include <ebbrt/Net.h>
 #include <ebbrt/Debug.h>
 #include <ebbrt/IOBufRef.h>
+#include <ebbrt/Net.h>
 
 // A handler which implements the ITcpHandler interface for a
 // connected tcp pcb. All callbacks are invoked on a single core.

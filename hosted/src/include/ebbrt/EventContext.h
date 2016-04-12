@@ -8,13 +8,13 @@
 #include <boost/coroutine/coroutine.hpp>
 
 namespace ebbrt {
-  class EventContext {
-  private:
-    boost::coroutines::coroutine<void()> coro;
-    boost::coroutines::coroutine<void()>::caller_type* caller;
-    
-    friend class EventManager;
-  };
+class EventContext {
+ private:
+  boost::coroutines::coroutine<void()> coro;
+  boost::coroutines::coroutine<void()>::caller_type* caller;
+
+  friend class EventManager;
+};
 }  // namespace ebbrt
 
 #endif  // HOSTED_SRC_INCLUDE_EBBRT_EVENTCONTEXT_H_

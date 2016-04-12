@@ -4,6 +4,7 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include <ebbrt/Runtime.h>
 
+#include "RuntimeInfo.capnp.h"
 #include <ebbrt/BootFdt.h>
 #include <ebbrt/CapnpMessage.h>
 #include <ebbrt/Debug.h>
@@ -13,7 +14,6 @@
 #include <ebbrt/Messenger.h>
 #include <ebbrt/Net.h>
 #include <ebbrt/UniqueIOBuf.h>
-#include "RuntimeInfo.capnp.h"
 
 namespace ebbrt {
 namespace runtime {

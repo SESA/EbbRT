@@ -13,9 +13,9 @@
 #include <ebbrt/EbbRef.h>
 #include <ebbrt/Future.h>
 #include <ebbrt/Message.h>
+#include <ebbrt/Runtime.h>
 #include <ebbrt/StaticIds.h>
 #include <ebbrt/StaticSharedEbb.h>
-#include <ebbrt/Runtime.h>
 
 namespace ebbrt {
 class GlobalIdMap : public StaticSharedEbb<GlobalIdMap>,

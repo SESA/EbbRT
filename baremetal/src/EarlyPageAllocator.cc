@@ -7,8 +7,8 @@
 #include <cinttypes>
 #include <new>
 
-#include <boost/utility.hpp>
 #include <boost/container/static_vector.hpp>
+#include <boost/utility.hpp>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #include <boost/icl/interval.hpp>
@@ -18,11 +18,12 @@
 #include <ebbrt/Debug.h>
 
 ebbrt::ExplicitlyConstructed<ebbrt::early_page_allocator::FreePageTree>
-ebbrt::early_page_allocator::free_pages;
+    ebbrt::early_page_allocator::free_pages;
 
 namespace {
 ebbrt::ExplicitlyConstructed<boost::container::static_vector<
-    boost::icl::right_open_interval<uint64_t>, 256>> reserved_ranges;
+    boost::icl::right_open_interval<uint64_t>, 256>>
+    reserved_ranges;
 }
 void ebbrt::early_page_allocator::Init() {
   free_pages.construct();
@@ -30,8 +31,8 @@ void ebbrt::early_page_allocator::Init() {
 }
 
 namespace {
-typedef decltype(ebbrt::early_page_allocator::free_pages->begin())
-    FreePageIterator;
+typedef decltype(
+    ebbrt::early_page_allocator::free_pages->begin()) FreePageIterator;
 
 FreePageIterator coalesce(FreePageIterator a, FreePageIterator b) {
   if (a->end() != b->start())

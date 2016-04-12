@@ -36,8 +36,8 @@ void ebbrt::NetworkManager::Interface::EthArpSend(uint16_t proto,
     }
 
     // lambda to send the packet given the destination MAC address
-    auto send_func = [ this, proto, pinfo, buf = std::move(buf) ](
-        EthernetAddress addr) mutable {
+    auto send_func = [ this, proto, pinfo,
+                       buf = std::move(buf) ](EthernetAddress addr) mutable {
       auto dp = buf->GetMutDataPointer();
       auto& eth_header = dp.Get<EthernetHeader>();
       eth_header.dst = addr;
@@ -82,9 +82,8 @@ void ebbrt::NetworkManager::Interface::EthArpSend(uint16_t proto,
 }
 
 // Receive an ARP packet
-void
-ebbrt::NetworkManager::Interface::ReceiveArp(EthernetHeader& eth_header,
-                                             std::unique_ptr<MutIOBuf> buf) {
+void ebbrt::NetworkManager::Interface::ReceiveArp(
+    EthernetHeader& eth_header, std::unique_ptr<MutIOBuf> buf) {
   auto packet_len = buf->ComputeChainDataLength();
   if (packet_len < sizeof(ArpPacket))
     return;

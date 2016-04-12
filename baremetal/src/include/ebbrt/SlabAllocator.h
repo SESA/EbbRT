@@ -51,7 +51,8 @@ class SlabCache {
  private:
   struct PageHookFunctor {
     typedef boost::intrusive::list_member_hook<
-        boost::intrusive::link_mode<boost::intrusive::normal_link>> hook_type;
+        boost::intrusive::link_mode<boost::intrusive::normal_link>>
+        hook_type;
     typedef hook_type* hook_ptr;
     typedef const hook_type* const_hook_ptr;
     typedef mem_map::Page value_type;
@@ -90,7 +91,8 @@ class SlabCache {
   };
 
   typedef boost::intrusive::list<  // NOLINT
-      mem_map::Page, boost::intrusive::function_hook<PageHookFunctor>> PageList;
+      mem_map::Page, boost::intrusive::function_hook<PageHookFunctor>>
+      PageList;
 
   FreeObjectList object_list_;
   PageList partial_page_list_;
@@ -143,7 +145,7 @@ class SlabAllocatorNode : public CacheAligned {
 
 class SlabAllocatorRoot {
  public:
-  SlabAllocatorRoot(size_t size, size_t align = 0);
+  explicit SlabAllocatorRoot(size_t size, size_t align = 0);
   ~SlabAllocatorRoot();
 
   void* operator new(size_t size);

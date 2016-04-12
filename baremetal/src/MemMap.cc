@@ -9,7 +9,7 @@
 #include <ebbrt/Numa.h>
 
 std::array<ebbrt::mem_map::Section, ebbrt::mem_map::kSections>
-ebbrt::mem_map::sections;
+    ebbrt::mem_map::sections;
 
 void ebbrt::mem_map::Init() {
   for (const auto& node : (*numa::nodes)) {

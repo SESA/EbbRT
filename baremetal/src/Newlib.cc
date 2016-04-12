@@ -2,14 +2,14 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
-#include <sys/stat.h>
-#include <sys/fcntl.h>
-#include <sys/times.h>
-#include <sys/errno.h>
-#include <sys/time.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <errno.h>
+#include <sys/errno.h>
+#include <sys/fcntl.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/times.h>
 
 #include <ebbrt/Clock.h>
 #include <ebbrt/Debug.h>
@@ -17,8 +17,8 @@
 #include <ebbrt/Gthread.h>
 #include <ebbrt/VMem.h>
 
-#include <ebbrt/Cpu.h>
 #include <atomic>
+#include <ebbrt/Cpu.h>
 
 extern "C" int ebbrt_newlib_exit(int val) {
   EBBRT_UNIMPLEMENTED();

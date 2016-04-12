@@ -5,8 +5,8 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_EARLYPAGEALLOCATOR_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_EARLYPAGEALLOCATOR_H_
 
-#include <boost/utility.hpp>
 #include <boost/intrusive/set.hpp>
+#include <boost/utility.hpp>
 
 #include <ebbrt/ExplicitlyConstructed.h>
 #include <ebbrt/Numa.h>
@@ -23,8 +23,8 @@ void SetNidRange(Pfn start, Pfn end, Nid nid);
 
 class PageRange {
  public:
-  explicit PageRange(size_t npages, Nid nid) noexcept : npages_(npages),
-                                                        nid_(nid) {}
+  explicit PageRange(size_t npages, Nid nid) noexcept
+      : npages_(npages), nid_(nid) {}
 
   Pfn start() const noexcept {
     return Pfn::Down(reinterpret_cast<uintptr_t>(this));
@@ -37,7 +37,8 @@ class PageRange {
   void set_nid(Nid nid) noexcept { nid_ = nid; }
 
   boost::intrusive::set_member_hook<
-      boost::intrusive::link_mode<boost::intrusive::normal_link>> member_hook;
+      boost::intrusive::link_mode<boost::intrusive::normal_link>>
+      member_hook;
 
  private:
   size_t npages_;
@@ -54,7 +55,8 @@ typedef boost::intrusive::set<  // NOLINT
         PageRange,
         boost::intrusive::set_member_hook<
             boost::intrusive::link_mode<boost::intrusive::normal_link>>,
-        &PageRange::member_hook>> FreePageTree;
+        &PageRange::member_hook>>
+    FreePageTree;
 extern ExplicitlyConstructed<FreePageTree> free_pages;
 
 template <typename F> void ReleaseFreePages(F f) {

@@ -84,7 +84,7 @@ class Messenger : public StaticSharedEbb<Messenger> {
   uint16_t port_;
   std::mutex m_;
   std::unordered_map<uint32_t, SharedFuture<std::weak_ptr<Session>>>
-  connection_map_;
+      connection_map_;
   std::unordered_map<uint32_t, Promise<std::weak_ptr<Session>>> promise_map_;
 
   friend class Session;

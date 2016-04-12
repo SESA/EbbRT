@@ -35,8 +35,8 @@ class MovableFunctionImp
 };
 
 template <typename F, typename... ParamTypes>
-class MovableFunctionImp<F, void, ParamTypes...> : public MovableFunctionBase<
-                                                       void, ParamTypes...> {
+class MovableFunctionImp<F, void, ParamTypes...>
+    : public MovableFunctionBase<void, ParamTypes...> {
  public:
   typedef typename std::decay<F>::type f_type;
   MovableFunctionImp() = delete;

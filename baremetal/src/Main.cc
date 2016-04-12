@@ -13,8 +13,8 @@
 #if __EBBRT_ENABLE_FDT__
 #include <ebbrt/BootFdt.h>
 #endif
-#include <ebbrt/Console.h>
 #include <ebbrt/Clock.h>
+#include <ebbrt/Console.h>
 #include <ebbrt/Cpuid.h>
 #include <ebbrt/Debug.h>
 #include <ebbrt/E820.h>
@@ -34,8 +34,8 @@
 #endif
 #include <ebbrt/Numa.h>
 #include <ebbrt/PageAllocator.h>
-#include <ebbrt/Pic.h>
 #include <ebbrt/Pci.h>
+#include <ebbrt/Pic.h>
 #include <ebbrt/Random.h>
 #if __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
 #include <ebbrt/Runtime.h>
@@ -48,9 +48,9 @@
 #include <ebbrt/Trace.h>
 #endif
 #include <ebbrt/Trans.h>
-#include <ebbrt/VirtioNet.h>
 #include <ebbrt/VMem.h>
 #include <ebbrt/VMemAllocator.h>
+#include <ebbrt/VirtioNet.h>
 
 namespace {
 bool started_once = false;
@@ -65,8 +65,8 @@ void* __dso_handle;
 extern void (*start_ctors[])();
 extern void (*end_ctors[])();
 
-extern "C"
-    __attribute__((noreturn)) void ebbrt::Main(multiboot::Information* mbi) {
+extern "C" __attribute__((noreturn)) void
+ebbrt::Main(multiboot::Information* mbi) {
   console::Init();
 
 #if __EBBRT_ENABLE_TRACE__
@@ -143,41 +143,40 @@ extern "C"
   VMemAllocator::Init();
   EventManager::Init();
 
-  event_manager
-      ->SpawnLocal([=]() {
-                     /// Enable exceptions
-                     __register_frame(__eh_frame_start);
-                     apic::Init();
-                     apic::PVEoiInit(0);
-                     Timer::Init();
-                     smp::Init();
-                     event_manager->ReceiveToken();
+  event_manager->SpawnLocal(
+      [=]() {
+        /// Enable exceptions
+        __register_frame(__eh_frame_start);
+        apic::Init();
+        apic::PVEoiInit(0);
+        Timer::Init();
+        smp::Init();
+        event_manager->ReceiveToken();
 #if __EBBRT_ENABLE_NETWORKING__
-                     NetworkManager::Init();
-                     pci::Init();
-                     pci::RegisterProbe(VirtioNetDriver::Probe);
-                     pci::LoadDrivers();
-                     network_manager->StartDhcp().Then([](Future<void> fut) {
-                       fut.Get();
+        NetworkManager::Init();
+        pci::Init();
+        pci::RegisterProbe(VirtioNetDriver::Probe);
+        pci::LoadDrivers();
+        network_manager->StartDhcp().Then([](Future<void> fut) {
+          fut.Get();
 // Dhcp completed
 #if __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
-                       Messenger::Init();
-                       runtime::Init();
+          Messenger::Init();
+          runtime::Init();
 #endif
 #endif
-                       // run global ctors
-                       for (unsigned i = 0; i < (end_ctors - start_ctors);
-                            ++i) {
-                         start_ctors[i]();
-                       }
-                       kprintf("System initialization complete\n");
-                       if (AppMain) {
-                         event_manager->SpawnLocal([=]() { AppMain(); });
-                       }
+          // run global ctors
+          for (unsigned i = 0; i < (end_ctors - start_ctors); ++i) {
+            start_ctors[i]();
+          }
+          kprintf("System initialization complete\n");
+          if (AppMain) {
+            event_manager->SpawnLocal([=]() { AppMain(); });
+          }
 #if __EBBRT_ENABLE_NETWORKING__
-                     });
+        });
 #endif
-                   },
-                   /* force_async = */ true);
+      },
+      /* force_async = */ true);
   event_manager->StartProcessingEvents();
 }

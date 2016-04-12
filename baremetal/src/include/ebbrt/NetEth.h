@@ -6,8 +6,8 @@
 #define BAREMETAL_SRC_INCLUDE_EBBRT_NETETH_H_
 
 #include <ebbrt/AtomicUniquePtr.h>
-#include <ebbrt/NetIpAddress.h>
 #include <ebbrt/Future.h>
+#include <ebbrt/NetIpAddress.h>
 #include <ebbrt/RcuList.h>
 
 namespace ebbrt {
@@ -84,9 +84,8 @@ class OperationQueue {
     do {
       next = queue_.load(std::memory_order_relaxed);
       operation->next = next;
-    } while (!queue_.compare_exchange_weak(next, operation,
-                                           std::memory_order_release,
-                                           std::memory_order_relaxed));
+    } while (!queue_.compare_exchange_weak(
+        next, operation, std::memory_order_release, std::memory_order_relaxed));
   }
 
   // This will invoke all the operations and clear the queue. It must not be
@@ -106,7 +105,7 @@ class OperationQueue {
 };
 
 struct ArpEntry {
-  ArpEntry(Ipv4Address paddr_, EthernetAddress* addr = nullptr)
+  explicit ArpEntry(Ipv4Address paddr_, EthernetAddress* addr = nullptr)
       : paddr(paddr_), hwaddr(addr) {}
 
   void SetAddr(EthernetAddress* ptr) {

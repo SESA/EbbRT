@@ -13,7 +13,8 @@ class FreeObject {
   void* addr() { return this; }
 
   boost::intrusive::slist_member_hook<
-      boost::intrusive::link_mode<boost::intrusive::normal_link>> member_hook_;
+      boost::intrusive::link_mode<boost::intrusive::normal_link>>
+      member_hook_;
 };
 
 typedef boost::intrusive::slist<
@@ -22,7 +23,8 @@ typedef boost::intrusive::slist<
         FreeObject,
         boost::intrusive::slist_member_hook<
             boost::intrusive::link_mode<boost::intrusive::normal_link>>,
-        &FreeObject::member_hook_>> FreeObjectList;
+        &FreeObject::member_hook_>>
+    FreeObjectList;
 
 typedef boost::intrusive::slist<  // NOLINT
     FreeObject, boost::intrusive::constant_time_size<false>,
@@ -30,7 +32,8 @@ typedef boost::intrusive::slist<  // NOLINT
         FreeObject,
         boost::intrusive::slist_member_hook<
             boost::intrusive::link_mode<boost::intrusive::normal_link>>,
-        &FreeObject::member_hook_>> CompactFreeObjectList;
+        &FreeObject::member_hook_>>
+    CompactFreeObjectList;
 }  // namespace ebbrt
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_SLABOBJECT_H_

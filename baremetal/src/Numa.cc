@@ -11,8 +11,9 @@
 #include <ebbrt/EarlyPageAllocator.h>
 #include <ebbrt/ExplicitlyConstructed.h>
 
-ebbrt::ExplicitlyConstructed<boost::container::static_vector<
-    ebbrt::numa::Node, ebbrt::numa::kMaxNodes>> ebbrt::numa::nodes;
+ebbrt::ExplicitlyConstructed<
+    boost::container::static_vector<ebbrt::numa::Node, ebbrt::numa::kMaxNodes>>
+    ebbrt::numa::nodes;
 
 namespace {
 const constexpr size_t kMaxLocalApic = 256;

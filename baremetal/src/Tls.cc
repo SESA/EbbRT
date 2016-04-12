@@ -23,7 +23,8 @@ extern char tls_end[];
 
 namespace {
 ebbrt::ExplicitlyConstructed<
-    boost::container::static_vector<void*, ebbrt::Cpu::kMaxCpus>> tls_ptrs;
+    boost::container::static_vector<void*, ebbrt::Cpu::kMaxCpus>>
+    tls_ptrs;
 }
 
 void ebbrt::tls::Init() {

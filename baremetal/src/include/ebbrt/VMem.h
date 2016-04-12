@@ -7,8 +7,8 @@
 
 #include <algorithm>
 
-#include <ebbrt/Pfn.h>
 #include <ebbrt/PMem.h>
+#include <ebbrt/Pfn.h>
 
 namespace ebbrt {
 namespace vmem {

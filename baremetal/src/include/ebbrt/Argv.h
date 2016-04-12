@@ -5,21 +5,21 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_ARGV_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_ARGV_H_
 
-#include <cstdlib>
 #include <cstdint>
+#include <cstdlib>
 
 namespace ebbrt {
-  namespace argv {
-    const constexpr size_t kCmdLength=256;
+namespace argv {
+const constexpr size_t kCmdLength = 256;
 
-    struct Data {
-      char cmdline_string[kCmdLength];
-      size_t len;
-    };
-    extern Data data;
-
-    size_t Init(const char *str);
-  };
+struct Data {
+  char cmdline_string[kCmdLength];
+  size_t len;
 };
+extern Data data;
 
-#endif // BAREMETAL_SRC_INCLUDE_EBBRT_ARGV_H_
+size_t Init(const char* str);
+}  // namespace argv
+}  // namespace ebbrt
+
+#endif  // BAREMETAL_SRC_INCLUDE_EBBRT_ARGV_H_

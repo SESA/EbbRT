@@ -19,12 +19,13 @@ class Runtime {
   friend class Context;
   void Initialize();
   void DoInitialization();
+
  public:
   Runtime();
 };
 namespace runtime {
-  // dummy runtime init to keep compatability with baremetal
-  void Init() __attribute__ ((unused));
+// dummy runtime init to keep compatability with baremetal
+void Init() __attribute__((unused));
 }
 }  // namespace ebbrt
 

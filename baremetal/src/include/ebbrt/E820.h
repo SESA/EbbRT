@@ -77,7 +77,8 @@ inline bool operator>=(const Entry& lhs, const Entry& rhs) {
 
 const constexpr size_t kMaxEntries = 128;
 extern ebbrt::ExplicitlyConstructed<
-    boost::container::static_vector<Entry, kMaxEntries>> map;
+    boost::container::static_vector<Entry, kMaxEntries>>
+    map;
 
 void Init(multiboot::Information* mbi);
 

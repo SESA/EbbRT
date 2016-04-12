@@ -10,7 +10,8 @@
 #include <ebbrt/ExplicitlyConstructed.h>
 
 ebbrt::ExplicitlyConstructed<boost::container::static_vector<
-    ebbrt::e820::Entry, ebbrt::e820::kMaxEntries>> ebbrt::e820::map;
+    ebbrt::e820::Entry, ebbrt::e820::kMaxEntries>>
+    ebbrt::e820::map;
 
 void ebbrt::e820::Init(multiboot::Information* mbi) {
   map.construct();

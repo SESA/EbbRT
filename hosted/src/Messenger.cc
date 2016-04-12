@@ -34,17 +34,17 @@ ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to, EbbId id,
       auto socket =
           std::make_shared<bai::tcp::socket>(active_context->io_service_);
       async_connect(*socket, &endpoint, (&endpoint) + 1,
-                    EventManager::WrapHandler([socket, ip, this](
-                        const boost::system::error_code& ec,
-                        bai::tcp::endpoint* /* unused */) {
-                      if (!ec) {
-                        auto session =
-                            std::make_shared<Session>(std::move(*socket));
-                        session->Start();
-                        promise_map_[ip].SetValue(
-                            std::weak_ptr<Session>(std::move(session)));
-                      }
-                    }));
+                    EventManager::WrapHandler(
+                        [socket, ip, this](const boost::system::error_code& ec,
+                                           bai::tcp::endpoint* /* unused */) {
+                          if (!ec) {
+                            auto session =
+                                std::make_shared<Session>(std::move(*socket));
+                            session->Start();
+                            promise_map_[ip].SetValue(
+                                std::weak_ptr<Session>(std::move(session)));
+                          }
+                        }));
     }
   }
 
@@ -57,30 +57,31 @@ ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to, EbbId id,
   h.id = id;
   buf->PrependChain(std::move(data));
   return connection_map_[ip].Then([data = std::move(buf)](
-      SharedFuture<std::weak_ptr<Session>>
-          f) mutable { return f.Get().lock()->Send(std::move(data)); });
+      SharedFuture<std::weak_ptr<Session>> f) mutable {
+    return f.Get().lock()->Send(std::move(data));
+  });
 }
 
 void ebbrt::Messenger::DoAccept(
     std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor,
     std::shared_ptr<boost::asio::ip::tcp::socket> socket) {
-  acceptor->async_accept(
-      *socket,
-      EventManager::WrapHandler([acceptor, socket, this](
-          boost::system::error_code ec) {
-        if (!ec) {
-          auto addr = socket->remote_endpoint().address().to_v4().to_ulong();
-          std::lock_guard<std::mutex> lock(m_);
-          if (connection_map_.find(addr) != connection_map_.end())
-            throw std::runtime_error("Store to promise");
+  acceptor->async_accept(*socket, EventManager::WrapHandler([acceptor, socket,
+                                                             this](
+                                      boost::system::error_code ec) {
+    if (!ec) {
+      auto addr = socket->remote_endpoint().address().to_v4().to_ulong();
+      std::lock_guard<std::mutex> lock(m_);
+      if (connection_map_.find(addr) != connection_map_.end())
+        throw std::runtime_error("Store to promise");
 
-          auto session = std::make_shared<Session>(std::move(*socket));
-          session->Start();
-          connection_map_.emplace(addr, MakeReadyFuture<std::weak_ptr<Session>>(
-                                            std::move(session)).Share());
-          DoAccept(std::move(acceptor), std::move(socket));
-        }
-      }));
+      auto session = std::make_shared<Session>(std::move(*socket));
+      session->Start();
+      connection_map_.emplace(
+          addr,
+          MakeReadyFuture<std::weak_ptr<Session>>(std::move(session)).Share());
+      DoAccept(std::move(acceptor), std::move(socket));
+    }
+  }));
 }
 
 uint16_t ebbrt::Messenger::GetPort() { return port_; }
@@ -123,13 +124,13 @@ ebbrt::Messenger::Session::Send(std::unique_ptr<IOBuf>&& data) {
 
   boost::asio::async_write(
       socket_, IOBufToCBS(std::move(data)),
-      EventManager::WrapHandler([p, self](boost::system::error_code ec,
-                                          std::size_t /*length*/) {
-        if (!ec) {
-          p->SetValue();
-          delete p;
-        }
-      }));
+      EventManager::WrapHandler(
+          [p, self](boost::system::error_code ec, std::size_t /*length*/) {
+            if (!ec) {
+              p->SetValue();
+              delete p;
+            }
+          }));
   return ret;
 }
 

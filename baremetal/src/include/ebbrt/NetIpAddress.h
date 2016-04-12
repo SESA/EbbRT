@@ -5,6 +5,7 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_NETIPADDRESS_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_NETIPADDRESS_H_
 
+#include <algorithm>
 #include <functional>
 
 #include <boost/functional/hash.hpp>

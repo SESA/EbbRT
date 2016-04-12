@@ -6,9 +6,8 @@
 #define BAREMETAL_SRC_INCLUDE_EBBRT_CDEBUG_H_
 
 #ifdef __cplusplus
-extern "C"
-    __attribute__((noreturn)) void ebbrt_kabort(const char* __restrict format,
-                                                ...);
+extern "C" __attribute__((noreturn)) void
+ebbrt_kabort(const char* __restrict format, ...);
 #else
 __attribute__((noreturn)) void ebbrt_kabort(const char* __restrict format, ...);
 #endif

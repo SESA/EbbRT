@@ -78,13 +78,13 @@ void ebbrt::vmem::MapMemory(Pfn vfn, Pfn pfn, uint64_t length) {
                       std::atomic_thread_fence(std::memory_order_release);
                     },
                     [](Pte& entry) {
-    auto page = page_allocator->Alloc();
-    kbugon(page == Pfn::None());
-    auto page_addr = page.ToAddr();
-    new (reinterpret_cast<void*>(page_addr)) Pte[512];
-    entry.SetNormal(page_addr);
-    return true;
-  });
+                      auto page = page_allocator->Alloc();
+                      kbugon(page == Pfn::None());
+                      auto page_addr = page.ToAddr();
+                      new (reinterpret_cast<void*>(page_addr)) Pte[512];
+                      entry.SetNormal(page_addr);
+                      return true;
+                    });
 }
 
 void ebbrt::vmem::EnableRuntimePageTable() {

@@ -8,7 +8,7 @@
 
 std::unordered_map<uint64_t, ebbrt::MessagableBase& (*)(ebbrt::EbbId),
                    ebbrt::Hasher>
-ebbrt::fault_map __attribute__((init_priority(101)));
+    ebbrt::fault_map __attribute__((init_priority(101)));
 
 ebbrt::MessagableBase& ebbrt::GetMessagableRef(EbbId id, uint64_t type_code) {
   auto local_entry = GetLocalEntry(id);

@@ -56,7 +56,8 @@ void PciWrite32(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset,
 
 ebbrt::ExplicitlyConstructed<std::vector<ebbrt::pci::Device>> devices;
 ebbrt::ExplicitlyConstructed<
-    std::vector<std::function<bool(ebbrt::pci::Device&)>>> driver_probes;
+    std::vector<std::function<bool(ebbrt::pci::Device&)>>>
+    driver_probes;
 
 void EnumerateBus(uint8_t bus) {
   for (auto device = 0; device < 32; ++device) {

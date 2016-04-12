@@ -17,9 +17,9 @@
 #include <ebbrt/EbbRef.h>
 #include <ebbrt/Numa.h>
 #include <ebbrt/Pfn.h>
-#include <ebbrt/VMem.h>
 #include <ebbrt/SpinLock.h>
 #include <ebbrt/StaticIds.h>
+#include <ebbrt/VMem.h>
 
 namespace ebbrt {
 
@@ -41,8 +41,9 @@ class PageAllocator : public CacheAligned {
     Pfn pfn() const { return Pfn::Down(reinterpret_cast<uintptr_t>(this)); }
     Pfn GetBuddy(size_t order) const { return PfnToBuddy(pfn(), order); }
 
-    boost::intrusive::list_member_hook<boost::intrusive::link_mode<
-        boost::intrusive::normal_link>> member_hook_;
+    boost::intrusive::list_member_hook<
+        boost::intrusive::link_mode<boost::intrusive::normal_link>>
+        member_hook_;
   };
   typedef boost::intrusive::list<  // NOLINT
       FreePage,
@@ -50,7 +51,8 @@ class PageAllocator : public CacheAligned {
           FreePage,
           boost::intrusive::list_member_hook<
               boost::intrusive::link_mode<boost::intrusive::normal_link>>,
-          &FreePage::member_hook_>> FreePageList;
+          &FreePage::member_hook_>>
+      FreePageList;
 
   static inline Pfn PfnToBuddy(Pfn pfn, size_t order) {
     return Pfn(pfn.val() ^ (1 << order));
@@ -70,8 +72,9 @@ class PageAllocator : public CacheAligned {
   bool Release(Pfn pfn, size_t order);
 #endif
 
-  static ExplicitlyConstructed<boost::container::static_vector<
-      PageAllocator, numa::kMaxNodes>> allocators;
+  static ExplicitlyConstructed<
+      boost::container::static_vector<PageAllocator, numa::kMaxNodes>>
+      allocators;
   SpinLock lock_;
   Nid nid_;
   std::array<FreePageList, kMaxOrder + 1> free_page_lists;
