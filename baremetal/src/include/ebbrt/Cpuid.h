@@ -5,8 +5,17 @@
 #ifndef BAREMETAL_SRC_INCLUDE_EBBRT_CPUID_H_
 #define BAREMETAL_SRC_INCLUDE_EBBRT_CPUID_H_
 
+#include <cstdint>
 namespace ebbrt {
 namespace cpuid {
+
+struct Result {
+  uint32_t eax;
+  uint32_t ebx;
+  uint32_t ecx;
+  uint32_t edx;
+};
+
 struct Features {
   bool x2apic;
   bool kvm_pv_eoi;
@@ -15,6 +24,7 @@ struct Features {
 
 extern Features features;
 
+Result Cpuid(uint32_t leaf);
 void Init();
 }  // namespace cpuid
 }  // namespace ebbrt
