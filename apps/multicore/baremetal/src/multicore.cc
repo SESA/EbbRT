@@ -14,11 +14,11 @@
 #include <ebbrt/Timer.h>
 
 #define LIST_TEST 0
-#define HASH_TEST 1
+#define HASH_TEST 0
 
 class MyClass {
  public:
-  MyClass(uint16_t key = 0, int value = 0) : key(key), value(value) {}
+  explicit MyClass(uint16_t key = 0, int value = 0) : key(key), value(value) {}
 
   ebbrt::RcuHListHook hook;
   uint16_t key;
@@ -58,7 +58,9 @@ void Work() {
   auto t0 = ebbrt::clock::Wall::Now();
   const constexpr size_t iters = 1000;
   while ((ebbrt::clock::Wall::Now() - t0) < std::chrono::milliseconds(1)) {
+#if HASH_TEST
     uint16_t key = rng->dist(rng->generator);
+#endif
     for (size_t i = 0; i < iters; ++i) {
 #if LIST_TEST
       for (auto& myc : list) {
