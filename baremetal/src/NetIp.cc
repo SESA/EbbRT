@@ -49,6 +49,8 @@ void ebbrt::NetworkManager::Interface::ReceiveIp(
   if (unlikely(packet_len < tot_len))
     return;
 
+  buf->TrimEnd(packet_len - tot_len);
+
   if (unlikely(ip_header.ComputeChecksum() != 0))
     return;
 
