@@ -345,7 +345,7 @@ void ebbrt::NetworkManager::TcpEntry::Destroy() {
     std::lock_guard<ebbrt::SpinLock> guard(network_manager->tcp_write_lock_);
     network_manager->tcp_pcbs_.erase(*this);
   }
-  event_manager->DoRcu([this]() { delete this; });
+  event_manager->DoRcu([this]() { /*delete this;*/ });
 }
 
 // Input tcp segment to a listening PCB
