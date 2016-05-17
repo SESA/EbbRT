@@ -40,14 +40,13 @@ EBBRT_INCLUDES := \
 	-iquote $(EBBRT_BAREMETAL_PATH)/ext/lwip/include/ipv4/ \
 	-iquote $(CURDIR) \
 	-include $(EBBRT_CONFIG) \
-	$(EBBRT_APP_INCLUDES) \
-	$(EBBRT_APP_CPPFLAGS)
+	$(EBBRT_APP_INCLUDES)
 
 EBBRT_CPPFLAGS = -U ebbrt -MD -MT $@ -MP $(EBBRT_OPTFLAGS) -Wall -Werror \
-	-fno-stack-protector $(EBBRT_INCLUDES)
-EBBRT_CXXFLAGS = -std=gnu++14 -ftemplate-backtrace-limit=0
-EBBRT_CFLAGS = -std=gnu99
-EBBRT_ASFLAGS = -MD -MT $@ -MP $(EBBRT_OPTFLAGS) -DASSEMBLY
+	-fno-stack-protector $(EBBRT_INCLUDES) $(EBBRT_APP_CPPFLAGS)
+EBBRT_CXXFLAGS = -std=gnu++14 -ftemplate-backtrace-limit=0 $(EBBRT_APP_CXXFLAGS)
+EBBRT_CFLAGS = -std=gnu99 $(EBBRT_APP_CFLAGS)
+EBBRT_ASFLAGS = -MD -MT $@ -MP $(EBBRT_OPTFLAGS) -DASSEMBLY $(EBBRT_APP_ASFLAGS)
 
 EBBRT_CAPNPS := $(notdir $(wildcard $(EBBRT_COMMON_PATH)/src/*.capnp))
 EBBRT_CAPNP_OBJECTS := $(EBBRT_CAPNPS:.capnp=.capnp.o)
