@@ -33,11 +33,9 @@ EBBRT_INCLUDES := \
 	-I $(EBBRT_BAREMETAL_PATH)/../common/src/include \
 	-I $(EBBRT_BAREMETAL_PATH)/ext/acpica/include \
 	-I $(EBBRT_BAREMETAL_PATH)/ext/boost/include \
-	-I $(EBBRT_BAREMETAL_PATH)/ext/lwip/include \
 	-I $(EBBRT_BAREMETAL_PATH)/ext/tbb/include \
 	-I $(EBBRT_BAREMETAL_PATH)/ext/capnp/include \
 	-I $(EBBRT_BAREMETAL_PATH)/ext/fdt/include \
-	-iquote $(EBBRT_BAREMETAL_PATH)/ext/lwip/include/ipv4/ \
 	-iquote $(CURDIR) \
 	-include $(EBBRT_CONFIG) \
 	$(EBBRT_APP_INCLUDES)
@@ -84,12 +82,6 @@ acpi_objects := $(patsubst $(EBBRT_BAREMETAL_PATH)/%.c, %.o, $(acpi_sources))
 
 $(acpi_objects): EBBRT_CFLAGS += -fno-strict-aliasing -Wno-strict-aliasing \
 	-Wno-unused-but-set-variable -DACPI_LIBRARY
-
-lwip_sources := $(filter-out %icmp6.c %inet6.c %ip6_addr.c %ip6.c,$(shell find \
-	$(EBBRT_BAREMETAL_PATH)/ext/lwip -type f -name '*.c'))
-lwip_objects := $(patsubst $(EBBRT_BAREMETAL_PATH)/%.c, %.o, $(lwip_sources))
-
-$(lwip_objects): EBBRT_CFLAGS += -Wno-address -Wno-unused-but-set-variable -Wno-array-bounds -Wno-unused-variable
 
 capnp_sources := $(shell find $(EBBRT_BAREMETAL_PATH)/ext/capnp/src/capnp -type f -name '*.c++')
 capnp_objects := $(patsubst $(EBBRT_BAREMETAL_PATH)/%.c++, %.o, $(capnp_sources))
