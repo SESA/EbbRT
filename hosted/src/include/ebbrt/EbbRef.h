@@ -9,6 +9,7 @@
 #include <ebbrt/EbbId.h>
 #include <ebbrt/LocalEntry.h>
 #include <ebbrt/TypeTraits.h>
+#include <type_traits>
 
 namespace ebbrt {
 template <class T> class EbbRef {

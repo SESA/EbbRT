@@ -11,6 +11,8 @@
 #include <ebbrt/Trans.h>
 #include <ebbrt/TypeTraits.h>
 
+#include <type_traits>
+
 namespace ebbrt {
 
 template <class T> class EbbRef {

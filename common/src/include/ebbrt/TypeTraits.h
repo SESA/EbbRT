@@ -5,6 +5,8 @@
 #ifndef COMMON_SRC_INCLUDE_EBBRT_TYPETRAITS_H_
 #define COMMON_SRC_INCLUDE_EBBRT_TYPETRAITS_H_
 
+#include <utility>
+
 namespace ebbrt {
 
 template <typename From, typename To> struct is_explicitly_convertible {
