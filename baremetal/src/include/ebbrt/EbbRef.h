@@ -9,12 +9,28 @@
 #include <ebbrt/EbbId.h>
 #include <ebbrt/LocalEntry.h>
 #include <ebbrt/Trans.h>
+#include <ebbrt/TypeTraits.h>
 
 namespace ebbrt {
+
 template <class T> class EbbRef {
  public:
   constexpr explicit EbbRef(EbbId id = 0)
       : ref_(trans::kVMemStart + sizeof(LocalEntry) * id) {}
+
+  template <typename From>
+  EbbRef(const EbbRef<From>& from,
+         typename std::enable_if_t<std::is_convertible<From*, T*>::value>* =
+             nullptr)
+      : ref_(from.ref_) {}
+
+  template <typename From>
+  explicit EbbRef(
+      const EbbRef<From>& from,
+      typename std::enable_if_t<is_explicitly_convertible<From*, T*>::value &&
+                                !std::is_convertible<From*, T*>::value>* =
+          nullptr)
+      : ref_(from.ref_) {}
 
   T* operator->() const { return &operator*(); }
 
@@ -33,11 +49,12 @@ template <class T> class EbbRef {
     le->ref = &ref;
   }
 
-  operator EbbId() const {
+  explicit operator EbbId() const {
     return (ref_ - trans::kVMemStart) / sizeof(LocalEntry);
   }
 
  private:
+  template <typename U> friend class EbbRef;
   uintptr_t ref_;
 };
 }  // namespace ebbrt

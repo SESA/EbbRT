@@ -8,12 +8,26 @@
 #include <ebbrt/Context.h>
 #include <ebbrt/EbbId.h>
 #include <ebbrt/LocalEntry.h>
+#include <ebbrt/TypeTraits.h>
 
 namespace ebbrt {
 template <class T> class EbbRef {
  public:
-  constexpr EbbRef() : ebbid_(0) {}
-  constexpr explicit EbbRef(EbbId id) : ebbid_(id) {}
+  constexpr explicit EbbRef(EbbId id = 0) : ebbid_(id) {}
+
+  template <typename From>
+  EbbRef(const EbbRef<From>& from,
+         typename std::enable_if_t<std::is_convertible<From*, T*>::value>* =
+             nullptr)
+      : ebbid_(from.ebbid_) {}
+
+  template <typename From>
+  explicit EbbRef(
+      const EbbRef<From>& from,
+      typename std::enable_if_t<is_explicitly_convertible<From*, T*>::value &&
+                                !std::is_convertible<From*, T*>::value>* =
+          nullptr)
+      : ebbid_(from.ebbid_) {}
 
   T* operator->() const { return &operator*(); }
 
@@ -29,17 +43,16 @@ template <class T> class EbbRef {
     return *lref;
   }
 
-  T* GetPointer() const { return &operator*(); }
-
   static void CacheRef(EbbId id, T& ref) {
     LocalEntry le;
     le.ref = static_cast<void*>(&ref);
     active_context->SetLocalEntry(id, le);
   }
 
-  operator EbbId() const { return ebbid_; }
+  explicit operator EbbId() const { return ebbid_; }
 
  private:
+  template <typename U> friend class EbbRef;
   EbbId ebbid_;
 };
 
