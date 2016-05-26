@@ -106,9 +106,12 @@ extern "C" void* ebbrt_newlib_malloc(size_t size) {
 
 extern "C" void ebbrt_newlib_free(void* ptr) { ebbrt::gp_allocator->Free(ptr); }
 
-extern "C" void* ebbrt_newlib_realloc(void*, size_t) {
-  EBBRT_UNIMPLEMENTED();
-  return nullptr;
+extern "C" void* ebbrt_newlib_realloc(void* buf, size_t size) {
+  auto p = ebbrt_newlib_malloc(size);
+  if (buf) {
+    std::memcpy(p, buf, size);
+  }
+  return p;
 }
 
 extern "C" void* ebbrt_newlib_calloc(size_t num, size_t size) {
