@@ -5,6 +5,8 @@
 #ifndef HOSTED_SRC_INCLUDE_EBBRT_DEBUG_H_
 #define HOSTED_SRC_INCLUDE_EBBRT_DEBUG_H_
 
+#include <stdlib.h>
+
 namespace ebbrt {
 
 static __attribute__((noreturn)) void kabort() { abort(); }
