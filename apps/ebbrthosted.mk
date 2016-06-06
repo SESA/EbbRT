@@ -19,9 +19,10 @@ endif
 INCLUDES := \
 	-I $(ebbrt_hostedinc) \
 	-I $(ebbrt_commoninc) \
-	-iquote $(CURDIR)
+	-iquote $(CURDIR) \
+	$(EBBRT_APP_INCLUDES)
 
-CXXFLAGS := -std=c++14 $(INCLUDES) $(OPTFLAGS)
+CXXFLAGS := -std=c++14 $(INCLUDES) $(OPTFLAGS) $(EBBRT_APP_CXXFLAGS)
 
 ebbrt_libdir := lib
 ebbrt_lib := ${ebbrt_libdir}/libEbbRT.a
@@ -37,6 +38,8 @@ bm_imgdir = bm
 bm_imgs = $(addprefix ${bm_imgdir}/,$(notdir $(EBBRT_BM_IMGS)))
 
 app_objects ?= $(app_sources:.cc=.o)
+app_objects += $(EBBRT_APP_OBJECTS)
+
 
 ebbrt_very-quiet = $(if $V, $1, @$1)
 
@@ -64,8 +67,10 @@ app_capnp_h := $(app_capnps:.capnp=.capnp.h)
 app_capnp_gens := $(app_capnp_cxx) $(app_capnp_h) $(app_capnp_objects)
 
 ${target}: $(app_objects) $(ebbrt_lib) $(bm_imgs)
-	$(CXX) $(OPTFLAGS)  -Wl,--whole-archive $(app_objects) $(ebbrt_lib) -Wl,--no-whole-archive \
+	$(CXX) $(OPTFLAGS) \
+	-Wl,--whole-archive $(app_objects) $(ebbrt_lib) -Wl,--no-whole-archive \
 	-lboost_coroutine -lboost_context -lboost_filesystem  -lboost_system \
+	$(EBBRT_APP_LDFLAGS) \
 	-lcapnp -lkj -lfdt -ltbb  -pthread $(EBBRT_APP_LINK) -o $@
 	@echo CREATED: $(abspath ${target})
 
