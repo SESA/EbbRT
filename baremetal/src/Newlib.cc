@@ -31,8 +31,7 @@ extern "C" int ebbrt_newlib_execve(char* name, char** argv, char** env) {
 }
 
 extern "C" int ebbrt_newlib_getpid(void) {
-  EBBRT_UNIMPLEMENTED();
-  return 0;
+  return ebbrt::Cpu::GetMyNode().val();
 }
 
 extern "C" int ebbrt_newlib_fork(void) {
@@ -96,7 +95,11 @@ extern "C" int ebbrt_newlib_unlink(char* name) {
 }
 
 extern "C" int ebbrt_newlib_write(int file, char* ptr, int len) {
-  EBBRT_UNIMPLEMENTED();
+  if (file < 0 || file > 3)
+    EBBRT_UNIMPLEMENTED();
+
+  ptr[len] = '\0';
+  ebbrt::kprintf("%s\n", ptr);
   return 0;
 }
 
