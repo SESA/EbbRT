@@ -2,8 +2,11 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
+
+#include <cassert>
 #include <ebbrt/Context.h>
 #include <ebbrt/ContextActivation.h>
+#include <ebbrt/Cpu.h>
 #include <ebbrt/Runtime.h>
 
 thread_local ebbrt::Context* ebbrt::active_context;
@@ -19,6 +22,11 @@ ebbrt::Context::Context(Runtime& runtime) : runtime_(runtime) {
 void ebbrt::Context::Activate() { active_context = this; }
 
 void ebbrt::Context::Deactivate() { active_context = nullptr; }
+
+size_t ebbrt::Context::GetIndex() {
+  assert(active_context);
+  return index_;
+}
 
 void ebbrt::Context::Run() {
   ContextActivation active(*this);

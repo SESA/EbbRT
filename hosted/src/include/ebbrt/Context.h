@@ -25,6 +25,7 @@ class Context {
   Context& operator=(Context&&) = default;
   void Activate();
   void Deactivate();
+  size_t GetIndex();
   void Run();
   void RunOne();
   void PollOne();
