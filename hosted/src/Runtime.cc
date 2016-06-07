@@ -9,6 +9,7 @@
 #include <ebbrt/Messenger.h>
 #include <ebbrt/NodeAllocator.h>
 #include <ebbrt/Runtime.h>
+#include <ebbrt/Timer.h>
 
 ebbrt::Runtime::Runtime() : initialized_(false), indices_(0) {}
 
@@ -37,4 +38,5 @@ void ebbrt::Runtime::DoInitialization() {
   EbbAllocator::Init();
   Messenger::Init();
   NodeAllocator::Init();
+  Timer::Init();
 }

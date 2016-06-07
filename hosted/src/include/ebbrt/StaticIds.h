@@ -17,6 +17,7 @@ enum : EbbId {
   kMessengerId,
   kEventManagerId,
   kGlobalMapId,
+  kTimerId,
   kFirstFreeId
 };
 }  // namespace ebbrt

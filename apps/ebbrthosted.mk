@@ -40,7 +40,6 @@ bm_imgs = $(addprefix ${bm_imgdir}/,$(notdir $(EBBRT_BM_IMGS)))
 app_objects ?= $(app_sources:.cc=.o)
 app_objects += $(EBBRT_APP_OBJECTS)
 
-
 ebbrt_very-quiet = $(if $V, $1, @$1)
 
 ebbrt_build-cxx = CXX -MD -MT $@ -MP -Wall -Werror $(CXXFLAGS) -c -o $@ $<

@@ -2,8 +2,8 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
-#ifndef BAREMETAL_SRC_INCLUDE_EBBRT_TIMER_H_
-#define BAREMETAL_SRC_INCLUDE_EBBRT_TIMER_H_
+#ifndef COMMON_SRC_INCLUDE_EBBRT_TIMER_H_
+#define COMMON_SRC_INCLUDE_EBBRT_TIMER_H_
 
 #include <chrono>
 #include <set>
@@ -11,7 +11,6 @@
 #include <boost/intrusive/set.hpp>
 
 #include <ebbrt/MulticoreEbbStatic.h>
-#include <ebbrt/Trans.h>
 
 namespace ebbrt {
 
@@ -69,4 +68,4 @@ class Timer : public MulticoreEbbStatic<Timer> {
 const constexpr auto timer = EbbRef<Timer>(Timer::static_id);
 }  // namespace ebbrt
 
-#endif  // BAREMETAL_SRC_INCLUDE_EBBRT_TIMER_H_
+#endif  // COMMON_SRC_INCLUDE_EBBRT_TIMER_H_
