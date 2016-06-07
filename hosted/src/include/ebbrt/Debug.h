@@ -5,14 +5,17 @@
 #ifndef HOSTED_SRC_INCLUDE_EBBRT_DEBUG_H_
 #define HOSTED_SRC_INCLUDE_EBBRT_DEBUG_H_
 
+#include <cassert>
 #include <stdlib.h>
+
+#define kassert(expr) assert(expr)
+#define EBBRT_UNIMPLEMENTED() kabort()
 
 namespace ebbrt {
 
 static __attribute__((noreturn)) void kabort() { abort(); }
 
-template <typename... Args>
-__attribute__((noreturn)) void kprintf(Args... args) {
+template <typename... Args> void kprintf(Args... args) {
   printf(args...);  // NOLINT
 }
 
