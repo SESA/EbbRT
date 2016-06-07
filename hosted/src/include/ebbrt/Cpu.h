@@ -5,4 +5,16 @@
 #ifndef HOSTED_SRC_INCLUDE_EBBRT_CPU_H_
 #define HOSTED_SRC_INCLUDE_EBBRT_CPU_H_
 
+#include <ebbrt/Context.h>
+#include <stddef.h>
+#include <stdint.h>
+
+namespace ebbrt {
+
+class Cpu {
+ public:
+  static size_t GetMine() { return active_context->GetIndex(); }
+};
+}
+
 #endif  // HOSTED_SRC_INCLUDE_EBBRT_CPU_H_
