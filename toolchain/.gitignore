@@ -1,0 +1,5 @@
+config.mk
+build
+deps
+src
+sysroot

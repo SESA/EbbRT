@@ -1,0 +1,313 @@
+diff --git a/config.sub b/config.sub
+index 6d2e94c..162885b 100755
+--- a/config.sub
++++ b/config.sub
+@@ -1373,7 +1373,7 @@ case $os in
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+ 	      | -sym* | -kopensolaris* | -plan9* \
+ 	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
+-	      | -aos* | -aros* \
++	      | -aos* | -aros* | -ebbrt* \
+ 	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
+ 	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
+ 	      | -hiux* | -386bsd* | -knetbsd* | -mirbsd* | -netbsd* \
+diff --git a/config/gthr.m4 b/config/gthr.m4
+index 7b29f1f..16ff643 100644
+--- a/config/gthr.m4
++++ b/config/gthr.m4
+@@ -13,6 +13,7 @@ AC_DEFUN([GCC_AC_THREAD_HEADER],
+ case $1 in
+     aix)	thread_header=config/rs6000/gthr-aix.h ;;
+     dce)	thread_header=config/pa/gthr-dce.h ;;
++    ebbrt)      thread_header=config/gthr-ebbrt.h ;;
+     lynx)	thread_header=config/gthr-lynx.h ;;
+     mipssde)	thread_header=config/mips/gthr-mipssde.h ;;
+     posix)	thread_header=gthr-posix.h ;;
+diff --git a/fixincludes/mkfixinc.sh b/fixincludes/mkfixinc.sh
+index 6653fed..d81143e 100755
+--- a/fixincludes/mkfixinc.sh
++++ b/fixincludes/mkfixinc.sh
+@@ -11,6 +11,7 @@ target=fixinc.sh
+ 
+ # Check for special fix rules for particular targets
+ case $machine in
++    *-ebbrt* | \
+     i?86-*-cygwin* | \
+     i?86-*-mingw32* | \
+     x86_64-*-mingw32* | \
+diff --git a/gcc/config.gcc b/gcc/config.gcc
+index c835734..7210bad 100644
+--- a/gcc/config.gcc
++++ b/gcc/config.gcc
+@@ -645,6 +645,24 @@ case ${target} in
+   default_use_cxa_atexit=yes
+   use_gcc_stdint=wrap
+   ;;
++*-*-ebbrt*)
++  gas=yes
++  gnu_ld=yes
++  case ${enable_threads} in
++    "" | yes | ebbrt)
++      thread_file='ebbrt'
++      ;;
++    no | single)
++      # Let these non-ebbrt thread selections fall through if requested
++      ;;
++    *)
++      echo 'Unknown thread configuration for EbbRT'
++      exit 1
++      ;;
++  esac
++  default_use_cxa_atexit=yes
++  use_gcc_stdint=wrap
++  ;;
+ *-*-freebsd*)
+   # This is the generic ELF configuration of FreeBSD.  Later
+   # machine-specific sections may refine and add to this
+@@ -1371,6 +1389,9 @@ x86_64-*-darwin*)
+ 	tmake_file="${tmake_file} ${cpu_type}/t-darwin64 t-slibgcc"
+ 	tm_file="${tm_file} ${cpu_type}/darwin64.h"
+ 	;;
++x86_64-*-ebbrt*)
++	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h newlib-stdint.h i386/i386elf.h i386/x86-64.h ebbrt.h"
++	;;
+ i[34567]86-*-elf*)
+ 	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h newlib-stdint.h i386/i386elf.h"
+ 	;;
+diff --git a/gcc/config/ebbrt.h b/gcc/config/ebbrt.h
+new file mode 100644
+index 0000000..8b95619
+--- /dev/null
++++ b/gcc/config/ebbrt.h
+@@ -0,0 +1,32 @@
++/* Useful if you wish to make target-specific gcc changes. */
++#undef TARGET_EBBRT
++#define TARGET_EBBRT 1
++
++/* Default arguments you want when running your
++   i686-ebbrt-gcc/x86_64-ebbrt-gcc toolchain */
++#undef LIB_SPEC
++#define LIB_SPEC "-lebbrt -lfdt -lcapnp -lkj -lacpica -ltbb -lstdc++ -lsupc++ -lgcc -lc -lg -lnosys -lebbrt" /* link against C standard library */
++
++/* Files that are linked before user code.
++   The %s tells gcc to look for these files in the library directory. */
++#undef STARTFILE_SPEC
++#define STARTFILE_SPEC ""
++
++/* Files that are linked after user code. */
++#undef ENDFILE_SPEC
++#define ENDFILE_SPEC ""
++
++/* Don't automatically add extern "C" { } around header files. */
++#undef  NO_IMPLICIT_EXTERN_C
++#define NO_IMPLICIT_EXTERN_C 1
++
++/* Additional predefined macros. */
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()      \
++  do {                                \
++    builtin_define ("__ebbrt__");      \
++    builtin_define ("__unix__");      \
++    builtin_assert ("system=ebbrt");   \
++    builtin_assert ("system=unix");   \
++    builtin_assert ("system=posix");   \
++  } while(0);
+diff --git a/gcc/configure.ac b/gcc/configure.ac
+index d414081..fc0d07e 100644
+--- a/gcc/configure.ac
++++ b/gcc/configure.ac
+@@ -1534,7 +1534,7 @@ case ${enable_threads} in
+     # default
+     target_thread_file='single'
+     ;;
+-  aix | dce | lynx | mipssde | posix | rtems | \
++  aix | dce | ebbrt | lynx | mipssde | posix | rtems | \
+   single | tpf | vxworks | win32)
+     target_thread_file=${enable_threads}
+     ;;
+diff --git a/libgcc/config.host b/libgcc/config.host
+index 4329891..b62d83b 100644
+--- a/libgcc/config.host
++++ b/libgcc/config.host
+@@ -556,6 +556,10 @@ x86_64-*-darwin*)
+ 	tm_file="$tm_file i386/darwin-lib.h"
+ 	extra_parts="$extra_parts crtprec32.o crtprec64.o crtprec80.o crtfastmath.o"
+ 	;;
++x86_64-*-ebbrt*)
++	extra_parts="$extra_parts crtbegin.o crtend.o"
++	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic"
++	;;
+ i[34567]86-*-elf*)
+ 	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic"
+ 	;;
+diff --git a/libgcc/config/gthr-ebbrt.h b/libgcc/config/gthr-ebbrt.h
+new file mode 100644
+index 0000000..c8e1230
+--- /dev/null
++++ b/libgcc/config/gthr-ebbrt.h
+@@ -0,0 +1,135 @@
++#ifndef GCC_GTHR_EBBRT_H
++#define GCC_GTHR_EBBRT_H
++
++#include <ebbrt/Gthread.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++#define __GTHREADS 1
++#define __GTHREAD_HAS_COND 1
++#define __GTHREADS_CXX0X 1
++
++static inline int __gthread_active_p(void) { return ebbrt_gthread_active_p(); }
++
++static inline int __gthread_once(__gthread_once_t *once, void (*func)(void)) {
++  return ebbrt_gthread_once(once, func);
++}
++
++static inline int __gthread_key_create(__gthread_key_t *keyp,
++                                       void (*dtor)(void *)) {
++  return ebbrt_gthread_key_create(keyp, dtor);
++}
++
++static inline int __gthread_key_delete(__gthread_key_t key) {
++  return ebbrt_gthread_key_delete(key);
++}
++
++static inline void *__gthread_getspecific(__gthread_key_t key) {
++  return ebbrt_gthread_getspecific(key);
++}
++
++static inline int __gthread_setspecific(__gthread_key_t key, const void *ptr) {
++  return ebbrt_gthread_setspecific(key, ptr);
++}
++
++static inline int __gthread_mutex_destroy(__gthread_mutex_t *mutex) {
++  return ebbrt_gthread_mutex_destroy(mutex);
++}
++
++static inline int
++__gthread_recursive_mutex_destroy(__gthread_recursive_mutex_t *mutex) {
++  return ebbrt_gthread_recursive_mutex_destroy(mutex);
++}
++
++static inline int __gthread_mutex_lock(__gthread_mutex_t *mutex) {
++  return ebbrt_gthread_mutex_lock(mutex);
++}
++
++static inline int __gthread_mutex_trylock(__gthread_mutex_t *mutex) {
++  return ebbrt_gthread_mutex_trylock(mutex);
++}
++
++static inline int __gthread_mutex_unlock(__gthread_mutex_t *mutex) {
++  return ebbrt_gthread_mutex_unlock(mutex);
++}
++
++static inline int
++__gthread_recursive_mutex_lock(__gthread_recursive_mutex_t *mutex) {
++  return ebbrt_gthread_recursive_mutex_lock(mutex);
++}
++
++static inline int
++__gthread_recursive_mutex_trylock(__gthread_recursive_mutex_t *mutex) {
++  return ebbrt_gthread_recursive_mutex_trylock(mutex);
++}
++
++static inline int
++__gthread_recursive_mutex_unlock(__gthread_recursive_mutex_t *mutex) {
++  return ebbrt_gthread_recursive_mutex_unlock(mutex);
++}
++
++static inline int __gthread_cond_broadcast(__gthread_cond_t *cond) {
++  return ebbrt_gthread_cond_broadcast(cond);
++}
++static inline int __gthread_cond_wait(__gthread_cond_t *cond,
++                                      __gthread_mutex_t *mutex) {
++  return ebbrt_gthread_cond_wait(cond, mutex);
++}
++static inline int
++__gthread_cond_wait_recursive(__gthread_cond_t *cond,
++                              __gthread_recursive_mutex_t *mutex) {
++  return ebbrt_gthread_cond_wait_recursive(cond, mutex);
++}
++
++static inline int __gthread_cond_destroy(__gthread_cond_t* cond) {
++  return ebbrt_gthread_cond_destroy(cond);
++}
++
++static inline int __gthread_create(__gthread_t *thread, void *(*func)(void *),
++                                   void *args) {
++  return ebbrt_gthread_create(thread, func, args);
++}
++
++static inline int __gthread_join(__gthread_t thread, void **value_ptr) {
++  return ebbrt_gthread_join(thread, value_ptr);
++}
++
++static inline int __gthread_detach(__gthread_t thread) {
++  return ebbrt_gthread_detach(thread);
++}
++
++static inline int __gthread_equal(__gthread_t t1, __gthread_t t2) {
++  return ebbrt_gthread_equal(t1, t2);
++}
++
++static inline __gthread_t __gthread_self(void) { return ebbrt_gthread_self(); }
++
++static inline int __gthread_yield(void) { return ebbrt_gthread_yield(); }
++
++static inline int
++__gthread_mutex_timedlock(__gthread_mutex_t *m,
++                          const __gthread_time_t *abs_timeout) {
++  return ebbrt_gthread_mutex_timedlock(m, abs_timeout);
++}
++
++static inline int
++__gthread_recursive_mutex_timedlock(__gthread_recursive_mutex_t *m,
++                                    const __gthread_time_t *abs_time) {
++  return ebbrt_gthread_mutex_timedlock(m, abs_time);
++}
++
++static inline int __gthread_cond_signal(__gthread_cond_t *cond) {
++  return ebbrt_gthread_cond_signal(cond);
++}
++
++static inline int
++__gthread_cond_timedwait(__gthread_cond_t *cond, __gthread_mutex_t *mutex,
++                         const __gthread_time_t *abs_timeout) {
++  return ebbrt_gthread_cond_timedwait(cond, mutex, abs_timeout);
++}
++
++#ifdef __cplusplus
++}
++#endif
++#endif
+diff --git a/libgcc/configure b/libgcc/configure
+index 203d384..9a04d89 100644
+--- a/libgcc/configure
++++ b/libgcc/configure
+@@ -5052,6 +5052,7 @@ tm_file="${tm_file_}"
+ case $target_thread_file in
+     aix)	thread_header=config/rs6000/gthr-aix.h ;;
+     dce)	thread_header=config/pa/gthr-dce.h ;;
++    ebbrt)	thread_header=config/gthr-ebbrt.h ;;
+     lynx)	thread_header=config/gthr-lynx.h ;;
+     mipssde)	thread_header=config/mips/gthr-mipssde.h ;;
+     posix)	thread_header=gthr-posix.h ;;
+diff --git a/libstdc++-v3/crossconfig.m4 b/libstdc++-v3/crossconfig.m4
+index 10247f9..9bb1b16 100644
+--- a/libstdc++-v3/crossconfig.m4
++++ b/libstdc++-v3/crossconfig.m4
+@@ -65,6 +65,13 @@ case "${host}" in
+     AC_DEFINE(HAVE_HYPOT)
+     ;;
+ 
++  *-ebbrt*)
++    GLIBCXX_CHECK_COMPILER_FEATURES
++    GLIBCXX_CHECK_LINKER_FEATURES
++    GLIBCXX_CHECK_MATH_SUPPORT
++    GLIBCXX_CHECK_STDLIB_SUPPORT
++    ;;
++
+   *-freebsd*)
+     SECTION_FLAGS='-ffunction-sections -fdata-sections'
+     AC_SUBST(SECTION_FLAGS) 

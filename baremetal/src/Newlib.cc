@@ -15,6 +15,7 @@
 #include <ebbrt/Debug.h>
 #include <ebbrt/GeneralPurposeAllocator.h>
 #include <ebbrt/Gthread.h>
+#include <ebbrt/Newlib.h>
 #include <ebbrt/VMem.h>
 
 #include <atomic>
@@ -163,8 +164,6 @@ struct RLock {
   uint32_t count;
 };
 
-typedef void* _LOCK_T;
-typedef void* _LOCK_RECURSIVE_T;
 #define STATIC_ASSERT(COND, MSG)                                               \
   typedef char static_assertion_##MSG[(COND) ? 1 : -1]
 
