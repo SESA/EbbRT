@@ -83,12 +83,10 @@ SECTIONS
                 tls_end = ABSOLUTE(.);
         }
 
-        . = ALIGN(64);
-        tcb0 = .;
-        . = . + (tls_end - tls_start) + 8;
-
 	.bss BLOCK(4K) : ALIGN(4K)
 	{
+                tcb0 = ABSOLUTE(.);
+                . += (tls_end - tls_start) + 8;
 		*(COMMON)
                 *(.bss)
 		*(.bss.*)

@@ -10,7 +10,7 @@
 
 #include <ebbrt/Acpi.h>
 #include <ebbrt/Apic.h>
-#if __EBBRT_ENABLE_FDT__
+#ifdef __EBBRT_ENABLE_FDT__
 #include <ebbrt/BootFdt.h>
 #endif
 #include <ebbrt/Clock.h>
@@ -22,14 +22,14 @@
 #include <ebbrt/EbbAllocator.h>
 #include <ebbrt/EventManager.h>
 #include <ebbrt/GeneralPurposeAllocator.h>
-#if __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
+#ifdef __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
 #include <ebbrt/GlobalIdMap.h>
 #endif
 #include <ebbrt/LocalIdMap.h>
 #include <ebbrt/MemMap.h>
 #include <ebbrt/Messenger.h>
 #include <ebbrt/Multiboot.h>
-#if __EBBRT_ENABLE_NETWORKING__
+#ifdef __EBBRT_ENABLE_NETWORKING__
 #include <ebbrt/Net.h>
 #endif
 #include <ebbrt/Numa.h>
@@ -37,14 +37,14 @@
 #include <ebbrt/Pci.h>
 #include <ebbrt/Pic.h>
 #include <ebbrt/Random.h>
-#if __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
+#ifdef __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
 #include <ebbrt/Runtime.h>
 #endif
 #include <ebbrt/SlabAllocator.h>
 #include <ebbrt/Smp.h>
 #include <ebbrt/Timer.h>
 #include <ebbrt/Tls.h>
-#if __EBBRT_ENABLE_TRACE__
+#ifdef __EBBRT_ENABLE_TRACE__
 #include <ebbrt/Trace.h>
 #endif
 #include <ebbrt/Trans.h>
@@ -69,7 +69,7 @@ extern "C" __attribute__((noreturn)) void
 ebbrt::Main(multiboot::Information* mbi) {
   console::Init();
 
-#if __EBBRT_ENABLE_TRACE__
+#ifdef __EBBRT_ENABLE_TRACE__
   trace::Init();
 #endif
 
@@ -97,7 +97,7 @@ ebbrt::Main(multiboot::Information* mbi) {
 
   early_page_allocator::Init();
   multiboot::Reserve(mbi);
-#if __EBBRT_ENABLE_FDT__
+#ifdef __EBBRT_ENABLE_FDT__
   boot_fdt::Init(mbi);
 #endif
   vmem::Init();
@@ -152,7 +152,7 @@ ebbrt::Main(multiboot::Information* mbi) {
         Timer::Init();
         smp::Init();
         event_manager->ReceiveToken();
-#if __EBBRT_ENABLE_NETWORKING__
+#ifdef __EBBRT_ENABLE_NETWORKING__
         NetworkManager::Init();
         pci::Init();
         pci::RegisterProbe(VirtioNetDriver::Probe);
@@ -160,7 +160,7 @@ ebbrt::Main(multiboot::Information* mbi) {
         network_manager->StartDhcp().Then([](Future<void> fut) {
           fut.Get();
 // Dhcp completed
-#if __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
+#ifdef __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
           Messenger::Init();
           runtime::Init();
 #endif
@@ -173,7 +173,7 @@ ebbrt::Main(multiboot::Information* mbi) {
           if (AppMain) {
             event_manager->SpawnLocal([=]() { AppMain(); });
           }
-#if __EBBRT_ENABLE_NETWORKING__
+#ifdef __EBBRT_ENABLE_NETWORKING__
         });
 #endif
       },
