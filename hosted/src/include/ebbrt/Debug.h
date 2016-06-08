@@ -6,22 +6,22 @@
 #define HOSTED_SRC_INCLUDE_EBBRT_DEBUG_H_
 
 #include <cassert>
-#include <stdlib.h>
+#include <cstdlib>
+#include <utility>
 
 #define kassert(expr) assert(expr)
 #define EBBRT_UNIMPLEMENTED() kabort()
 
 namespace ebbrt {
 
+__attribute__((no_instrument_function)) void
+kprintf(const char* __restrict format, ...);
+
 static __attribute__((noreturn)) void kabort() { abort(); }
 
-template <typename... Args> void kprintf(Args&&... args) {
-  printf(std::forward<Args>(args)...);  // NOLINT
-}
-
 template <typename... Args>
-__attribute__((noreturn)) void kabort(const Args&... args) {
-  kprintf(args...);
+__attribute__((noreturn)) void kabort(Args&&... args) {
+  kprintf(std::forward<Args>(args)...);  // NOLINT
   kabort();
 }
 
