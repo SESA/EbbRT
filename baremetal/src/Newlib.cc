@@ -80,7 +80,10 @@ extern "C" int ebbrt_newlib_read(int file, char* ptr, int len) {
 }
 
 extern "C" int ebbrt_newlib_fstat(int file, struct stat* st) {
-  EBBRT_UNIMPLEMENTED();
+  if (file < 1 || file > 3) {
+    EBBRT_UNIMPLEMENTED();
+    return 0;
+  }
   return 0;
 }
 
@@ -95,12 +98,12 @@ extern "C" int ebbrt_newlib_unlink(char* name) {
 }
 
 extern "C" int ebbrt_newlib_write(int file, char* ptr, int len) {
-  if (file < 0 || file > 3)
+  if (file < 1 || file > 3) {
     EBBRT_UNIMPLEMENTED();
-
-  ptr[len] = '\0';
-  ebbrt::kprintf("%s\n", ptr);
-  return 0;
+    return 0;
+  }
+  ebbrt::kprintf("%*.*s", len, len, ptr);
+  return len;
 }
 
 extern "C" void* ebbrt_newlib_malloc(size_t size) {
