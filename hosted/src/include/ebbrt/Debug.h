@@ -15,8 +15,8 @@ namespace ebbrt {
 
 static __attribute__((noreturn)) void kabort() { abort(); }
 
-template <typename... Args> void kprintf(Args... args) {
-  printf(args...);  // NOLINT
+template <typename... Args> void kprintf(Args&&... args) {
+  printf(std::forward<Args>(args)...);  // NOLINT
 }
 
 template <typename... Args>
