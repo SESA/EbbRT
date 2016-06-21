@@ -9,7 +9,14 @@
 #include <cstdlib>
 #include <utility>
 
+#ifndef NDEBUG
 #define kassert(expr) assert(expr)
+#else
+#define kassert(expr)                                                          \
+  do {                                                                         \
+    (void)sizeof(expr);                                                        \
+  } while (0)
+#endif
 #define EBBRT_UNIMPLEMENTED() kabort()
 
 namespace ebbrt {
