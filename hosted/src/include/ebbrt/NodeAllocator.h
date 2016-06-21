@@ -6,6 +6,7 @@
 #define HOSTED_SRC_INCLUDE_EBBRT_NODEALLOCATOR_H_
 
 #include <string>
+#include <vector>
 
 #include <boost/asio.hpp>
 
@@ -31,21 +32,21 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
 
   class NodeDescriptor {
    public:
-    NodeDescriptor(uint16_t node_id,
+    NodeDescriptor(std::string node_id,
                    ebbrt::Future<ebbrt::Messenger::NetworkId> net_id)
         : node_id_(node_id), net_id_(std::move(net_id)) {}
-    uint16_t NodeId() { return node_id_; }
+    std::string NodeId() { return node_id_; }
     ebbrt::Future<ebbrt::Messenger::NetworkId>& NetworkId() { return net_id_; }
 
    private:
-    uint16_t node_id_;
+    std::string node_id_;
     ebbrt::Future<ebbrt::Messenger::NetworkId> net_id_;
   };
   NodeDescriptor AllocateNode(std::string binary_path, int cpus = DefaultCpus,
                               int numNodes = DefaultNumaNodes,
                               int ram = DefaultRam,
                               std::string arguments = DefaultArguments);
-  void FreeNode(uint16_t node_id);
+  void FreeNode(std::string node_id);
 
  private:
   class Session : public std::enable_shared_from_this<Session> {
@@ -61,14 +62,15 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   void DoAccept(std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor,
                 std::shared_ptr<boost::asio::ip::tcp::socket> socket);
   uint32_t GetNetAddr();
+  std::string GetId() { return network_id_; }
 
   std::atomic<uint16_t> node_index_;
   std::atomic<uint16_t> allocation_index_;
   std::unordered_map<uint16_t, Promise<Messenger::NetworkId>> promise_map_;
-  int network_id_;
+  std::string network_id_;
   uint32_t net_addr_;
   uint16_t port_;
-  char dir_[160];
+  std::vector<std::string> nodes_;
 
   friend class Session;
   friend class Messenger;

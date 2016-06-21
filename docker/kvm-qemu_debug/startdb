@@ -1,0 +1,133 @@
+#!/bin/bash
+set -x
+
+# start sshd 
+/usr/sbin/sshd &
+
+# environment variables 
+export VCPU=${VM_CPU:-2}
+export VMEM=${VM_MEM:-2G}
+export WAIT=${VM_WAIT:-false}
+
+NETVEC=$(($((${VCPU}*2))+ 2))
+IFACE=eth0
+BRIDGE_IFACE=br0
+TAP_IFACE=tap0
+
+: ${KVM_NET_OPTS:="-netdev tap,script=no,downscript=no,\
+ifname=\$TAP_IFACE,id=net0,vhost=on,queues=\$VCPU \
+-device virtio-net-pci,netdev=net0,mac=\$MAC,mq=on,\
+vectors=\$NETVEC"}
+
+# Pass Docker command args to kvm
+KVM_ARGS=$@
+
+atoi()
+{
+	#Returns the integer representation of an IP arg, passed in ascii dotted-decimal notation (x.x.x.x)
+	IP=$1; IPNUM=0
+	for (( i=0 ; i<4 ; ++i )); do
+	((IPNUM+=${IP%%.*}*$((256**$((3-${i}))))))
+	IP=${IP#*.}
+	done
+	echo $IPNUM
+}
+
+itoa()
+{
+	#returns the dotted-decimal ascii form of an IP arg passed in integer format
+	echo -n $(($(($(($((${1}/256))/256))/256))%256)).
+	echo -n $(($(($((${1}/256))/256))%256)).
+	echo -n $(($((${1}/256))%256)).
+	echo $((${1}%256))
+}
+
+cidr2mask() {
+  local i mask=""
+  local full_octets=$(($1/8))
+  local partial_octet=$(($1%8))
+
+  for ((i=0;i<4;i+=1)); do
+    if [ $i -lt $full_octets ]; then
+      mask+=255
+    elif [ $i -eq $full_octets ]; then
+      mask+=$((256 - 2**(8-$partial_octet)))
+    else
+      mask+=0
+    fi
+    test $i -lt 3 && mask+=.
+  done
+
+  echo $mask
+}
+
+setup_bridge_networking() {
+    MAC=`ip addr show $IFACE | grep ether | sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*\$//g' | cut -f2 -d ' '`
+    IP=`ip addr show dev $IFACE | grep "inet $IP" | awk '{print $2}' | cut -f1 -d/`
+    CIDR=`ip addr show dev $IFACE | grep "inet $IP" | awk '{print $2}' | cut -f2 -d/`
+    NETMASK=`cidr2mask $CIDR`
+    GATEWAY=`ip route get 8.8.8.8 | grep via | cut -f3 -d ' '`
+    NAMESERVER=( `grep nameserver /etc/resolv.conf | grep -v "#" | cut -f2 -d ' '` )
+    NAMESERVERS=`echo ${NAMESERVER[*]} | sed "s/ /,/"`
+
+    # Generate random new MAC address
+    hexchars="0123456789ABCDEF"
+    end=$( for i in {1..8} ; do echo -n ${hexchars:$(( $RANDOM % 16 )):1} ; done | sed -e 's/\(..\)/:\1/g' )
+    NEWMAC=`echo 06:FE$end`
+
+    let "NEWCIDR=$CIDR"
+
+    i=`atoi $IP`
+    let "j=(255-(($i&0xff)))" 
+    let "i=$i&~((1<<8)-1)" # X.Y.Z.0
+    let "k=($i+$j)"
+    NEWIP=`itoa k`
+
+    ip link set dev $IFACE down
+    ip link set $IFACE address $NEWMAC
+    ip addr del $IP/$CIDR dev $IFACE
+    ip tuntap add dev $TAP_IFACE mode tap multi_queue 
+    ip link add name $BRIDGE_IFACE type bridge
+    ip link set $IFACE master $BRIDGE_IFACE 
+    ip link set $TAP_IFACE master $BRIDGE_IFACE 
+    ip link set dev $IFACE up
+    ip link set dev $BRIDGE_IFACE up
+    ip link set dev $TAP_IFACE up
+    if [ -z $NO_DHCP ]; then
+        ip addr add $IP/$CIDR dev $BRIDGE_IFACE
+    fi
+    if [[ $? -ne 0 ]]; then
+        echo "Failed to bring up network bridge"
+        exit 4
+    fi
+
+cat > /etc/dnsmasq.conf << EOF
+      user=root
+      dhcp-range=$NEWIP,$NEWIP
+      dhcp-host=$MAC,$HOSTNAME,$NEWIP,infinite
+      dhcp-option=option:router,$GATEWAY
+      dhcp-option=option:netmask,$NETMASK
+      dhcp-option=option:dns-server,$NAMESERVERS
+EOF
+
+    if [ -z $NO_DHCP ]; then
+        dnsmasq 
+    fi
+}
+
+# pause until signaled to continue 
+if [ "$WAIT" = "true" ]; then
+  echo "Waiting for creation of file /tmp/signal"
+  until [ -a /tmp/signal ]; do sleep 1; done
+fi
+
+file /tmp/signal
+
+setup_bridge_networking
+
+# For debugging
+if [ "$1" = "bash" ]; then
+  exec bash
+fi
+
+exec $LAUNCHER qemu-system-x86_64 -m $VMEM -smp cpus=$VCPU -cpu host -serial stdio -display none -enable-kvm `eval echo $KVM_NET_OPTS` $KVM_ARGS

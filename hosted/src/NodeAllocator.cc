@@ -2,22 +2,25 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
+#ifndef NDEBUG
+#include <sys/socket.h>
+#endif
+#include <ctime>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
-#include <libfdt.h>
-
+#include <RuntimeInfo.capnp.h>
 #include <boost/filesystem.hpp>
 #include <capnp/message.h>
-
 #include <ebbrt/CapnpMessage.h>
 #include <ebbrt/Fdt.h>
 #include <ebbrt/Messenger.h>
 #include <ebbrt/NodeAllocator.h>
-
-#include <RuntimeInfo.capnp.h>
+#include <libfdt.h>
 
 namespace bai = boost::asio::ip;
+const constexpr size_t kLineSize = 80;
 
 int ebbrt::NodeAllocator::DefaultCpus;
 int ebbrt::NodeAllocator::DefaultRam;
@@ -93,7 +96,6 @@ void ebbrt::NodeAllocator::Session::Start() {
 }
 
 ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
-  dir_[0] = 0;
   {
     char* str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_CPUS");
     DefaultCpus = (str) ? atoi(str) : kDefaultCpus;
@@ -103,56 +105,73 @@ ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
     DefaultNumaNodes = (str) ? atoi(str) : kDefaultNumaNodes;
     str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_ARGUMENTS");
     DefaultArguments = (str) ? std::string(str) : std::string(" ");
-
-    std::cout << "NodeAllocator::Init() DefaultCpus=" << DefaultCpus
-              << " DefaultNumaNodes=" << DefaultNumaNodes
-              << " DefaultRam=" << DefaultRam
-              << " DefaultArguments=" << DefaultArguments << std::endl;
   }
   auto acceptor = std::make_shared<bai::tcp::acceptor>(
       active_context->io_service_, bai::tcp::endpoint(bai::tcp::v4(), 0));
   auto socket = std::make_shared<bai::tcp::socket>(active_context->io_service_);
-  // TODO(dschatz): fix this hard coded name
-  auto f = popen("/opt/khpy/kh network", "r");
+
+  auto f = popen(
+      ("docker network create " + std::to_string(std::time(nullptr))).c_str(),
+      "r");
   if (f == nullptr) {
     throw std::runtime_error("popen failed");
   }
-
-  std::string str;
   char line[100];
   while (fgets(line, 100, f) != nullptr) {
+    network_id_ += line;
+  }
+  network_id_.erase(network_id_.length() - 1);  // trim newline
+  pclose(f);
+
+  auto ipct =
+      std::string("docker network inspect ") +
+      std::string(" --format='{{range .IPAM.Config}}{{.Gateway}}{{end}}' ") +
+      network_id_;
+  auto g = popen(ipct.c_str(), "r");
+
+  std::string str;
+  while (fgets(line, 100, g) != nullptr) {
     str += line;
   }
-  uint8_t ip0, ip1, ip2, ip3;
-  sscanf(str.c_str(), "%d\n%hhu.%hhu.%hhu.%hhu\n", &network_id_, &ip0, &ip1,
-         &ip2, &ip3);
-  pclose(f);
+  uint8_t ip0, ip1, ip2, ip3, cidr;
+  sscanf(str.c_str(), "%hhu.%hhu.%hhu.%hhu\\%hhu", &ip0, &ip1, &ip2, &ip3,
+         &cidr);
+  pclose(g);
   net_addr_ = ip0 << 24 | ip1 << 16 | ip2 << 8 | ip3;
   port_ = acceptor->local_endpoint().port();
   std::cout << "Node Allocator bound to " << static_cast<int>(ip0) << "."
             << static_cast<int>(ip1) << "." << static_cast<int>(ip2) << "."
             << static_cast<int>(ip3) << ":" << port_ << std::endl;
+  std::cout << "Docker network: " << network_id_.substr(0, 12) << std::endl;
   DoAccept(std::move(acceptor), std::move(socket));
 }
 
 ebbrt::NodeAllocator::~NodeAllocator() {
-  if (dir_[0]) {
-    std::cout << "OUTPUT FROM NODES: " << std::endl;
-    std::string cmd = "/bin/cat " + std::string(dir_) + "/*/stdout";
-    int rc = system(cmd.c_str());
+  for (auto n : nodes_) {
+    std::string c = "docker logs " + n;
+    int rc = system(c.c_str());
     if (rc < 0) {
-      std::cout << "ERROR: system rc =" << rc << " for command: " << cmd
+      std::cout << "ERROR: system rc =" << rc << " for command: " << c
                 << std::endl;
     }
   }
-  std::cout << "Node Allocator destructor! " << std::endl;
-  char network[100];
-  snprintf(network, sizeof(network), "%d", network_id_);
-  std::string command = "/opt/khpy/kh rmnet " + std::string(network);
-  std::cout << "executing " << command << std::endl;
-  int rc = system(command.c_str());
-  if (rc < 0) {
-    std::cout << "ERROR: system rc =" << rc << std::endl;
+  for (auto n : nodes_) {
+    std::string c = "docker rm -f " + n;
+    std::cout << "Removing container " << n.substr(0, 12) << std::endl;
+    auto f = popen(c.c_str(), "r");
+    if (f == nullptr) {
+      throw std::runtime_error("'docker network rm' failed");
+    }
+    pclose(f);
+  }
+  {
+    std::cout << "Removing network " << network_id_.substr(0, 12) << std::endl;
+    std::string c = "docker network rm " + network_id_;
+    auto f = popen(c.c_str(), "r");
+    if (f == nullptr) {
+      throw std::runtime_error("'docker network rm' failed");
+    }
+    pclose(f);
   }
 }
 
@@ -176,7 +195,6 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
   auto fdt = Fdt();
   fdt.BeginNode("/");
   fdt.BeginNode("runtime");
-  fdt.CreateProperty("net", static_cast<uint16_t>(network_id_));
   fdt.CreateProperty("address", net_addr_);
   auto port = port_;
   fdt.CreateProperty("port", port);
@@ -193,6 +211,12 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
   if (boost::filesystem::exists(fname)) {
     throw std::runtime_error("Failed to create unique temporary file name");
   }
+  // cid file
+  auto cid = dir / boost::filesystem::unique_path();
+  if (boost::filesystem::exists(fname)) {
+    throw std::runtime_error(
+        "Failed to create container id temporary file name");
+  }
 
   // TODO(dschatz): make this asynchronous?
   boost::filesystem::create_directories(dir);
@@ -204,69 +228,96 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
   if (!outfile.good()) {
     throw std::runtime_error("Failed to write fdt");
   }
-
   // file should flush here
   std::cout << "Fdt written to " << fname.native() << std::endl;
 
-  char network[100];
-  snprintf(network, sizeof(network), "%d", network_id_);
-
-  std::string command =
-      "/opt/khpy/kh alloc" + std::string(" --ram ") + std::to_string(ram) +
-      std::string(" --cpu ") + std::to_string(cpus) + std::string(" --numa ") +
-      std::to_string(numaNodes) +
+  std::string cmd =
+      std::string(" docker run -td -P --cap-add NET_ADMIN") +
+      std::string(" --device  /dev/kvm:/dev/kvm") +
+      std::string(" --device /dev/net/tun:/dev/net/tun") +
+      std::string(" --device /dev/vhost-net:/dev/vhost-net") +
+      std::string(" --net=") + network_id_ + std::string(" -e VM_MEM=") +
+      std::to_string(ram) + std::string("G") + std::string(" -e VM_CPU=") +
+      std::to_string(cpus) + std::string(" -e VM_WAIT=true") +
+      std::string(" --cidfile=") + cid.native()
 #ifndef NDEBUG
-      " -g" +
+      + std::string(" --expose 1234") + std::string(" ebbrt/kvm-qemu:debug") +
+      std::string(" --gdb tcp:0.0.0.0:1234 ")
+#else
+      + std::string(" ebbrt/kvm-qemu:latest")
 #endif
-      std::string(" ") + arguments + std::string(" ") + std::string(network) +
-      " " + binary_path + " " + fname.native();
+      + arguments + std::string(" -kernel /root/img.elf") +
+      std::string(" -initrd /root/initrd");
 
-  std::cout << "executing " << command << std::endl;
-  auto f = popen(command.c_str(), "r");
+  std::cout << "Starting container... " << std::endl;
+  auto f = popen(cmd.c_str(), "r");
   if (f == nullptr) {
-    throw std::runtime_error("Failed to allocate node");
+    throw std::runtime_error("Failed to create container");
   }
-
-  const constexpr size_t kLineSize = 80;
   char line[kLineSize];
-  std::string result;
+  std::string node_id;
   while (std::fgets(line, kLineSize, f)) {
-    result += line;
+    node_id += line;
   }
-  std::cout << result << std::endl;
-  std::istringstream input;
-  input.str(result);
-  std::string num_str;
-  std::getline(input, num_str);
-  auto num = std::stoi(num_str);
-  std::cout << num << std::endl;
+  node_id.erase(node_id.length() - 1);  // trim newline
+  pclose(f);
+  // inspect for IpAddr
+  auto getip = "docker inspect -f '{{range "
+               ".NetworkSettings.Networks}}{{.IPAddress}}{{end}}' " +
+               node_id;
+  auto g = popen(getip.c_str(), "r");
+  if (g == nullptr) {
+    throw std::runtime_error("Failed to get node ip ");
+  }
+  std::string ip;
+  while (fgets(line, kLineSize, g) != nullptr) {
+    ip += line;
+  }
+  ip.erase(ip.length() - 1);  // trim newline
 
-  if (dir_[0] == 0) {
-    std::string line;
-    while (std::getline(input, line)) {
-      unsigned found = line.find_last_of("/\\");
-      if (found && line.substr(found + 1) == std::string("stdout")) {
-        std::string dir = line.substr(0, found);
-        found = dir.find_last_of("/\\");
-        bzero(dir_, sizeof(dir_));
-        strncpy(dir_, line.substr(0, found).c_str(), sizeof(dir_));
-        dir_[sizeof(dir_)] = 0;
-        printf("dir: %s\n", dir_);
-        break;
-      }
-    }
+  /* transfer images into container */
+  std::string sk = std::string("scp -q -o UserKnownHostsFile=/dev/null -o "
+                               "StrictHostKeyChecking=no ") +
+                   binary_path + std::string(" root@") + ip +
+                   std::string(":/root/img.elf");
+  std::string si = std::string("scp -q -o UserKnownHostsFile=/dev/null -o "
+                               "StrictHostKeyChecking=no ") +
+                   fname.native() + std::string(" root@") + ip +
+                   std::string(":/root/initrd");
+
+  if (system(sk.c_str()) < 0) {
+    std::cout << "Error: command failed - " << sk << std::endl;
+    throw std::runtime_error("Image transfer failed.");
+  }
+  if (system(si.c_str()) < 0) {
+    std::cout << "Error on command: " << si << std::endl;
+    throw std::runtime_error("Image transfer failed.");
   }
 
-  return NodeDescriptor(num, promise_map_[allocation_id].GetFuture());
+  /* starting vm */
+  std::string kick = std::string("docker exec -dt ") + node_id +
+                     std::string(" touch /tmp/signal");
+  if (system(kick.c_str()) < 0) {
+    std::cout << "Error: command failed - " << kick << std::endl;
+    throw std::runtime_error("VM creation failed.");
+  }
+
+  nodes_.emplace_back(node_id);
+  auto rfut = promise_map_[allocation_id].GetFuture();
+  std::cout << "Container Id: " << node_id.substr(0, 12) << std::endl;
+
+  return NodeDescriptor(node_id, std::move(rfut));
 }
 
-void ebbrt::NodeAllocator::FreeNode(uint16_t node_id) {
-  std::string command = "/opt/khpy/kh rmnode " + std::to_string(node_id);
-  std::cout << "executing " << command << std::endl;
+void ebbrt::NodeAllocator::FreeNode(std::string node_id) {
+  std::string command = "docker rm -f " + node_id;
+  std::cout << "Removing container " << node_id << std::endl;
   auto f = popen(command.c_str(), "r");
   if (f == nullptr) {
-    throw std::runtime_error("Failed to allocate node");
+    throw std::runtime_error("Failed to free node");
   }
+  nodes_.erase(std::remove(nodes_.begin(), nodes_.end(), node_id),
+               nodes_.end());
 }
 
 uint32_t ebbrt::NodeAllocator::GetNetAddr() { return net_addr_; }
