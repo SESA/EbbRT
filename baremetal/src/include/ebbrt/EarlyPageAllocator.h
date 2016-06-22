@@ -23,8 +23,8 @@ void SetNidRange(Pfn start, Pfn end, Nid nid);
 
 class PageRange {
  public:
-  explicit PageRange(size_t npages, Nid nid) noexcept
-      : npages_(npages), nid_(nid) {}
+  explicit PageRange(size_t npages, Nid nid) noexcept : npages_(npages),
+                                                        nid_(nid) {}
 
   Pfn start() const noexcept {
     return Pfn::Down(reinterpret_cast<uintptr_t>(this));

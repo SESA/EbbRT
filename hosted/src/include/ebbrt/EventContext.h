@@ -6,12 +6,20 @@
 #define HOSTED_SRC_INCLUDE_EBBRT_EVENTCONTEXT_H_
 
 #include <boost/coroutine/coroutine.hpp>
+#include <boost/version.hpp>
 
 namespace ebbrt {
 class EventContext {
+#if BOOST_VERSION > 105400
+  typedef boost::coroutines::symmetric_coroutine<void>::call_type coro_type;
+  typedef boost::coroutines::symmetric_coroutine<void>::yield_type caller_type;
+#else
+  typedef boost::coroutines::coroutine<void()> coro_type;
+  typedef boost::coroutines::coroutine<void()>::caller_type caller_type;
+#endif
  private:
-  boost::coroutines::coroutine<void()> coro;
-  boost::coroutines::coroutine<void()>::caller_type* caller;
+  coro_type coro;
+  caller_type* caller;
 
   friend class EventManager;
 };

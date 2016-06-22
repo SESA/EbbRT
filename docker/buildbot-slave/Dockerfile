@@ -1,12 +1,5 @@
-FROM ubuntu:14.04
+FROM ubuntu:16.04
 
-RUN /bin/echo -e "\
-    deb http://archive.ubuntu.com/ubuntu trusty main universe\n\
-    deb http://archive.ubuntu.com/ubuntu trusty-updates main universe\n\
-    deb http://llvm.org/apt/trusty/ llvm-toolchain-trusty main" > \
-    /etc/apt/sources.list
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y wget
-RUN wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key | apt-key add -
 RUN apt-get update
 RUN DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -14,8 +7,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
     automake \
     bridge-utils \
     build-essential \
-    clang-format-3.9 \
+    clang-format-3.8 \
     cmake  \
+    curl \
     dnsmasq \
     git \
     libboost-coroutine-dev  \
@@ -31,6 +25,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
     python-pip \
     software-properties-common \
     supervisor \
+    wget \
     zlib1g-dev
 
 #
@@ -59,17 +54,9 @@ WORKDIR /tmp
 RUN tar -xf /tmp/capnproto.tar.gz
 WORKDIR /tmp/capnproto-0.4.0/c++
 RUN autoreconf -i
-RUN ./configure
+RUN CXXFLAGS=-fpermissive ./configure
 RUN make -j
 RUN make install
-
-# GCC 5.x
-RUN add-apt-repository ppa:ubuntu-toolchain-r/test
-RUN apt-get update -yqq
-RUN apt-get install -yqq g++-5
-
-# switch to gcc 5.x
-RUN ln -f -s /usr/bin/g++-5 /usr/bin/g++
 
 # BuildBot
 RUN pip install buildbot_slave

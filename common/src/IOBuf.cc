@@ -7,7 +7,8 @@
 #include <cstdlib>
 
 ebbrt::IOBuf::IOBuf(const uint8_t* data, size_t length) noexcept
-    : data_(data), length_(length) {}
+    : data_(data),
+      length_(length) {}
 
 ebbrt::IOBuf::~IOBuf() noexcept {
   while (Next() != this) {

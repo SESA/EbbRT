@@ -50,24 +50,23 @@ class EventManager : public StaticSharedEbb<EventManager>, public CacheAligned {
     explicit HandlerWrapper(F&& f) : f_(std::move(f)) {}
     template <typename... Args> void operator()(Args&&... args) {
       ebbrt::Context* ctxt = active_context;
-      ctxt->active_event_context_.coro =
-          boost::coroutines::coroutine<void()>(std::bind(
-              [this,
-               ctxt](boost::coroutines::coroutine<void()>::caller_type& ca,
-                     Args&&... args) {
-                ctxt->active_event_context_.caller = &ca;
-                ca();
-                try {
-                  f_(std::forward<Args>(args)...);
-                } catch (std::exception& e) {
-                  fprintf(stderr, "Unhandled exception caught: %s\n", e.what());
-                  std::abort();
-                } catch (...) {
-                  fprintf(stderr, "Unhandled exception caught \n");
-                  std::abort();
-                }
-              },
-              std::placeholders::_1, std::forward<Args>(args)...));
+      ctxt->active_event_context_.coro = EventContext::coro_type(std::bind(
+          [this, ctxt](EventContext::caller_type& ca, Args&&... args) {
+            ctxt->active_event_context_.caller = &ca;
+#if BOOST_VERSION <= 105400
+            ca();
+#endif
+            try {
+              f_(std::forward<Args>(args)...);
+            } catch (std::exception& e) {
+              fprintf(stderr, "Unhandled exception caught: %s\n", e.what());
+              std::abort();
+            } catch (...) {
+              fprintf(stderr, "Unhandled exception caught \n");
+              std::abort();
+            }
+          },
+          std::placeholders::_1, std::forward<Args>(args)...));
       ctxt->active_event_context_.coro();
     }
 

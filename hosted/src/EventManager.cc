@@ -13,9 +13,11 @@ void ebbrt::EventManager::Spawn(MovableFunction<void()> func,
   // async dispatch
   ctxt->io_service_.post([f, this, ctxt]() {
     // create and run a new coroutine to run the event on
-    ctxt->active_event_context_.coro = boost::coroutines::coroutine<void()>(
-        [f, this, ctxt](boost::coroutines::coroutine<void()>::caller_type& ca) {
+    ctxt->active_event_context_.coro =
+        EventContext::coro_type([f, this, ctxt](EventContext::caller_type& ca) {
+#if BOOST_VERSION <= 105400
           ca();
+#endif
           // store the caller for later if we need to save the context
           ctxt->active_event_context_.caller = &ca;
           InvokeFunction(f);
