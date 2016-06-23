@@ -10,6 +10,7 @@
 #include <forward_list>
 #include <memory>
 #include <vector>
+#include <cstring>
 
 #include <boost/iterator/iterator_facade.hpp>
 
@@ -169,6 +170,36 @@ class IOBuf {
       return Data();
     }
 
+    // copies 'size' bytes into byte pointer 'buf'
+    void GetNoAdvance(size_t size, uint8_t* buf) {
+      if (!p_)
+        throw std::runtime_error("DataPointer::Get(): past end of buffer");
+
+      assert(p_->Length() > 0);
+
+      // saves buf pointer
+      uint8_t* tmptr = buf;
+
+      if (p_->Length() - offset_ < size) {
+        auto p = p_;
+        auto len = size;
+        auto offset = offset_;
+        while (len > 0) {
+          // get number of bytes left
+          auto remainder = std::min(p->Length() - offset, len);
+          // get offset into where to start copy from
+          auto data = p->Data() + offset;
+          std::memcpy(tmptr, data, remainder);
+          tmptr += remainder;
+          // go to next chain
+          p = p->Next();
+          offset = 0;
+          len -= remainder;
+        }
+      } else {  // no need to memcpy from chains
+        std::memcpy(tmptr, Data(), size);
+      }
+    }
     template <typename T> const T& GetNoAdvance() {
       return *reinterpret_cast<const T*>(GetNoAdvance(sizeof(T)));
     }
@@ -177,6 +208,12 @@ class IOBuf {
       auto ret = GetNoAdvance(size);
       Advance(size);
       return ret;
+    }
+
+    // copies 'size' bytes into byte pointer 'buf'
+    void Get(size_t size, uint8_t* buf) {
+      GetNoAdvance(size, buf);
+      Advance(size);
     }
 
     template <typename T> const T& Get() {
