@@ -77,6 +77,13 @@ ebbrt::PageAllocator& ebbrt::PageAllocator::HandleFault(EbbId id) {
 ebbrt::PageAllocator::PageAllocator(Nid nid) : nid_(nid) {}
 
 ebbrt::Pfn ebbrt::PageAllocator::AllocLocal(size_t order, uint64_t max_addr) {
+
+  // cause a stack allocator page fault first, to
+  // avoid deadlocking when calling malloc and
+  // stack faulting at the same time
+  int tmp;
+  asm volatile("movl -4096(%%rsp), %0;" : "=r"(tmp) : :);
+
   std::lock_guard<SpinLock> lock(lock_);
 
   FreePage* fp = nullptr;
