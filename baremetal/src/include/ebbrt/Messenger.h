@@ -47,6 +47,17 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
       return std::string(reinterpret_cast<const char*>(ip.toArray().data()), 4);
     }
 
+    std::string ToString(){
+      auto data = ip.toArray().data();
+      if (ip.toArray().size() != 4){
+	throw std::runtime_error("ebbrt::Messenger::NetworkId.ToString()-NetworkId size not equal to 4");
+      }
+      char ss[18];
+      std::sprintf(ss, "%u.%u.%u.%u", data[0], data[1],data[2],data[3]);
+      return std::string(ss); 
+    }
+
+
    private:
     Ipv4Address ip;
 
