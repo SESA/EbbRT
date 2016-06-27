@@ -19,6 +19,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libglib2.0-dev \
     libtbb-dev \
     libtool  \
+    net-tools \
     pkg-config \
     python-dev \
     python-pexpect \
@@ -41,10 +42,12 @@ RUN make install
 #
 # Khpy
 #
-RUN mkdir -p /opt
-RUN git clone https://github.com/SESA/khpy.git /opt/khpy
-RUN cp /opt/khpy/initd /etc/init.d/khpy
-RUN chmod +x /etc/init.d/khpy
+RUN mkdir -p /opt \
+    && git clone https://github.com/SESA/khpy.git /opt/khpy \
+    && cd /opt/khpy \
+    && git reset --hard 4a2dcc2 \
+    && cp /opt/khpy/initd /etc/init.d/khpy \
+    && chmod +x /etc/init.d/khpy
 
 #
 # Build and install capnproto
@@ -62,6 +65,22 @@ RUN make install
 RUN pip install buildbot_slave
 RUN groupadd -g 5001 buildbot
 RUN useradd -u 5001 -g buildbot buildbot
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    xz-utils
+
+ENV DOCKER_BUCKET test.docker.com
+ENV DOCKER_VERSION 1.12.0-rc2
+ENV DOCKER_SHA256 6df54c3360f713370aa59b758c45185b9a62889899f1f6185a08497ffd57a39b
+
+RUN set -x \
+	&& curl -fSL "https://${DOCKER_BUCKET}/builds/Linux/x86_64/docker-$DOCKER_VERSION.tgz" -o docker.tgz \
+	&& echo "${DOCKER_SHA256} *docker.tgz" | sha256sum -c - \
+	&& tar -xzvf docker.tgz \
+	&& mv docker/* /usr/local/bin/ \
+	&& rmdir docker \
+	&& rm docker.tgz \
+	&& docker -v
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 WORKDIR /buildbotslavedata
