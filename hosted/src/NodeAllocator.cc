@@ -305,6 +305,9 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
   nodes_.emplace_back(node_id);
   auto rfut = promise_map_[allocation_id].GetFuture();
   std::cout << "Container Id: " << node_id.substr(0, 12) << std::endl;
+#ifndef NDEBUG
+  std::cout << "GDB: target remote " << ip << ":1234" << std::endl;
+#endif
 
   return NodeDescriptor(node_id, std::move(rfut));
 }
