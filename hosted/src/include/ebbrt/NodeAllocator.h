@@ -22,6 +22,7 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   static int DefaultCpus;
   static int DefaultNumaNodes;
   static int DefaultRam;
+  static std::string DefaultNetworkArguments;
   static std::string DefaultArguments;
 
  public:
@@ -70,6 +71,7 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   std::string network_id_;
   uint32_t net_addr_;
   uint16_t port_;
+  uint8_t cidr_;
   std::vector<std::string> nodes_;
 
   friend class Session;
