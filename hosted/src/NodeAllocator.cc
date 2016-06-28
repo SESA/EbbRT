@@ -160,7 +160,7 @@ ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
 
   std::cout << "Node Allocator bound to " << ipaddr << ":" << port_
             << std::endl;
-  std::cout << "Docker network: " << network_id_.substr(0, 12) << std::endl;
+  std::cout << "network: " << network_id_.substr(0, 12) << std::endl;
   DoAccept(std::move(acceptor), std::move(socket));
 }
 
@@ -200,7 +200,6 @@ ebbrt::NodeAllocator::~NodeAllocator() {
             .ToString();
     auto cmd = std::string("weave hide ") + ipaddr + std::string("/") +
                std::to_string(cidr_);
-    std::cout << "WEAVE STOP: " << cmd << std::endl;
     if (system(cmd.c_str()) < 0) {
       std::cout << "Error: command failed - " << cmd << std::endl;
     }
@@ -260,8 +259,6 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
   if (!outfile.good()) {
     throw std::runtime_error("Failed to write fdt");
   }
-  // file should flush here
-  std::cout << "Fdt written to " << fname.native() << std::endl;
 
   std::string cmd =
       std::string(" docker run -td -P --cap-add NET_ADMIN") +
@@ -306,6 +303,22 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
     ip += line;
   }
   ip.erase(ip.length() - 1);  // trim newline
+  pclose(g);
+
+#ifndef NDEBUG
+  auto lpcmd = std::string("/bin/sh -c \"docker port ") + node_id +
+               std::string(" | grep 1234 | cut -d ':' -f 2\"");
+  auto e = popen(lpcmd.c_str(), "r");
+  if (e == nullptr) {
+    throw std::runtime_error("Failed to get local gdb port");
+  }
+  std::string lport;
+  while (fgets(line, kLineSize, e) != nullptr) {
+    lport += line;
+  }
+  lport.erase(lport.length() - 1);  // trim newline
+  pclose(e);
+#endif
 
   /* transfer images into container */
   std::string sk = std::string("scp -q -o UserKnownHostsFile=/dev/null -o "
@@ -336,11 +349,12 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
 
   nodes_.emplace_back(node_id);
   auto rfut = promise_map_[allocation_id].GetFuture();
-  std::cout << "Container Id: " << node_id.substr(0, 12) << std::endl;
+  std::cout << "fdt: " << fname.native() << std::endl;
 #ifndef NDEBUG
-  std::cout << "GDB: target remote " << ip << ":1234" << std::endl;
+  std::cout << "gdb local: localhost:" << lport << std::endl;
+  std::cout << "gdb remote: " << ip << ":1234" << std::endl;
 #endif
-
+  std::cout << "container: " << node_id.substr(0, 12) << std::endl;
   return NodeDescriptor(node_id, std::move(rfut));
 }
 
