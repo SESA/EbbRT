@@ -26,6 +26,7 @@ int ebbrt::NodeAllocator::DefaultCpus;
 int ebbrt::NodeAllocator::DefaultRam;
 int ebbrt::NodeAllocator::DefaultNumaNodes;
 std::string ebbrt::NodeAllocator::DefaultArguments;
+std::string ebbrt::NodeAllocator::DefaultNetworkArguments;
 
 ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket,
                                        uint32_t net_addr)
@@ -105,14 +106,18 @@ ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
     DefaultNumaNodes = (str) ? atoi(str) : kDefaultNumaNodes;
     str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_ARGUMENTS");
     DefaultArguments = (str) ? std::string(str) : std::string(" ");
+    str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_NETWORK_ARGUMENTS");
+    DefaultNetworkArguments = (str) ? std::string(str) : std::string(" ");
   }
   auto acceptor = std::make_shared<bai::tcp::acceptor>(
       active_context->io_service_, bai::tcp::endpoint(bai::tcp::v4(), 0));
   auto socket = std::make_shared<bai::tcp::socket>(active_context->io_service_);
 
-  auto f = popen(
-      ("docker network create " + std::to_string(std::time(nullptr))).c_str(),
-      "r");
+  auto f = popen((std::string("docker network create ") +
+                  DefaultNetworkArguments.c_str() +
+                  std::to_string(std::time(nullptr)))
+                     .c_str(),
+                 "r");
   if (f == nullptr) {
     throw std::runtime_error("popen failed");
   }
@@ -133,15 +138,28 @@ ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
   while (fgets(line, 100, g) != nullptr) {
     str += line;
   }
-  uint8_t ip0, ip1, ip2, ip3, cidr;
-  sscanf(str.c_str(), "%hhu.%hhu.%hhu.%hhu\\%hhu", &ip0, &ip1, &ip2, &ip3,
-         &cidr);
+  uint8_t ip0, ip1, ip2, ip3;
+  sscanf(str.c_str(), "%hhu.%hhu.%hhu.%hhu/%hhu", &ip0, &ip1, &ip2, &ip3,
+         &cidr_);
   pclose(g);
   net_addr_ = ip0 << 24 | ip1 << 16 | ip2 << 8 | ip3;
   port_ = acceptor->local_endpoint().port();
-  std::cout << "Node Allocator bound to " << static_cast<int>(ip0) << "."
-            << static_cast<int>(ip1) << "." << static_cast<int>(ip2) << "."
-            << static_cast<int>(ip3) << ":" << port_ << std::endl;
+  auto ipaddr = std::to_string(static_cast<int>(ip0)) + std::string(".") +
+                std::to_string(static_cast<int>(ip1)) + std::string(".") +
+                std::to_string(static_cast<int>(ip2)) + std::string(".") +
+                std::to_string(static_cast<int>(ip3));
+
+  // optional: support for "weave" docker network plugin
+  if (DefaultNetworkArguments.find("weave ") != std::string::npos) {
+    auto cmd = std::string("weave expose ") + ipaddr + std::string("/") +
+               std::to_string(cidr_);
+    if (system(cmd.c_str()) < 0) {
+      std::cout << "Error: command failed - " << cmd << std::endl;
+    }
+  }
+
+  std::cout << "Node Allocator bound to " << ipaddr << ":" << port_
+            << std::endl;
   std::cout << "Docker network: " << network_id_.substr(0, 12) << std::endl;
   DoAccept(std::move(acceptor), std::move(socket));
 }
@@ -160,7 +178,7 @@ ebbrt::NodeAllocator::~NodeAllocator() {
     std::cout << "Removing container " << n.substr(0, 12) << std::endl;
     auto f = popen(c.c_str(), "r");
     if (f == nullptr) {
-      throw std::runtime_error("'docker network rm' failed");
+      throw std::runtime_error("'docker container rm' failed");
     }
     pclose(f);
   }
@@ -172,6 +190,20 @@ ebbrt::NodeAllocator::~NodeAllocator() {
       throw std::runtime_error("'docker network rm' failed");
     }
     pclose(f);
+  }
+  // optional: support for "weave" docker network plugin
+  if (DefaultNetworkArguments.find("weave ") != std::string::npos) {
+    auto netaddr = ntohl(net_addr_);
+    auto ipaddr =
+        Messenger::NetworkId::FromBytes(
+            reinterpret_cast<const unsigned char*>(&netaddr), sizeof(netaddr))
+            .ToString();
+    auto cmd = std::string("weave hide ") + ipaddr + std::string("/") +
+               std::to_string(cidr_);
+    std::cout << "WEAVE STOP: " << cmd << std::endl;
+    if (system(cmd.c_str()) < 0) {
+      std::cout << "Error: command failed - " << cmd << std::endl;
+    }
   }
 }
 
