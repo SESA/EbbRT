@@ -82,7 +82,7 @@ ebbrt::Pfn ebbrt::PageAllocator::AllocLocal(size_t order, uint64_t max_addr) {
   // avoid deadlocking when calling malloc and
   // stack faulting at the same time
   int tmp;
-  asm volatile("movl -4096(%%rsp), %0;" : "=r"(tmp) : :);
+  asm volatile("movl -1024(%%rsp), %0;" : "=r"(tmp) : :);
 
   std::lock_guard<SpinLock> lock(lock_);
 
