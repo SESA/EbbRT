@@ -114,8 +114,7 @@ ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
   auto socket = std::make_shared<bai::tcp::socket>(active_context->io_service_);
 
   auto f = popen((std::string("docker network create ") +
-                  DefaultNetworkArguments.c_str() +
-                  std::to_string(std::time(nullptr)))
+                  DefaultNetworkArguments + std::to_string(std::time(nullptr)))
                      .c_str(),
                  "r");
   if (f == nullptr) {
