@@ -94,7 +94,7 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
     std::unique_ptr<MutIOBuf>
     process_message_chain(std::unique_ptr<MutIOBuf> b);
 
-    uint32_t preallocate_;
+    uint32_t preallocate_{0};
     std::unique_ptr<ebbrt::MutIOBuf> buf_;
     ebbrt::Promise<Connection*> promise_;
   };
