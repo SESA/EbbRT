@@ -80,6 +80,7 @@ struct Module {
   uint32_t reserved;
 };
 
+const char* CmdLine();
 void Reserve(Information* mbi);
 
 extern uintptr_t cmdline_addr_;

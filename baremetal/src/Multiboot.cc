@@ -40,3 +40,7 @@ void ebbrt::multiboot::Reserve(Information* mbi) {
 
   // TODO(dschatz): reserve ELF section headers and others
 }
+
+const char* ebbrt::multiboot::CmdLine() {
+  return reinterpret_cast<const char*>(cmdline_addr_);
+}
