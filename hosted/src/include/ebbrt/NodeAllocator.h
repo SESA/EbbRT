@@ -88,6 +88,7 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   std::string AllocateContainer(std::string repo,
                                 std::string container_args = std::string(),
                                 std::string run_cmd = std::string());
+  void AppendArgs(std::string arg);
   void FreeNode(std::string node_id);
 
  private:
@@ -110,6 +111,7 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   std::atomic<uint16_t> allocation_index_;
   std::unordered_map<uint16_t, Promise<Messenger::NetworkId>> promise_map_;
   std::string network_id_;
+  std::string cmdline_;
   uint32_t net_addr_;
   uint16_t port_;
   uint8_t cidr_;

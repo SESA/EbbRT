@@ -144,7 +144,8 @@ void ebbrt::NodeAllocator::Session::Start() {
       }));
 }
 
-ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
+ebbrt::NodeAllocator::NodeAllocator()
+    : node_index_(2), allocation_index_(0), cmdline_{std::string()} {
   {
     char* str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_CPUS");
     DefaultCpus = (str) ? atoi(str) : kDefaultCpus;
@@ -184,6 +185,9 @@ ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
     RunCmd(cmd);
   }
 
+  AppendArgs(std::string("host=") + ipaddr + std::string(":") +
+             std::to_string(port_));
+
   std::cout << "Network Details:" << std::endl;
   std::cout << "| network: " << network_id_.substr(0, 12) << std::endl;
   std::cout << "| listening on: " << ipaddr << ":" << port_ << std::endl;
@@ -216,6 +220,13 @@ void ebbrt::NodeAllocator::DoAccept(
           DoAccept(std::move(acceptor), std::move(socket));
         }
       }));
+}
+
+void ebbrt::NodeAllocator::AppendArgs(std::string arg) {
+  if (!cmdline_.empty()) {
+    cmdline_ += std::string(" ");
+  }
+  cmdline_ += arg;
 }
 
 ebbrt::NodeAllocator::NodeDescriptor
@@ -285,6 +296,10 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
 #endif
       arguments + std::string(" -kernel /root/img.elf") +
       std::string(" -initrd /root/initrd");
+
+  if (!cmdline_.empty()) {
+    qemu_args += std::string(" -append \"") + cmdline_ + std::string("\"");
+  }
 
   auto c = DockerContainer(repo, docker_args, qemu_args);
   auto id = c.Start();
