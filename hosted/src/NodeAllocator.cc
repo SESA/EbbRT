@@ -184,9 +184,8 @@ ebbrt::NodeAllocator::NodeAllocator()
                std::to_string(cidr_);
     RunCmd(cmd);
   }
-
-  AppendArgs(std::string("host=") + ipaddr + std::string(":") +
-             std::to_string(port_));
+  AppendArgs(std::string("host_addr=") + std::to_string(net_addr_));
+  AppendArgs(std::string("host_port=") + std::to_string(port_));
 
   std::cout << "Network Details:" << std::endl;
   std::cout << "| network: " << network_id_.substr(0, 12) << std::endl;
@@ -224,7 +223,7 @@ void ebbrt::NodeAllocator::DoAccept(
 
 void ebbrt::NodeAllocator::AppendArgs(std::string arg) {
   if (!cmdline_.empty()) {
-    cmdline_ += std::string(" ");
+    cmdline_ += std::string(";");
   }
   cmdline_ += arg;
 }
@@ -233,34 +232,38 @@ ebbrt::NodeAllocator::NodeDescriptor
 ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
                                    int numaNodes, int ram,
                                    std::string arguments) {
+  auto allocation_id =
+      node_allocator->allocation_index_.fetch_add(1, std::memory_order_relaxed);
+  // Write Fdt
+  auto dir = boost::filesystem::temp_directory_path();
+#if __EBBRT_ENABLE_FDT__
   auto fdt = Fdt();
   fdt.BeginNode("/");
   fdt.BeginNode("runtime");
   fdt.CreateProperty("address", net_addr_);
   auto port = port_;
   fdt.CreateProperty("port", port);
-  auto allocation_id =
-      node_allocator->allocation_index_.fetch_add(1, std::memory_order_relaxed);
   fdt.CreateProperty("allocation_id", allocation_id);
   fdt.EndNode();
   fdt.EndNode();
   fdt.Finish();
 
-  // Write Fdt
-  auto dir = boost::filesystem::temp_directory_path();
   auto fname = dir / boost::filesystem::unique_path();
   if (boost::filesystem::exists(fname)) {
     throw std::runtime_error("Failed to create unique temporary file name");
   }
+#endif
+
   // cid file
   auto cid = dir / boost::filesystem::unique_path();
-  if (boost::filesystem::exists(fname)) {
+  if (boost::filesystem::exists(cid)) {
     throw std::runtime_error(
         "Failed to create container id temporary file name");
   }
 
   // TODO(dschatz): make this asynchronous?
   boost::filesystem::create_directories(dir);
+#if __EBBRT_ENABLE_FDT__
   std::ofstream outfile(fname.native());
   const char* fdt_addr = fdt.GetAddr();
   size_t fdt_size = fdt.GetSize();
@@ -269,6 +272,7 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
   if (!outfile.good()) {
     throw std::runtime_error("Failed to write fdt");
   }
+#endif
 
   std::string docker_args =
 #ifndef NDEBUG
@@ -294,12 +298,15 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
 #ifndef NDEBUG
       std::string(" --gdb tcp:0.0.0.0:1234 ") +
 #endif
-      arguments + std::string(" -kernel /root/img.elf") +
-      std::string(" -initrd /root/initrd");
+      arguments +
+#if __EBBRT_ENABLE_FDT__
+      std::string(" -initrd /root/initrd") +
+#endif
+      std::string(" -kernel /root/img.elf");
 
-  if (!cmdline_.empty()) {
-    qemu_args += std::string(" -append \"") + cmdline_ + std::string("\"");
-  }
+  auto cmdline = cmdline_;
+  cmdline += std::string(";allocid=") + std::to_string(allocation_id);
+  qemu_args += std::string(" -append \"") + cmdline + std::string("\"");
 
   auto c = DockerContainer(repo, docker_args, qemu_args);
   auto id = c.Start();
@@ -324,19 +331,25 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
                                  "StrictHostKeyChecking=no ") +
                      binary_path + std::string(" root@") + cip +
                      std::string(":/root/img.elf");
+#if __EBBRT_ENABLE_FDT__
   std::string sndi = std::string("scp -q -o UserKnownHostsFile=/dev/null -o "
                                  "StrictHostKeyChecking=no ") +
                      fname.native() + std::string(" root@") + cip +
                      std::string(":/root/initrd");
+#endif
 
   std::string kick =
       std::string("docker exec -dt ") + id + std::string(" touch /tmp/signal");
   RunCmd(sndk); /* send kernel to container */
+#if __EBBRT_ENABLE_FDT__
   RunCmd(sndi); /* send initrd to container */
+#endif
   RunCmd(kick); /* kick start vm */
 
   std::cout << "Node Allocation Details: " << std::endl;
+#if __EBBRT_ENABLE_FDT__
   std::cout << "| fdt: " << fname.native() << std::endl;
+#endif
 #ifndef NDEBUG
   std::cout << "| gdb: " << cip << ":1234" << std::endl;
   std::cout << "| gdb(local): localhost:" << lport << std::endl;
