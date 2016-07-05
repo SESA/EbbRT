@@ -236,23 +236,6 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
       node_allocator->allocation_index_.fetch_add(1, std::memory_order_relaxed);
   // Write Fdt
   auto dir = boost::filesystem::temp_directory_path();
-#if __EBBRT_ENABLE_FDT__
-  auto fdt = Fdt();
-  fdt.BeginNode("/");
-  fdt.BeginNode("runtime");
-  fdt.CreateProperty("address", net_addr_);
-  auto port = port_;
-  fdt.CreateProperty("port", port);
-  fdt.CreateProperty("allocation_id", allocation_id);
-  fdt.EndNode();
-  fdt.EndNode();
-  fdt.Finish();
-
-  auto fname = dir / boost::filesystem::unique_path();
-  if (boost::filesystem::exists(fname)) {
-    throw std::runtime_error("Failed to create unique temporary file name");
-  }
-#endif
 
   // cid file
   auto cid = dir / boost::filesystem::unique_path();
@@ -263,16 +246,6 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
 
   // TODO(dschatz): make this asynchronous?
   boost::filesystem::create_directories(dir);
-#if __EBBRT_ENABLE_FDT__
-  std::ofstream outfile(fname.native());
-  const char* fdt_addr = fdt.GetAddr();
-  size_t fdt_size = fdt.GetSize();
-  outfile.write(fdt_addr, fdt_size);
-  outfile.flush();
-  if (!outfile.good()) {
-    throw std::runtime_error("Failed to write fdt");
-  }
-#endif
 
   std::string docker_args =
 #ifndef NDEBUG
@@ -298,11 +271,7 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
 #ifndef NDEBUG
       std::string(" --gdb tcp:0.0.0.0:1234 ") +
 #endif
-      arguments +
-#if __EBBRT_ENABLE_FDT__
-      std::string(" -initrd /root/initrd") +
-#endif
-      std::string(" -kernel /root/img.elf");
+      arguments + std::string(" -kernel /root/img.elf");
 
   auto cmdline = cmdline_;
   cmdline += std::string(";allocid=") + std::to_string(allocation_id);
@@ -331,25 +300,13 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
                                  "StrictHostKeyChecking=no ") +
                      binary_path + std::string(" root@") + cip +
                      std::string(":/root/img.elf");
-#if __EBBRT_ENABLE_FDT__
-  std::string sndi = std::string("scp -q -o UserKnownHostsFile=/dev/null -o "
-                                 "StrictHostKeyChecking=no ") +
-                     fname.native() + std::string(" root@") + cip +
-                     std::string(":/root/initrd");
-#endif
 
   std::string kick =
       std::string("docker exec -dt ") + id + std::string(" touch /tmp/signal");
   RunCmd(sndk); /* send kernel to container */
-#if __EBBRT_ENABLE_FDT__
-  RunCmd(sndi); /* send initrd to container */
-#endif
   RunCmd(kick); /* kick start vm */
 
   std::cout << "Node Allocation Details: " << std::endl;
-#if __EBBRT_ENABLE_FDT__
-  std::cout << "| fdt: " << fname.native() << std::endl;
-#endif
 #ifndef NDEBUG
   std::cout << "| gdb: " << cip << ":1234" << std::endl;
   std::cout << "| gdb(local): localhost:" << lport << std::endl;

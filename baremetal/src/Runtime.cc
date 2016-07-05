@@ -59,14 +59,6 @@ class Connection : public ebbrt::TcpHandler {
 }  // namespace
 
 void ebbrt::runtime::Init() {
-#if __EBBRT_ENABLE_FDT__
-  auto reader = boot_fdt::Get();
-  auto offset = reader.GetNodeOffset("/runtime");
-  auto ip = reader.GetProperty32(offset, "address");
-  auto port = reader.GetProperty16(offset, "port");
-  auto allocation_id = reader.GetProperty16(offset, "allocation_id");
-  auto addr = Ipv4Address(htonl(ip));
-#else
   auto cmdline = std::string(ebbrt::multiboot::CmdLine());
   auto host = std::string("host_addr=");
   auto loc = cmdline.find(host);
@@ -105,8 +97,6 @@ void ebbrt::runtime::Init() {
   auto nport = atoi(port.c_str());
   auto naddr = atoi(host.c_str());
   auto addr = Ipv4Address(htonl(naddr));
-#endif
-  kprintf("RUNTIME command line args: %u %u %u\n", naddr, nport, allocation_id);
 
   EventManager::EventContext context;
   NetworkManager::TcpPcb pcb;
