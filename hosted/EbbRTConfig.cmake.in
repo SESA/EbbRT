@@ -1,0 +1,22 @@
+@PACKAGE_INIT@
+# - Config file for the EbbRT hosted package
+# It defines the following variables
+#  EBBRT_INCLUDE_DIRS - include directories for EbbRT
+#  EBBRT_LIBRARIES    - libraries to link against
+ 
+# Our library dependencies (contains definitions for IMPORTED targets)
+#if(NOT TARGET EbbRT AND NOT EbbRT_BINARY_DIR)
+#  include("${EBBRT_CMAKE_DIR}/EbbRTTargets.cmake")
+#endif()
+ 
+add_library(EbbRT STATIC IMPORTED
+"@PACKAGE_INSTALL_LIB_DIR@libEbbRT.a")
+set_property(TARGET EbbRT APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
+set_target_properties(EbbRT PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGE_NOCONFIG "CXX"
+  IMPORTED_LOCATOIN_NOCONFIG "@PACKAGE_INSTALL_LIB_DIR@libEbbRT.a")
+
+target_link_libraries(EbbRT)
+set(EBBRT_INCLUDE_DIRS "@PACKAGE_INSTALL_INCLUDE_DIR@")
+set(EBBRT_LIBRARIES "@PACKAGE_INSTALL_LIB_DIR@libEbbRT.a")
+
