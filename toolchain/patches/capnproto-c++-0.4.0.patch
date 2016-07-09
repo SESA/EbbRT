@@ -1,0 +1,11 @@
+--- a/src/capnp/schema.c++	2016-07-09 18:22:39.020528106 -0400
++++ b/src/capnp/schema.c++	2016-07-09 18:21:48.746358085 -0400
+@@ -439,7 +439,7 @@
+ bool InterfaceSchema::extends(InterfaceSchema other, uint& counter) const {
+   // Security:  Don't let someone DOS us with a dynamic schema containing cyclic inheritance.
+   KJ_REQUIRE(counter++ < MAX_SUPERCLASSES, "Cyclic or absurdly-large inheritance graph detected.") {
+-    return nullptr;
++    return false;
+   }
+ 
+   if (other == *this) {
