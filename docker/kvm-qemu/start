@@ -1,13 +1,18 @@
 #!/bin/bash
-#set -x
 
 # start sshd 
 /usr/sbin/sshd &
 
 # environment variables 
 export VCPU=${VM_CPU:-2}
+export VQS=${VM_QS:-2}
 export VMEM=${VM_MEM:-2G}
 export WAIT=${VM_WAIT:-false}
+
+if [ $VCPU -eq 1 ]
+then
+  export VQS=2
+fi
 
 NETVEC=$(($((${VCPU}*2))+ 2))
 IFACE=eth0
@@ -15,7 +20,7 @@ BRIDGE_IFACE=br0
 TAP_IFACE=tap0
 
 : ${KVM_NET_OPTS:="-netdev tap,script=no,downscript=no,\
-ifname=\$TAP_IFACE,id=net0,vhost=on,queues=\$VCPU \
+ifname=\$TAP_IFACE,id=net0,vhost=on,queues=\$VQS \
 -device virtio-net-pci,netdev=net0,mac=\$MAC,mq=on,\
 vectors=\$NETVEC"}
 
