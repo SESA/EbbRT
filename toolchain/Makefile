@@ -412,15 +412,21 @@ $(EBBRT_CONFIGURE_FLAG): | ebbrt-deps $(EBBRT_BM_PATH) $(EBBRT_BUILD_PATH)
 ebbrt-build: ebbrt-deps $(EBBRT_CONFIGURE_FLAG)
 	$(MAKE) -C $(EBBRT_BUILD_PATH)
 
-ebbrt-install: ebbrt-build
+ebbrt-install: ebbrt-build ebbrt-cmake
 	$(MAKE) -C $(EBBRT_BUILD_PATH) install
 
 $(PREFIX)/include: | $(PREFIX)
 	$(MKDIR) $@
 
+$(PREFIX)/misc: | $(PREFIX)
+	$(MKDIR) $@
+
 ebbrt-headers: | $(PREFIX)/include
 	$(CP) -rv $(EBBRT_SRCDIR)/common/src/include/ebbrt $(PREFIX)/include
 	$(CP) -rv $(EBBRT_SRCDIR)/baremetal/src/include/ebbrt $(PREFIX)/include
+
+ebbrt-cmake: | $(PREFIX)/misc
+	$(CP) -v $(CMAKE_TOOLCHAIN_FILE) $(PREFIX)/misc
 
 ###
 
@@ -429,4 +435,4 @@ ebbrt-headers: | $(PREFIX)/include
 	gcc gcc-build gcc-install gcc-all gcc-all-build gcc-all-install newlib \
 	newlib-build newlib-install acpica-build acpica-install boost-build \
 	boost-install capnp-build capnp-install fdt-build fdt-install \
-	tbb-build tbb-install ebbrt-deps ebbrt-build ebbrt-install
+	tbb-build tbb-install ebbrt-deps ebbrt-build ebbrt-install ebbrt-cmake
