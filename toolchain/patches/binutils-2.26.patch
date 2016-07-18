@@ -66,11 +66,10 @@ diff -Naur binutils-2.26/ld/configure.tgt binutils-2.26-patched/ld/configure.tgt
 diff -Naur binutils-2.26/ld/emulparams/elf_x86_64_ebbrt.sh binutils-2.26-patched/ld/emulparams/elf_x86_64_ebbrt.sh
 --- binutils-2.26/ld/emulparams/elf_x86_64_ebbrt.sh	1970-01-01 00:00:00.000000000 +0000
 +++ binutils-2.26-patched/ld/emulparams/elf_x86_64_ebbrt.sh	2016-06-06 22:21:40.567382376 +0000
-@@ -0,0 +1,5 @@
+@@ -0,0 +1,4 @@
 +. ${srcdir}/emulparams/elf_x86_64.sh
 +GENERATE_SHLIB_SCRIPT=no
 +GENERATE_PIE_SCRIPT=no
-+MAXPAGESIZE=0x1000
 +SCRIPT_NAME=ebbrt
 diff -Naur binutils-2.26/ld/scripttempl/ebbrt.sc binutils-2.26-patched/ld/scripttempl/ebbrt.sc
 --- binutils-2.26/ld/scripttempl/ebbrt.sc 00:00:00.000000000 +0000
@@ -187,3 +186,14 @@ diff -Naur binutils-2.26/ld/scripttempl/ebbrt.sc binutils-2.26-patched/ld/script
 +	kend = .;
 +}
 +EOF
+diff -Naur binutils-2.26/bfd/elf64-x86-64.c binutils-2.26-patched/bfd/elf64-x86-64.c
+--- binutils-2.26/bfd/elf64-x86-64.c	2015-11-13 08:27:40.000000000 +0000
++++ binutils-2.26-patched/bfd/elf64-x86-64.c	2016-07-18 18:54:40.061983947 -0400
+@@ -6326,7 +6326,7 @@
+ #define ELF_ARCH         bfd_arch_i386
+ #define ELF_TARGET_ID          X86_64_ELF_DATA
+ #define ELF_MACHINE_CODE       EM_X86_64
+-#define ELF_MAXPAGESIZE          0x200000
++#define ELF_MAXPAGESIZE          0x1000
+ #define ELF_MINPAGESIZE          0x1000
+ #define ELF_COMMONPAGESIZE       0x1000
