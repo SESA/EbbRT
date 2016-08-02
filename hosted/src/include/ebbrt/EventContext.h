@@ -10,7 +10,7 @@
 
 namespace ebbrt {
 class EventContext {
-#if BOOST_VERSION > 105400
+#if BOOST_VERSION > 105500
   typedef boost::coroutines::symmetric_coroutine<void>::call_type coro_type;
   typedef boost::coroutines::symmetric_coroutine<void>::yield_type caller_type;
 #else
