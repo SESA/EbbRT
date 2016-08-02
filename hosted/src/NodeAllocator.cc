@@ -53,10 +53,8 @@ std::string ebbrt::NodeAllocator::RunCmd(std::string cmd) {
 ebbrt::NodeAllocator::DockerContainer::~DockerContainer() {
   if (!cid_.empty()) {
     std::cerr << "Removing container " << cid_.substr(0, 12) << std::endl;
-    std::string stop = std::string("docker stop ") + cid_;
-    std::string rm = std::string("docker rm -f ") + cid_;
-    RunCmd(stop);
-    RunCmd(rm);
+    RunCmd("docker stop " + cid_);
+    RunCmd("docker rm -f " + cid_);
   }
 }
 
@@ -65,15 +63,15 @@ std::string ebbrt::NodeAllocator::DockerContainer::Start() {
     throw std::runtime_error("Error: attempt to start unspecified container ");
     return std::string();
   }
-  std::string cmd = std::string("docker run -d ") + arg_ + std::string(" ") +
-                    img_ + std::string(" ") + cmd_;
-  cid_ = RunCmd(cmd);
+  std::stringstream cmd;
+  cmd << "docker run -d " << arg_ << " " << img_ << " " << cmd_;
+  cid_ = RunCmd(cmd.str());
   return cid_;
 }
 
 std::string ebbrt::NodeAllocator::DockerContainer::StdOut() {
   ebbrt::kbugon(cid_.empty());
-  return RunCmd(std::string("docker logs ") + cid_);
+  return RunCmd("docker logs " + cid_);
 }
 
 ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket,
@@ -144,8 +142,7 @@ void ebbrt::NodeAllocator::Session::Start() {
       }));
 }
 
-ebbrt::NodeAllocator::NodeAllocator()
-    : node_index_(2), allocation_index_(0), cmdline_{std::string()} {
+ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
   {
     char* str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_CPUS");
     DefaultCpus = (str) ? atoi(str) : kDefaultCpus;
@@ -164,29 +161,26 @@ ebbrt::NodeAllocator::NodeAllocator()
 
   network_id_ = RunCmd(std::string("docker network create " +
                                    std::to_string(std::time(nullptr))));
-  std::string str = RunCmd(
-      std::string("docker network inspect ") +
-      std::string(" --format='{{range .IPAM.Config}}{{.Gateway}}{{end}}' ") +
-      network_id_);
+  std::string str = RunCmd("docker network inspect --format='{{range "
+                           ".IPAM.Config}}{{.Gateway}}{{end}}' " +
+                           network_id_);
   uint8_t ip0, ip1, ip2, ip3;
   sscanf(str.c_str(), "%hhu.%hhu.%hhu.%hhu\\%hhu", &ip0, &ip1, &ip2, &ip3,
          &cidr_);
   net_addr_ = ip0 << 24 | ip1 << 16 | ip2 << 8 | ip3;
   port_ = acceptor->local_endpoint().port();
-  auto ipaddr = std::to_string(static_cast<int>(ip0)) + std::string(".") +
-                std::to_string(static_cast<int>(ip1)) + std::string(".") +
-                std::to_string(static_cast<int>(ip2)) + std::string(".") +
+  auto ipaddr = std::to_string(static_cast<int>(ip0)) + "." +
+                std::to_string(static_cast<int>(ip1)) + "." +
+                std::to_string(static_cast<int>(ip2)) + "." +
                 std::to_string(static_cast<int>(ip3));
 
   // optional: support for "weave" docker network plugin
   if (DefaultNetworkArguments.find("weave ") != std::string::npos) {
-    auto cmd = std::string("weave expose ") + ipaddr + std::string("/") +
-               std::to_string(cidr_);
-    RunCmd(cmd);
+    RunCmd("weave expose " + ipaddr + "/" + std::to_string(cidr_));
   }
-  AppendArgs(std::string("host_addr=") + std::to_string(net_addr_));
-  AppendArgs(std::string("host_port=") + std::to_string(port_));
 
+  AppendArgs("host_addr=" + std::to_string(net_addr_));
+  AppendArgs("host_port=" + std::to_string(port_));
   std::cout << "Network Details:" << std::endl;
   std::cout << "| network: " << network_id_.substr(0, 12) << std::endl;
   std::cout << "| listening on: " << ipaddr << ":" << port_ << std::endl;
@@ -197,15 +191,13 @@ std::string ebbrt::NodeAllocator::AllocateContainer(std::string repo,
                                                     std::string container_args,
                                                     std::string run_cmd) {
   // start arbitrary container on our network
-  container_args += std::string(" --net=") + network_id_;
+  container_args += " --net=" + network_id_;
   auto c = DockerContainer(repo, container_args, run_cmd);
   auto id = c.Start();
   nodes_.insert(std::make_pair(std::string(id), std::move(c)));
-  auto getip =
-      std::string("docker inspect -f '{{range "
-                  ".NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ") +
-      id;
-  return RunCmd(getip); /* get IP of container */
+  return RunCmd("docker inspect -f '{{range "
+                ".NetworkSettings.Networks}}{{.IPAddress}}{{end}}' " +
+                id);
 }
 
 void ebbrt::NodeAllocator::DoAccept(
@@ -223,7 +215,7 @@ void ebbrt::NodeAllocator::DoAccept(
 
 void ebbrt::NodeAllocator::AppendArgs(std::string arg) {
   if (!cmdline_.empty()) {
-    cmdline_ += std::string(";");
+    cmdline_ += ";";
   }
   cmdline_ += arg;
 }
@@ -247,64 +239,55 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
   // TODO(dschatz): make this asynchronous?
   boost::filesystem::create_directories(dir);
 
-  std::string docker_args =
+  std::stringstream docker_args;
+  std::stringstream qemu_args;
 #ifndef NDEBUG
-      std::string(" --expose 1234") +
+  docker_args << " --expose 1234";
 #endif
-      std::string(" -td -P --cap-add NET_ADMIN") +
-      std::string(" --device  /dev/kvm:/dev/kvm") +
-      std::string(" --device /dev/net/tun:/dev/net/tun") +
-      std::string(" --device /dev/vhost-net:/dev/vhost-net") +
-      std::string(" --net=") + network_id_ + std::string(" -e VM_MEM=") +
-      std::to_string(ram) + std::string("G") + std::string(" -e VM_CPU=") +
-      std::to_string(cpus) + std::string(" -e VM_WAIT=true") +
-      std::string(" --cidfile=") + cid.native();
+  docker_args << " -td -P --cap-add NET_ADMIN"
+              << " --device  /dev/kvm:/dev/kvm"
+              << " --device /dev/net/tun:/dev/net/tun"
+              << " --device /dev/vhost-net:/dev/vhost-net"
+              << " --net=" << network_id_ << " -e VM_MEM=" << ram << "G"
+              << " -e VM_CPU=" << cpus << " -e VM_WAIT=true"
+              << " --cidfile=" << cid.native();
 
   std::string repo =
 #ifndef NDEBUG
-      std::string(" ebbrt/kvm-qemu:debug");
+      " ebbrt/kvm-qemu:debug";
 #else
-      std::string(" ebbrt/kvm-qemu:latest");
+      " ebbrt/kvm-qemu:latest";
 #endif
 
-  std::string qemu_args =
 #ifndef NDEBUG
-      std::string(" --gdb tcp:0.0.0.0:1234 ") +
+  qemu_args << " --gdb tcp:0.0.0.0:1234 ";
 #endif
-      arguments + std::string(" -kernel /root/img.elf");
+  qemu_args << arguments << " -kernel /root/img.elf"
+            << " -append \"" << cmdline_ << ";allocid=" << allocation_id
+            << "\"";
 
-  auto cmdline = cmdline_;
-  cmdline += std::string(";allocid=") + std::to_string(allocation_id);
-  qemu_args += std::string(" -append \"") + cmdline + std::string("\"");
-
-  auto c = DockerContainer(repo, docker_args, qemu_args);
+  auto c = DockerContainer(repo, docker_args.str(), qemu_args.str());
   auto id = c.Start();
 
   nodes_.insert(std::make_pair(std::string(id), std::move(c)));
   auto rfut = promise_map_[allocation_id].GetFuture();
 
-  auto getip =
-      std::string("docker inspect -f '{{range "
-                  ".NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ") +
-      id;
-  auto cip = RunCmd(getip); /* get IP of container */
+  /* get IP of container */
+  auto cip = RunCmd("docker inspect -f '{{range "
+                    ".NetworkSettings.Networks}}{{.IPAddress}}{{end}}' " +
+                    id);
 
 #ifndef NDEBUG
-  auto lpcmd = std::string("/bin/sh -c \"docker port ") + id +
-               std::string(" | grep 1234 | cut -d ':' -f 2\"");
-  std::string lport = RunCmd(lpcmd);
+  std::string lport = RunCmd("/bin/sh -c \"docker port " + id +
+                             " | grep 1234 | cut -d ':' -f 2\"");
 #endif
 
-  /* transfer images into container */
-  std::string sndk = std::string("scp -q -o UserKnownHostsFile=/dev/null -o "
-                                 "StrictHostKeyChecking=no ") +
-                     binary_path + std::string(" root@") + cip +
-                     std::string(":/root/img.elf");
-
-  std::string kick =
-      std::string("docker exec -dt ") + id + std::string(" touch /tmp/signal");
-  RunCmd(sndk); /* send kernel to container */
-  RunCmd(kick); /* kick start vm */
+  /* transfer image into container */
+  RunCmd("scp -q -o UserKnownHostsFile=/dev/null -o "
+         "StrictHostKeyChecking=no " +
+         binary_path + " root@" + cip + ":/root/img.elf");
+  /* kick start vm */
+  RunCmd("docker exec -dt " + id + " touch /tmp/signal");
 
   std::cout << "Node Allocation Details: " << std::endl;
 #ifndef NDEBUG
@@ -315,10 +298,9 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
   return NodeDescriptor(id, std::move(rfut));
 }
 ebbrt::NodeAllocator::~NodeAllocator() {
-  std::string rmnet = std::string("docker network rm ") + network_id_;
   nodes_.clear();
   std::cerr << "Removing network " << network_id_.substr(0, 12) << std::endl;
-  RunCmd(rmnet);
+  RunCmd("docker network rm " + network_id_);
 
   // optional: support for "weave" docker network plugin
   if (DefaultNetworkArguments.find("weave ") != std::string::npos) {
@@ -327,8 +309,7 @@ ebbrt::NodeAllocator::~NodeAllocator() {
         Messenger::NetworkId::FromBytes(
             reinterpret_cast<const unsigned char*>(&netaddr), sizeof(netaddr))
             .ToString();
-    auto cmd = std::string("weave hide ") + ipaddr + std::string("/") +
-               std::to_string(cidr_);
+    auto cmd = "weave hide " + ipaddr + "/" + std::to_string(cidr_);
     if (system(cmd.c_str()) < 0) {
       std::cout << "Error: command failed - " << cmd << std::endl;
     }

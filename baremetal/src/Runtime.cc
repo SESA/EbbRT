@@ -60,34 +60,31 @@ class Connection : public ebbrt::TcpHandler {
 
 void ebbrt::runtime::Init() {
   auto cmdline = std::string(ebbrt::multiboot::CmdLine());
-  auto host = std::string("host_addr=");
-  auto loc = cmdline.find(host);
+  auto loc = cmdline.find("host_addr=");
   if (loc == std::string::npos) {
     kabort("No host address found in command line\n");
   }
-  host = cmdline.substr((loc + host.size()));
+  auto host = cmdline.substr((loc + 10));
   auto gap = host.find(";");
   if (gap != std::string::npos) {
     host = host.substr(0, gap);
   }
 
-  auto port = std::string("host_port=");
-  loc = cmdline.find(port);
+  loc = cmdline.find("host_port=");
   if (loc == std::string::npos) {
     kabort("No host port found in command line\n");
   }
-  port = cmdline.substr((loc + port.size()));
+  auto port = cmdline.substr((loc + 10));
   gap = port.find(";");
   if (gap != std::string::npos) {
     port = port.substr(0, gap);
   }
 
-  auto idstr = std::string("allocid=");
-  loc = cmdline.find(idstr);
+  loc = cmdline.find("allocid=");
   if (loc == std::string::npos) {
     kabort("No allocation id found in command line\n");
   }
-  idstr = cmdline.substr((loc + idstr.size()));
+  auto idstr = cmdline.substr((loc + 8));
   gap = idstr.find(";");
   if (gap != std::string::npos) {
     idstr = idstr.substr(0, gap);
