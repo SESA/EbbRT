@@ -30,6 +30,10 @@ include_directories(${TBB_INCLUDE_DIRS})
 # Source ============================================================
 
 file(GLOB CapnpFiles "${PROJECT_SOURCE_DIR}/../common/src/*.capnp")
+add_definitions(${CAPNP_DEFINITIONS})
+set(CAPNPC_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
+set(CAPNPC_SRC_PREFIX "${CMAKE_SOURCE_DIR}/../common/src")
+include_directories(${CAPNPC_OUTPUT_DIR})
 CAPNP_GENERATE_CPP(CapnpSources CapnpHeaders ${CapnpFiles})
 
 set(EBBRT_SOURCE_DIRS 
