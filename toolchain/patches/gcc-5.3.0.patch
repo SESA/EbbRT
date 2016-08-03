@@ -87,7 +87,7 @@ index 0000000..8b95619
 +/* Default arguments you want when running your
 +   i686-ebbrt-gcc/x86_64-ebbrt-gcc toolchain */
 +#undef LIB_SPEC
-+#define LIB_SPEC "-lebbrt -lfdt -lcapnp -lkj -lacpica -ltbb -lstdc++ -lsupc++ -lgcc -lc -lg -lnosys -lebbrt" /* link against C standard library */
++#define LIB_SPEC "-lebbrt -lfdt -lcapnp -lkj -lacpica -ltbb -lstdc++ -lsupc++ -lm -lgcc -lc -lg -lnosys -lebbrt" /* link against C standard library */
 +
 +/* Files that are linked before user code.
 +   The %s tells gcc to look for these files in the library directory. */
