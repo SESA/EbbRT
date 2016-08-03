@@ -108,6 +108,8 @@ void EnableRuntimePageTable();
 void EarlyMapMemory(uint64_t addr, uint64_t length);
 void EarlyUnmapMemory(uint64_t addr, uint64_t length);
 void MapMemory(Pfn vfn, Pfn pfn, uint64_t length = pmem::kPageSize);
+void MapMemoryLarge(uintptr_t vaddr, Pfn pfn,
+                    uint64_t length = pmem::kLargePageSize);
 void ApInit(size_t index);
 
 Pte& GetPageTableRoot();

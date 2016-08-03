@@ -15,6 +15,34 @@
 #include <ebbrt/VMemAllocator.h>
 
 namespace ebbrt {
+
+// page fault handler for mapping in physical pages
+// to virtual pages on all cores
+class LargeRegionFaultHandler : public ebbrt::VMemAllocator::PageFaultHandler {
+  std::vector<ebbrt::Pfn> vecPfns;
+  uintptr_t sAddr;  // start addr of region
+
+ public:
+  void SetAddr(uintptr_t s) { sAddr = s; }
+  void SetVec(std::vector<ebbrt::Pfn> m) { vecPfns = std::move(m); }
+
+  // given faulted address, calculates virtual page frame and finds
+  // corresponding physical page frame in tmap table, then calls
+  // MapMemory to do actual mapping
+  void HandleFault(ebbrt::idt::ExceptionFrame* ef,
+                   uintptr_t faulted_address) override {
+    auto vpage = ebbrt::Pfn::LDown(faulted_address);
+
+    // calculate number of 2Mb pages from sAddr to
+    // use as index to Pfns
+    auto mAddr = vpage.ToLAddr();
+    kassert(mAddr > sAddr);
+    auto index = (mAddr - sAddr) / pmem::kLargePageSize;
+    kassert(index < vecPfns.size());
+    ebbrt::vmem::MapMemoryLarge(mAddr, vecPfns[index], pmem::kLargePageSize);
+  }
+};
+
 template <size_t... sizes_in>
 class GeneralPurposeAllocator : public CacheAligned {
  public:
@@ -69,18 +97,26 @@ class GeneralPurposeAllocator : public CacheAligned {
     auto sz = align::Up(size, large_page_size);
     auto npages = sz / pmem::kPageSize;
     auto pages_per_large_page = large_page_size / pmem::kPageSize;
+
+    auto pf = std::make_unique<LargeRegionFaultHandler>();
+    auto& ref = *pf;  // keep reference for update later
+    std::vector<ebbrt::Pfn> vecPfns;
+
     // Need to allocate a virtual region
-    auto vfn = vmem_allocator->Alloc(npages, pages_per_large_page);
+    auto vfn =
+        vmem_allocator->Alloc(npages, pages_per_large_page, std::move(pf));
     kbugon(vfn == Pfn::None(), "Failed to allocated virtual region\n");
     auto pte_root = vmem::Pte(ReadCr3());
     auto vaddr = vfn.ToAddr();
+
     vmem::TraversePageTable(
         pte_root, vaddr, vaddr + sz, 0, 4,
-        [](vmem::Pte& entry, uint64_t base_virt, size_t level) {
+        [&vecPfns](vmem::Pte& entry, uint64_t base_virt, size_t level) {
           kassert(!entry.Present() && level == 1);
           auto pfn = page_allocator->Alloc(large_page_order);
           kbugon(pfn == Pfn::None(),
                  "Failed to allocate page in gp allocator\n");
+          vecPfns.emplace_back(pfn);  // store pfn
           entry.SetLarge(pfn.ToAddr());
           std::atomic_thread_fence(std::memory_order_release);
         },
@@ -93,6 +129,11 @@ class GeneralPurposeAllocator : public CacheAligned {
           entry.SetNormal(page_addr);
           return true;
         });
+
+    // updates page fault handler for large memory regions
+    ref.SetAddr(vaddr);
+    ref.SetVec(std::move(vecPfns));
+
     return reinterpret_cast<void*>(vaddr);
   }
 
