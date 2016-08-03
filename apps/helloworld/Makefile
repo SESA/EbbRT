@@ -44,17 +44,25 @@ $(DEBUG_PATH): | $(BUILD_PATH)
 $(RELEASE_PATH): | $(BUILD_PATH)
 	$(MKDIR) $@
 
+ifneq ($(DEBUG_PATH), $(BAREMETAL_DEBUG_DIR))
 $(BAREMETAL_DEBUG_DIR): | $(DEBUG_PATH)
 	$(MKDIR) $@
+endif
 
+ifneq ($(RELEASE_PATH), $(BAREMETAL_RELEASE_DIR))
 $(BAREMETAL_RELEASE_DIR): | $(RELEASE_PATH)
 	$(MKDIR) $@
+endif
 
+ifneq ($(DEBUG_PATH), $(HOSTED_DEBUG_DIR))
 $(HOSTED_DEBUG_DIR): | $(DEBUG_PATH)
 	$(MKDIR) $@
+endif
 
+ifneq ($(RELEASE_PATH), $(HOSTED_RELEASE_DIR))
 $(HOSTED_RELEASE_DIR): | $(RELEASE_PATH)
 	$(MKDIR) $@
+endif
 
 baremetal-debug: | check-ebbrt-src check-ebbrt-sysroot $(BAREMETAL_DEBUG_DIR)
 	$(CD) $(BAREMETAL_DEBUG_DIR) && \
