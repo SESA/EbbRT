@@ -25,12 +25,22 @@ class Pfn {
     return Pfn(pfn);
   }
 
+  static Pfn LDown(uintptr_t addr) {
+    auto pfn = addr >> pmem::kLargePageShift;
+    return Pfn(pfn);
+  }
+
   static Pfn Up(void* addr) { return Up(reinterpret_cast<uintptr_t>(addr)); }
 
   static Pfn Down(void* addr) {
     return Down(reinterpret_cast<uintptr_t>(addr));
   }
 
+  static Pfn LDown(void* addr) {
+    return LDown(reinterpret_cast<uintptr_t>(addr));
+  }
+
+  uintptr_t ToLAddr() const { return val_ << pmem::kLargePageShift; }
   uintptr_t ToAddr() const { return val_ << pmem::kPageShift; }
   uintptr_t val() const { return val_; }
 
