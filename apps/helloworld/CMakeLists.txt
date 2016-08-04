@@ -39,7 +39,6 @@ elseif( ${CMAKE_SYSTEM_NAME} STREQUAL "Linux" )
   find_package(Boost 1.53.0 REQUIRED COMPONENTS 
     filesystem system coroutine context )
   find_package(Capnp REQUIRED)
-  find_package(Fdt REQUIRED)
   find_package(TBB REQUIRED)
   
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++14 -Wall -Werror")
@@ -47,8 +46,8 @@ elseif( ${CMAKE_SYSTEM_NAME} STREQUAL "Linux" )
   add_executable(helloworld ${HOSTED_SOURCES})
   target_link_libraries(helloworld -Wl,--whole-archive ${EBBRT_LIBRARIES}
     -Wl,--no-whole-archive -lpthread
-    ${CAPNP_LIBRARIES_LITE} ${LIBFDT_LIBRARIES}
-    ${CMAKE_THREAD_LIBS_INIT} ${Boost_LIBRARIES} ${TBB_LIBRARIES} 
+    ${CAPNP_LIBRARIES_LITE} ${CMAKE_THREAD_LIBS_INIT} 
+    ${Boost_LIBRARIES} ${TBB_LIBRARIES} 
     )
 
 else()

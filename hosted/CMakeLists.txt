@@ -18,13 +18,11 @@ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules")
 
 find_package(Boost 1.53.0 REQUIRED COMPONENTS 
   filesystem system coroutine context )
-find_package(Fdt REQUIRED)
 find_package(Capnp REQUIRED)
 find_package(TBB REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${CAPNP_INCLUDE_DIRS})
-include_directories(${FDT_INCLUDE_DIRS})
 include_directories(${TBB_INCLUDE_DIRS})
 
 # Source ============================================================
@@ -48,7 +46,6 @@ add_library(EbbRT
   ${CapnpSources}
   ${PROJECT_SOURCE_DIR}/../common/src/CapnpMessage.cc
   ${PROJECT_SOURCE_DIR}/../common/src/EbbAllocator.cc
-  ${PROJECT_SOURCE_DIR}/../common/src/Fdt.cc
   ${PROJECT_SOURCE_DIR}/../common/src/IOBuf.cc
   ${PROJECT_SOURCE_DIR}/../common/src/IOBufRef.cc
   ${PROJECT_SOURCE_DIR}/../common/src/Message.cc

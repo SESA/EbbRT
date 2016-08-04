@@ -13,7 +13,6 @@ project(EbbRT CXX ASM)
 
 ### Options ###
 
-option(__EBBRT_ENABLE_FDT__ "Enable Flattened Device Tree Support" ON) 
 option(__EBBRT_ENABLE_DISTRIBUTED_RUNTIME__ "Enable Distributed Runtime Support" ON)
 option(__EBBRT_ENABLE_NETWORKING__ "Enable Networking" ON)
 option(__EBBRT_ENABLE_STATIC_IP__ "Enable Static IP Address Configuration" OFF)
@@ -44,7 +43,6 @@ set(sources
   ${CMAKE_SOURCE_DIR}/src/NetEth.cc
   ${CMAKE_SOURCE_DIR}/src/Idt.cc
   ${CMAKE_SOURCE_DIR}/src/Trace.cc
-  ${CMAKE_SOURCE_DIR}/src/BootFdt.cc
   ${CMAKE_SOURCE_DIR}/src/NetIcmp.cc
   ${CMAKE_SOURCE_DIR}/src/MemMap.cc
   ${CMAKE_SOURCE_DIR}/src/Cpu.cc
@@ -97,7 +95,6 @@ set(sources
   ${CMAKE_SOURCE_DIR}/../common/src/UniqueIOBuf.cc
   ${CMAKE_SOURCE_DIR}/../common/src/SharedIOBufRef.cc
   ${CMAKE_SOURCE_DIR}/../common/src/IOBuf.cc
-  ${CMAKE_SOURCE_DIR}/../common/src/Fdt.cc
   ${CMAKE_SOURCE_DIR}/../common/src/IOBufRef.cc
   ${CMAKE_SOURCE_DIR}/../common/src/Message.cc
   ${CMAKE_SOURCE_DIR}/../common/src/EbbAllocator.cc
