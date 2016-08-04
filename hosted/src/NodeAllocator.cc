@@ -15,10 +15,8 @@
 #include <capnp/message.h>
 #include <ebbrt/CapnpMessage.h>
 #include <ebbrt/Debug.h>
-#include <ebbrt/Fdt.h>
 #include <ebbrt/Messenger.h>
 #include <ebbrt/NodeAllocator.h>
-#include <libfdt.h>
 
 namespace bai = boost::asio::ip;
 const constexpr size_t kLineSize = 80;
@@ -226,7 +224,6 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
                                    std::string arguments) {
   auto allocation_id =
       node_allocator->allocation_index_.fetch_add(1, std::memory_order_relaxed);
-  // Write Fdt
   auto dir = boost::filesystem::temp_directory_path();
 
   // cid file

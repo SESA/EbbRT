@@ -10,9 +10,6 @@
 
 #include <ebbrt/Acpi.h>
 #include <ebbrt/Apic.h>
-#ifdef __EBBRT_ENABLE_FDT__
-#include <ebbrt/BootFdt.h>
-#endif
 #include <ebbrt/Clock.h>
 #include <ebbrt/Console.h>
 #include <ebbrt/Cpuid.h>
@@ -97,9 +94,6 @@ ebbrt::Main(multiboot::Information* mbi) {
 
   early_page_allocator::Init();
   multiboot::Reserve(mbi);
-#ifdef __EBBRT_ENABLE_FDT__
-  boot_fdt::Init(mbi);
-#endif
   vmem::Init();
   extern char kend[];
   auto kend_addr = reinterpret_cast<uint64_t>(kend);

@@ -5,7 +5,6 @@
 #include <ebbrt/Runtime.h>
 
 #include "RuntimeInfo.capnp.h"
-#include <ebbrt/BootFdt.h>
 #include <ebbrt/CapnpMessage.h>
 #include <ebbrt/Debug.h>
 #include <ebbrt/EbbAllocator.h>

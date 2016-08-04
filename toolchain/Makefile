@@ -119,10 +119,6 @@ CAPNP_SRC_PATH ?= $(EBBRT_BM_PATH)/ext/capnp
 CAPNP_BUILD_PATH ?= $(BUILDDIR)/capnp-build
 CAPNP_CONFIGURE_FLAG ?= $(CAPNP_BUILD_PATH)/Makefile
 
-FDT_SRC_PATH ?= $(EBBRT_BM_PATH)/ext/fdt
-FDT_BUILD_PATH ?= $(BUILDDIR)/fdt-build
-FDT_CONFIGURE_FLAG ?= $(FDT_BUILD_PATH)/Makefile
-
 TBB_SRC_PATH ?= $(EBBRT_BM_PATH)/ext/tbb
 TBB_BUILD_PATH ?= $(BUILDDIR)/tbb-build
 TBB_CONFIGURE_FLAG ?= $(TBB_BUILD_PATH)/Makefile
@@ -368,21 +364,6 @@ capnp-build: gcc-all $(CAPNP_CONFIGURE_FLAG)
 capnp-install: capnp-build
 	$(MAKE) -C $(CAPNP_BUILD_PATH) install
 
-### FDT ###
-
-$(FDT_BUILD_PATH): | $(BUILDDIR)
-	$(MKDIR) $@
-
-$(FDT_CONFIGURE_FLAG): | gcc-all $(FDT_BUILD_PATH)
-	$(CD) $(FDT_BUILD_PATH) && \
-	$(CMAKE) $(CMAKE_DEFS) $(FDT_SRC_PATH)
-
-fdt-build: gcc-all $(FDT_CONFIGURE_FLAG)
-	$(MAKE) -C $(FDT_BUILD_PATH)
-
-fdt-install: fdt-build
-	$(MAKE) -C $(FDT_BUILD_PATH) install
-
 ### TBB ###
 
 $(TBB_BUILD_PATH): | $(BUILDDIR)
@@ -400,7 +381,7 @@ tbb-install: tbb-build
 
 ### EbbRT ###
 
-ebbrt-deps: acpica-install boost-install capnp-install fdt-install tbb-install
+ebbrt-deps: acpica-install boost-install capnp-install tbb-install
 
 $(EBBRT_BUILD_PATH): | $(BUILDDIR)
 	$(MKDIR) $@
@@ -434,5 +415,5 @@ ebbrt-cmake: | $(PREFIX)/misc
 	automake-install binutils binutils-build binutils-install clean deps \
 	gcc gcc-build gcc-install gcc-all gcc-all-build gcc-all-install newlib \
 	newlib-build newlib-install acpica-build acpica-install boost-build \
-	boost-install capnp-build capnp-install fdt-build fdt-install \
-	tbb-build tbb-install ebbrt-deps ebbrt-build ebbrt-install ebbrt-cmake
+	boost-install capnp-build capnp-install tbb-build tbb-install \
+	ebbrt-deps ebbrt-build ebbrt-install ebbrt-cmake
