@@ -15,7 +15,7 @@ void ebbrt::EventManager::Spawn(MovableFunction<void()> func,
     // create and run a new coroutine to run the event on
     ctxt->active_event_context_.coro =
         EventContext::coro_type([f, this, ctxt](EventContext::caller_type& ca) {
-#if BOOST_VERSION <= 105400
+#if BOOST_VERSION <= 105500
           ca();
 #endif
           // store the caller for later if we need to save the context

@@ -53,7 +53,7 @@ class EventManager : public StaticSharedEbb<EventManager>, public CacheAligned {
       ctxt->active_event_context_.coro = EventContext::coro_type(std::bind(
           [this, ctxt](EventContext::caller_type& ca, Args&&... args) {
             ctxt->active_event_context_.caller = &ca;
-#if BOOST_VERSION <= 105400
+#if BOOST_VERSION <= 105500
             ca();
 #endif
             try {
