@@ -193,8 +193,7 @@ automake: automake-install
 
 ### Capnp ###
 
-$(CAPNPDEP_SRC_PATH): $(CAPNPDEP_PATCH_PATH) | $(CAPNPDEP_TAR_PATH) $(SRCDIR)
-	-$(RM) -r $(CAPNPDEP_SRC_PATH)
+$(CAPNPDEP_SRC_PATH): | $(CAPNPDEP_TAR_PATH) $(SRCDIR)
 	$(TAR) -xf $(CAPNPDEP_TAR_PATH) -C $(SRCDIR)
 	$(PATCH) -p1 -l -s -d $@ < $(CAPNPDEP_PATCH_PATH)
 
@@ -222,8 +221,7 @@ deps: autoconf automake capnpdep
 
 ### Binutils ###
 
-$(BINUTILS_SRC_PATH): $(BINUTILS_PATCH_PATH) | deps $(BINUTILS_TAR_PATH) $(SRCDIR)
-	-$(RM) -r $(BINUTILS_SRC_PATH)
+$(BINUTILS_SRC_PATH): | deps $(BINUTILS_TAR_PATH) $(SRCDIR)
 	$(TAR) -xf $(BINUTILS_TAR_PATH) -C $(SRCDIR)
 	$(PATCH) -p1 -l -s -d $@ < $(BINUTILS_PATCH_PATH)
 	cd $@/ld && $(AUTOMAKE)
@@ -250,8 +248,7 @@ binutils: binutils-install
 
 ### GCC ###
 
-$(GCC_SRC_PATH): $(GCC_PATCH_PATH) | deps $(GCC_TAR_PATH) $(SRCDIR)
-	-$(RM) -r $(GCC_SRC_PATH)
+$(GCC_SRC_PATH): | deps $(GCC_TAR_PATH) $(SRCDIR)
 	$(TAR) -xf $(GCC_TAR_PATH) -C $(SRCDIR)
 	$(CD) $@ && ./contrib/download_prerequisites
 	$(PATCH) -p1 -l -s -d $@ < $(GCC_PATCH_PATH) && \
@@ -290,8 +287,7 @@ gcc-all: gcc-all-install
 
 ### Newlib ###
 
-$(NEWLIB_SRC_PATH): $(NEWLIB_PATCH_PATH) | deps $(NEWLIB_TAR_PATH) $(SRCDIR)
-	-$(RM) -r $(NEWLIB_SRC_PATH)
+$(NEWLIB_SRC_PATH): | deps $(NEWLIB_TAR_PATH) $(SRCDIR)
 	$(TAR) -xf $(NEWLIB_TAR_PATH) -C $(SRCDIR)
 	$(PATCH) -p1 -l -s -d $@ < $(NEWLIB_PATCH_PATH) && \
 	$(CD) $@/newlib/libc/sys && $(AUTOCONF) && \
