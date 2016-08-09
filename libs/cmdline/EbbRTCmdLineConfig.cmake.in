@@ -1,0 +1,6 @@
+@PACKAGE_INIT@
+
+set_and_check(EBBRT-CMDLINE_INCLUDE_DIRS "@PACKAGE_INSTALL_INCLUDE_DIR@")
+set_and_check(EBBRT-CMDLINE_LIBRARIES "@PACKAGE_INSTALL_LIB_DIR@/libebbrt-cmdline.a")
+
+check_required_components(ebbrt-cmdline)
