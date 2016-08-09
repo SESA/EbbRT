@@ -9,7 +9,6 @@ set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -flto -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g3")
 
-
 add_compile_options(-std=gnu++14 -Wall -Werror)
 
 find_package(Capnp REQUIRED)
@@ -52,14 +51,14 @@ set(INSTALL_INCLUDE_DIR include CACHE PATH
 if(WIN32 AND NOT CYGWIN)
   set(DEF_INSTALL_CMAKE_DIR CMake)
 else()
-  set(DEF_INSTALL_CMAKE_DIR lib/CMake/ebbrt-filesystem)
+  set(DEF_INSTALL_CMAKE_DIR lib/cmake/EbbRTFilesystem)
 endif()
 set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
   "Installation directory for CMake files")
 
 configure_package_config_file(EbbRTFilesystemConfig.cmake.in
   "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/EbbRTFilesystemConfig.cmake"
-  INSTALL_DESTINATION cmake/ebbrt-filesystem
+  INSTALL_DESTINATION ${INSTALL_CMAKE_DIR}
   PATH_VARS INSTALL_INCLUDE_DIR INSTALL_LIB_DIR
 )
 

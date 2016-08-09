@@ -6,6 +6,8 @@
 #include "FileSystem.h"
 #include "FileSystem.capnp.h"
 
+#include <iostream>
+
 #include <capnp/serialize.h>
 
 #include <ebbrt/CapnpMessage.h>
@@ -268,7 +270,7 @@ void FileSystem::ReceiveMessage(ebbrt::Messenger::NetworkId nid,
       auto reply_builder = send_builder.initReply();
       auto read_reply_builder = reply_builder.initReadReply();
       read_reply_builder.setId(read_request.getId());
-      read_reply_builder.setData(capnp::Data::Reader(buf, length));
+      read_reply_builder.setData(capnp::Data::Reader(buf, ret));
       delete[] buf;
       SendMessage(nid, ebbrt::AppendHeader(send_message));
       break;
@@ -295,31 +297,37 @@ void FileSystem::ReceiveMessage(ebbrt::Messenger::NetworkId nid,
       sinfo.stat_mtime = stat_reply.getMtime();
       sinfo.stat_ctime = stat_reply.getCtime();
       auto id = stat_reply.getId();
-      std::lock_guard<std::mutex> lock(lock_);
+      lock_.lock();
       auto it = stat_promises_.find(id);
       assert(it != stat_promises_.end());
-      it->second.SetValue(sinfo);
+      auto p = std::move(it->second);
       stat_promises_.erase(it);
+      lock_.unlock();
+      p.SetValue(sinfo);
       break;
     }
     case filesystem::Reply::Which::GET_CWD_REPLY: {
       auto get_cwd_reply = reply.getGetCwdReply();
       auto id = get_cwd_reply.getId();
-      std::lock_guard<std::mutex> lock(lock_);
+      lock_.lock();
       auto it = string_promises_.find(id);
       assert(it != string_promises_.end());
-      it->second.SetValue(std::string(get_cwd_reply.getCwd().cStr()));
+      auto p = std::move(it->second);
       string_promises_.erase(it);
+      lock_.unlock();
+      p.SetValue(std::string(get_cwd_reply.getCwd().cStr()));
       break;
     }
     case filesystem::Reply::Which::OPEN_REPLY: {
       auto open_reply = reply.getOpenReply();
       auto id = open_reply.getId();
-      std::lock_guard<std::mutex> lock(lock_);
+      lock_.lock();
       auto it = open_promises_.find(id);
       assert(it != open_promises_.end());
-      it->second.SetValue(open_reply.getFd());
+      auto p = std::move(it->second);
       open_promises_.erase(it);
+      lock_.unlock();
+      p.SetValue(open_reply.getFd());
       break;
     }
     case filesystem::Reply::Which::READ_REPLY: {
@@ -329,10 +337,13 @@ void FileSystem::ReceiveMessage(ebbrt::Messenger::NetworkId nid,
       auto str =
           std::string(reinterpret_cast<const char *>(data_reader.begin()),
                       data_reader.size());
-      std::lock_guard<std::mutex> lock(lock_);
+      lock_.lock();
       auto it = string_promises_.find(id);
       assert(it != string_promises_.end());
-      it->second.SetValue(std::move(str));
+      auto p = std::move(it->second);
+      string_promises_.erase(it);
+      lock_.unlock();
+      p.SetValue(std::move(str));
       break;
     }
     }
