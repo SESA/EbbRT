@@ -1,6 +1,6 @@
 @PACKAGE_INIT@
 
 set_and_check(EBBRT-FILESYSTEM_INCLUDE_DIRS "@PACKAGE_INSTALL_INCLUDE_DIR@")
-set_and_check(EBBRT-FILESYSTEM_LIBRARIES "@PACKAGE_INSTALL_LIB_DIR@libebbrt-filesystem.a")
+set_and_check(EBBRT-FILESYSTEM_LIBRARIES "@PACKAGE_INSTALL_LIB_DIR@/libebbrt-filesystem.a")
 
 check_required_components(ebbrt-filesystem)
