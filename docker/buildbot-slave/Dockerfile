@@ -5,6 +5,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
     clang-format-3.8 \
     git \
+    iputils-ping \
     python-dev \
     python-pexpect \
     python-pip \

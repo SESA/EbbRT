@@ -280,6 +280,7 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
 #endif
 
   /* transfer image into container */
+  RunCmd("ping -c 1 -w 30 " + cip);
   RunCmd("scp -q -o UserKnownHostsFile=/dev/null -o "
          "StrictHostKeyChecking=no " +
          binary_path + " root@" + cip + ":/root/img.elf");
