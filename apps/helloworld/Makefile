@@ -30,11 +30,6 @@ ifndef EBBRT_SYSROOT
 	$(error EBBRT_SYSROOT is undefined)
 endif
 
-check-ebbrt-src:
-ifndef EBBRT_SRCDIR
-	$(warning EBBRT_SRCDIR is undefined)
-endif
-
 $(BUILD_PATH):
 	$(MKDIR) $@
 
@@ -64,22 +59,22 @@ $(HOSTED_RELEASE_DIR): | $(RELEASE_PATH)
 	$(MKDIR) $@
 endif
 
-baremetal-debug: | check-ebbrt-src check-ebbrt-sysroot $(BAREMETAL_DEBUG_DIR)
+baremetal-debug: | check-ebbrt-sysroot $(BAREMETAL_DEBUG_DIR)
 	$(CD) $(BAREMETAL_DEBUG_DIR) && \
 		EBBRT_SYSROOT=$(EBBRTSYSROOT) $(CMAKE) -DCMAKE_BUILD_TYPE=Debug \
 		-DCMAKE_TOOLCHAIN_FILE=$(CMAKE_TOOLCHAIN_FILE) $(MYDIR) && $(MAKE)
 
-baremetal-release: | check-ebbrt-src check-ebbrt-sysroot $(BAREMETAL_RELEASE_DIR)
+baremetal-release: | check-ebbrt-sysroot $(BAREMETAL_RELEASE_DIR)
 	$(CD) $(BAREMETAL_RELEASE_DIR) && \
 		EBBRT_SYSROOT=$(EBBRTSYSROOT) $(CMAKE) -DCMAKE_BUILD_TYPE=Release  \
 		-DCMAKE_TOOLCHAIN_FILE=$(CMAKE_TOOLCHAIN_FILE) $(MYDIR) && \
 		$(MAKE)
 
-hosted-debug: | check-ebbrt-src $(HOSTED_DEBUG_DIR)
+hosted-debug: | $(HOSTED_DEBUG_DIR)
 	$(CD) $(HOSTED_DEBUG_DIR) && $(CMAKE) -DCMAKE_BUILD_TYPE=Debug \
 		$(MYDIR) && $(MAKE)
 
-hosted-release: | check-ebbrt-src $(HOSTED_RELEASE_DIR)
+hosted-release: | $(HOSTED_RELEASE_DIR)
 	$(CD) $(HOSTED_RELEASE_DIR) && $(CMAKE) -DCMAKE_BUILD_TYPE=Release  \
 		$(MYDIR) && $(MAKE)
 
