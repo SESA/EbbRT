@@ -10,3 +10,6 @@
 [submodule "baremetal/ext/tbb"]
 	path = baremetal/ext/tbb
 	url = https://github.com/SESA/EbbRT-tbb
+[submodule "apps/node"]
+	path = apps/node
+	url = https://github.com/sesa/ebbrt-node-app
