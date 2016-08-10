@@ -8,7 +8,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
     python-dev \
     python-pexpect \
     python-pip \
-    supervisor 
+    supervisor \
+    texinfo
 
 # BuildBot
 RUN pip install buildbot_slave
