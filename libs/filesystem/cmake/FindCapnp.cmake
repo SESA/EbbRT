@@ -109,7 +109,7 @@ function(CAPNP_GENERATE_CPP SOURCES HEADERS)
     add_custom_command(
       OUTPUT "${output_base}.c++" "${output_base}.h"
       COMMAND "${CAPNP_EXECUTABLE}"
-      ARGS compile 
+      ARGS compile
           -o ${CAPNPC_CXX_EXECUTABLE}${output_dir}
           --src-prefix ${CAPNPC_SRC_PREFIX}
           ${include_path}
@@ -130,26 +130,15 @@ endfunction()
 
 # Find Libraries/Paths =========================================================
 
-# Use pkg-config to get path hints and definitions
-find_package(PkgConfig QUIET)
-pkg_check_modules(PKGCONFIG_CAPNP capnp)
-pkg_check_modules(PKGCONFIG_CAPNP_RPC capnp-rpc QUIET)
-pkg_check_modules(PKGCONFIG_CAPNP_JSON capnp-json QUIET)
-
 find_library(CAPNP_LIB_KJ kj
-  HINTS "${PKGCONFIG_CAPNP_LIBDIR}" ${PKGCONFIG_CAPNP_LIBRARY_DIRS}
 )
 find_library(CAPNP_LIB_KJ-ASYNC kj-async
-  HINTS "${PKGCONFIG_CAPNP_RPC_LIBDIR}" ${PKGCONFIG_CAPNP_RPC_LIBRARY_DIRS}
 )
 find_library(CAPNP_LIB_CAPNP capnp
-  HINTS "${PKGCONFIG_CAPNP_LIBDIR}" ${PKGCONFIG_CAPNP_LIBRARY_DIRS}
 )
 find_library(CAPNP_LIB_CAPNP-RPC capnp-rpc
-  HINTS "${PKGCONFIG_CAPNP_RPC_LIBDIR}" ${PKGCONFIG_CAPNP_RPC_LIBRARY_DIRS}
 )
 find_library(CAPNP_LIB_CAPNP-JSON capnp-json
-  HINTS "${PKGCONFIG_CAPNP_JSON_LIBDIR}" ${PKGCONFIG_CAPNP_JSON_LIBRARY_DIRS}
 )
 mark_as_advanced(CAPNP_LIB_KJ CAPNP_LIB_KJ-ASYNC CAPNP_LIB_CAPNP CAPNP_LIB_CAPNP-RPC CAPNP_LIB_CAPNP-JSON)
 set(CAPNP_LIBRARIES_LITE
