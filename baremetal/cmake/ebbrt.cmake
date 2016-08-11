@@ -10,6 +10,7 @@ endif()
 
 # where is the target environment
 SET(CMAKE_SYSROOT  $ENV{EBBRT_SYSROOT})
+SET(CMAKE_INSTALL_PREFIX "${CMAKE_SYSROOT}/usr" CACHE PATH "default install path" FORCE )
 
 # specify the cross compiler
 SET(CMAKE_C_COMPILER   ${CMAKE_SYSROOT}/usr/bin/x86_64-pc-ebbrt-gcc)
