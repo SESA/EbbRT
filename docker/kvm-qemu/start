@@ -5,13 +5,14 @@
 
 # environment variables 
 export VCPU=${VM_CPU:-2}
-export VQS=${VM_QS:-2}
 export VMEM=${VM_MEM:-2G}
 export WAIT=${VM_WAIT:-false}
 
 if [ $VCPU -eq 1 ]
 then
   export VQS=2
+else
+  export VQS=$VCPU
 fi
 
 NETVEC=$(($((${VCPU}*2))+ 2))
