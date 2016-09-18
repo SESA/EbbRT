@@ -171,7 +171,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     uint32_t snd_wl2;  // segment ack number used for last window update
     uint32_t rcv_nxt;  // next sequence number expected on an incoming segment,
     // also the lower edge of the receive window
-    size_t rcv_wnd;  // size of the receive window
+    uint32_t rcv_wnd;  // size of the receive window
     uint32_t rcv_last_acked;  // The last received byte we acked
     bool close_window{false};
     ebbrt::clock::Wall::time_point retransmit;  // when to retransmit

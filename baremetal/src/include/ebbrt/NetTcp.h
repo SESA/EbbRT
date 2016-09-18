@@ -7,14 +7,11 @@
 
 namespace ebbrt {
 const constexpr size_t kTcpMss = 1460;
-#ifdef LARGE_WINDOW_HACK
-const constexpr size_t kTcpWnd = 1 << 21;
-#else
-const constexpr size_t kTcpWnd = 20 * kTcpMss;
-#endif
+const constexpr uint32_t kTcpWnd = 1 << 21;
+const constexpr uint8_t kWindowShift = 7;
 
-const constexpr uint16_t TcpWindow16(size_t sz) {
-  return sz > static_cast<size_t>(20 * kTcpMss) ? 20 * kTcpMss : sz;
+const constexpr uint16_t TcpWindow16(uint32_t sz) {
+  return sz >> kWindowShift;
 }
 
 const constexpr uint16_t kTcpFin = 0x01;
