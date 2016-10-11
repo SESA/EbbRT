@@ -1,0 +1,19 @@
+
+Removes mt files:
+src/cli.c
+src/load_gen.c
+src/mt_adaptor.c
+
+Stub out includes:
+sys/select.h // main
+poll.h // zookeeper.c
+netinet/in.h
+netinet/tcp.h
+arpa/inet.h
+
+
+
+
+ADD TO POSIX:
+arpa/inet.h -> (only) htonl, htons, ntohl, ntohs
+stdlib.h -> random, srandom
