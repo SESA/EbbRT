@@ -12,7 +12,13 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g3")
 add_compile_options(-std=gnu++14 -Wall -Werror)
 
 find_package(Capnp REQUIRED)
-find_library(EbbRT REQUIRED NO_SYSTEM_ENVIRONMENT_PATH)
+# Platform-specific package dependencies
+if( ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+  find_package(EbbRT REQUIRED)
+endif()
+if( ${CMAKE_SYSTEM_NAME} STREQUAL "EbbRT")
+  find_library(EbbRT REQUIRED NO_SYSTEM_ENVIRONMENT_PATH)
+endif()
 
 set(capnp_sources
   ${CMAKE_SOURCE_DIR}/FileSystem.capnp
