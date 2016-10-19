@@ -94,7 +94,9 @@ To build an EbbRT application run `make` in the application's directory. Make su
 
 ## Further Reading
 
-[Our latest technical report (PDF)](http://www.cs.bu.edu/techreports/pdf/2016-002-ebbrt.pdf)
+*EbbRT: A Framework for Building Per-Application Library Operating Systems.*
+12th USENIX Symposium on Operating Systems Design and Implementation (OSDI
+16). [(PDF)](doc/ebbrt-OSDI_16.pdf)
 
 ## Contact
 
