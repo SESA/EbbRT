@@ -87,7 +87,7 @@ index 0000000..8b95619
 +/* Default arguments you want when running your
 +   i686-ebbrt-gcc/x86_64-ebbrt-gcc toolchain */
 +#undef LIB_SPEC
-+#define LIB_SPEC "-lebbrt -lcapnp -lkj -lacpica -ltbb -lstdc++ -lsupc++ -lm -lgcc -lc -lg -lnosys -lebbrt" /* link against C standard library */
++#define LIB_SPEC "-lEbbRT -lcapnp -lkj -lacpica -ltbb -lstdc++ -lsupc++ -lm -lgcc -lc -lg -lnosys -lEbbRT" /* link against C standard library */
 +
 +/* Files that are linked before user code.
 +   The %s tells gcc to look for these files in the library directory. */
@@ -149,7 +149,7 @@ index 0000000..c8e1230
 +#ifndef GCC_GTHR_EBBRT_H
 +#define GCC_GTHR_EBBRT_H
 +
-+#include <ebbrt/Gthread.h>
++#include <ebbrt/native/Gthread.h>
 +
 +#ifdef __cplusplus
 +extern "C" {

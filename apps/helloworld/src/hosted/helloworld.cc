@@ -7,12 +7,12 @@
 
 #include <boost/filesystem.hpp>
 
-#include <ebbrt/Context.h>
-#include <ebbrt/ContextActivation.h>
 #include <ebbrt/GlobalIdMap.h>
-#include <ebbrt/StaticIds.h>
-#include <ebbrt/NodeAllocator.h>
 #include <ebbrt/Runtime.h>
+#include <ebbrt/StaticIds.h>
+#include <ebbrt/hosted/Context.h>
+#include <ebbrt/hosted/ContextActivation.h>
+#include <ebbrt/hosted/NodeAllocator.h>
 
 #include "Printer.h"
 

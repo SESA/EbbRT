@@ -26,7 +26,7 @@ PATCH ?= patch
 
 SYSROOT ?= $(abspath $(CURDIR)/sysroot)
 PREFIX ?= $(abspath $(SYSROOT)/usr)
-EBBRT_SRCDIR ?= $(abspath $(MYDIR)/..)
+EBBRT_SRCDIR ?= $(abspath $(MYDIR)/../src)
 SRCDIR ?= $(abspath $(CURDIR)/src)
 BUILDDIR ?= $(abspath $(CURDIR)/build)
 PATCHDIR ?= $(abspath $(MYDIR)/patches)
@@ -94,11 +94,11 @@ NEWLIB_CFLAGS ?= "-O4" # FIXME: Link Time Optimization fails
 endif
 
 
-EBBRT_BM_PATH ?= $(EBBRT_SRCDIR)/baremetal
+EBBRT_BM_PATH ?= $(EBBRT_SRCDIR)/native
 EBBRT_BUILD_PATH ?= $(BUILDDIR)/ebbrt-build
 EBBRT_CONFIGURE_FLAG ?= $(EBBRT_BUILD_PATH)/Makefile
 
-CMAKE_TOOLCHAIN_FILE ?= $(EBBRT_BM_PATH)/cmake/ebbrt.cmake
+CMAKE_TOOLCHAIN_FILE ?= $(EBBRT_SRCDIR)/cmake/ebbrt.cmake
 ifdef DEBUG
 CMAKE_OPT ?= -DCMAKE_BUILD_TYPE=Debug
 else
@@ -106,20 +106,22 @@ CMAKE_OPT ?= -DCMAKE_BUILD_TYPE=Release
 endif
 CMAKE_DEFS ?= -DCMAKE_INSTALL_PREFIX:PATH=$(PREFIX) \
 	-DCMAKE_TOOLCHAIN_FILE=$(CMAKE_TOOLCHAIN_FILE) $(CMAKE_OPT)
+EBBRT_BUILD_DEFS ?= -DCMAKE_C_COMPILER_FORCED=1 \
+										-DCMAKE_CXX_COMPILER_FORCED=1
 
-ACPICA_SRC_PATH ?= $(EBBRT_BM_PATH)/ext/acpica
+ACPICA_SRC_PATH ?= $(abspath $(MYDIR)/ext/acpica)
 ACPICA_BUILD_PATH ?= $(BUILDDIR)/acpica-build
 ACPICA_CONFIGURE_FLAG ?= $(ACPICA_BUILD_PATH)/Makefile
 
-BOOST_SRC_PATH ?= $(EBBRT_BM_PATH)/ext/boost
+BOOST_SRC_PATH ?= $(abspath $(MYDIR)/ext/boost)
 BOOST_BUILD_PATH ?= $(BUILDDIR)/boost-build
 BOOST_CONFIGURE_FLAG ?= $(BOOST_BUILD_PATH)/Makefile
 
-CAPNP_SRC_PATH ?= $(EBBRT_BM_PATH)/ext/capnp
+CAPNP_SRC_PATH ?= $(abspath $(MYDIR)/ext/capnp)
 CAPNP_BUILD_PATH ?= $(BUILDDIR)/capnp-build
 CAPNP_CONFIGURE_FLAG ?= $(CAPNP_BUILD_PATH)/Makefile
 
-TBB_SRC_PATH ?= $(EBBRT_BM_PATH)/ext/tbb
+TBB_SRC_PATH ?= $(abspath $(MYDIR)/ext/tbb)
 TBB_BUILD_PATH ?= $(BUILDDIR)/tbb-build
 TBB_CONFIGURE_FLAG ?= $(TBB_BUILD_PATH)/Makefile
 
@@ -392,7 +394,7 @@ $(EBBRT_BUILD_PATH): | $(BUILDDIR)
 
 $(EBBRT_CONFIGURE_FLAG): | ebbrt-deps $(EBBRT_BM_PATH) $(EBBRT_BUILD_PATH)
 	$(CD) $(EBBRT_BUILD_PATH) && \
-	$(CMAKE) $(CMAKE_DEFS) $(EBBRT_BM_PATH)
+	$(CMAKE) $(CMAKE_DEFS) $(EBBRT_BUILD_DEFS) $(EBBRT_SRCDIR) 
 
 ebbrt-build: ebbrt-deps $(EBBRT_CONFIGURE_FLAG)
 	$(MAKE) -C $(EBBRT_BUILD_PATH)
@@ -403,12 +405,18 @@ ebbrt-install: ebbrt-build ebbrt-cmake
 $(PREFIX)/include: | $(PREFIX)
 	$(MKDIR) $@
 
+$(PREFIX)/include/ebbrt: | $(PREFIX)/include
+	$(MKDIR) $@
+
+$(PREFIX)/include/ebbrt/native: | $(PREFIX)/include/ebbrt
+	$(MKDIR) $@
+
 $(PREFIX)/misc: | $(PREFIX)
 	$(MKDIR) $@
 
-ebbrt-headers: | $(PREFIX)/include
-	$(CP) -rv $(EBBRT_SRCDIR)/common/src/include/ebbrt $(PREFIX)/include
-	$(CP) -rv $(EBBRT_SRCDIR)/baremetal/src/include/ebbrt $(PREFIX)/include
+ebbrt-headers: | $(PREFIX)/include/ebbrt/native
+	$(CP) -rv $(EBBRT_SRCDIR)/*.h $(PREFIX)/include/ebbrt
+	$(CP) -rv $(EBBRT_SRCDIR)/native/*.h $(PREFIX)/include/ebbrt/native
 
 ebbrt-cmake: | $(PREFIX)/misc
 	$(CP) -v $(CMAKE_TOOLCHAIN_FILE) $(PREFIX)/misc
