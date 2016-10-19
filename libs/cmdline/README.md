@@ -22,6 +22,6 @@ EbbRT source directory `export EBBRT_SRCDIR=~/EbbRT`
 ```
   mkdir native
   cd native
-  cmake -DCMAKE_TOOLCHAIN_FILE=~/github/EbbRT/toolchain/sysroot/usr/misc/ebbrt.cmake ..
+  cmake -DCMAKE_TOOLCHAIN_FILE=$EBBRT_SRCDIR/toolchain/sysroot/usr/misc/ebbrt.cmake ..
   make -j install
  ```
