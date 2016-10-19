@@ -93,7 +93,7 @@ index 0000000..5a85628
 +#ifndef __SYS_LOCK_H__
 +#define __SYS_LOCK_H__
 +
-+#include <ebbrt/Newlib.h>
++#include <ebbrt/native/Newlib.h>
 +
 +#define __LOCK_INIT(class,lock) \
 +class _LOCK_T lock;
@@ -127,7 +127,7 @@ index 0000000..68b7fbe
 +#include <stdio.h>
 +#include <errno.h>
 +
-+#include <ebbrt/Newlib.h>
++#include <ebbrt/native/Newlib.h>
 +
 +int _exit(int val)
 +{
