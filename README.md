@@ -16,18 +16,6 @@ machines.
 
 ![image](doc/img/objective.png)
 
-## Results
-
-Using EbbRT, we are able to achieve ~2x better throughput at SLA for
-memcached.
-
-![image](doc/img/memcached_results.png)
-
-A port of the node.js javascript environment obtained ~4% improvement
-on pure compute workloads (no I/O).
-
-![image](doc/img/nodejs_results.png)
-
 ## Design
 
 EbbRT is designed first and foremost for performance and
@@ -70,27 +58,6 @@ native library OS is compiled with this toolchain and the resulting
 binary is a bootable ELF linked with the library OS. We provide C and
 C++ standard library implementations which make it straightforward to
 use many third party software libraries.
-
-## Build
-
-Checkout the repository submodules to pull in the build requirements.
-
-`git submodule update --init`
-
-Set the `EBBRT_SRCDIR` environment variable to point to EbbRT source
-directory. This variable is require to build an EbbRT application.
-
-`export EBBRT_SRCDIR=$PWD`
-
-Step to the EbbRT toolchain submodule directory and run `make`. By default,
-this will download the latest toolchain binaries. For instructions to build the toolchain from
-source see the README file in the [EbbRT-toolchain](https://github.com/SESA/EbbRT-toolchain) repository.
-
-`make -C $EBBRT_SRCDIR/baremetal/ext/EbbRT-toolchain`
-
-To build an EbbRT application run `make` in the application's directory. Make sure the EBBRT_SCRDIR environment variable is available and points to the EbbRT source directory. 
-
-`make -j -C $EBBRT_SRCDIR/apps/helloworld`
 
 ## Further Reading
 
