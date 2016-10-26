@@ -26,7 +26,7 @@ PATCH ?= patch
 
 SYSROOT ?= $(abspath $(CURDIR)/sysroot)
 PREFIX ?= $(abspath $(SYSROOT)/usr)
-EBBRT_SRCDIR ?= $(abspath $(MYDIR)/../src)
+EBBRT_SRCDIR ?= $(abspath $(MYDIR)/../)
 SRCDIR ?= $(abspath $(CURDIR)/src)
 BUILDDIR ?= $(abspath $(CURDIR)/build)
 PATCHDIR ?= $(abspath $(MYDIR)/patches)
@@ -94,11 +94,11 @@ NEWLIB_CFLAGS ?= "-O4" # FIXME: Link Time Optimization fails
 endif
 
 
-EBBRT_BM_PATH ?= $(EBBRT_SRCDIR)/native
+EBBRT_BM_PATH ?= $(EBBRT_SRCDIR)/src/native
 EBBRT_BUILD_PATH ?= $(BUILDDIR)/ebbrt-build
 EBBRT_CONFIGURE_FLAG ?= $(EBBRT_BUILD_PATH)/Makefile
 
-CMAKE_TOOLCHAIN_FILE ?= $(EBBRT_SRCDIR)/cmake/ebbrt.cmake
+CMAKE_TOOLCHAIN_FILE ?= $(EBBRT_SRCDIR)/src/cmake/ebbrt.cmake
 ifdef DEBUG
 CMAKE_OPT ?= -DCMAKE_BUILD_TYPE=Debug
 else
@@ -394,7 +394,7 @@ $(EBBRT_BUILD_PATH): | $(BUILDDIR)
 
 $(EBBRT_CONFIGURE_FLAG): | ebbrt-deps $(EBBRT_BM_PATH) $(EBBRT_BUILD_PATH)
 	$(CD) $(EBBRT_BUILD_PATH) && \
-	$(CMAKE) $(CMAKE_DEFS) $(EBBRT_BUILD_DEFS) $(EBBRT_SRCDIR) 
+	$(CMAKE) $(CMAKE_DEFS) $(EBBRT_BUILD_DEFS) $(EBBRT_SRCDIR)/src
 
 ebbrt-build: ebbrt-deps $(EBBRT_CONFIGURE_FLAG)
 	$(MAKE) -C $(EBBRT_BUILD_PATH)
@@ -415,8 +415,8 @@ $(PREFIX)/misc: | $(PREFIX)
 	$(MKDIR) $@
 
 ebbrt-headers: | $(PREFIX)/include/ebbrt/native
-	$(CP) -rv $(EBBRT_SRCDIR)/*.h $(PREFIX)/include/ebbrt
-	$(CP) -rv $(EBBRT_SRCDIR)/native/*.h $(PREFIX)/include/ebbrt/native
+	$(CP) -rv $(EBBRT_SRCDIR)/src/*.h $(PREFIX)/include/ebbrt
+	$(CP) -rv $(EBBRT_SRCDIR)/src/native/*.h $(PREFIX)/include/ebbrt/native
 
 ebbrt-cmake: | $(PREFIX)/misc
 	$(CP) -v $(CMAKE_TOOLCHAIN_FILE) $(PREFIX)/misc
