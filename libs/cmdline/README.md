@@ -5,15 +5,15 @@ EbbRT cmdline library
 
 * (Optional) Set the `EBBRT_SRCDIR` environment variable to point to 
 EbbRT source directory `export EBBRT_SRCDIR=~/EbbRT`
-* Build and install EbbRT native toolchain, assume installed at `$EBBRT_SRCDIR/toolchain/sysroot`
-* Build and install EbbRT hosted library, assume installed at `$EBBRT_SRCDIR/hosted/usr`
+* Build and install EbbRT native toolchain, assume installed at `~/sysroot/native`
+* Build and install EbbRT hosted library, assume installed at `~/sysroot/hosted`
 
 ## Build and install for hosted
 
 ```
   mkdir hosted
   cd hosted
-  cmake -DCMAKE_INSTALL_PREFIX=$EBBRT_SRCDIR/hosted/usr -DCMAKE_PREFIX_PATH=$EBBRT_SRCDIR/hosted/us ..
+  cmake -DCMAKE_INSTALL_PREFIX=~/sysroot/hosted -DCMAKE_PREFIX_PATH=~/sysroot/hosted ..
   make -j install
  ```
  
@@ -22,6 +22,6 @@ EbbRT source directory `export EBBRT_SRCDIR=~/EbbRT`
 ```
   mkdir native
   cd native
-  cmake -DCMAKE_TOOLCHAIN_FILE=$EBBRT_SRCDIR/toolchain/sysroot/usr/misc/ebbrt.cmake ..
+  cmake -DCMAKE_TOOLCHAIN_FILE=~/sysroot/native/usr/misc/ebbrt.cmake ..
   make -j install
  ```
