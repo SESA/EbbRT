@@ -62,7 +62,7 @@ ebbrt::ZooKeeper::ZooKeeper(const std::string& server_hosts,
   zk_ = zookeeper_init(server_hosts.c_str(), process_watch_event, timeout_ms,
                        nullptr, connection_watcher, 0);
 
-  timer->Start(*this, std::chrono::milliseconds(timer_ms - 1000), true);
+  timer->Start(*this, std::chrono::milliseconds(timer_ms), true);
   return;
 }
 
