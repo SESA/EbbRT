@@ -11,9 +11,9 @@
 #include <ebbrt/Debug.h>
 #include <ebbrt/Future.h>
 #ifndef __ebbrt__
-#include <ebbrt/NodeAllocator.h>
+#include <ebbrt/hosted/NodeAllocator.h>
 #else
-#include <ebbrt/Multiboot.h>
+#include <ebbrt/native/Multiboot.h>
 #endif
 #include <ebbrt/SharedEbb.h>
 #include <ebbrt/SharedIOBufRef.h>
@@ -57,7 +57,7 @@ class ZooKeeper : public ebbrt::Timer::Hook {
     ZkStat stat;
   };
 
-  /* Watcher is the specified callback for one or many 'watcher' events
+  /* Watcher is the specified callback for one or all 'watcher' events
    */
   class Watcher {
    public:
@@ -101,6 +101,75 @@ class ZooKeeper : public ebbrt::Timer::Hook {
         ebbrt::kabort("unsupported event type");
       }
     }
+  };
+
+  class ConnectionWatcher : public ebbrt::ZooKeeper::Watcher {
+   public:
+    virtual ~ConnectionWatcher() {}
+    virtual void OnConnected(){};
+    virtual void OnConnecting(){};
+    virtual void OnSessionExpired(){};
+    virtual void OnAuthFailed(){};
+    virtual void OnAssociating(){};
+    virtual void WatchHandler(int type, int state, const char* path) {
+      if (type == ZOO_SESSION_EVENT) {
+        if (state == ZOO_EXPIRED_SESSION_STATE) {
+          OnSessionExpired();
+        } else if (state == ZOO_CONNECTED_STATE) {
+          OnConnected();
+        } else if (state == ZOO_CONNECTING_STATE) {
+          OnConnecting();
+        } else if (state == ZOO_ASSOCIATING_STATE) {
+          OnAssociating();
+        } else if (state == ZOO_AUTH_FAILED_STATE) {
+          OnAuthFailed();
+        } else {
+          ebbrt::kabort("unsupported session event");
+        }
+      } else {
+        ebbrt::kabort("unsupported event type");
+      }
+    }
+  };
+
+  class PathWatcher : public ebbrt::ZooKeeper::Watcher {
+   public:
+    virtual ~PathWatcher() {}
+    virtual void OnCreated(const char* path){};
+    virtual void OnDeleted(const char* path){};
+    virtual void OnChanged(const char* path){};
+    virtual void OnChildChanged(const char* path){};
+    virtual void OnNotWatching(const char* path){};
+    virtual void WatchHandler(int type, int state, const char* path) {
+      if (type == ZOO_CREATED_EVENT) {
+        OnCreated(path);
+      } else if (type == ZOO_DELETED_EVENT) {
+        OnDeleted(path);
+      } else if (type == ZOO_CHANGED_EVENT) {
+        OnChanged(path);
+      } else if (type == ZOO_CHILD_EVENT) {
+        OnChildChanged(path);
+      } else if (type == ZOO_NOTWATCHING_EVENT) {
+        OnNotWatching(path);
+      } else {
+        ebbrt::kabort("unsupported event type");
+      }
+    }
+  };
+
+  class PathWatchEvent : public ebbrt::ZooKeeper::PathWatcher {
+    public:
+      PathWatchEvent(int type, ebbrt::MovableFunction<void()> func) : type_(type),func_(std::move(func)){};
+    void WatchHandler(int type, int state, const char* path) {
+      if( type == type_ )
+        event_manager->Spawn(std::move(func_));
+      else{
+        ebbrt::kabort("WatchEvent for non-specified type: %d (set:%d)\n", type, type_);
+      }
+    }
+    private:
+      int type_;
+      ebbrt::MovableFunction<void()> func_;
   };
 
   static EbbRef<ZooKeeper> Create(EbbId id,
