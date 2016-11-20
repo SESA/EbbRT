@@ -732,6 +732,20 @@ template <typename Res> bool Future<Res>::Ready() const {
 
 inline bool Future<void>::Ready() const { return state_->Ready(); }
 
+inline Future<void> Future<void>::Block() { 
+ if (state_->Ready())
+   return std::move(*this);
+
+ ebbrt::EventManager::EventContext context;
+ ExplicitlyConstructed<Future<void>> ret;
+ Then(Launch::Async, [&context, &ret](ebbrt::Future<void> fut) {
+   ret.construct(std::move(fut));
+   ebbrt::event_manager->ActivateContext(std::move(context));
+ });
+ ebbrt::event_manager->SaveContext(context);
+ return std::move(*ret);
+}
+
 template <typename Res> Future<Res> Future<Res>::Block() {
   if (Ready())
     return std::move(*this);
@@ -744,6 +758,16 @@ template <typename Res> Future<Res> Future<Res>::Block() {
   });
   ebbrt::event_manager->SaveContext(context);
   return std::move(*ret);
+}
+
+inline void SharedFuture<void>::Block(){ 
+ if (Ready())
+   return;
+ ebbrt::EventManager::EventContext context;
+ Then(Launch::Async, [&context](ebbrt::SharedFuture<void> fut) {
+   ebbrt::event_manager->ActivateContext(std::move(context));
+ });
+ ebbrt::event_manager->SaveContext(context);
 }
 
 template <typename Res> void SharedFuture<Res>::Block() {
