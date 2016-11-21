@@ -26,7 +26,7 @@
 
 namespace ebbrt {
 
-constexpr int ZkConnectionTimeoutMs = 40000;
+constexpr int ZkConnectionTimeoutMs = 60000;
 constexpr int ZkIoEventTimer = 1000;
 
 class ZooKeeper : public ebbrt::Timer::Hook {
@@ -202,13 +202,14 @@ class ZooKeeper : public ebbrt::Timer::Hook {
    *            ZOO_SEQUENCE  - a unique monotonically increasing sequence
    *                          number is appended to the path name.
    */
+  //CheckSet
   Future<Znode> New(const std::string& path,
                     const std::string& value = std::string(), int flags = 0);
   Future<bool> Exists(const std::string& path, Watcher* watch = nullptr);
   Future<Znode> Get(const std::string& path, Watcher* watch = nullptr);
   Future<ZnodeChildren> GetChildren(const std::string& path,
                                     Watcher* watch = nullptr);
-  Future<std::string> GetVal(const std::string& path, Watcher* watch = nullptr);
+  Future<std::string> GetValue(const std::string& path, Watcher* watch = nullptr);
   Future<Znode> Delete(const std::string& path, int version = -1);
   Future<Znode> Set(const std::string& path, const std::string& value,
                     int version = -1);
