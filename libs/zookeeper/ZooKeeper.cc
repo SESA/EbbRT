@@ -62,7 +62,7 @@ ebbrt::ZooKeeper::ZooKeeper(const std::string& server_hosts,
   zk_ = zookeeper_init(server_hosts.c_str(), process_watch_event, timeout_ms,
                        nullptr, connection_watcher, 0);
 
-  timer->Start(*this, std::chrono::milliseconds(timer_ms), true);
+  timer->Start(*this, std::chrono::milliseconds(timer_ms*2), true);
   return;
 }
 
@@ -152,7 +152,7 @@ ebbrt::ZooKeeper::Exists(const std::string& path,
                          ebbrt::ZooKeeper::Watcher* watcher) {
   auto p = new ebbrt::Promise<bool>;
   auto f = p->GetFuture();
-  Stat(path, watcher).Then([&p](ebbrt::Future<ebbrt::ZooKeeper::Znode> z) {
+  Stat(path, watcher).Then([p](ebbrt::Future<ebbrt::ZooKeeper::Znode> z) {
     auto znode = z.Get();
     if (znode.err == ZOK) {
       p->SetValue(true);
@@ -179,11 +179,11 @@ ebbrt::ZooKeeper::Get(const std::string& path,
 }
 
 ebbrt::Future<std::string>
-ebbrt::ZooKeeper::GetVal(const std::string& path,
+ebbrt::ZooKeeper::GetValue(const std::string& path,
                          ebbrt::ZooKeeper::Watcher* watcher) {
   auto p = new ebbrt::Promise<std::string>;
   auto f = p->GetFuture();
-  Get(path, watcher).Then([&p](ebbrt::Future<ebbrt::ZooKeeper::Znode> z) {
+  Get(path, watcher).Then([p](ebbrt::Future<ebbrt::ZooKeeper::Znode> z) {
     auto znode = z.Get();
     p->SetValue(znode.value);
   });
@@ -385,7 +385,8 @@ void ebbrt::ZooKeeper::stat_completion(int rc,
                                        const void* data) {
   Znode res;
   res.err = rc;
-  res.stat = *stat;
+  if(stat)
+    res.stat = *stat;
   auto p = static_cast<ebbrt::Promise<Znode>*>(const_cast<void*>(data));
   p->SetValue(std::move(res));
   delete p;
