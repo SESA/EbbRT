@@ -121,14 +121,14 @@ void ebbrt::ZooKeeper::Fire() {
 
 ebbrt::Future<ebbrt::ZooKeeper::Znode>
 ebbrt::ZooKeeper::New(const std::string& path, const std::string& value,
-                      int flags) {
+                      ZooKeeper::Flag flags) {
 
   auto p = new ebbrt::Promise<Znode>;
   auto f = p->GetFuture();
 
   // TODO(jmc): verify this work for empty string (i.e., c_str() = "" or nullptr)
   zoo_acreate(zk_, path.c_str(), value.c_str(), value.size(),
-              &ZOO_OPEN_ACL_UNSAFE, flags, string_completion, p);
+              &ZOO_OPEN_ACL_UNSAFE, static_cast<int>(flags), string_completion, p);
   return f;
 }
 
@@ -178,17 +178,17 @@ ebbrt::ZooKeeper::Get(const std::string& path,
   return f;
 }
 
-ebbrt::Future<std::string>
-ebbrt::ZooKeeper::GetValue(const std::string& path,
-                         ebbrt::ZooKeeper::Watcher* watcher) {
-  auto p = new ebbrt::Promise<std::string>;
-  auto f = p->GetFuture();
-  Get(path, watcher).Then([p](ebbrt::Future<ebbrt::ZooKeeper::Znode> z) {
-    auto znode = z.Get();
-    p->SetValue(znode.value);
-  });
-  return f;
-}
+//ebbrt::Future<std::string>
+//ebbrt::ZooKeeper::GetValue(const std::string& path,
+//                         ebbrt::ZooKeeper::Watcher* watcher) {
+//  auto p = new ebbrt::Promise<std::string>;
+//  auto f = p->GetFuture();
+//  Get(path, watcher).Then([p](ebbrt::Future<ebbrt::ZooKeeper::Znode> z) {
+//    auto znode = z.Get();
+//    p->SetValue(znode.value);
+//  });
+//  return f;
+//}
 
 ebbrt::Future<ebbrt::ZooKeeper::ZnodeChildren>
 ebbrt::ZooKeeper::GetChildren(const std::string& path,
@@ -362,7 +362,7 @@ void ebbrt::ZooKeeper::CLI(char* line) {
     }
     ebbrt::kprintf("Creating [%s] node\n", line);
     std::string path(line);
-    auto fp = New(path, "new", flags);
+    auto fp = New(path, "new", static_cast<ZooKeeper::Flag>(flags));
     auto f = fp.Block().Get();
     PrintZnode(&f);
   } else if (startsWith(line, "delete ")) {
