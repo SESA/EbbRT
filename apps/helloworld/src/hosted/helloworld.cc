@@ -31,7 +31,12 @@ int main(int argc, char** argv) {
                         int signal_number) { c.io_service_.stop(); });
     Printer::Init().Then([bindir](ebbrt::Future<void> f) {
       f.Get();
-      ebbrt::node_allocator->AllocateNode(bindir.string());
+      try {
+        ebbrt::node_allocator->AllocateNode(bindir.string());
+      } catch (std::runtime_error& e) {
+        std::cout << e.what() << std::endl;
+        exit(1);
+      }
     });
   }
   c.Run();
