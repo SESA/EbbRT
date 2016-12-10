@@ -28,23 +28,19 @@ std::string ebbrt::NodeAllocator::DefaultArguments;
 std::string ebbrt::NodeAllocator::DefaultNetworkArguments;
 
 std::string ebbrt::NodeAllocator::RunCmd(std::string cmd) {
-#ifndef NDEBUG
-  std::cerr << "exec: " << cmd << std::endl;
-#endif
-  ebbrt::kbugon(cmd.size() == 0);
   std::string out;
   char line[kLineSize];
   auto f = popen(cmd.c_str(), "r");
   if (f == nullptr) {
-    throw std::runtime_error("Failed to run command: " + cmd);
+    throw std::runtime_error("Failed to execute command: " + cmd);
   }
   while (std::fgets(line, kLineSize, f)) {
     out += line;
   }
-  pclose(f);
-  if (!out.empty()) {
-    out.erase(out.length() - 1);  // trim newline
+  if( pclose(f) != 0 ){
+    throw std::runtime_error("Error reported by command:  "+out);
   }
+  if(!out.empty()) out.erase(out.length() - 1);  // trim newline
   return out;
 }
 
@@ -222,6 +218,7 @@ ebbrt::NodeAllocator::NodeDescriptor
 ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
                                    int numaNodes, int ram,
                                    std::string arguments) {
+  RunCmd("file "+binary_path);
   auto allocation_id =
       node_allocator->allocation_index_.fetch_add(1, std::memory_order_relaxed);
   auto dir = boost::filesystem::temp_directory_path();
