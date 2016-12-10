@@ -38,7 +38,7 @@ std::string ebbrt::NodeAllocator::RunCmd(std::string cmd) {
     out += line;
   }
   if( pclose(f) != 0 ){
-    throw std::runtime_error("Error reported by command:  "+out);
+    throw std::runtime_error("Error reported by command: " + cmd + out);
   }
   if(!out.empty()) out.erase(out.length() - 1);  // trim newline
   return out;
@@ -46,7 +46,7 @@ std::string ebbrt::NodeAllocator::RunCmd(std::string cmd) {
 
 ebbrt::NodeAllocator::DockerContainer::~DockerContainer() {
   if (!cid_.empty()) {
-    std::cerr << "Removing container " << cid_.substr(0, 12) << std::endl;
+    std::cerr << "removing container: " << cid_.substr(0, 12) << std::endl;
     RunCmd("docker stop " + cid_);
     RunCmd("docker rm -f " + cid_);
   }
@@ -55,11 +55,14 @@ ebbrt::NodeAllocator::DockerContainer::~DockerContainer() {
 std::string ebbrt::NodeAllocator::DockerContainer::Start() {
   if (!cid_.empty() || img_.size() == 0) {
     throw std::runtime_error("Error: attempt to start unspecified container ");
-    return std::string();
   }
   std::stringstream cmd;
   cmd << "docker run -d " << arg_ << " " << img_ << " " << cmd_;
   cid_ = RunCmd(cmd.str());
+  std::cerr << "Docker Container:" << std::endl;
+  std::cerr << "|  img:" << img_ << std::endl;
+  std::cerr << "|  cid: " << cid_.substr(0,12)  << std::endl;
+  std::cerr << "|  log: docker logs " << cid_.substr(0,12)  << std::endl;
   return cid_;
 }
 
@@ -152,9 +155,8 @@ ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
   auto acceptor = std::make_shared<bai::tcp::acceptor>(
       active_context->io_service_, bai::tcp::endpoint(bai::tcp::v4(), 0));
   auto socket = std::make_shared<bai::tcp::socket>(active_context->io_service_);
-
-  network_id_ = RunCmd(std::string("docker network create " +
-                                   std::to_string(std::time(nullptr))));
+  auto net_name = "ebbrt-" + std::to_string(geteuid()) +"."+std::to_string(getpid());
+  network_id_ = RunCmd(std::string("docker network create "+net_name));
   std::string str = RunCmd("docker network inspect --format='{{range "
                            ".IPAM.Config}}{{.Gateway}}{{end}}' " +
                            network_id_);
@@ -175,9 +177,13 @@ ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
 
   AppendArgs("host_addr=" + std::to_string(net_addr_));
   AppendArgs("host_port=" + std::to_string(port_));
-  std::cout << "Network Details:" << std::endl;
-  std::cout << "| network: " << network_id_.substr(0, 12) << std::endl;
-  std::cout << "| listening on: " << ipaddr << ":" << port_ << std::endl;
+  std::cerr << "Network Details:" << std::endl;
+  std::cerr << "| id: " << network_id_.substr(0, 12) << std::endl;
+  std::cerr << "| ip: " << ipaddr << ":" << port_ << std::endl;
+#ifndef NDEBUG
+  std::cerr << "# debug w/ wireshark:" << std::endl;
+  std::cerr << "# wireshark -i br-" << network_id_.substr(0, 12) << " -k" << std::endl;
+#endif
   DoAccept(std::move(acceptor), std::move(socket));
 }
 
@@ -222,7 +228,7 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
   auto allocation_id =
       node_allocator->allocation_index_.fetch_add(1, std::memory_order_relaxed);
   auto dir = boost::filesystem::temp_directory_path();
-
+  auto container_name = "ebbrt-" + std::to_string(geteuid()) +"."+std::to_string(getpid()) +"."+std::to_string(allocation_id);
   // cid file
   auto cid = dir / boost::filesystem::unique_path();
   if (boost::filesystem::exists(cid)) {
@@ -244,7 +250,8 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
               << " --device /dev/vhost-net:/dev/vhost-net"
               << " --net=" << network_id_ << " -e VM_MEM=" << ram << "G"
               << " -e VM_CPU=" << cpus << " -e VM_WAIT=true"
-              << " --cidfile=" << cid.native();
+              << " --cidfile=" << cid.native()
+              << " --name='" << container_name << "' ";
 
   std::string repo =
 #ifndef NDEBUG
@@ -271,11 +278,6 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
                     ".NetworkSettings.Networks}}{{.IPAddress}}{{end}}' " +
                     id);
 
-#ifndef NDEBUG
-  std::string lport = RunCmd("/bin/sh -c \"docker port " + id +
-                             " | grep 1234 | cut -d ':' -f 2\"");
-#endif
-
   /* transfer image into container */
   RunCmd("ping -c 1 -w 30 " + cip);
   RunCmd("scp -q -o UserKnownHostsFile=/dev/null -o "
@@ -284,17 +286,19 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
   /* kick start vm */
   RunCmd("docker exec -dt " + id + " touch /tmp/signal");
 
-  std::cout << "Node Allocation Details: " << std::endl;
+  std::cerr << "Node Allocation Details: " << std::endl;
+  std::cerr << "| img: " <<  binary_path << std::endl;
+  std::cerr << "|  id: " << container_name << std::endl;
+  std::cerr << "|  ip: " << cip << std::endl;
 #ifndef NDEBUG
-  std::cout << "| gdb: " << cip << ":1234" << std::endl;
-  std::cout << "| gdb(local): localhost:" << lport << std::endl;
+  std::cerr << "# debug w/ gdb: " << std::endl;
+  std::cerr << "# gdb " << binary_path.substr(0, binary_path.size()-2) << " -q -ex 'set tcp connect-timeout 60' -ex 'target remote " << cip << ":1234'" << std::endl;
 #endif
-  std::cout << "| container: " << id.substr(0, 12) << std::endl;
   return NodeDescriptor(id, std::move(rfut));
 }
 ebbrt::NodeAllocator::~NodeAllocator() {
   nodes_.clear();
-  std::cerr << "Removing network " << network_id_.substr(0, 12) << std::endl;
+  std::cerr << "removing Network: " << network_id_.substr(0, 12) << std::endl;
   RunCmd("docker network rm " + network_id_);
 
   // optional: support for "weave" docker network plugin
