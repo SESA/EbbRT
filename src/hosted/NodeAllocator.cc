@@ -37,10 +37,11 @@ std::string ebbrt::NodeAllocator::RunCmd(std::string cmd) {
   while (std::fgets(line, kLineSize, f)) {
     out += line;
   }
-  if( pclose(f) != 0 ){
+  if (pclose(f) != 0) {
     throw std::runtime_error("Error reported by command: " + cmd + out);
   }
-  if(!out.empty()) out.erase(out.length() - 1);  // trim newline
+  if (!out.empty())
+    out.erase(out.length() - 1);  // trim newline
   return out;
 }
 
@@ -61,8 +62,8 @@ std::string ebbrt::NodeAllocator::DockerContainer::Start() {
   cid_ = RunCmd(cmd.str());
   std::cerr << "Docker Container:" << std::endl;
   std::cerr << "|  img:" << img_ << std::endl;
-  std::cerr << "|  cid: " << cid_.substr(0,12)  << std::endl;
-  std::cerr << "|  log: docker logs " << cid_.substr(0,12)  << std::endl;
+  std::cerr << "|  cid: " << cid_.substr(0, 12) << std::endl;
+  std::cerr << "|  log: docker logs " << cid_.substr(0, 12) << std::endl;
   return cid_;
 }
 
@@ -155,8 +156,9 @@ ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
   auto acceptor = std::make_shared<bai::tcp::acceptor>(
       active_context->io_service_, bai::tcp::endpoint(bai::tcp::v4(), 0));
   auto socket = std::make_shared<bai::tcp::socket>(active_context->io_service_);
-  auto net_name = "ebbrt-" + std::to_string(geteuid()) +"."+std::to_string(getpid());
-  network_id_ = RunCmd(std::string("docker network create "+net_name));
+  auto net_name =
+      "ebbrt-" + std::to_string(geteuid()) + "." + std::to_string(getpid());
+  network_id_ = RunCmd(std::string("docker network create " + net_name));
   std::string str = RunCmd("docker network inspect --format='{{range "
                            ".IPAM.Config}}{{.Gateway}}{{end}}' " +
                            network_id_);
@@ -182,7 +184,8 @@ ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
   std::cerr << "| ip: " << ipaddr << ":" << port_ << std::endl;
 #ifndef NDEBUG
   std::cerr << "# debug w/ wireshark:" << std::endl;
-  std::cerr << "# wireshark -i br-" << network_id_.substr(0, 12) << " -k" << std::endl;
+  std::cerr << "# wireshark -i br-" << network_id_.substr(0, 12) << " -k"
+            << std::endl;
 #endif
   DoAccept(std::move(acceptor), std::move(socket));
 }
@@ -224,11 +227,13 @@ ebbrt::NodeAllocator::NodeDescriptor
 ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
                                    int numaNodes, int ram,
                                    std::string arguments) {
-  RunCmd("file "+binary_path);
+  RunCmd("file " + binary_path);
   auto allocation_id =
       node_allocator->allocation_index_.fetch_add(1, std::memory_order_relaxed);
   auto dir = boost::filesystem::temp_directory_path();
-  auto container_name = "ebbrt-" + std::to_string(geteuid()) +"."+std::to_string(getpid()) +"."+std::to_string(allocation_id);
+  auto container_name = "ebbrt-" + std::to_string(geteuid()) + "." +
+                        std::to_string(getpid()) + "." +
+                        std::to_string(allocation_id);
   // cid file
   auto cid = dir / boost::filesystem::unique_path();
   if (boost::filesystem::exists(cid)) {
@@ -250,8 +255,8 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
               << " --device /dev/vhost-net:/dev/vhost-net"
               << " --net=" << network_id_ << " -e VM_MEM=" << ram << "G"
               << " -e VM_CPU=" << cpus << " -e VM_WAIT=true"
-              << " --cidfile=" << cid.native()
-              << " --name='" << container_name << "' ";
+              << " --cidfile=" << cid.native() << " --name='" << container_name
+              << "' ";
 
   std::string repo =
 #ifndef NDEBUG
@@ -287,12 +292,14 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
   RunCmd("docker exec -dt " + id + " touch /tmp/signal");
 
   std::cerr << "Node Allocation Details: " << std::endl;
-  std::cerr << "| img: " <<  binary_path << std::endl;
+  std::cerr << "| img: " << binary_path << std::endl;
   std::cerr << "|  id: " << container_name << std::endl;
   std::cerr << "|  ip: " << cip << std::endl;
 #ifndef NDEBUG
   std::cerr << "# debug w/ gdb: " << std::endl;
-  std::cerr << "# gdb " << binary_path.substr(0, binary_path.size()-2) << " -q -ex 'set tcp connect-timeout 60' -ex 'target remote " << cip << ":1234'" << std::endl;
+  std::cerr << "# gdb " << binary_path.substr(0, binary_path.size() - 2)
+            << " -q -ex 'set tcp connect-timeout 60' -ex 'target remote " << cip
+            << ":1234'" << std::endl;
 #endif
   return NodeDescriptor(id, std::move(rfut));
 }
