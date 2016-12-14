@@ -8,39 +8,38 @@
 
 #include <boost/filesystem.hpp>
 
-#include <ebbrt/GlobalIdMap.h>
-#include <ebbrt/Runtime.h>
-#include <ebbrt/StaticIds.h>
-#include <ebbrt/hosted/Context.h>
-#include <ebbrt/hosted/ContextActivation.h>
+#include <ebbrt/Cpu.h>
 #include <ebbrt/hosted/NodeAllocator.h>
 
 #include "Printer.h"
 
-int main(int argc, char** argv) {
-  auto bindir = boost::filesystem::system_complete(argv[0]).parent_path() /
+static char* ExecName = 0;
+
+void AppMain() {
+  auto bindir = boost::filesystem::system_complete(ExecName).parent_path() /
                 "/bm/helloworld.elf32";
 
-  ebbrt::Runtime runtime;
-  ebbrt::Context c(runtime);
-  boost::asio::signal_set sig(c.io_service_, SIGINT);
-  {
-    ebbrt::ContextActivation activation(c);
+  Printer::Init().Then([bindir](ebbrt::Future<void> f) {
+    f.Get();
+    try {
+      ebbrt::node_allocator->AllocateNode(bindir.string());
+    } catch (std::runtime_error& e) {
+      std::cout << e.what() << std::endl;
+      exit(1);
+    }
+  });
+}
 
-    // ensure clean quit on ctrl-c
-    sig.async_wait([&c](const boost::system::error_code& ec,
-                        int signal_number) { c.io_service_.stop(); });
-    Printer::Init().Then([bindir](ebbrt::Future<void> f) {
-      f.Get();
-      try {
-        ebbrt::node_allocator->AllocateNode(bindir.string());
-      } catch (std::runtime_error& e) {
-        std::cout << e.what() << std::endl;
-        exit(1);
-      }
-    });
-  }
-  c.Run();
+int main(int argc, char** argv) {
+  void* status;
 
+  ExecName = argv[0];
+
+  pthread_t tid = ebbrt::Cpu::EarlyInit(1);
+
+  pthread_join(tid, &status);
+
+  // This is redundant I think but I think it is also likely safe
+  ebbrt::Cpu::Exit(0);
   return 0;
 }
