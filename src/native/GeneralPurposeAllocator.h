@@ -36,7 +36,7 @@ class LargeRegionFaultHandler : public ebbrt::VMemAllocator::PageFaultHandler {
     // calculate number of 2Mb pages from sAddr to
     // use as index to Pfns
     auto mAddr = vpage.ToLAddr();
-    kassert(mAddr > sAddr);
+    kassert(mAddr >= sAddr);
     auto index = (mAddr - sAddr) / pmem::kLargePageSize;
     kassert(index < vecPfns.size());
     ebbrt::vmem::MapMemoryLarge(mAddr, vecPfns[index], pmem::kLargePageSize);
