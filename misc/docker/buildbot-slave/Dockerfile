@@ -6,6 +6,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
     clang-format-3.8 \
     git \
     iputils-ping \
+    netcat \
     python-dev \
     python-pexpect \
     python-pip \
