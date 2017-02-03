@@ -7,6 +7,7 @@
 export VCPU=${VM_CPU:-2}
 export VMEM=${VM_MEM:-2G}
 export WAIT=${VM_WAIT:-false}
+export IFACE=${IFACE_DEFAULT:-eth0}
 
 if [ $VCPU -eq 1 ]
 then
@@ -16,7 +17,6 @@ else
 fi
 
 NETVEC=$(($((${VCPU}*2))+ 2))
-IFACE=eth0
 BRIDGE_IFACE=br0
 TAP_IFACE=tap0
 
