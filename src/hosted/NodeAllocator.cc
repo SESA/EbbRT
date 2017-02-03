@@ -21,15 +21,23 @@
 namespace bai = boost::asio::ip;
 const constexpr size_t kLineSize = 80;
 
+// Node Configuration
 int ebbrt::NodeAllocator::DefaultCpus;
 int ebbrt::NodeAllocator::DefaultRam;
 int ebbrt::NodeAllocator::DefaultNumaNodes;
 std::string ebbrt::NodeAllocator::DefaultArguments;
-std::string ebbrt::NodeAllocator::DefaultNetworkArguments;
+// Network Configuration
+std::string ebbrt::NodeAllocator::CustomNetworkCreate;
+std::string ebbrt::NodeAllocator::CustomNetworkRemove;
+std::string ebbrt::NodeAllocator::CustomNetworkIp;
+std::string ebbrt::NodeAllocator::CustomNetworkNodeArguments;
 
 std::string ebbrt::NodeAllocator::RunCmd(std::string cmd) {
   std::string out;
   char line[kLineSize];
+  if (cmd.empty()) {
+    return std::string();
+  }
   auto f = popen(cmd.c_str(), "r");
   if (f == nullptr) {
     throw std::runtime_error("Failed to execute command: " + cmd);
@@ -142,41 +150,53 @@ void ebbrt::NodeAllocator::Session::Start() {
 
 ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
   {
+    // Node create configuration
     char* str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_CPUS");
     DefaultCpus = (str) ? atoi(str) : kDefaultCpus;
     str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_RAM");
     DefaultRam = (str) ? atoi(str) : kDefaultRam;
     str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_NUMANODES");
     DefaultNumaNodes = (str) ? atoi(str) : kDefaultNumaNodes;
+    str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_NUMANODES");
+    DefaultNumaNodes = (str) ? atoi(str) : kDefaultNumaNodes;
     str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_ARGUMENTS");
-    DefaultArguments = (str) ? std::string(str) : std::string(" ");
-    str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_NETWORK_ARGUMENTS");
-    DefaultNetworkArguments = (str) ? std::string(str) : std::string(" ");
+    DefaultArguments = (str) ? std::string(str) : std::string();
+    // Network create configuration
+    str = getenv("EBBRT_NODE_ALLOCATOR_CUSTOM_NETWORK_CREATE_CMD");
+    CustomNetworkCreate = (str) ? std::string(str) : std::string();
+    str = getenv("EBBRT_NODE_ALLOCATOR_CUSTOM_NETWORK_REMOVE_CMD");
+    CustomNetworkRemove = (str) ? std::string(str) : std::string();
+    str = getenv("EBBRT_NODE_ALLOCATOR_CUSTOM_NETWORK_IP_CMD");
+    CustomNetworkIp = (str) ? std::string(str) : std::string();
+    str = getenv("EBBRT_NODE_ALLOCATOR_CUSTOM_NETWORK_NODE_CONFIG");
+    CustomNetworkNodeArguments = (str) ? std::string(str) : std::string();
   }
   auto acceptor = std::make_shared<bai::tcp::acceptor>(
       active_context->io_service_, bai::tcp::endpoint(bai::tcp::v4(), 0));
   auto socket = std::make_shared<bai::tcp::socket>(active_context->io_service_);
-  auto net_name =
-      "ebbrt-" + std::to_string(geteuid()) + "." + std::to_string(getpid());
-  network_id_ = RunCmd(std::string("docker network create " + net_name));
-  std::string str = RunCmd("docker network inspect --format='{{range "
-                           ".IPAM.Config}}{{.Gateway}}{{end}}' " +
-                           network_id_);
+  std::string network_ip;
+  if (CustomNetworkCreate.empty() && CustomNetworkIp.empty()) {
+    auto net_name =
+        "ebbrt-" + std::to_string(geteuid()) + "." + std::to_string(getpid());
+    network_id_ = RunCmd(std::string("docker network create " + net_name));
+    network_ip = RunCmd("docker network inspect --format='{{range "
+                        ".IPAM.Config}}{{.Gateway}}{{end}}' " +
+                        network_id_);
+  } else {
+    std::cerr << "Creating custom network" << std::endl;
+    network_id_ = RunCmd(CustomNetworkCreate);
+    network_ip = RunCmd(CustomNetworkIp + network_id_);
+  }
+
   uint8_t ip0, ip1, ip2, ip3;
-  sscanf(str.c_str(), "%hhu.%hhu.%hhu.%hhu\\%hhu", &ip0, &ip1, &ip2, &ip3,
-         &cidr_);
+  sscanf(network_ip.c_str(), "%hhu.%hhu.%hhu.%hhu\\%hhu", &ip0, &ip1, &ip2,
+         &ip3, &cidr_);
   net_addr_ = ip0 << 24 | ip1 << 16 | ip2 << 8 | ip3;
   port_ = acceptor->local_endpoint().port();
   auto ipaddr = std::to_string(static_cast<int>(ip0)) + "." +
                 std::to_string(static_cast<int>(ip1)) + "." +
                 std::to_string(static_cast<int>(ip2)) + "." +
                 std::to_string(static_cast<int>(ip3));
-
-  // optional: support for "weave" docker network plugin
-  if (DefaultNetworkArguments.find("weave ") != std::string::npos) {
-    RunCmd("weave expose " + ipaddr + "/" + std::to_string(cidr_));
-  }
-
   AppendArgs("host_addr=" + std::to_string(net_addr_));
   AppendArgs("host_port=" + std::to_string(port_));
   std::cerr << "Network Details:" << std::endl;
@@ -249,11 +269,16 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
 #ifndef NDEBUG
   docker_args << " --expose 1234";
 #endif
+  if (CustomNetworkNodeArguments.empty()) {
+    docker_args << " --net=" << network_id_ << " ";
+  } else {
+    docker_args << CustomNetworkNodeArguments << " ";
+  }
   docker_args << " -td -P --cap-add NET_ADMIN"
-              << " --device  /dev/kvm:/dev/kvm"
+              << " --device /dev/kvm:/dev/kvm"
               << " --device /dev/net/tun:/dev/net/tun"
               << " --device /dev/vhost-net:/dev/vhost-net"
-              << " --net=" << network_id_ << " -e VM_MEM=" << ram << "G"
+              << " -e VM_MEM=" << ram << "G"
               << " -e VM_CPU=" << cpus << " -e VM_WAIT=true"
               << " --cidfile=" << cid.native() << " --name='" << container_name
               << "' ";
@@ -285,7 +310,7 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
 
   /* transfer image into container */
   RunCmd("ping -c 3 -w 30 " + cip);
-  RunCmd("nc -z -w 30 "+cip+" 22");
+  RunCmd("nc -z -w 30 " + cip + " 22");
   RunCmd("scp -q -o UserKnownHostsFile=/dev/null -o "
          "StrictHostKeyChecking=no " +
          binary_path + " root@" + cip + ":/root/img.elf");
@@ -306,20 +331,12 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
 }
 ebbrt::NodeAllocator::~NodeAllocator() {
   nodes_.clear();
-  std::cerr << "removing Network: " << network_id_.substr(0, 12) << std::endl;
-  RunCmd("docker network rm " + network_id_);
-
-  // optional: support for "weave" docker network plugin
-  if (DefaultNetworkArguments.find("weave ") != std::string::npos) {
-    auto netaddr = ntohl(net_addr_);
-    auto ipaddr =
-        Messenger::NetworkId::FromBytes(
-            reinterpret_cast<const unsigned char*>(&netaddr), sizeof(netaddr))
-            .ToString();
-    auto cmd = "weave hide " + ipaddr + "/" + std::to_string(cidr_);
-    if (system(cmd.c_str()) < 0) {
-      std::cout << "Error: command failed - " << cmd << std::endl;
-    }
+  if (CustomNetworkRemove.empty()) {
+    std::cerr << "removing Network: " << network_id_.substr(0, 12) << std::endl;
+    RunCmd("docker network rm " + network_id_);
+  } else {
+    std::cerr << "Removing custom network" << std::endl;
+    RunCmd(CustomNetworkRemove + network_id_);
   }
 }
 
