@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ -n "$DEBUG" ];
+then
+  set -x
+fi
+
 # start sshd 
 /usr/sbin/sshd &
 
@@ -76,15 +81,6 @@ setup_bridge_networking() {
     NAMESERVER=( `grep nameserver /etc/resolv.conf | grep -v "#" | cut -f2 -d ' '` )
     NAMESERVERS=`echo ${NAMESERVER[*]} | sed "s/ /,/"`
 
-    cat > /etc/dnsmasq.conf << EOF
-user=root
-dhcp-range=$IP,$IP
-dhcp-host=$MAC,$HOSTNAME,$IP,infinite
-dhcp-option=option:router,$GATEWAY
-dhcp-option=option:netmask,$NETMASK
-dhcp-option=option:dns-server,$NAMESERVERS
-EOF
-
     # Generate random new MAC address
     hexchars="0123456789ABCDEF"
     end=$( for i in {1..8} ; do echo -n ${hexchars:$(( $RANDOM % 16 )):1} ; done | sed -e 's/\(..\)/:\1/g' )
@@ -93,8 +89,10 @@ EOF
     let "NEWCIDR=$CIDR"
 
     i=`atoi $IP`
-    let "i=$i&~((1<<$16)-1)" # X.Y.0.0/16
-    NEWIP=`itoa i`
+    let "j=(255-(($i&0xff)))" 
+    let "i=$i&~((1<<8)-1)" # X.Y.Z.0
+    let "k=($i+$j)"
+    NEWIP=`itoa k`
 
     ip link set dev $IFACE down
     ip link set $IFACE address $NEWMAC
@@ -107,12 +105,22 @@ EOF
     ip link set dev $BRIDGE_IFACE up
     ip link set dev $TAP_IFACE up
     if [ -z $NO_DHCP ]; then
-        ip addr add $NEWIP/$NEWCIDR dev $BRIDGE_IFACE
+        ip addr add $IP/$CIDR dev $BRIDGE_IFACE
     fi
     if [[ $? -ne 0 ]]; then
         echo "Failed to bring up network bridge"
         exit 4
     fi
+
+cat > /etc/dnsmasq.conf << EOF
+      user=root
+      dhcp-range=$NEWIP,$NEWIP
+      dhcp-host=$MAC,$HOSTNAME,$NEWIP,infinite
+      dhcp-option=option:router,$GATEWAY
+      dhcp-option=option:netmask,$NETMASK
+      dhcp-option=option:dns-server,$NAMESERVERS
+EOF
+
     if [ -z $NO_DHCP ]; then
         dnsmasq 
     fi
