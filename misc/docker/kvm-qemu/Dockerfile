@@ -35,4 +35,5 @@ RUN echo "export VISIBLE=now" >> /etc/profile
 COPY start /root/start
 
 EXPOSE 22
+EXPOSE 1234
 ENTRYPOINT ["/root/start"]
