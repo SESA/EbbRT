@@ -13,12 +13,12 @@
 #include <ebbrt/EventManager.h>
 #include <ebbrt/Future.h>
 #include <ebbrt/LocalIdMap.h>
-#include <ebbrt/Net.h>
-#include <ebbrt/NetTcpHandler.h>
 #include <ebbrt/SharedIOBufRef.h>
 #include <ebbrt/SpinLock.h>
 #include <ebbrt/StaticSharedEbb.h>
 #include <ebbrt/UniqueIOBuf.h>
+#include <ebbrt/native/Net.h>
+#include <ebbrt/native/NetTcpHandler.h>
 
 #include <sys/socket.h>
 
@@ -118,8 +118,8 @@ class SocketManager : public ebbrt::StaticSharedEbb<SocketManager>,
   int NewIpv4Socket();
 };
 
-//extern EbbId kSocketManagerEbbId;
-static const auto socket_manager = EbbRef<SocketManager>();
+// extern EbbId kSocketManagerEbbId;
+static const auto socket_manager = EbbRef<SocketManager>(kSocketManagerEbbId);
 
 }  // namespace ebbrt
 #endif  // SOCKETMANAGER_H_
