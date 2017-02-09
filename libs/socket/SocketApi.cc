@@ -5,10 +5,10 @@
 
 #include "SocketManager.h"
 #include "Vfs.h"
-#include <ebbrt/Clock.h>
 #include <ebbrt/Debug.h>
-#include <ebbrt/NetMisc.h>
 #include <ebbrt/Runtime.h>
+#include <ebbrt/native/Clock.h>
+#include <ebbrt/native/NetMisc.h>
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -19,7 +19,7 @@
 #include "lwip/ip_addr.h"
 
 int lwip_listen(int s, int backlog) {
-  // TODO(jmc): support backlog 
+  // TODO(jmc): support backlog
   try {
     auto fd = ebbrt::root_vfs->Lookup(s);
     return static_cast<ebbrt::EbbRef<ebbrt::SocketManager::SocketFd>>(fd)
