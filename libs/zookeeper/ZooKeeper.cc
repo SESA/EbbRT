@@ -27,7 +27,7 @@ ebbrt::ZooKeeper::Create(EbbId id, Watcher* connection_watcher, int timeout_ms,
   return ebbrt::EbbRef<ebbrt::ZooKeeper>(id);
 }
 #else
-/* When executed on native Create checks command line args for ZK server. */ 
+/* When executed on native Create checks command line args for ZK server. */
 ebbrt::EbbRef<ebbrt::ZooKeeper>
 ebbrt::ZooKeeper::Create(EbbId id, Watcher* connection_watcher, int timeout_ms,
                          int timer_ms, std::string server_hosts) {
@@ -62,7 +62,7 @@ ebbrt::ZooKeeper::ZooKeeper(const std::string& server_hosts,
   zk_ = zookeeper_init(server_hosts.c_str(), process_watch_event, timeout_ms,
                        nullptr, connection_watcher, 0);
 
-  timer->Start(*this, std::chrono::milliseconds(timer_ms*2), true);
+  timer->Start(*this, std::chrono::milliseconds(timer_ms * 2), true);
   return;
 }
 
@@ -126,9 +126,11 @@ ebbrt::ZooKeeper::New(const std::string& path, const std::string& value,
   auto p = new ebbrt::Promise<Znode>;
   auto f = p->GetFuture();
 
-  // TODO(jmc): verify this work for empty string (i.e., c_str() = "" or nullptr)
+  // TODO(jmc): verify this work for empty string (i.e., c_str() = "" or
+  // nullptr)
   zoo_acreate(zk_, path.c_str(), value.c_str(), value.size(),
-              &ZOO_OPEN_ACL_UNSAFE, static_cast<int>(flags), string_completion, p);
+              &ZOO_OPEN_ACL_UNSAFE, static_cast<int>(flags), string_completion,
+              p);
   return f;
 }
 
@@ -178,8 +180,8 @@ ebbrt::ZooKeeper::Get(const std::string& path,
   return f;
 }
 
-//ebbrt::Future<std::string>
-//ebbrt::ZooKeeper::GetValue(const std::string& path,
+// ebbrt::Future<std::string>
+// ebbrt::ZooKeeper::GetValue(const std::string& path,
 //                         ebbrt::ZooKeeper::Watcher* watcher) {
 //  auto p = new ebbrt::Promise<std::string>;
 //  auto f = p->GetFuture();
@@ -385,7 +387,7 @@ void ebbrt::ZooKeeper::stat_completion(int rc,
                                        const void* data) {
   Znode res;
   res.err = rc;
-  if(stat)
+  if (stat)
     res.stat = *stat;
   auto p = static_cast<ebbrt::Promise<Znode>*>(const_cast<void*>(data));
   p->SetValue(std::move(res));
