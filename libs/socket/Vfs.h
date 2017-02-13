@@ -54,7 +54,6 @@ class Vfs : public ebbrt::StaticSharedEbb<Vfs>, public CacheAligned {
   std::unordered_map<int, ebbrt::EbbRef<ebbrt::Vfs::Fd>> descriptor_map_;
 };
 
-//extern EbbId kVfsEbbId;
 static const auto root_vfs = EbbRef<Vfs>();
 
 }  // namespace ebbrt
