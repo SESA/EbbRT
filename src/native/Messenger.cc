@@ -45,16 +45,16 @@ void ebbrt::Messenger::Connection::check_preallocate() {
 }
 
 void ebbrt::Messenger::Connection::preallocated(std::unique_ptr<MutIOBuf> b) {
-  auto len = b->Length();
-  auto ptr = buf_->MutData();
-  ptr += preallocate_;
-  std::memcpy(reinterpret_cast<void*>(ptr), b->Data(), len);
-
   auto dp = buf_->GetMutDataPointer();
-  preallocate_ += len;
-  auto& header = dp.Get<Header>();
+  auto& header = dp.GetNoAdvance<Header>();
   auto message_len = sizeof(Header) + header.length;
-
+  dp.Advance(preallocate_);
+  for (auto& link : *b) {
+    auto len = link.Length();
+    std::memcpy(static_cast<void*>(dp.Data()), link.Data(), len);
+    dp.Advance(len);
+    preallocate_ += len;
+  }
   if (preallocate_ == message_len) {
     kassert(buf_->Length() == message_len);
     preallocate_ = 0;
