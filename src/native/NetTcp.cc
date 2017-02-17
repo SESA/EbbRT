@@ -782,7 +782,6 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
               if (it->first == rcv_nxt + payload_len) {
                 payload_len += (it->second)->ComputeChainDataLength();
                 buf->PrependChain(std::move(it->second));
-                auto sanity = buf->ComputeChainDataLength();
                 it = stashed_segments.erase(it);
               } else {
                 ++it;
