@@ -678,16 +678,20 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
     }
 
     // First check sequence number
-    if (likely((rcv_wnd > 0 && TcpSeqBetween(rcv_nxt, info.seqno,
-                                             info.seqno + info.tcplen))) ||
+    if (likely((rcv_wnd > 0 &&
+                TcpSeqBetween(info.seqno, rcv_nxt, rcv_nxt + rcv_wnd))) ||
         (info.tcplen == 0 && info.seqno == rcv_nxt)) {
-      // 1) Our receive window is open and this segment has in sequence data OR
+      // 1) Segment is within the sequence of the receive window
+      //    RCV.NXT =< SEG.SEQ < RCV.NXT+RCV.WND
       // 2) this sequence has zero length but is in sequence (even if our
       // receive window is closed)
 
-      // Trim the front
-      buf->Advance(rcv_nxt - info.seqno);
-      info.tcplen -= rcv_nxt - info.seqno;
+      if (TcpSeqGT(rcv_nxt, info.seqno)) {
+        // Trim the front
+        kprintf(">> rcv_nxt > info.seqno \n");
+        buf->Advance(rcv_nxt - info.seqno);
+        info.tcplen -= rcv_nxt - info.seqno;
+      }
 
       // Second check the RST bit
       if (unlikely(flags & kTcpRst)) {
@@ -757,7 +761,36 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
       auto payload_len = buf_len - hdr_len;
       if (payload_len > 0) {
         if (likely(state == kEstablished)) {
-          if (unlikely(info.tcplen > rcv_wnd)) {
+
+          // Stash segments that are not in-sequence
+          // TODO: save and restore flags of stashed segments
+          if (TcpSeqGT(info.seqno, rcv_nxt)) {
+            // RFC 793 Page 69:
+            // "Segments with higher begining sequence numbers may be held for
+            // later processing."
+            buf->Advance(hdr_len);
+            if (stashed_segments.count(info.seqno) == 0) {
+              stashed_segments.emplace(info.seqno, std::move(buf));
+            }
+            SendEmptyAck();
+            return true;
+          }
+          // Append stashed in-sequence segments
+          if (!stashed_segments.empty()) {
+            auto it = stashed_segments.begin();
+            while (it != stashed_segments.end()) {
+              if (it->first == rcv_nxt + payload_len) {
+                payload_len += (it->second)->ComputeChainDataLength();
+                buf->PrependChain(std::move(it->second));
+                auto sanity = buf->ComputeChainDataLength();
+                it = stashed_segments.erase(it);
+              } else {
+                ++it;
+              }
+            }
+          }
+          // From here all received data should be in-sequence
+          if (unlikely(payload_len > rcv_wnd)) {
             if (flags & kTcpFin) {
               // remove FIN flag since it doesn't fit in the window
               auto flags = th.Flags() & ~kTcpFin;
@@ -765,13 +798,13 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
               info.tcplen--;
             }
             // Received more data than our receive window can hold, trim the end
-            buf->TrimEnd(info.tcplen - rcv_wnd);
-            info.tcplen = rcv_wnd;
+            buf->TrimEnd(payload_len - rcv_wnd);
+            payload_len = rcv_wnd;
           }
 
-          rcv_nxt += info.tcplen;
+          rcv_nxt += payload_len;
           if (unlikely(close_window)) {
-            rcv_wnd -= info.tcplen;
+            rcv_wnd -= payload_len;
           }
 
           buf->Advance(hdr_len);

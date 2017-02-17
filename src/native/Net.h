@@ -152,6 +152,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     std::tuple<Ipv4Address, uint16_t, uint16_t> key;
     boost::container::list<TcpSegment> unacked_segments;
     boost::container::list<TcpSegment> pending_segments;
+    std::map<uint32_t, std::unique_ptr<IOBuf>> stashed_segments;
     enum State {
       kClosed,
       kSynSent,
