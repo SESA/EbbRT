@@ -95,7 +95,8 @@ ebbrt_gthread_recursive_mutex_destroy(__gthread_recursive_mutex_t* mutex) {
 }
 
 extern "C" int ebbrt_gthread_mutex_lock(__gthread_mutex_t* mutex) {
-  ebbrt::kbugon(!ebbrt_gthread_mutex_trylock(mutex), "lock is busy!\n");
+  ebbrt::kbugon(!ebbrt_gthread_mutex_trylock(mutex),
+                "gthread_mutex_lock is busy!\n");
   return 0;
 }
 
@@ -142,6 +143,7 @@ ebbrt_gthread_recursive_mutex_lock(__gthread_recursive_mutex_t* mutex) {
     ebbrt::kbugon(static_cast<uint8_t>(lock->core) == ebbrt::Cpu::GetMine(), "Gthread recursive mutex deadlock on core\n");
   }
   return 0;
+
 }
 
 extern "C" int
