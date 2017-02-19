@@ -88,7 +88,9 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   NodeDescriptor AllocateNode(std::string binary_path, int cpus = DefaultCpus,
                               int numNodes = DefaultNumaNodes,
                               int ram = DefaultRam,
-                              std::string arguments = DefaultArguments);
+                              std::string arguments = DefaultArguments, 
+                              std::string constraint_node = "");
+
   std::string AllocateContainer(std::string repo,
                                 std::string container_args = std::string(),
                                 std::string run_cmd = std::string());

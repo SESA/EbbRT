@@ -89,7 +89,8 @@ uint16_t ebbrt::NetworkManager::TcpPcb::Connect(Ipv4Address address,
   uint32_t iss = random::Get();
   entry_->snd_una = iss;
   entry_->snd_nxt = iss;  // EnqueueSegment will increment this by one
-  entry_->snd_wnd = TcpWindow16(kTcpWnd);
+  // We should wait to hear back from our Syn before setting this
+  entry_->snd_wnd = kTcpWnd;
   entry_->rcv_nxt = 0;
   entry_->rcv_wnd = kTcpWnd;
 
@@ -115,7 +116,7 @@ uint16_t ebbrt::NetworkManager::TcpPcb::Connect(Ipv4Address address,
   // TODO(dschatz): There should be a timeout to close the new connection if
   // the handshake doesn't complete
 
-  auto optlen = 4;  // for MSS
+  auto optlen = 8;  // for MSS + NOP + WS
   auto new_buf = MakeUniqueIOBuf(optlen + sizeof(TcpHeader) +
                                  sizeof(Ipv4Header) + sizeof(EthernetHeader));
   new_buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
@@ -123,6 +124,11 @@ uint16_t ebbrt::NetworkManager::TcpPcb::Connect(Ipv4Address address,
   auto& tcp_header = dp.Get<TcpHeader>();
   auto opts = reinterpret_cast<uint32_t*>((&tcp_header) + 1);
   *opts = htonl(0x02040000 | (1460 & 0xFFFF));
+  auto nop_ptr = reinterpret_cast<uint8_t*>(opts+1);
+  nop_ptr[0] = 0x1; // NOP
+  nop_ptr[1] = 0x3; // WS type
+  nop_ptr[2] = 0x3; // opt length
+  nop_ptr[3] = kWindowShift; // shift value
   entry_->EnqueueSegment(tcp_header, std::move(new_buf), kTcpSyn, optlen);
 
   auto now = ebbrt::clock::Wall::Now();
@@ -408,11 +414,12 @@ void ebbrt::NetworkManager::ListeningTcpEntry::Input(
     entry->rcv_nxt = info.seqno + 1;
 
     entry->snd_una = start_seq;
-    entry->snd_wnd = ntohs(th.wnd);
+    // TODO(dschatz): Read the window shift from the options!!!
+    entry->snd_wnd = ntohs(th.wnd) << kWindowShift;
     entry->rcv_wnd = kTcpWnd;
 
     // Create a SYN-ACK reply
-    auto optlen = 4;  // for MSS
+    auto optlen = 8;  // for MSS + NOP + WS
     auto new_buf = MakeUniqueIOBuf(optlen + sizeof(TcpHeader) +
                                    sizeof(Ipv4Header) + sizeof(EthernetHeader));
     new_buf->Advance(sizeof(Ipv4Header) + sizeof(EthernetHeader));
@@ -420,6 +427,11 @@ void ebbrt::NetworkManager::ListeningTcpEntry::Input(
     auto& tcp_header = dp.Get<TcpHeader>();
     auto opts = reinterpret_cast<uint32_t*>((&tcp_header) + 1);
     *opts = htonl(0x02040000 | (1460 & 0xFFFF));
+    auto nop_ptr = reinterpret_cast<uint8_t*>(opts+1);
+    nop_ptr[0] = 0x1; // NOP
+    nop_ptr[1] = 0x3; // WS type
+    nop_ptr[2] = 0x3; // opt length
+    nop_ptr[3] = kWindowShift; // shift value
     entry->EnqueueSegment(tcp_header, std::move(new_buf), kTcpSyn | kTcpAck,
                           optlen);
 
@@ -563,7 +575,7 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
         // Received a SYN-ACK
         snd_una = info.ackno;
         state = kEstablished;
-        snd_wnd = ntohs(th.wnd);
+        snd_wnd = ntohs(th.wnd) << kWindowShift;
         snd_wl1 = info.seqno;
         snd_wl2 = info.ackno;
 
@@ -602,7 +614,7 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
         }
 
         state = kEstablished;
-        snd_wnd = ntohs(th.wnd);
+        snd_wnd = ntohs(th.wnd) << kWindowShift;
         snd_wl1 = info.seqno;
         snd_wl2 = info.ackno;
         // Fall through
@@ -624,7 +636,7 @@ bool ebbrt::NetworkManager::TcpEntry::Receive(
             // SEG.SEQ, and set SND.WL2 <- SEG.ACK."
             // ... "The check here prevents using old segments to update the
             // window"
-            snd_wnd = ntohs(th.wnd);
+            snd_wnd = ntohs(th.wnd) << kWindowShift;
             snd_wl1 = info.seqno;
             snd_wl2 = info.ackno;
           }
