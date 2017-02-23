@@ -8,6 +8,7 @@
 #include <atomic>
 #include <ebbrt/CacheAligned.h>
 #include <ebbrt/Future.h>
+#include <ebbrt/GlobalStaticIds.h>
 #include <ebbrt/LocalIdMap.h>
 #include <ebbrt/SharedIOBufRef.h>
 #include <ebbrt/SpinLock.h>
@@ -54,7 +55,7 @@ class Vfs : public ebbrt::StaticSharedEbb<Vfs>, public CacheAligned {
   std::unordered_map<int, ebbrt::EbbRef<ebbrt::Vfs::Fd>> descriptor_map_;
 };
 
-static const auto root_vfs = EbbRef<Vfs>();
+static const auto root_vfs = EbbRef<Vfs>(GenerateStaticEbbId("Vfs"));
 
 }  // namespace ebbrt
 #endif  // VFS_H_
