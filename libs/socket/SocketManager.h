@@ -12,6 +12,7 @@
 #include <ebbrt/EbbAllocator.h>
 #include <ebbrt/EventManager.h>
 #include <ebbrt/Future.h>
+#include <ebbrt/GlobalStaticIds.h>
 #include <ebbrt/LocalIdMap.h>
 #include <ebbrt/SharedIOBufRef.h>
 #include <ebbrt/SpinLock.h>
@@ -119,7 +120,8 @@ class SocketManager : public ebbrt::StaticSharedEbb<SocketManager>,
 };
 
 // extern EbbId kSocketManagerEbbId;
-static const auto socket_manager = EbbRef<SocketManager>(kSocketManagerEbbId);
+static const auto socket_manager =
+    EbbRef<SocketManager>(GenerateStaticEbbId("SocketManager"));
 
 }  // namespace ebbrt
 #endif  // SOCKETMANAGER_H_
