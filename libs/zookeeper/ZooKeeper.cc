@@ -57,7 +57,7 @@ ebbrt::ZooKeeper::ZooKeeper(const std::string& server_hosts,
                             int timeout_ms, int timer_ms)
     : connection_watcher_(connection_watcher) {
 
-  zoo_set_debug_level(ZOO_LOG_LEVEL_INFO);
+  zoo_set_debug_level(ZOO_LOG_LEVEL_WARN);
   zoo_deterministic_conn_order(1);  // deterministic command->server assignment
   zk_ = zookeeper_init(server_hosts.c_str(), process_watch_event, timeout_ms,
                        nullptr, connection_watcher, 0);
