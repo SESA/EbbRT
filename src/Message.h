@@ -20,6 +20,8 @@ struct Hasher {
 };
 extern std::unordered_map<uint64_t, MessagableBase& (*)(EbbId), Hasher>
     fault_map;
+extern std::unordered_map<uint64_t, MessagableBase& (*)(void*), Hasher>
+    cast_map;
 
 template <typename T> class Messagable : public MessagableBase {
  public:
@@ -45,11 +47,16 @@ MessagableBase& GetMessagableRef(EbbId id, uint64_t type_code);
 }  // namespace ebbrt
 
 #define EBBRT_PUBLISH_TYPE(ns, type)                                           \
+  ebbrt::MessagableBase& ns##type##Translate(void* ref) {                  \
+    return static_cast<ebbrt::MessagableBase&>(*(reinterpret_cast<ns::type*>(ref)));     \
+  }                                                                            \
+                                                                               \
   ebbrt::MessagableBase& ns##type##Convert(ebbrt::EbbId id) {                  \
     return static_cast<ebbrt::MessagableBase&>(ns::type::HandleFault(id));     \
   }                                                                            \
                                                                                \
   __attribute__((constructor)) void ns##type##PublishFunction() {              \
+    ebbrt::cast_map.emplace(typeid(ns::type).hash_code(), ns##type##Translate); \
     ebbrt::fault_map.emplace(typeid(ns::type).hash_code(), ns##type##Convert); \
   }
 
