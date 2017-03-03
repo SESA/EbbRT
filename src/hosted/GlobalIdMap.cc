@@ -5,24 +5,33 @@
 
 #include "GlobalIdMap.h"
 #include "../CapnpMessage.h"
+#include "../Debug.h"
 #include "GlobalIdMessage.capnp.h"  //NOLINT
 
-EBBRT_PUBLISH_TYPE(ebbrt, GlobalIdMap);
+EBBRT_PUBLISH_TYPE(ebbrt, DefaultGlobalIdMap);
 
-ebbrt::GlobalIdMap::GlobalIdMap() : Messagable<GlobalIdMap>(kGlobalIdMapId) {}
+void ebbrt::InstallGlobalIdMap() {
+  ebbrt::kprintf("Installing default GlobalIdMap\n");
+  ebbrt::DefaultGlobalIdMap::Create(ebbrt::kGlobalIdMapId);
+}
 
-ebbrt::Future<void> ebbrt::GlobalIdMap::Set(EbbId id, std::string data) {
+ebbrt::DefaultGlobalIdMap::DefaultGlobalIdMap()
+    : Messagable<DefaultGlobalIdMap>(kGlobalIdMapId) {}
+
+ebbrt::Future<void> ebbrt::DefaultGlobalIdMap::Set(EbbId id, std::string data,
+                                                   std::string path) {
   std::lock_guard<std::mutex> lock(m_);
   map_[id] = std::move(data);
   return MakeReadyFuture<void>();
 }
 
-ebbrt::Future<std::string> ebbrt::GlobalIdMap::Get(EbbId id) {
+ebbrt::Future<std::string> ebbrt::DefaultGlobalIdMap::Get(EbbId id,
+                                                          std::string path) {
   return MakeReadyFuture<std::string>(map_[id]);
 }
 
-void ebbrt::GlobalIdMap::ReceiveMessage(Messenger::NetworkId nid,
-                                        std::unique_ptr<IOBuf>&& buf) {
+void ebbrt::DefaultGlobalIdMap::ReceiveMessage(Messenger::NetworkId nid,
+                                               std::unique_ptr<IOBuf>&& buf) {
   auto reader = IOBufMessageReader(std::move(buf));
   auto request = reader.getRoot<global_id_map_message::Request>();
 

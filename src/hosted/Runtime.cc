@@ -10,6 +10,8 @@
 #include "LocalIdMap.h"
 #include "Messenger.h"
 #include "NodeAllocator.h"
+#include "../GlobalIdMap.h"
+#include "../StaticIds.h"
 
 ebbrt::Runtime::Runtime() : initialized_(false), indices_(0) {}
 
@@ -37,6 +39,7 @@ void ebbrt::Runtime::DoInitialization() {
   LocalIdMap::Init();
   EbbAllocator::Init();
   Messenger::Init();
+  ebbrt::InstallGlobalIdMap();
   NodeAllocator::Init();
   Timer::Init();
 }

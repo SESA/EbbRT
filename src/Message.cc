@@ -16,7 +16,6 @@ std::unordered_map<uint64_t, ebbrt::MessagableBase& (*)(void*),
     ebbrt::cast_map __attribute__((init_priority(102)));
 
 ebbrt::MessagableBase& ebbrt::GetMessagableRef(EbbId id, uint64_t type_code) {
-      ebbrt::kprintf("Message Base GetMessageRed! EbbID 0x%llx type_code=%llx\n", id, type_code); 
   auto local_entry = GetLocalEntry(id);
   if (local_entry.ref == nullptr){
     auto it = fault_map.find(type_code);

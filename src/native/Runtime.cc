@@ -13,6 +13,7 @@
 #include "Messenger.h"
 #include "Multiboot.h"
 #include "Net.h"
+#include "../StaticIds.h"
 #include "RuntimeInfo.capnp.h"
 
 #include <cstdlib>
@@ -42,7 +43,7 @@ class Connection : public ebbrt::TcpHandler {
     const auto& port = info.getMessengerPort();
     ebbrt::kprintf("%x:%d\n", ebbrt::runtime::frontend, port);
     ebbrt::messenger->StartListening(port);
-    ebbrt::global_id_map->SetAddress(ebbrt::runtime::frontend);
+    ebbrt::InstallGlobalIdMap();
     ebbrt::event_manager->ActivateContext(std::move(context_));
   }
 

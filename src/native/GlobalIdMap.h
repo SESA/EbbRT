@@ -11,21 +11,53 @@
 
 #include "../CacheAligned.h"
 #include "../Future.h"
+#include "../GlobalIdMapBase.h"
 #include "../Message.h"
 #include "../StaticSharedEbb.h"
 #include "EbbRef.h"
 #include "Runtime.h"
 #include "StaticIds.h"
 
-namespace ebbrt {
-class GlobalIdMap : public StaticSharedEbb<GlobalIdMap>,
-                    public CacheAligned,
-                    public Messagable<GlobalIdMap> {
- public:
-  GlobalIdMap();
+#pragma weak InstallGlobalIdMap
 
-  Future<std::string> Get(EbbId id);
-  Future<void> Set(EbbId id, std::string data);
+namespace ebbrt {
+
+void InstallGlobalIdMap(); 
+
+class DefaultGlobalIdMap : public GlobalIdMap,
+                    public CacheAligned,
+                    public Messagable<DefaultGlobalIdMap> {
+ public:
+
+  DefaultGlobalIdMap();
+  static EbbRef<DefaultGlobalIdMap> Create(EbbId id){
+    auto base = new DefaultGlobalIdMap::Base();
+    local_id_map->Insert(std::make_pair(id, static_cast<GlobalIdMap::Base *>(base)));
+    return EbbRef<DefaultGlobalIdMap>(id);
+  }
+  static DefaultGlobalIdMap &HandleFault(EbbId id){
+    return static_cast<DefaultGlobalIdMap &>(GlobalIdMap::HandleFault(id));
+  }
+  class Base : public GlobalIdMap::Base {
+  public:
+    GlobalIdMap &Construct(EbbId id) override {
+      // shared root
+      if (constructed_){
+        return *rep_;
+      }
+      rep_ = new DefaultGlobalIdMap();
+      constructed_ = true;
+      // Cache the reference to the rep in the local translation table
+      EbbRef<DefaultGlobalIdMap>::CacheRef(id, *rep_);
+      return *rep_;
+    }
+  private:
+    DefaultGlobalIdMap* rep_;
+    bool constructed_ = false;
+  };
+
+  Future<std::string> Get(EbbId id, std::string path = std::string()) override;
+  Future<void> Set(EbbId id, std::string data, std::string path = std::string()) override;
 
   void ReceiveMessage(Messenger::NetworkId nid, std::unique_ptr<IOBuf>&& buf);
 
@@ -37,7 +69,7 @@ class GlobalIdMap : public StaticSharedEbb<GlobalIdMap>,
   uint64_t val_;
 };
 
-constexpr auto global_id_map = EbbRef<GlobalIdMap>(kGlobalIdMapId);
+constexpr auto global_id_map = EbbRef<DefaultGlobalIdMap>(kGlobalIdMapId);
 }  // namespace ebbrt
 
 #endif  // BAREMETAL_SRC_INCLUDE_EBBRT_GLOBALIDMAP_H_
