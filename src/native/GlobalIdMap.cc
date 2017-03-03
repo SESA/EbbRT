@@ -7,21 +7,14 @@
 #include "../Align.h"
 #include "../CapnpMessage.h"
 #include "Messenger.h"
+#include "Runtime.h"
 
 #include "GlobalIdMessage.capnp.h"
 
-EBBRT_PUBLISH_TYPE(ebbrt, GlobalIdMap);
+EBBRT_PUBLISH_TYPE(ebbrt, DefaultGlobalIdMap);
 
 namespace {
 uint32_t frontend_ip;
-}
-
-ebbrt::GlobalIdMap::GlobalIdMap()
-    : Messagable<GlobalIdMap>(kGlobalIdMapId), val_(0) {}
-
-void ebbrt::GlobalIdMap::SetAddress(uint32_t addr) { frontend_ip = addr; }
-
-namespace {
 
 struct Header {
   uint32_t num_segments;
@@ -29,7 +22,19 @@ struct Header {
 };
 }
 
-ebbrt::Future<std::string> ebbrt::GlobalIdMap::Get(EbbId id) {
+void ebbrt::InstallGlobalIdMap(){
+    ebbrt::kprintf("Installing Default GlobalIdMap\n");
+    auto ref = ebbrt::DefaultGlobalIdMap::Create(ebbrt::kGlobalIdMapId);
+    ref->SetAddress(ebbrt::runtime::Frontend());
+}
+
+ebbrt::DefaultGlobalIdMap::DefaultGlobalIdMap()
+    : Messagable<DefaultGlobalIdMap>(kGlobalIdMapId), val_(0) { }
+
+void ebbrt::DefaultGlobalIdMap::SetAddress(uint32_t addr) { 
+  frontend_ip = addr; }
+
+ebbrt::Future<std::string> ebbrt::DefaultGlobalIdMap::Get(EbbId id, std::string path) {
   lock_.lock();
   auto v = val_++;
   auto& p = map_[v];
@@ -46,11 +51,12 @@ ebbrt::Future<std::string> ebbrt::GlobalIdMap::Get(EbbId id) {
   return p.GetFuture();
 }
 
-ebbrt::Future<void> ebbrt::GlobalIdMap::Set(EbbId id, std::string str) {
+ebbrt::Future<void> ebbrt::DefaultGlobalIdMap::Set(EbbId id, std::string str, std::string path) {
   EBBRT_UNIMPLEMENTED();
+  return MakeReadyFuture<void>();
 }
 
-void ebbrt::GlobalIdMap::ReceiveMessage(Messenger::NetworkId nid,
+void ebbrt::DefaultGlobalIdMap::ReceiveMessage(Messenger::NetworkId nid,
                                         std::unique_ptr<IOBuf>&& b) {
   auto reader = IOBufMessageReader(std::move(b));
   auto reply = reader.getRoot<global_id_map_message::Reply>();
