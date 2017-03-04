@@ -56,6 +56,7 @@ install(TARGETS ebbrt-zookeeper
   )
 install( FILES 
   ${PROJECT_SOURCE_DIR}/ZooKeeper.h
+  ${PROJECT_SOURCE_DIR}/ZKGlobalIdMap.h
   DESTINATION include/ebbrt-zookeeper
   )
 install( DIRECTORY ${PROJECT_SOURCE_DIR}/zookeeper DESTINATION
