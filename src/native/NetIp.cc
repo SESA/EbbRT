@@ -4,6 +4,14 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include "Net.h"
 
+ebbrt::Ipv4Address ebbrt::NetworkManager::IpAddress() {
+  if (interface_)
+    return interface_->Address()->address;
+  else
+    std::runtime_error("No interface to get IP address");
+  return 0;
+}
+
 // Is addr a broadcast address on THIS interface?
 bool ebbrt::NetworkManager::Interface::ItfAddress::isBroadcast(
     const Ipv4Address& addr) const {
