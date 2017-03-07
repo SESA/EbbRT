@@ -10,6 +10,7 @@
 namespace ebbrt {
 namespace runtime {
 uint32_t Frontend();
+uint32_t AllocationId();
 void Init();
 }
 }
