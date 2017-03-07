@@ -22,10 +22,12 @@
 namespace ebbrt {
 namespace runtime {
 uint32_t frontend;
+uint32_t allocation_id;
 }
 }
 
 uint32_t ebbrt::runtime::Frontend() { return frontend; }
+uint32_t ebbrt::runtime::AllocationId() { return allocation_id; }
 
 namespace {
 class Connection : public ebbrt::TcpHandler {
@@ -93,7 +95,7 @@ void ebbrt::runtime::Init() {
     idstr = idstr.substr(0, gap);
   }
 
-  auto allocation_id = atoi(idstr.c_str());
+  ebbrt::runtime::allocation_id = atoi(idstr.c_str());
   auto nport = atoi(port.c_str());
   auto naddr = atoi(host.c_str());
   auto addr = Ipv4Address(htonl(naddr));
@@ -108,7 +110,7 @@ void ebbrt::runtime::Init() {
   // Send reply back
   auto buf = MakeUniqueIOBuf(sizeof(uint16_t));
   auto dp = buf->GetMutDataPointer();
-  dp.Get<uint16_t>() = htons(allocation_id);
+  dp.Get<uint16_t>() = htons(ebbrt::runtime::allocation_id);
   connection->Send(std::move(buf));
   connection->Pcb().Output();
 }
