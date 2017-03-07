@@ -21,6 +21,8 @@
 
 namespace ebbrt {
 
+void InstallGlobalIdMap(); 
+
 class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
  public:
   static EbbRef<ZKGlobalIdMap> Create(EbbId id) {
@@ -130,11 +132,6 @@ class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
   ConnectionWatcher zkwatcher_;
   ebbrt::EbbRef<ebbrt::ZooKeeper> zk_;
 };
-
-void InstallGlobalIdMap() {
-  ebbrt::kprintf("Installing ZooKeeper GlobalIdMap\n");
-  ebbrt::ZKGlobalIdMap::Create(ebbrt::kGlobalIdMapId);
-}
 
 constexpr auto zkglobal_id_map = EbbRef<ZKGlobalIdMap>(kGlobalIdMapId);
 // EbbRef<GlobalIdMap> global_id_map = EbbRef<GlobalIdMap>(kGlobalIdMapId);
