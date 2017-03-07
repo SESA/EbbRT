@@ -17,7 +17,11 @@
 #include "../StaticIds.h"
 #include "../StaticSharedEbb.h"
 
+#pragma weak InstallGlobalIdMap
+
 namespace ebbrt {
+
+void InstallGlobalIdMap();
 
 class DefaultGlobalIdMap : public GlobalIdMap,
                           public CacheAligned,
