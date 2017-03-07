@@ -297,6 +297,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
   static void Init();
 
   Interface& NewInterface(EthernetDevice& ether_dev);
+  Ipv4Address IpAddress();
 
  private:
   Future<void> StartDhcp();

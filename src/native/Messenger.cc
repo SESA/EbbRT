@@ -203,10 +203,7 @@ void ebbrt::Messenger::StartListening(uint16_t port) {
 }
 
 ebbrt::Messenger::NetworkId ebbrt::Messenger::LocalNetworkId() {
-  // ebbrt::NetworkManager::Interface iface =
-  //     ebbrt::network_manager->FirstInterface();
-  // return NetworkId(iface.IPV4Addr());
-  kabort("UNIMPLEMENTED\n");
+  return NetworkId(ebbrt::network_manager->IpAddress());
 }
 
 ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to, EbbId id,
