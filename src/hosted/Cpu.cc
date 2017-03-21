@@ -162,14 +162,12 @@ size_t Cpu::Count() { return numCpus_; }
 
 void Cpu::Shutdown(void) {
   if (numCpus_ > 0) {
-    // FIXME: should we not be doing this across all cpus?
-    //        doing so segfaults now
     {
       int zero = 0;
       if (!shutdown_.compare_exchange_strong(zero, 1))
         return;
     }
-    for (size_t i = 0; i < 1; i++) {
+    for (size_t i = 0; i < numCpus_; i++) {
       printf("stopping cpu %zd\n", i);
       GetByIndex(i)->ctxt_.io_service_.stop();
     }
