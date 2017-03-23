@@ -26,6 +26,7 @@ class Runtime {
 namespace runtime {
 // dummy runtime init to keep compatability with baremetal
 void Init() __attribute__((unused));
+inline uint32_t AllocationId() { return 0;};
 }
 }  // namespace ebbrt
 
