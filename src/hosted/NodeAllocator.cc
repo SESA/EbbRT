@@ -177,7 +177,7 @@ void ebbrt::NodeAllocator::Session::Start() {
       }));
 }
 
-ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
+ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(1) {
   auto acceptor = std::make_shared<bai::tcp::acceptor>(
       active_context->io_service_, bai::tcp::endpoint(bai::tcp::v4(), 0));
   auto socket = std::make_shared<bai::tcp::socket>(active_context->io_service_);
@@ -221,7 +221,12 @@ std::string ebbrt::NodeAllocator::AllocateContainer(std::string repo,
                                                     std::string container_args,
                                                     std::string run_cmd) {
   // start arbitrary container on our network
+  auto allocation_id =
+      node_allocator->allocation_index_.fetch_add(1, std::memory_order_relaxed);
   container_args += " --net=" + network_id_;
+  container_args += " --name=ebbrt-" + std::to_string(geteuid()) + "." +
+                        std::to_string(getpid()) + "." +
+                        std::to_string(allocation_id);
   auto c = DockerContainer(repo, container_args, run_cmd);
   auto id = c.Start();
   nodes_.insert(std::make_pair(std::string(id), std::move(c)));
