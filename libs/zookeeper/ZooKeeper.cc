@@ -154,6 +154,10 @@ ebbrt::ZooKeeper::Exists(const std::string& path,
                          ebbrt::ZooKeeper::Watcher* watcher) {
   auto p = new ebbrt::Promise<bool>;
   auto f = p->GetFuture();
+  if (path.size() == 0 || path.back() == '/'){
+    ebbrt::kabort("ZooKeeper: invalid path %s\n", path.c_str());
+  }
+    ebbrt::kprintf("ZooKeeper Exists: %s\n", path.c_str());
   Stat(path, watcher).Then([p](ebbrt::Future<ebbrt::ZooKeeper::Znode> z) {
     auto znode = z.Get();
     if (znode.err == ZOK) {
@@ -179,18 +183,6 @@ ebbrt::ZooKeeper::Get(const std::string& path,
   }
   return f;
 }
-
-// ebbrt::Future<std::string>
-// ebbrt::ZooKeeper::GetValue(const std::string& path,
-//                         ebbrt::ZooKeeper::Watcher* watcher) {
-//  auto p = new ebbrt::Promise<std::string>;
-//  auto f = p->GetFuture();
-//  Get(path, watcher).Then([p](ebbrt::Future<ebbrt::ZooKeeper::Znode> z) {
-//    auto znode = z.Get();
-//    p->SetValue(znode.value);
-//  });
-//  return f;
-//}
 
 ebbrt::Future<ebbrt::ZooKeeper::ZnodeChildren>
 ebbrt::ZooKeeper::GetChildren(const std::string& path,
@@ -412,7 +404,8 @@ void ebbrt::ZooKeeper::data_completion(int rc, const char* value, int value_len,
                                        const void* data) {
   Znode res;
   res.err = rc;
-  res.stat = *stat;
+  if (stat)
+    res.stat = *stat;
   if (value_len > 0)
     res.value = std::string(value, static_cast<size_t>(value_len));
   auto p = static_cast<ebbrt::Promise<Znode>*>(const_cast<void*>(data));

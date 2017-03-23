@@ -21,7 +21,7 @@
 
 namespace ebbrt {
 
-void InstallGlobalIdMap(); 
+void InstallGlobalIdMap();
 
 class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
  public:
@@ -61,13 +61,19 @@ class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
         ebbrt::ZooKeeper::Create(ebbrt::ebb_allocator->Allocate(), &zkwatcher_);
     return zkwatcher_.connected_.GetFuture();
   }
+
   Future<std::vector<std::string>> List(EbbId id,
                                         std::string path = std::string()) {
     auto p = new ebbrt::Promise<std::vector<std::string>>;
     auto ret = p->GetFuture();
     char buff[100];
     sprintf(buff, "/%d", id);
-    zk_->GetChildren(std::string(buff)).Then([p](auto f) {
+    std::string fullpath(buff);
+    if (!path.empty()){
+      fullpath += "/" + path;
+    }
+      ebbrt::kprintf("ZKGlobalIdMap List %s\n", fullpath.c_str());
+    zk_->GetChildren(std::string(fullpath)).Then([p](auto f) {
       auto zn_children = f.Get();
       p->SetValue(zn_children.values);
     });
@@ -79,7 +85,11 @@ class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
     sprintf(buff, "/%d", id);
     auto p = new ebbrt::Promise<std::string>;
     auto f = p->GetFuture();
-    zk_->Get(std::string(buff))
+    std::string fullpath(buff);
+    if (!path.empty()){
+      fullpath += "/" + path;
+    }
+    zk_->Get(std::string(fullpath))
         .Then([p](ebbrt::Future<ebbrt::ZooKeeper::Znode> z) {
           auto znode = z.Get();
           p->SetValue(znode.value);
@@ -87,26 +97,35 @@ class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
     return f;
   }
 
-  Future<void> Set(EbbId id, std::string val,
+  Future<void> Set(EbbId id, std::string val = std::string(),
                    std::string path = std::string()) override {
     auto p = new ebbrt::Promise<void>;
     auto ret = p->GetFuture();
-    char buff[100];
+    char buff[20];
     sprintf(buff, "/%d", id);
-    zk_->Exists(std::string(buff)).Then([this, p, buff, val](auto b) {
+    std::string fullpath(buff);
+    if (!path.empty()){
+      fullpath += "/" + path;
+    }
+    zk_->Exists(fullpath).Then([this, p, fullpath, val](auto b) {
       if (b.Get() == true) {
-        zk_->Set(std::string(buff), val).Then([p](auto f) { p->SetValue(); });
+        zk_->Set(fullpath, val).Then([p](auto f) { p->SetValue(); });
       } else {
-        zk_->New(std::string(buff), val).Then([p](auto f) { p->SetValue(); });
+        zk_->New(fullpath, val).Then([p](auto f) { p->SetValue(); });
       }
     });
     return ret;
   }
 
   void SetWatcher(EbbId id, Watcher* w, std::string path = std::string()) {
-    char buf[15];
-    sprintf(buf, "/%d", id);
-    zk_->Stat(std::string(buf), w).Block();
+    char buff[20];
+    sprintf(buff, "/%d", id);
+    std::string fullpath(buff);
+    if (!path.empty()){
+      fullpath += "/" + path;
+    }
+    zk_->Stat(fullpath, w);//.Block();
+    zk_->GetChildren(fullpath, w);//.Block();
     return;
   }
 
@@ -134,6 +153,6 @@ class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
 };
 
 constexpr auto zkglobal_id_map = EbbRef<ZKGlobalIdMap>(kGlobalIdMapId);
-// EbbRef<GlobalIdMap> global_id_map = EbbRef<GlobalIdMap>(kGlobalIdMapId);
+
 }  // namespace ebbrt
 #endif  // EBBRT_ZKGLOBALIDMAP_H_
