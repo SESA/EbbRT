@@ -28,7 +28,7 @@
 
 //#define __TRACE_SPAWN__
 
-extern void AppMain();
+extern void AppMain() __attribute__((weak));
 
 void Main(void);
 
@@ -180,12 +180,14 @@ void Cpu::Exit(int val) {
 }  // namespace ebbrt
 
 void Main(void) {
-  ebbrt::event_manager->Spawn([=]() {
+  if (AppMain) {
+    ebbrt::event_manager->Spawn([=]() {
 #ifdef __TRACE_SPAWN__
-    printf("spawned: %zd %zd: %s:%d\n", size_t(ebbrt::Cpu::GetMine()),
-           size_t(*ebbrt::active_context), __FILE__, __LINE__);
+      printf("spawned: %zd %zd: %s:%d\n", size_t(ebbrt::Cpu::GetMine()),
+             size_t(*ebbrt::active_context), __FILE__, __LINE__);
 #endif
-    AppMain();
-  });
+      AppMain();
+    });
+  }
 }
 
