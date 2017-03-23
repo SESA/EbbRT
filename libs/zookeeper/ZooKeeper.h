@@ -32,7 +32,7 @@ constexpr int ZkIoEventTimer = 1000;
 class ZooKeeper : public ebbrt::Timer::Hook {
  public:
   enum struct Event : int {  // event values declared in
-                             // zookeeper/src/zk_adaptor.h
+    // zookeeper/src/zk_adaptor.h
     Nil = 0,
     Create = 1,  // ZOO_CREATED_EVENT,
     Delete,  // ZOO_DELETE_EVENT,
@@ -81,7 +81,8 @@ class ZooKeeper : public ebbrt::Timer::Hook {
     ZkStat stat;
   };
 
-  /* Watcher is the base callback type for 'watch' events handlers
+  /* ZooKeeper::Watcher 
+   * This interface specifies the public interface an event handler class must implement. A ZooKeeper client will get various events from the ZooKeepr server it connects to. An application using such a client handles these events by registering a callback object with the client. The callback object is expected to be an instance of a class that implements Watcher interface.
    */
   struct Watcher {
     virtual ~Watcher() {}
@@ -153,6 +154,7 @@ class ZooKeeper : public ebbrt::Timer::Hook {
     }
   };
 
+  /* WatchEvent generic handler for a one-off event */
   class WatchEvent : public ebbrt::ZooKeeper::Watcher {
    public:
     WatchEvent(int type, ebbrt::MovableFunction<void()> func)
@@ -161,12 +163,11 @@ class ZooKeeper : public ebbrt::Timer::Hook {
       if (type == type_)
         event_manager->Spawn(std::move(func_));
       else {
-        ebbrt::kabort(
-            "WatchEvent for non-specified type: %d (configured: %d)\n", type,
+        ebbrt::kprintf(
+            "WatchEvent executed for non-specified type: %d (configured: %d)\n", type,
             type_);
       }
     }
-
    private:
     int type_;
     ebbrt::MovableFunction<void()> func_;
@@ -177,22 +178,18 @@ class ZooKeeper : public ebbrt::Timer::Hook {
                                   int timeout_ms = ZkConnectionTimeoutMs,
                                   int timer_ms = ZkIoEventTimer,
                                   std::string server_hosts = std::string());
-
   static ZooKeeper& HandleFault(EbbId id) {
     LocalIdMap::ConstAccessor accessor;
     auto found = local_id_map->Find(accessor, id);
     if (!found)
       throw std::runtime_error("Failed to find root for ZooKeeper Ebb");
-
     auto rep = boost::any_cast<ZooKeeper*>(accessor->second);
     EbbRef<ZooKeeper>::CacheRef(id, *rep);
     return *rep;
   }
-
   void Fire() override;
   ~ZooKeeper();
-  // disable copies
-  ZooKeeper(const ZooKeeper&) = delete;
+  ZooKeeper(const ZooKeeper&) = delete; // disable copies
   ZooKeeper& operator=(const ZooKeeper&) = delete;
   Future<Znode> New(const std::string& path,
                     const std::string& value = std::string(),
@@ -201,13 +198,11 @@ class ZooKeeper : public ebbrt::Timer::Hook {
   Future<Znode> Get(const std::string& path, Watcher* watch = nullptr);
   Future<ZnodeChildren> GetChildren(const std::string& path,
                                     Watcher* watch = nullptr);
-  // Future<std::string> GetValue(const std::string& path,
-  //                             Watcher* watch = nullptr);
   Future<Znode> Delete(const std::string& path, int version = -1);
   Future<Znode> Set(const std::string& path, const std::string& value,
                     int version = -1);
   Future<Znode> Stat(const std::string& path, Watcher* watch = nullptr);
-
+  // Command Line Interface
   void CLI(char* line);
   static void PrintZnode(Znode* zkr);
   static void PrintZnodeChildren(ZnodeChildren* zkcr);
