@@ -157,8 +157,6 @@ ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
     DefaultRam = (str) ? atoi(str) : kDefaultRam;
     str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_NUMANODES");
     DefaultNumaNodes = (str) ? atoi(str) : kDefaultNumaNodes;
-    str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_NUMANODES");
-    DefaultNumaNodes = (str) ? atoi(str) : kDefaultNumaNodes;
     str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_ARGUMENTS");
     DefaultArguments = (str) ? std::string(str) : std::string();
     // Network create configuration
@@ -247,6 +245,19 @@ ebbrt::NodeAllocator::NodeDescriptor
 ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
                                    int numaNodes, int ram,
                                    std::string arguments) {
+  
+  if (cpus == 0)
+    cpus = DefaultCpus;
+
+  if (numaNodes == 0)
+    numaNodes = DefaultNumaNodes;
+
+  if (ram == 0)
+    ram = DefaultRam;
+
+  if (arguments == "")
+    arguments = DefaultArguments;
+
   RunCmd("file " + binary_path);
   auto allocation_id =
       node_allocator->allocation_index_.fetch_add(1, std::memory_order_relaxed);
@@ -272,7 +283,7 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
   if (CustomNetworkNodeArguments.empty()) {
     docker_args << " --net=" << network_id_ << " ";
   } else {
-    docker_args << CustomNetworkNodeArguments << " ";
+    docker_args << " " << CustomNetworkNodeArguments << " ";
   }
   docker_args << " -td -P --cap-add NET_ADMIN"
               << " --device /dev/kvm:/dev/kvm"
