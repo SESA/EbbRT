@@ -37,43 +37,44 @@ int main(int argc, char** argv) {
   {
     ebbrt::ContextActivation activation(c);
 
-  uint32_t msg_size;
-  uint32_t msg_count;
-  if (argc == 1) {
-    // prompt user for size/amount
-    std::cout << "Message size (bytes): ";
-    std::cin >> msg_size;
-    std::cout << "Message count: ";
-    std::cin >> msg_count;
-  } else if (argc == 2) {
-    // default amount to 1
-    msg_size = std::stoi(argv[1]);
-    msg_count = 1;
-  } else {
-    msg_size = std::stoi(argv[1]);
-    msg_count = std::stoi(argv[2]);
-  }
+    uint32_t msg_size;
+    uint32_t msg_count;
+    if (argc == 1) {
+      // prompt user for size/amount
+      std::cout << "Message size (bytes): ";
+      std::cin >> msg_size;
+      std::cout << "Message count: ";
+      std::cin >> msg_count;
+    } else if (argc == 2) {
+      // default amount to 1
+      msg_size = std::stoi(argv[1]);
+      msg_count = 1;
+    } else {
+      msg_size = std::stoi(argv[1]);
+      msg_count = std::stoi(argv[2]);
+    }
 
-  if (!msg_size || !msg_count)
-    exit(0);
+    if (!msg_size || !msg_count)
+      exit(0);
     // ensure clean quit on ctrl-c
     sig.async_wait([&c](const boost::system::error_code& ec,
                         int signal_number) { c.io_service_.stop(); });
 
     try {
       auto node_desc = node_allocator->AllocateNode(bindir.string(), 2, 2, 2);
-      node_desc.NetworkId().Then(
-          [msg_size, msg_count](Future<Messenger::NetworkId> f) {
-            auto nid = f.Get();
-            auto msgtst_ebb = MsgTst::Create();
-            if (msg_size > 0) {
-              std::cout << "Sending " << msg_count << " " << msg_size
-                        << "B message..." << std::endl;
-              msgtst_ebb->SendMessages(nid, 1, msg_size)[0].Block();
-              std::cout << "test successful" << std::endl;
-            }
-            return;
+      node_desc.NetworkId().Then([msg_size, msg_count](auto f) {
+        auto nid = f.Get();
+        auto msgtst_ebb = MsgTst::Create();
+        if (msg_size > 0) {
+          std::cout << "Sending " << msg_count << " " << msg_size
+                    << "B messages..." << std::endl;
+          auto fs = msgtst_ebb->SendMessages(nid, msg_count, msg_size);
+          WhenAll(fs.begin(), fs.end()).Then([=](auto f) {
+            std::cout << "Messages sent successfully!" << std::endl;
           });
+        }
+        return;
+      });
     } catch (std::runtime_error& e) {
       std::cout << e.what() << std::endl;
       exit(1);
