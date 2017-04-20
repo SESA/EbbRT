@@ -9,7 +9,6 @@
 #include <mutex>
 
 #include "../SpinLock.h"
-#include "Cpu.h"
 #include "Debug.h"
 #include "EventManager.h"
 #include "Gthread.h"
@@ -17,8 +16,7 @@
 namespace {
 struct RecursiveLock {
   uint32_t event_id;
-  uint8_t count;
-  int8_t core;
+  uint16_t count;
   ebbrt::SpinLock spinlock;
 };
 static_assert(sizeof(RecursiveLock) <= sizeof(void*),
@@ -34,7 +32,6 @@ extern "C" void
 ebbrt_gthread_recursive_mutex_init(__gthread_recursive_mutex_t* mutex) {
   auto lock = static_cast<RecursiveLock*>(static_cast<void*>(mutex));
   lock->count = 0;
-  lock->core = -1;
   lock->spinlock.unlock();
 }
 
@@ -116,20 +113,18 @@ ebbrt_gthread_recursive_mutex_trylock(__gthread_recursive_mutex_t* mutex) {
 
   std::lock_guard<ebbrt::SpinLock> l(lock->spinlock);
 
-  if (lock->count == UINT8_MAX) {
+  if (lock->count == UINT16_MAX) {
     return false;
   }
 
   if (lock->count == 0) {
     lock->event_id = ebbrt::event_manager->GetEventId();
     lock->count++;
-    lock->core = ebbrt::Cpu::GetMine();
     return true;
   }
 
   if (lock->event_id == ebbrt::event_manager->GetEventId()) {
     lock->count++;
-    lock->core = ebbrt::Cpu::GetMine();
     return true;
   }
   return false;
@@ -137,10 +132,8 @@ ebbrt_gthread_recursive_mutex_trylock(__gthread_recursive_mutex_t* mutex) {
 
 extern "C" int
 ebbrt_gthread_recursive_mutex_lock(__gthread_recursive_mutex_t* mutex) {
-  auto lock = static_cast<RecursiveLock*>(static_cast<void*>(mutex));
-  while (!ebbrt_gthread_mutex_trylock(mutex)) {
-    ebbrt::kbugon(static_cast<uint8_t>(lock->core) == ebbrt::Cpu::GetMine(), "Gthread recursive mutex deadlock on core\n");
-  }
+  ebbrt::kbugon(!ebbrt_gthread_recursive_mutex_trylock(mutex),
+                "recursive_mutex_lock is busy!\n");
   return 0;
 }
 
@@ -149,7 +142,6 @@ ebbrt_gthread_recursive_mutex_unlock(__gthread_recursive_mutex_t* mutex) {
   auto lock = static_cast<RecursiveLock*>(static_cast<void*>(mutex));
   std::lock_guard<ebbrt::SpinLock> l(lock->spinlock);
   lock->count--;
-  lock->core = -1; 
   return 0;
 }
 
