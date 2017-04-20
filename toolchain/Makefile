@@ -3,7 +3,6 @@ MYDIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 -include config.mk
 
 TARGET ?= x86_64-pc-ebbrt
-
 AUTOCONF_VERSION ?= 2.64
 AUTOMAKE_VERSION ?= 1.11.1
 BINUTILS_VERSION ?= 2.26
@@ -90,22 +89,30 @@ NEWLIB_CONFIGURE_FLAG ?= $(NEWLIB_BUILD_PATH)/Makefile
 ifdef DEBUG
 NEWLIB_CFLAGS ?= "-O0 -g3"
 else
-NEWLIB_CFLAGS ?= "-O4" # FIXME: Link Time Optimization fails
+NEWLIB_CFLAGS ?= "-O4" 
 endif
-
 
 EBBRT_BM_PATH ?= $(EBBRT_SRCDIR)/src/native
 EBBRT_BUILD_PATH ?= $(BUILDDIR)/ebbrt-build
 EBBRT_CONFIGURE_FLAG ?= $(EBBRT_BUILD_PATH)/Makefile
-
 CMAKE_TOOLCHAIN_FILE ?= $(EBBRT_SRCDIR)/src/cmake/ebbrt.cmake
+
 ifdef DEBUG
-CMAKE_OPT ?= -DCMAKE_BUILD_TYPE=Debug
+CMAKE_BUILD_TYPE ?= -DCMAKE_BUILD_TYPE=Debug
 else
-CMAKE_OPT ?= -DCMAKE_BUILD_TYPE=Release
+CMAKE_BUILD_TYPE ?= -DCMAKE_BUILD_TYPE=Release
 endif
+
+ifdef VERBOSE
+CMAKE_VERBOSE_OPT ?= -DCMAKE_VERBOSE_MAKEFILE=On
+else
+CMAKE_VERBOSE_OPT ?= 
+endif
+
 CMAKE_DEFS ?= -DCMAKE_INSTALL_PREFIX:PATH=$(PREFIX) \
-	-DCMAKE_TOOLCHAIN_FILE=$(CMAKE_TOOLCHAIN_FILE) $(CMAKE_OPT)
+	-DCMAKE_TOOLCHAIN_FILE=$(CMAKE_TOOLCHAIN_FILE) \
+	$(CMAKE_BUILD_TYPE) $(CMAKE_VERBOSE_OPT)
+
 EBBRT_BUILD_DEFS ?= -DCMAKE_C_COMPILER_FORCED=1 \
 										-DCMAKE_CXX_COMPILER_FORCED=1
 
@@ -322,7 +329,6 @@ newlib-install: newlib-build
 		RANLIB_FOR_TARGET=x86_64-pc-ebbrt-gcc-ranlib \
 		$(MAKE) install -C $(NEWLIB_BUILD_PATH)
 
-
 newlib: newlib-install
 
 ### ACPICA ###
@@ -421,11 +427,13 @@ ebbrt-headers: | $(PREFIX)/include/ebbrt/native
 ebbrt-cmake: | $(PREFIX)/misc
 	$(CP) -v $(CMAKE_TOOLCHAIN_FILE) $(PREFIX)/misc
 
-###
+ebbrt-only: | $(EBBRT_BUILD_PATH)
+	$(MAKE) -C $(EBBRT_BUILD_PATH) install
+
 
 .PHONY: all autoconf autoconf-build autoconf-install automake automake-build \
 	automake-install binutils binutils-build binutils-install clean deps \
 	gcc gcc-build gcc-install gcc-all gcc-all-build gcc-all-install newlib \
 	newlib-build newlib-install acpica-build acpica-install boost-build \
 	boost-install capnp-build capnp-install tbb-build tbb-install \
-	ebbrt-deps ebbrt-build ebbrt-install ebbrt-cmake
+	ebbrt-deps ebbrt-build ebbrt-install ebbrt-cmake ebbrt-only
