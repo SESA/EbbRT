@@ -138,7 +138,7 @@ ebbrt_gthread_recursive_mutex_trylock(__gthread_recursive_mutex_t* mutex) {
 extern "C" int
 ebbrt_gthread_recursive_mutex_lock(__gthread_recursive_mutex_t* mutex) {
   auto lock = static_cast<RecursiveLock*>(static_cast<void*>(mutex));
-  while (!ebbrt_gthread_mutex_trylock(mutex)) {
+  while (!ebbrt_gthread_recursive_mutex_trylock(mutex)) {
     ebbrt::kbugon(static_cast<uint8_t>(lock->core) == ebbrt::Cpu::GetMine(), "Gthread recursive mutex deadlock on core\n");
   }
   return 0;
