@@ -399,6 +399,9 @@ $(EBBRT_CONFIGURE_FLAG): | ebbrt-deps $(EBBRT_BM_PATH) $(EBBRT_BUILD_PATH)
 ebbrt-build: ebbrt-deps $(EBBRT_CONFIGURE_FLAG)
 	$(MAKE) -C $(EBBRT_BUILD_PATH)
 
+ebbrt-only:
+	$(MAKE) -C $(EBBRT_BUILD_PATH) install
+
 ebbrt-install: ebbrt-build ebbrt-cmake
 	$(MAKE) -C $(EBBRT_BUILD_PATH) install
 
