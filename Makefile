@@ -15,7 +15,7 @@
 # 	VERBOSE=1   				# verbose build 
 #
 # Targets: 
-# 	hosted native ebbrt-only clean 
+# 	hosted native ebbrt-only ebbrt-libs clean 
 
 -include config.mk # Local config (optional)
 
@@ -35,12 +35,14 @@ ifeq "$(wildcard $(EBBRT_SRCDIR) )" ""
   $(error Unable to locate source EBBRT_SRCDIR=$(EBBRT_SRCDIR))
 endif
 EBBRT_SRC ?= $(EBBRT_SRCDIR)/src
+EBBRT_LIBS ?= $(EBBRT_SRCDIR)/libs
 EBBRT_MAKEFILE ?= $(EBBRT_SRCDIR)/toolchain/Makefile
 
 PREFIX ?= $(abspath $(CURDIR))
 INSTALL_ROOT ?= $(PREFIX)
 BUILD_ROOT ?= $(PREFIX)/build
-NATIVE_INSTALL_PATH ?= $(INSTALL_ROOT)/sysroot
+NATIVE ?= $(INSTALL_ROOT)/sysroot
+NATIVE_TOOLCHAIN_FILE ?= $(NATIVE)/usr/misc/ebbrt.cmake
 HOSTED ?= $(INSTALL_ROOT)/hosted
 HOSTED_BUILD_DIR ?= $(BUILD_ROOT)/hosted
 NATIVE_BUILD_DIR ?= $(BUILD_ROOT)/native
@@ -67,7 +69,7 @@ MAKE_VERBOSE_OPT ?=
 CMAKE_VERBOSE_OPT ?= 
 endif
 
-all: hosted native 
+all: hosted native ebbrt-libs
 
 clean:
 	$(MAKE) -C $(HOSTED_BUILD_DIR) clean
@@ -83,13 +85,28 @@ hosted: | $(EBBRT_SRC)
 	
 native: | $(EBBRT_MAKEFILE)
 	$(MKDIR) -p $(NATIVE_BUILD_DIR) && $(CD) $(NATIVE_BUILD_DIR) && \
-	$(MAKE) $(MAKE_OPT) -f $(EBBRT_MAKEFILE) SYSROOT=$(NATIVE_INSTALL_PATH) \
+	$(MAKE) $(MAKE_OPT) -f $(EBBRT_MAKEFILE) SYSROOT=$(NATIVE) \
 	$(MAKE_BUILD_TYPE) $(MAKE_VERBOSE_OPT) && $(CD) - && \
 	$(CLEANUP) $(NATIVE_BUILD_DIR)
 
+ebbrt-libs: ebbrt-native-libs ebbrt-hosted-libs
+
+ebbrt-hosted-libs: hosted 
+	$(CD) $(HOSTED_BUILD_DIR) && $(MKDIR) -p libs && $(CD) libs && \
+	$(CMAKE) -DCMAKE_INSTALL_PREFIX=$(HOSTED)  \
+	$(CMAKE_BUILD_TYPE) $(CMAKE_VERBOSE_OPT) $(EBBRT_LIBS) && \
+	$(MAKE) $(MAKE_OPT) install && $(CD) - 
+	
+ebbrt-native-libs: native 
+	$(CD) $(NATIVE_BUILD_DIR) && $(MKDIR) -p libs && $(CD) libs && \
+	EBBRT_SYSROOT=$(NATIVE) $(CMAKE) -DCMAKE_INSTALL_PREFIX=$(NATIVE) \
+	-DCMAKE_TOOLCHAIN_FILE=$(NATIVE_TOOLCHAIN_FILE) \
+	$(CMAKE_BUILD_TYPE) $(CMAKE_VERBOSE_OPT) $(EBBRT_LIBS) && \
+	$(MAKE) $(MAKE_OPT) install && $(CD) - 
+
 ebbrt-only: | $(EBBRT_MAKEFILE)
 	$(MKDIR) -p $(NATIVE_BUILD_DIR) && $(CD) $(NATIVE_BUILD_DIR) && \
-	$(MAKE) -f $(EBBRT_MAKEFILE) SYSROOT=$(NATIVE_INSTALL_PATH) \
+	$(MAKE) -f $(EBBRT_MAKEFILE) SYSROOT=$(NATIVE) \
 	$(MAKE_BUILD_TYPE) $(MAKE_VERBOSE_OPT) ebbrt-only && $(CD) - 
 
 .PHONY: all clean hosted native ebbrt-only 

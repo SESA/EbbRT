@@ -13,7 +13,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++14")
 if( ${CMAKE_SYSTEM_NAME} STREQUAL "EbbRT")
   message(STATUS "System name: ${CMAKE_SYSTEM_NAME}")
 else()
-  message(FATAL_ERROR "System name unsupported: ${CMAKE_SYSTEM_NAME}")
+  message(WARNING "System name unsupported: ${CMAKE_SYSTEM_NAME}")
+  return()
 endif()
 
 # Library targets
@@ -41,8 +42,6 @@ set(INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
 set(INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
 set(INSTALL_INCLUDE_DIR include CACHE PATH
   "Installation directory for header files")
-set(INSTALL_CMAKE_DIR lib/cmake/EbbRTSocket CACHE PATH
-  "Installation directory for CMake files")
 set(INSTALL_LWIP_INCLUDE_DIR include/ebbrt-socket/lwip/include CACHE PATH
   "Installation directory for lwip headers ")
 set(INSTALL_POSIX_INCLUDE_DIR include/ebbrt-socket/lwip/include/posix CACHE PATH
@@ -67,10 +66,10 @@ install( DIRECTORY ${PROJECT_SOURCE_DIR}/lwip DESTINATION
 # Package config file
 configure_package_config_file(EbbRTSocketConfig.cmake.in
   "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/EbbRTSocketConfig.cmake"
-  INSTALL_DESTINATION ${INSTALL_CMAKE_DIR} 
+  INSTALL_DESTINATION lib/cmake/EbbRTSocket 
   PATH_VARS INSTALL_INCLUDE_DIR INSTALL_LWIP_INCLUDE_DIR
   INSTALL_POSIX_INCLUDE_DIR  INSTALL_GNU_INCLUDE_DIR INSTALL_LIB_DIR
 )
 install(FILES
   "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/EbbRTSocketConfig.cmake"
-  DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
+  DESTINATION "lib/cmake/EbbRTSocket" COMPONENT dev)
