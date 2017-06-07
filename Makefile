@@ -77,8 +77,8 @@ clean:
 
 hosted: | $(EBBRT_SRC)
 	$(MKDIR) -p $(HOSTED_BUILD_DIR) && $(CD) $(HOSTED_BUILD_DIR) && \
-	$(CMAKE) -DCMAKE_INSTALL_PREFIX=$(HOSTED) $(EBBRT_SRC) \
-	$(CMAKE_BUILD_TYPE) $(CMAKE_VERBOSE_OPT) && \
+	$(CMAKE) -DCMAKE_INSTALL_PREFIX=$(HOSTED)  \
+	$(CMAKE_BUILD_OPT) $(CMAKE_VERBOSE_OPT) $(EBBRT_SRC) && \
 	$(MAKE) $(MAKE_OPT) install && \
 	$(CD) - && \
 	$(CLEANUP) $(HOSTED_BUILD_DIR)
@@ -86,7 +86,7 @@ hosted: | $(EBBRT_SRC)
 native: | $(EBBRT_MAKEFILE)
 	$(MKDIR) -p $(NATIVE_BUILD_DIR) && $(CD) $(NATIVE_BUILD_DIR) && \
 	$(MAKE) $(MAKE_OPT) -f $(EBBRT_MAKEFILE) SYSROOT=$(NATIVE) \
-	$(MAKE_BUILD_TYPE) $(MAKE_VERBOSE_OPT) && $(CD) - && \
+	$(MAKE_BUILD_OPT) $(MAKE_VERBOSE_OPT) && $(CD) - && \
 	$(CLEANUP) $(NATIVE_BUILD_DIR)
 
 ebbrt-libs: ebbrt-native-libs ebbrt-hosted-libs
@@ -94,19 +94,19 @@ ebbrt-libs: ebbrt-native-libs ebbrt-hosted-libs
 ebbrt-hosted-libs: hosted 
 	$(CD) $(HOSTED_BUILD_DIR) && $(MKDIR) -p libs && $(CD) libs && \
 	$(CMAKE) -DCMAKE_INSTALL_PREFIX=$(HOSTED)  \
-	$(CMAKE_BUILD_TYPE) $(CMAKE_VERBOSE_OPT) $(EBBRT_LIBS) && \
+	$(CMAKE_BUILD_OPT) $(CMAKE_VERBOSE_OPT) $(EBBRT_LIBS) && \
 	$(MAKE) $(MAKE_OPT) install && $(CD) - 
 	
 ebbrt-native-libs: native 
 	$(CD) $(NATIVE_BUILD_DIR) && $(MKDIR) -p libs && $(CD) libs && \
 	EBBRT_SYSROOT=$(NATIVE) $(CMAKE) -DCMAKE_INSTALL_PREFIX=$(NATIVE) \
 	-DCMAKE_TOOLCHAIN_FILE=$(NATIVE_TOOLCHAIN_FILE) \
-	$(CMAKE_BUILD_TYPE) $(CMAKE_VERBOSE_OPT) $(EBBRT_LIBS) && \
+	$(CMAKE_BUILD_OPT) $(CMAKE_VERBOSE_OPT) $(EBBRT_LIBS) && \
 	$(MAKE) $(MAKE_OPT) install && $(CD) - 
 
 ebbrt-only: | $(EBBRT_MAKEFILE)
 	$(MKDIR) -p $(NATIVE_BUILD_DIR) && $(CD) $(NATIVE_BUILD_DIR) && \
 	$(MAKE) -f $(EBBRT_MAKEFILE) SYSROOT=$(NATIVE) \
-	$(MAKE_BUILD_TYPE) $(MAKE_VERBOSE_OPT) ebbrt-only && $(CD) - 
+	$(MAKE_BUILD_OPT) $(MAKE_VERBOSE_OPT) ebbrt-only && $(CD) - 
 
 .PHONY: all clean hosted native ebbrt-only 

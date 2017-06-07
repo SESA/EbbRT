@@ -2,7 +2,7 @@
 set(CMAKE_CXX_FLAGS                "-Wall -Werror -std=gnu++14")
 set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g3")
 set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
-set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -flto -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g3")
 
 find_package(Boost 1.53.0 REQUIRED COMPONENTS 
