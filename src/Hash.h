@@ -5,6 +5,8 @@
 #ifndef COMMON_SRC_INCLUDE_EBBRT_HASH_H_
 #define COMMON_SRC_INCLUDE_EBBRT_HASH_H_
 
+#include <stdexcept>
+
 namespace ebbrt {
 namespace hash {
 
