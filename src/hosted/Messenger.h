@@ -49,6 +49,8 @@ class Messenger : public StaticSharedEbb<Messenger> {
     friend class Messenger;
   };
 
+  static void ClassInit() {} // no class wide static initialization logic
+  
   Messenger();
 
   Future<void> Send(NetworkId to, EbbId id, uint64_t type_code,

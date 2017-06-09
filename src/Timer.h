@@ -16,6 +16,8 @@ namespace ebbrt {
 
 class Timer : public MulticoreEbbStatic<Timer> {
  public:
+  static void ClassInit() {} // no class wide static initialization logic
+  
   class Hook : public boost::intrusive::set_base_hook<> {
    public:
     virtual ~Hook() {}

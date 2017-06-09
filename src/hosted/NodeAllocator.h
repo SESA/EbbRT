@@ -67,7 +67,8 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   static std::string CustomNetworkNodeArguments;
 
  public:
-  static void InitDefaults();
+  static void ClassInit();  // Class wide static initialization logic
+
   static std::string RunCmd(std::string cmd);
   NodeAllocator();
   ~NodeAllocator();
