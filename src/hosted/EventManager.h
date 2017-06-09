@@ -21,6 +21,8 @@ const constexpr auto event_manager = EbbRef<EventManager>(kEventManagerId);
 
 class EventManager : public StaticSharedEbb<EventManager>, public CacheAligned {
  public:
+  static void ClassInit() {} // no class wide static initialization logic
+    
   typedef ebbrt::EventContext EventContext;
   void Spawn(ebbrt::MovableFunction<void()> func, ebbrt::Context* ctxt,
              bool force_async = false);

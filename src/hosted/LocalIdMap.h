@@ -19,6 +19,8 @@
 namespace ebbrt {
 class LocalIdMap : public StaticSharedEbb<LocalIdMap>, public CacheAligned {
  public:
+  static void ClassInit() {} // no class wide static initialization logic
+    
   typedef tbb::concurrent_hash_map<
       EbbId, boost::any, tbb::tbb_hash_compare<EbbId>,
       std::allocator<std::pair<const EbbId, boost::any>>>

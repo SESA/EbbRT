@@ -32,6 +32,31 @@ std::string ebbrt::NodeAllocator::CustomNetworkRemove;
 std::string ebbrt::NodeAllocator::CustomNetworkIp;
 std::string ebbrt::NodeAllocator::CustomNetworkNodeArguments;
 
+void
+ebbrt::NodeAllocator::ClassInit() {
+  printf("%s: CALLED\n", __func__);
+  // Node create configuration
+  char* str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_CPUS");
+  DefaultCpus = (str) ? atoi(str) : kDefaultCpus;
+  str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_RAM");
+  DefaultRam = (str) ? atoi(str) : kDefaultRam;
+  str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_NUMANODES");
+  DefaultNumaNodes = (str) ? atoi(str) : kDefaultNumaNodes;
+  str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_NUMANODES");
+  DefaultNumaNodes = (str) ? atoi(str) : kDefaultNumaNodes;
+  str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_ARGUMENTS");
+  DefaultArguments = (str) ? std::string(str) : std::string();
+  // Network create configuration
+  str = getenv("EBBRT_NODE_ALLOCATOR_CUSTOM_NETWORK_CREATE_CMD");
+  CustomNetworkCreate = (str) ? std::string(str) : std::string();
+  str = getenv("EBBRT_NODE_ALLOCATOR_CUSTOM_NETWORK_REMOVE_CMD");
+  CustomNetworkRemove = (str) ? std::string(str) : std::string();
+  str = getenv("EBBRT_NODE_ALLOCATOR_CUSTOM_NETWORK_IP_CMD");
+  CustomNetworkIp = (str) ? std::string(str) : std::string();
+  str = getenv("EBBRT_NODE_ALLOCATOR_CUSTOM_NETWORK_NODE_CONFIG");
+  CustomNetworkNodeArguments = (str) ? std::string(str) : std::string();
+}
+
 std::string ebbrt::NodeAllocator::RunCmd(std::string cmd) {
   std::string out;
   char line[kLineSize];
@@ -149,26 +174,6 @@ void ebbrt::NodeAllocator::Session::Start() {
 }
 
 ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(0) {
-  {
-    // Node create configuration
-    char* str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_CPUS");
-    DefaultCpus = (str) ? atoi(str) : kDefaultCpus;
-    str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_RAM");
-    DefaultRam = (str) ? atoi(str) : kDefaultRam;
-    str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_NUMANODES");
-    DefaultNumaNodes = (str) ? atoi(str) : kDefaultNumaNodes;
-    str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_ARGUMENTS");
-    DefaultArguments = (str) ? std::string(str) : std::string();
-    // Network create configuration
-    str = getenv("EBBRT_NODE_ALLOCATOR_CUSTOM_NETWORK_CREATE_CMD");
-    CustomNetworkCreate = (str) ? std::string(str) : std::string();
-    str = getenv("EBBRT_NODE_ALLOCATOR_CUSTOM_NETWORK_REMOVE_CMD");
-    CustomNetworkRemove = (str) ? std::string(str) : std::string();
-    str = getenv("EBBRT_NODE_ALLOCATOR_CUSTOM_NETWORK_IP_CMD");
-    CustomNetworkIp = (str) ? std::string(str) : std::string();
-    str = getenv("EBBRT_NODE_ALLOCATOR_CUSTOM_NETWORK_NODE_CONFIG");
-    CustomNetworkNodeArguments = (str) ? std::string(str) : std::string();
-  }
   auto acceptor = std::make_shared<bai::tcp::acceptor>(
       active_context->io_service_, bai::tcp::endpoint(bai::tcp::v4(), 0));
   auto socket = std::make_shared<bai::tcp::socket>(active_context->io_service_);
@@ -245,18 +250,8 @@ ebbrt::NodeAllocator::NodeDescriptor
 ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
                                    int numaNodes, int ram,
                                    std::string arguments) {
-  
-  if (cpus == 0)
-    cpus = DefaultCpus;
 
-  if (numaNodes == 0)
-    numaNodes = DefaultNumaNodes;
-
-  if (ram == 0)
-    ram = DefaultRam;
-
-  if (arguments == "")
-    arguments = DefaultArguments;
+  assert(cpus != 0 && numaNodes != 0 && ram != 0);
 
   RunCmd("file " + binary_path);
   auto allocation_id =

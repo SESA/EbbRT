@@ -21,6 +21,8 @@
 namespace ebbrt {
 class EbbAllocator : public CacheAligned, public StaticSharedEbb<EbbAllocator> {
  public:
+  static void ClassInit() {} // no class wide static initialization logic
+  
   EbbAllocator();
   EbbId AllocateLocal();
   EbbId Allocate();

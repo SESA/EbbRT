@@ -16,6 +16,7 @@ template <typename T> class MulticoreEbbStatic {
  public:
   static void Init() {
     local_id_map->Insert(std::make_pair(T::static_id, RepMap()));
+    T::ClassInit();
   }
   static T& HandleFault(EbbId id) {
     kassert(id == T::static_id);
