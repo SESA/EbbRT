@@ -402,6 +402,10 @@ $(EBBRT_CONFIGURE_FLAG): | ebbrt-deps $(EBBRT_BM_PATH) $(EBBRT_BUILD_PATH)
 	$(CD) $(EBBRT_BUILD_PATH) && \
 	$(CMAKE) $(CMAKE_DEFS) $(EBBRT_BUILD_DEFS) $(EBBRT_SRCDIR)/src
 
+ebbrt-makefile:
+	$(CD) $(EBBRT_BUILD_PATH) && \
+	$(CMAKE) $(CMAKE_DEFS) $(EBBRT_BUILD_DEFS) $(EBBRT_SRCDIR)/src
+
 ebbrt-build: ebbrt-deps $(EBBRT_CONFIGURE_FLAG)
 	$(MAKE) -C $(EBBRT_BUILD_PATH)
 
@@ -436,4 +440,4 @@ ebbrt-only: | $(EBBRT_BUILD_PATH)
 	gcc gcc-build gcc-install gcc-all gcc-all-build gcc-all-install newlib \
 	newlib-build newlib-install acpica-build acpica-install boost-build \
 	boost-install capnp-build capnp-install tbb-build tbb-install \
-	ebbrt-deps ebbrt-build ebbrt-install ebbrt-cmake ebbrt-only
+	ebbrt-deps ebbrt-build ebbrt-install ebbrt-cmake ebbrt-only ebbrt-makefile
