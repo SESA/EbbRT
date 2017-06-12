@@ -34,7 +34,6 @@ std::string ebbrt::NodeAllocator::CustomNetworkNodeArguments;
 
 void
 ebbrt::NodeAllocator::ClassInit() {
-  printf("%s: CALLED\n", __func__);
   // Node create configuration
   char* str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_CPUS");
   DefaultCpus = (str) ? atoi(str) : kDefaultCpus;
