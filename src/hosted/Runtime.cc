@@ -33,12 +33,10 @@ void ebbrt::Runtime::Initialize() {
 }
 
 void ebbrt::Runtime::DoInitialization() {
-  printf("%s: Called\n",__func__);
   EventManager::Init();
   LocalIdMap::Init();
   EbbAllocator::Init();
   Messenger::Init();
   NodeAllocator::Init();
-  printf("%s: After NodeAllocator::Init Call\n",__func__);
   Timer::Init();
 }
