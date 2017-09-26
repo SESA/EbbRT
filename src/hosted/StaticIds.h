@@ -14,6 +14,7 @@ enum : EbbId {
   kEbbAllocatorId,
   kNetworkManagerId,
   kNodeAllocatorId,
+  kPoolAllocatorId,
   kMessengerId,
   kEventManagerId,
   kGlobalMapId,

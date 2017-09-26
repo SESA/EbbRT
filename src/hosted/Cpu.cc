@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include <array>
+#include <iostream>
 
 #include <boost/container/static_vector.hpp>
 #include <boost/filesystem.hpp>
@@ -168,7 +169,7 @@ void Cpu::Shutdown(void) {
         return;
     }
     for (size_t i = 0; i < numCpus_; i++) {
-      printf("stopping cpu %zd\n", i);
+      std::cerr << "# stopping CPU " << i << std::endl;
       GetByIndex(i)->ctxt_.io_service_.stop();
     }
   }

@@ -15,10 +15,12 @@
 
 namespace ebbrt {
 
+constexpr uintptr_t IdToRefAddr(const EbbId id) { return trans::kVMemStart + sizeof(LocalEntry) * id; }
+  
 template <class T> class EbbRef {
  public:
   constexpr explicit EbbRef(EbbId id = 0)
-      : ref_(trans::kVMemStart + sizeof(LocalEntry) * id) {}
+    : ref_(IdToRefAddr(id)) {}
 
   template <typename From>
   EbbRef(const EbbRef<From>& from,
