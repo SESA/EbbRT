@@ -54,12 +54,10 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
     std::string cid_ = std::string();
   };
 
-  static const constexpr int kDefaultCpus = 2;
-  static const constexpr int kDefaultNumaNodes = 2;
-  static const constexpr int kDefaultRam = 2;
-  static int DefaultCpus;
-  static int DefaultNumaNodes;
-  static int DefaultRam;
+  static const constexpr uint8_t kDefaultCpus = 2;
+  static const constexpr uint8_t kDefaultRam = 2;
+  static uint8_t DefaultCpus;
+  static uint8_t DefaultRam;
   static std::string DefaultArguments;
   static std::string CustomNetworkCreate;
   static std::string CustomNetworkRemove;
@@ -73,6 +71,14 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   NodeAllocator();
   ~NodeAllocator();
 
+  struct NodeArgs {
+    uint8_t cpus = DefaultCpus;
+    uint8_t ram = DefaultRam;
+    std::string arguments = DefaultArguments;
+    std::string constraint_node = "";
+    NodeArgs() {} 
+  };
+
   class NodeDescriptor {
    public:
     NodeDescriptor(std::string node_id,
@@ -85,11 +91,7 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
     std::string node_id_;
     ebbrt::Future<ebbrt::Messenger::NetworkId> net_id_;
   };
-  NodeDescriptor AllocateNode(std::string binary_path, int cpus = DefaultCpus,
-                              int numNodes = DefaultNumaNodes,
-                              int ram = DefaultRam,
-                              std::string arguments = DefaultArguments, 
-                              std::string constraint_node = "");
+  NodeDescriptor AllocateNode(std::string binary_path, const NodeArgs& args = NodeArgs());
 
   std::string AllocateContainer(std::string repo,
                                 std::string container_args = std::string(),
