@@ -41,12 +41,13 @@ std::string ebbrt::PoolAllocator::RunCmd(std::string cmd) {
 void ebbrt::PoolAllocator::AllocateNode(int i) {
 
   auto specified_nodes = nodes_.size() > 0;
+  ebbrt::NodeAllocator::NodeArgs args = {};
 
   std::string node = (specified_nodes) ? nodes_[i % nodes_.size()] 
     : std::string();
 
-  auto nd = ebbrt::node_allocator->AllocateNode(binary_path_, 
-      0, 0, 0, "", node);
+  args.constraint_node = node;
+  auto nd = ebbrt::node_allocator->AllocateNode(binary_path_, args);
 
   nd.NetworkId().Then(
       [this, i, specified_nodes, node](ebbrt::Future<ebbrt::Messenger::NetworkId> inner) {
