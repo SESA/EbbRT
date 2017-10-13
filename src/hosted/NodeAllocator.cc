@@ -22,9 +22,8 @@ namespace bai = boost::asio::ip;
 const constexpr size_t kLineSize = 80;
 
 // Node Configuration
-int ebbrt::NodeAllocator::DefaultCpus;
-int ebbrt::NodeAllocator::DefaultRam;
-int ebbrt::NodeAllocator::DefaultNumaNodes;
+uint8_t ebbrt::NodeAllocator::DefaultCpus;
+uint8_t ebbrt::NodeAllocator::DefaultRam;
 std::string ebbrt::NodeAllocator::DefaultArguments;
 // Network Configuration
 std::string ebbrt::NodeAllocator::CustomNetworkCreate;
@@ -39,10 +38,6 @@ ebbrt::NodeAllocator::ClassInit() {
   DefaultCpus = (str) ? atoi(str) : kDefaultCpus;
   str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_RAM");
   DefaultRam = (str) ? atoi(str) : kDefaultRam;
-  str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_NUMANODES");
-  DefaultNumaNodes = (str) ? atoi(str) : kDefaultNumaNodes;
-  str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_NUMANODES");
-  DefaultNumaNodes = (str) ? atoi(str) : kDefaultNumaNodes;
   str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_ARGUMENTS");
   DefaultArguments = (str) ? std::string(str) : std::string();
   // Network create configuration
@@ -252,11 +247,11 @@ void ebbrt::NodeAllocator::AppendArgs(std::string arg) {
 }
 
 ebbrt::NodeAllocator::NodeDescriptor
-ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
-                                   int numaNodes, int ram,
-                                   std::string arguments, std::string constraint_node) {
+ebbrt::NodeAllocator::AllocateNode(std::string binary_path, 
+    const ebbrt::NodeAllocator::NodeArgs& args){
 
-  assert(cpus != 0 && numaNodes != 0 && ram != 0);
+  assert(args.cpus != 0);
+  assert(args.ram != 0);
 
   RunCmd("file " + binary_path);
   auto allocation_id =
@@ -281,8 +276,8 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
   docker_args << " --expose 1234 -e DEBUG=true";
 #endif
 
-  if (!constraint_node.empty()) {
-    docker_args << " -e constraint:node==" << constraint_node << " ";
+  if (!args.constraint_node.empty()) {
+    docker_args << " -e constraint:node==" << args.constraint_node << " ";
   }
 
   if (CustomNetworkNodeArguments.empty()) {
@@ -294,9 +289,11 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
               << " --device /dev/kvm:/dev/kvm"
               << " --device /dev/net/tun:/dev/net/tun"
               << " --device /dev/vhost-net:/dev/vhost-net"
-              << " -e VM_MEM=" << ram << "G"
-              << " -e VM_CPU=" << cpus << " -e VM_WAIT=true"
-              << " --cidfile=" << cid.native() << " --name='" << container_name
+              << " -e VM_WAIT=true"
+              << " -e VM_MEM=" << std::to_string(args.ram) << "G"
+              << " -e VM_CPU=" << std::to_string(args.cpus)
+              << " --cidfile=" << cid.native() 
+              << " --name='" << container_name
               << "' ";
 
   std::string repo = " ebbrt/kvm-qemu:latest";
@@ -304,7 +301,7 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
 #ifndef NDEBUG
   qemu_args << " --gdb tcp:0.0.0.0:1234 ";
 #endif
-  qemu_args << arguments << " -kernel /root/img.elf"
+  qemu_args << args.arguments << " -kernel /root/img.elf"
             << " -append \"" << cmdline_ << ";allocid=" << allocation_id
             << "\"";
 
@@ -318,6 +315,7 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
   auto cip = RunCmd("docker inspect -f '{{range "
                     ".NetworkSettings.Networks}}{{.IPAddress}}{{end}}' " +
                     id);
+  assert(id != "");
 
   /* transfer image into container */
   RunCmd("ping -c 3 -w 30 " + cip);
@@ -331,7 +329,6 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path, int cpus,
   std::cerr << "Node Allocation Details: " << std::endl;
   std::cerr << "| img: " << binary_path << std::endl;
   std::cerr << "|  id: " << container_name << std::endl;
-  std::cerr << "|  ip: " << cip << std::endl;
 #ifndef NDEBUG
   std::cerr << "# debug w/ gdb: " << std::endl;
   std::cerr << "# gdb " << binary_path.substr(0, binary_path.size() - 2)
