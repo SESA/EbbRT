@@ -250,20 +250,9 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
   RunCmd("file " + binary_path);
   auto allocation_id =
       node_allocator->allocation_index_.fetch_add(1, std::memory_order_relaxed);
-  auto dir = boost::filesystem::temp_directory_path();
   auto container_name = "ebbrt-" + std::to_string(geteuid()) + "." +
                         std::to_string(getpid()) + "." +
                         std::to_string(allocation_id);
-  // cid file
-  auto cid = dir / boost::filesystem::unique_path();
-  if (boost::filesystem::exists(cid)) {
-    throw std::runtime_error(
-        "Failed to create container id temporary file name");
-  }
-
-  // TODO(dschatz): make this asynchronous?
-  boost::filesystem::create_directories(dir);
-
   std::stringstream docker_args;
   std::stringstream qemu_args;
 #ifndef NDEBUG
@@ -286,7 +275,6 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
               << " -e VM_WAIT=true"
               << " -e VM_MEM=" << std::to_string(args.ram) << "G"
               << " -e VM_CPU=" << std::to_string(args.cpus)
-              << " --cidfile=" << cid.native() 
               << " --name='" << container_name
               << "' ";
 
