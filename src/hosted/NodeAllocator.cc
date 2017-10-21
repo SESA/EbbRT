@@ -80,15 +80,25 @@ ebbrt::NodeAllocator::DockerContainer::~DockerContainer() {
   }
 }
 
+std::string ebbrt::NodeAllocator::DockerContainer::GetIp() {
+  auto cip = RunCmd("docker inspect -f '{{range "
+                    ".NetworkSettings.Networks}}{{.IPAddress}}{{end}}' " +
+                    cid_ );
+  assert(cip != "");
+  return cip;
+}
+
 std::string ebbrt::NodeAllocator::DockerContainer::Start() {
   if (!cid_.empty() || img_.size() == 0) {
     throw std::runtime_error("Error: attempt to start unspecified container ");
   }
   std::stringstream cmd;
-  cmd << "docker run -d " << arg_ << " " << img_ << " " << cmd_;
+  cmd << base_ << " run -d " << arg_ << " " << img_ << " " << cmd_;
   cid_ = RunCmd(cmd.str());
   std::cerr << "Docker Container:" << std::endl;
-  std::cerr << "|  img:" << img_ << std::endl;
+  if( host_ != ""){
+    std::cerr << "| host:" << host_ << std::endl;
+  }
   std::cerr << "|  cid: " << cid_.substr(0, 12) << std::endl;
   std::cerr << "|  log: docker logs " << cid_.substr(0, 12) << std::endl;
   return cid_;
@@ -255,13 +265,10 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
                         std::to_string(allocation_id);
   std::stringstream docker_args;
   std::stringstream qemu_args;
+
 #ifndef NDEBUG
   docker_args << " --expose 1234 -e DEBUG=true";
 #endif
-
-  if (!args.constraint_node.empty()) {
-    docker_args << " -e constraint:node==" << args.constraint_node << " ";
-  }
 
   if (CustomNetworkNodeArguments.empty()) {
     docker_args << " --net=" << network_id_ << " ";
@@ -287,30 +294,27 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
             << " -append \"" << cmdline_ << ";allocid=" << allocation_id
             << "\"";
 
-  auto c = DockerContainer(repo, docker_args.str(), qemu_args.str());
+  auto c = DockerContainer(repo, docker_args.str(), qemu_args.str(), args.constraint_node);
   auto id = c.Start();
+  auto cip = c.GetIp(); /* get IP of container */
 
   nodes_.insert(std::make_pair(std::string(id), std::move(c)));
   auto rfut = promise_map_[allocation_id].GetFuture();
 
-  /* get IP of container */
-  auto cip = RunCmd("docker inspect -f '{{range "
-                    ".NetworkSettings.Networks}}{{.IPAddress}}{{end}}' " +
-                    id);
-  assert(id != "");
-
   /* transfer image into container */
   RunCmd("ping -c 3 -w 30 " + cip);
   RunCmd("nc -z -w 30 " + cip + " 22");
-  RunCmd("scp -q -o UserKnownHostsFile=/dev/null -o "
+  RunCmd("scp -q -o UserKnownHostsFile=/dev/null -o " 
          "StrictHostKeyChecking=no " +
          binary_path + " root@" + cip + ":/root/img.elf");
   /* kick start vm */
-  RunCmd("docker exec -dt " + id + " touch /tmp/signal");
+  RunCmd("ssh -q -o UserKnownHostsFile=/dev/null -o "
+         "StrictHostKeyChecking=no root@"+cip+" 'touch /tmp/signal'");
 
   std::cerr << "Node Allocation Details: " << std::endl;
   std::cerr << "| img: " << binary_path << std::endl;
   std::cerr << "|  id: " << container_name << std::endl;
+  std::cerr << "|  ip: " << cip << std::endl;
 #ifndef NDEBUG
   std::cerr << "# debug w/ gdb: " << std::endl;
   std::cerr << "# gdb " << binary_path.substr(0, binary_path.size() - 2)

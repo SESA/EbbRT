@@ -19,24 +19,33 @@
 namespace ebbrt {
 class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   struct DockerContainer {
-    DockerContainer() {}
-    DockerContainer(std::string repo,
-                    std::string container_args = std::string(),
-                    std::string run_cmd = std::string())
-        : img_{std::move(repo)}, arg_{std::move(container_args)},
-          cmd_{std::move(run_cmd)} {}
+    DockerContainer() = delete; 
+    DockerContainer(std::string img,
+                    std::string arg = std::string(),
+                    std::string cmd = std::string(), 
+                    std::string host = std::string())
+        : arg_{arg}, cmd_{cmd}, host_{host}, img_{img} {
+            base_ = "docker";
+            if(host_ != ""){
+              base_ += " -H "+host_;
+            }
+          }
     ~DockerContainer();
     DockerContainer(DockerContainer&& other) noexcept /* move constructor */
-        : img_{std::move(other.img_)},
-          arg_{std::move(other.arg_)},
+        : arg_{std::move(other.arg_)},
+          base_{std::move(other.base_)},
+          cid_{std::move(other.cid_)},
           cmd_{std::move(other.cmd_)},
-          cid_{std::move(other.cid_)} {}
+          host_{std::move(other.host_)},
+          img_{std::move(other.img_)} {}
     DockerContainer&
     operator=(DockerContainer&& other) noexcept /* move assignment */ {
-      img_ = std::move(other.img_);
       arg_ = std::move(other.arg_);
-      cmd_ = std::move(other.cmd_);
+      base_ = std::move(other.base_);
       cid_ = std::move(other.cid_);
+      cmd_ = std::move(other.cmd_);
+      host_ = std::move(other.host_);
+      img_ = std::move(other.img_);
       return *this;
     }
     DockerContainer(const DockerContainer& other) =
@@ -45,13 +54,16 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
     operator=(const DockerContainer& other) = delete; /* copy assignment */
     std::string Start();
     std::string StdOut();
+    std::string GetIp();
     void Stop() {}
 
    private:
-    std::string img_ = std::string();
     std::string arg_ = std::string();
-    std::string cmd_ = std::string();
+    std::string base_ = std::string();
     std::string cid_ = std::string();
+    std::string cmd_ = std::string();
+    std::string host_ = std::string();
+    std::string img_ = std::string();
   };
 
   static const constexpr uint8_t kDefaultCpus = 2;
