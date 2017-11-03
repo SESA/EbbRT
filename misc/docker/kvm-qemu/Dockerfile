@@ -12,6 +12,7 @@ RUN apt-get update && \
     zlib1g-dev \
     dnsmasq 
 
+# QEMU install
 RUN git clone -b pin-threads https://github.com/SESA/qemu.git /qemu
 WORKDIR /qemu
 RUN ./configure --target-list=x86_64-softmmu --enable-vhost-net --enable-kvm
@@ -20,7 +21,7 @@ RUN make install
 WORKDIR /
 RUN rm -rf /qemu
 
-# password-less root ssh login
+# Xenial password-less root ssh login
 RUN mkdir /var/run/sshd
 RUN passwd root -d 
 RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
@@ -32,8 +33,9 @@ RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so
 ENV NOTVISIBLE "in users profile"
 RUN echo "export VISIBLE=now" >> /etc/profile
 
-COPY start /root/start
+COPY start.sh /root/start.sh
+COPY spawn.sh /root/spawn.sh
 
 EXPOSE 22
 EXPOSE 1234
-ENTRYPOINT ["/root/start"]
+ENTRYPOINT ["/root/start.sh"]
