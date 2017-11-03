@@ -1,37 +1,20 @@
 #!/bin/bash
+if [ -n "$DEBUG" ]; then set -x; fi
 
-if [ -n "$DEBUG" ];
-then
-  set -x
-fi
+# Configure network for VM 
+# This script configured the container to boot a single EbbRT backend:
+#   1. Create bridge and tap interfaces, bridge with default interface 
+#   2. 2.  
 
-# start sshd 
+# Ensure working directory is local to this script
+cd "$(dirname "$0")"
+
 /usr/sbin/sshd &
 
-# environment variables 
-export VCPU=${VM_CPU:-2}
-export VMEM=${VM_MEM:-2G}
-export WAIT=${VM_WAIT:-false}
-export IFACE=${IFACE_DEFAULT:-eth0}
-
-if [ $VCPU -eq 1 ]
-then
-  export VQS=2
-else
-  export VQS=$VCPU
-fi
-
-NETVEC=$(($((${VCPU}*2))+ 2))
+export TAP_IFACE=tap0
+export KVM_ARGS=$@
 BRIDGE_IFACE=br0
-TAP_IFACE=tap0
-
-: ${KVM_NET_OPTS:="-netdev tap,script=no,downscript=no,\
-ifname=\$TAP_IFACE,id=net0,vhost=on,queues=\$VQS \
--device virtio-net-pci,netdev=net0,mac=\$MAC,mq=on,\
-vectors=\$NETVEC"}
-
-# Pass Docker command args to kvm
-KVM_ARGS=$@
+IFACE=${IFACE_DEFAULT:-eth0}
 
 atoi()
 {
@@ -73,7 +56,7 @@ cidr2mask() {
 }
 
 setup_bridge_networking() {
-    MAC=`ip addr show $IFACE | grep ether | sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*\$//g' | cut -f2 -d ' '`
+    export MAC=`ip addr show $IFACE | grep ether | sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*\$//g' | cut -f2 -d ' '`
     IP=`ip addr show dev $IFACE | grep "inet $IP" | awk '{print $2}' | cut -f1 -d/`
     CIDR=`ip addr show dev $IFACE | grep "inet $IP" | awk '{print $2}' | cut -f2 -d/`
     NETMASK=`cidr2mask $CIDR`
@@ -121,24 +104,18 @@ cat > /etc/dnsmasq.conf << EOF
       dhcp-option=option:dns-server,$NAMESERVERS
 EOF
 
-    if [ -z $NO_DHCP ]; then
+    if [ -z "$NO_DHCP" ]; then
         dnsmasq 
     fi
 }
 
-# pause until signaled to continue 
-if [ "$WAIT" = "true" ]; then
+# Spin until signaled to continue 
+# This allows boot image to be migrated into the local filesystem
+if [ -z "$NO_WAIT" ]; then
   echo "Waiting for creation of file /tmp/signal"
   until [ -a /tmp/signal ]; do sleep 1; done
 fi
 
-file /tmp/signal
-
 setup_bridge_networking
 
-# For debugging
-if [ "$1" = "bash" ]; then
-  exec bash
-fi
-
-exec $LAUNCHER qemu-system-x86_64 -m $VMEM -smp cpus=$VCPU -cpu host -serial stdio -display none -enable-kvm `eval echo $KVM_NET_OPTS` $KVM_ARGS
+./spawn.sh 
