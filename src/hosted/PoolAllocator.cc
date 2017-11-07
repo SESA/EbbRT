@@ -46,6 +46,7 @@ void ebbrt::PoolAllocator::AllocateNode(int i) {
   std::string node = (specified_nodes) ? nodes_[i % nodes_.size()] 
     : std::string();
 
+  args.constraint_node = node;
   auto nd = ebbrt::node_allocator->AllocateNode(binary_path_, args);
 
   nd.NetworkId().Then(

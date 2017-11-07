@@ -75,13 +75,13 @@ std::string ebbrt::NodeAllocator::RunCmd(std::string cmd) {
 ebbrt::NodeAllocator::DockerContainer::~DockerContainer() {
   if (!cid_.empty()) {
     std::cerr << "removing container: " << cid_.substr(0, 12) << std::endl;
-    RunCmd("docker stop " + cid_);
-    RunCmd("docker rm -f " + cid_);
+    RunCmd(base_+" stop " + cid_);
+    RunCmd(base_+" rm -f " + cid_);
   }
 }
 
 std::string ebbrt::NodeAllocator::DockerContainer::GetIp() {
-  auto cip = RunCmd("docker inspect -f '{{range "
+  auto cip = RunCmd(base_+" inspect -f '{{range "
                     ".NetworkSettings.Networks}}{{.IPAddress}}{{end}}' " +
                     cid_ );
   assert(cip != "");
@@ -100,13 +100,13 @@ std::string ebbrt::NodeAllocator::DockerContainer::Start() {
     std::cerr << "| host:" << host_ << std::endl;
   }
   std::cerr << "|  cid: " << cid_.substr(0, 12) << std::endl;
-  std::cerr << "|  log: docker logs " << cid_.substr(0, 12) << std::endl;
+  std::cerr << "|  log: " << base_ << " logs " << cid_.substr(0, 12) << std::endl;
   return cid_;
 }
 
 std::string ebbrt::NodeAllocator::DockerContainer::StdOut() {
   ebbrt::kbugon(cid_.empty());
-  return RunCmd("docker logs " + cid_);
+  return RunCmd(base_+" logs " + cid_);
 }
 
 ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket,
@@ -307,7 +307,6 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
   RunCmd("scp -q -o UserKnownHostsFile=/dev/null -o " 
          "StrictHostKeyChecking=no " +
          binary_path + " root@" + cip + ":/root/img.elf");
-  /* kick start vm */
   RunCmd("ssh -q -o UserKnownHostsFile=/dev/null -o "
          "StrictHostKeyChecking=no root@"+cip+" 'touch /tmp/signal'");
 
