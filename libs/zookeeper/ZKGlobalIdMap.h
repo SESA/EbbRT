@@ -25,6 +25,11 @@ void InstallGlobalIdMap();
 
 class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
  public:
+  struct ZKOptArgs : public GlobalIdMap::OptArgs {
+   std::string path;
+   ZooKeeper::Flag flags;
+  };
+
   static EbbRef<ZKGlobalIdMap> Create(EbbId id) {
     auto base = new ZKGlobalIdMap::Base();
     local_id_map->Insert(
@@ -57,13 +62,15 @@ class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
 
   ZKGlobalIdMap(){};
   Future<bool> Init() {
+    ebbrt::kprintf("ZKGlobalIdMap init called\n");
     zk_ =
         ebbrt::ZooKeeper::Create(ebbrt::ebb_allocator->Allocate(), &zkwatcher_);
     return zkwatcher_.connected_.GetFuture();
   }
 
   Future<std::vector<std::string>> List(EbbId id,
-                                        std::string path = std::string()) {
+                                        const ZKOptArgs& args) {
+    std::string path = args.path;
     auto p = new ebbrt::Promise<std::vector<std::string>>;
     auto ret = p->GetFuture();
     char buff[100];
@@ -80,7 +87,9 @@ class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
     return ret;
   }
 
-  Future<std::string> Get(EbbId id, std::string path = std::string()) override {
+  Future<std::string> Get(EbbId id, const GlobalIdMap::OptArgs& args) override {
+    auto zkargs = static_cast<const ZKOptArgs&>(args);
+    std::string path = zkargs.path;
     char buff[100];
     sprintf(buff, "/%d", id);
     auto p = new ebbrt::Promise<std::string>;
@@ -97,8 +106,10 @@ class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
     return f;
   }
 
-  Future<void> Set(EbbId id, std::string val = std::string(),
-                   std::string path = std::string()) override {
+  Future<void> Set(EbbId id, const GlobalIdMap::OptArgs& args) override {
+    auto zkargs = static_cast<const ZKOptArgs&>(args);
+    std::string val = zkargs.data;
+    std::string path = zkargs.path;
     auto p = new ebbrt::Promise<void>;
     auto ret = p->GetFuture();
     char buff[20];

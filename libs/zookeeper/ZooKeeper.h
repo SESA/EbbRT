@@ -81,8 +81,13 @@ class ZooKeeper : public ebbrt::Timer::Hook {
     ZkStat stat;
   };
 
-  /* ZooKeeper::Watcher 
-   * This interface specifies the public interface an event handler class must implement. A ZooKeeper client will get various events from the ZooKeepr server it connects to. An application using such a client handles these events by registering a callback object with the client. The callback object is expected to be an instance of a class that implements Watcher interface.
+  /* ZooKeeper::Watcher
+   * This interface specifies the public interface an event handler class must
+   * implement. A ZooKeeper client will get various events from the ZooKeepr
+   * server it connects to. An application using such a client handles these
+   * events by registering a callback object with the client. The callback
+   * object is expected to be an instance of a class that implements Watcher
+   * interface.
    */
   struct Watcher {
     virtual ~Watcher() {}
@@ -164,10 +169,11 @@ class ZooKeeper : public ebbrt::Timer::Hook {
         event_manager->Spawn(std::move(func_));
       else {
         ebbrt::kprintf(
-            "WatchEvent executed for non-specified type: %d (configured: %d)\n", type,
-            type_);
+            "WatchEvent executed for non-specified type: %d (configured: %d)\n",
+            type, type_);
       }
     }
+
    private:
     int type_;
     ebbrt::MovableFunction<void()> func_;
@@ -189,7 +195,7 @@ class ZooKeeper : public ebbrt::Timer::Hook {
   }
   void Fire() override;
   ~ZooKeeper();
-  ZooKeeper(const ZooKeeper&) = delete; // disable copies
+  ZooKeeper(const ZooKeeper&) = delete;  // disable copies
   ZooKeeper& operator=(const ZooKeeper&) = delete;
   Future<Znode> New(const std::string& path,
                     const std::string& value = std::string(),
@@ -202,10 +208,6 @@ class ZooKeeper : public ebbrt::Timer::Hook {
   Future<Znode> Set(const std::string& path, const std::string& value,
                     int version = -1);
   Future<Znode> Stat(const std::string& path, Watcher* watch = nullptr);
-  // Command Line Interface
-  void CLI(char* line);
-  static void PrintZnode(Znode* zkr);
-  static void PrintZnodeChildren(ZnodeChildren* zkcr);
 
  private:
   ZooKeeper(ebbrt::ZooKeeper::Watcher* connection_watcher, int timeout_ms,
@@ -213,17 +215,18 @@ class ZooKeeper : public ebbrt::Timer::Hook {
   ZooKeeper(const std::string& server_hosts,
             ebbrt::ZooKeeper::Watcher* connection_watcher, int timeout_ms,
             int timer_ms);
-  static void process_watch_event(zhandle_t*, int type, int state,
-                                  const char* path, void* ctx);
   static void data_completion(int rc, const char* value, int value_len,
                               const ZkStat* stat, const void* data);
+  static void event_completion(zhandle_t*, int type, int state,
+                               const char* path, void* ctx);
   static void stat_completion(int rc, const ZkStat* stat, const void* data);
   static void string_completion(int rc, const char* name, const void* data);
   static void strings_completion(int rc, const struct String_vector* strings,
                                  const ZkStat* stat, const void* data);
   static void void_completion(int rc, const void* data);
-  static int startsWith(const char* line, const char* prefix);
-  static void print_stat(ZkStat* stat);
+  static bool validate_path(const std::string& path) {
+    return (path.size() > 0 && path.back() != '/');
+  };
   SpinLock lock_;
   zhandle_t* zk_ = nullptr;
   Watcher* connection_watcher_ = nullptr;

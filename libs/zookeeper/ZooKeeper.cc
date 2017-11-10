@@ -8,6 +8,7 @@
 #ifndef __ebbrt__
 #include <chrono>
 #include <thread>
+
 /* When executed on hosted Create will spawn a new ZooKeeper container. */
 ebbrt::EbbRef<ebbrt::ZooKeeper>
 ebbrt::ZooKeeper::Create(EbbId id, Watcher* connection_watcher, int timeout_ms,
@@ -27,6 +28,7 @@ ebbrt::ZooKeeper::Create(EbbId id, Watcher* connection_watcher, int timeout_ms,
   return ebbrt::EbbRef<ebbrt::ZooKeeper>(id);
 }
 #else
+
 /* When executed on native Create checks command line args for ZK server. */
 ebbrt::EbbRef<ebbrt::ZooKeeper>
 ebbrt::ZooKeeper::Create(EbbId id, Watcher* connection_watcher, int timeout_ms,
@@ -59,7 +61,7 @@ ebbrt::ZooKeeper::ZooKeeper(const std::string& server_hosts,
 
   zoo_set_debug_level(ZOO_LOG_LEVEL_WARN);
   zoo_deterministic_conn_order(1);  // deterministic command->server assignment
-  zk_ = zookeeper_init(server_hosts.c_str(), process_watch_event, timeout_ms,
+  zk_ = zookeeper_init(server_hosts.c_str(), event_completion, timeout_ms,
                        nullptr, connection_watcher, 0);
 
   timer->Start(*this, std::chrono::milliseconds(timer_ms * 2), true);
@@ -141,8 +143,8 @@ ebbrt::ZooKeeper::Stat(const std::string& path,
   auto f = p->GetFuture();
 
   if (watcher) {
-    zoo_awexists(zk_, path.c_str(), process_watch_event, watcher,
-                 stat_completion, p);
+    zoo_awexists(zk_, path.c_str(), event_completion, watcher, stat_completion,
+                 p);
   } else {
     zoo_aexists(zk_, path.c_str(), 0, stat_completion, p);
   }
@@ -154,10 +156,9 @@ ebbrt::ZooKeeper::Exists(const std::string& path,
                          ebbrt::ZooKeeper::Watcher* watcher) {
   auto p = new ebbrt::Promise<bool>;
   auto f = p->GetFuture();
-  if (path.size() == 0 || path.back() == '/'){
+  if (validate_path(path)) {
     ebbrt::kabort("ZooKeeper: invalid path %s\n", path.c_str());
   }
-    ebbrt::kprintf("ZooKeeper Exists: %s\n", path.c_str());
   Stat(path, watcher).Then([p](ebbrt::Future<ebbrt::ZooKeeper::Znode> z) {
     auto znode = z.Get();
     if (znode.err == ZOK) {
@@ -176,8 +177,7 @@ ebbrt::ZooKeeper::Get(const std::string& path,
   auto f = p->GetFuture();
 
   if (watcher) {
-    zoo_awget(zk_, path.c_str(), process_watch_event, watcher, data_completion,
-              p);
+    zoo_awget(zk_, path.c_str(), event_completion, watcher, data_completion, p);
   } else {
     zoo_aget(zk_, path.c_str(), 0, data_completion, p);
   }
@@ -191,7 +191,7 @@ ebbrt::ZooKeeper::GetChildren(const std::string& path,
   auto f = p->GetFuture();
 
   if (watcher) {
-    zoo_awget_children2(zk_, path.c_str(), process_watch_event, watcher,
+    zoo_awget_children2(zk_, path.c_str(), event_completion, watcher,
                         strings_completion, p);
   } else {
     zoo_aget_children2(zk_, path.c_str(), 0, strings_completion, p);
@@ -219,159 +219,10 @@ ebbrt::ZooKeeper::Set(const std::string& path, const std::string& value,
   return f;
 }
 
-void ebbrt::ZooKeeper::process_watch_event(zhandle_t* h, int type, int state,
-                                           const char* path, void* ctx) {
+void ebbrt::ZooKeeper::event_completion(zhandle_t* h, int type, int state,
+                                        const char* path, void* ctx) {
   auto watcher = static_cast<Watcher*>(ctx);
   watcher->WatchHandler(type, state, path);
-}
-
-void ebbrt::ZooKeeper::print_stat(ebbrt::ZooKeeper::ZkStat* stat) {
-  ebbrt::kprintf("Stat:\n");
-  ebbrt::kprintf("     version: %d \n", stat->version);
-  ebbrt::kprintf("     data len: %d \n", stat->dataLength);
-  ebbrt::kprintf("     children: %d \n", stat->numChildren);
-  ebbrt::kprintf("     eph owner: %ld \n", stat->ephemeralOwner);
-  ebbrt::kprintf("\n");
-  // todo timestamp
-  return;
-}
-
-void ebbrt::ZooKeeper::PrintZnode(Znode* zkr) {
-  if (!zkr)
-    return;
-
-  if (zkr->err != ZOK)
-    ebbrt::kprintf("Operation Error: %d\n", zkr->err);
-
-  if (zkr->value.size() > 0)
-    ebbrt::kprintf("Value: %s\n", zkr->value.c_str());
-  else
-    ebbrt::kprintf("Value: NO VALUE\n");
-
-  print_stat(&(zkr->stat));
-
-  return;
-}
-
-void ebbrt::ZooKeeper::PrintZnodeChildren(ZnodeChildren* zkr) {
-  if (!zkr)
-    return;
-  if (zkr->err != ZOK)
-    ebbrt::kprintf("Operation Error: %d\n", zkr->err);
-  ebbrt::kprintf("Values: \n");
-  for (auto i : zkr->values) {
-    ebbrt::kprintf("    %s\n", i.c_str());
-  }
-  return;
-}
-
-int ebbrt::ZooKeeper::startsWith(const char* line, const char* prefix) {
-  int len = strlen(prefix);
-  return strncmp(line, prefix, len) == 0;
-}
-
-/* Command-line Interface - processes zk client commands*/
-void ebbrt::ZooKeeper::CLI(char* line) {
-  int rc = 0;
-  if (startsWith(line, "help")) {
-    ebbrt::kprintf("    create [+[e|s]] <path>\n");
-    ebbrt::kprintf("    delete <path>\n");
-    ebbrt::kprintf("    exists <path>\n");
-    ebbrt::kprintf("    get <path>\n");
-    ebbrt::kprintf("    set <path> <data>\n");
-    ebbrt::kprintf("    ls <path>\n");
-    ebbrt::kprintf("    quit\n");
-    ebbrt::kprintf("\n");
-  } else if (startsWith(line, "get ")) {
-    line += 4;
-    if (line[0] != '/') {
-      ebbrt::kprintf("Path must start with /, found: %s\n", line);
-      return;
-    }
-    std::string path(line);
-    auto fp = Get(path);
-    auto f = fp.Block().Get();
-    PrintZnode(&f);
-  } else if (startsWith(line, "exists ")) {
-    line += 7;
-    if (line[0] != '/') {
-      ebbrt::kprintf("Path must start with /, found: %s\n", line);
-      return;
-    }
-    std::string path(line);
-    auto fp = Stat(path);
-    auto f = fp.Block().Get();
-    PrintZnode(&f);
-  } else if (startsWith(line, "set ")) {
-    char* ptr;
-    line += 4;
-    if (line[0] != '/') {
-      ebbrt::kprintf("Path must start with /, found: %s\n", line);
-      return;
-    }
-    ptr = strchr(line, ' ');
-    if (!ptr) {
-      ebbrt::kprintf("No data found after path\n");
-      return;
-    }
-    *ptr = '\0';
-    ptr++;
-    std::string path(line);
-    std::string value(ptr);
-    auto fp = Set(path, value);
-    auto f = fp.Block().Get();
-    PrintZnode(&f);
-  } else if (startsWith(line, "ls ")) {
-    line += 3;
-    if (line[0] != '/') {
-      ebbrt::kprintf("Path must start with /, found: %s\n", line);
-      return;
-    }
-    std::string path(line);
-    auto fp = GetChildren(path);
-    auto f = fp.Block().Get();
-    PrintZnodeChildren(&f);
-
-    if (rc) {
-      ebbrt::kprintf("Error %d for %s\n", rc, line);
-    }
-  } else if (startsWith(line, "create ")) {
-    int flags = 0;
-    line += 7;
-    if (line[0] == '+') {
-      line++;
-      if (line[0] == 'e') {
-        flags |= ZOO_EPHEMERAL;
-        line++;
-      }
-      if (line[0] == 's') {
-        flags |= ZOO_SEQUENCE;
-        line++;
-      }
-      line++;
-    }
-    if (line[0] != '/') {
-      ebbrt::kprintf("Path must start with /, found: %s\n", line);
-      return;
-    }
-    ebbrt::kprintf("Creating [%s] node\n", line);
-    std::string path(line);
-    auto fp = New(path, "new", static_cast<ZooKeeper::Flag>(flags));
-    auto f = fp.Block().Get();
-    PrintZnode(&f);
-  } else if (startsWith(line, "delete ")) {
-    line += 7;
-    if (line[0] != '/') {
-      ebbrt::kprintf("Path must start with /, found: %s\n", line);
-      return;
-    }
-    std::string path(line);
-    auto fp = Delete(path);
-    auto f = fp.Block().Get();
-    PrintZnode(&f);
-  } else {
-    ebbrt::kprintf("Error unknown command: %s\n", line);
-  }
 }
 
 void ebbrt::ZooKeeper::stat_completion(int rc,
@@ -440,4 +291,3 @@ void ebbrt::ZooKeeper::void_completion(int rc, const void* data) {
   delete p;
   return;
 }
-
