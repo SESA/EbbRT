@@ -10,8 +10,13 @@ namespace ebbrt {
 extern void InstallGlobalIdMap();
 
 class GlobalIdMap {
-  // Base class used in Ebb translation
+
  public:
+  struct OptArgs {
+    std::string data;
+  };
+
+  // Base class used in Ebb translation
   class Base {
    public:
     virtual GlobalIdMap& Construct(EbbId id) = 0;
@@ -29,8 +34,8 @@ class GlobalIdMap {
     auto base = boost::any_cast<Base*>(accessor->second);
     return base->Construct(id);
   }
-  virtual Future<std::string> Get(EbbId id, std::string path) = 0;
-  virtual Future<void> Set(EbbId id, std::string data, std::string path) = 0;
+  virtual Future<std::string> Get(EbbId id, const OptArgs& args) = 0;
+  virtual Future<void> Set(EbbId id, const OptArgs& args) = 0;
 };
 }
 #endif  // COMMON_SRC_INCLUDE_EBBRT_GLOBALIDMAPBASE_H_

@@ -56,8 +56,8 @@ class DefaultGlobalIdMap : public GlobalIdMap,
     bool constructed_ = false;
   };
 
-  Future<std::string> Get(EbbId id, std::string path = std::string()) override;
-  Future<void> Set(EbbId id, std::string data, std::string path = std::string()) override;
+  Future<std::string> Get(EbbId id, const OptArgs& args = OptArgs()) override;
+  Future<void> Set(EbbId id, const OptArgs& args = OptArgs()) override;
 
   void ReceiveMessage(Messenger::NetworkId nid, std::unique_ptr<IOBuf>&& buf);
 

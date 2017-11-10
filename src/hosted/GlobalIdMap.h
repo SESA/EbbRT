@@ -23,9 +23,13 @@ namespace ebbrt {
 
 void InstallGlobalIdMap();
 
+namespace {
+
+}
+
 class DefaultGlobalIdMap : public GlobalIdMap,
-                          public CacheAligned,
-                          public Messagable<DefaultGlobalIdMap> {
+                           public CacheAligned,
+                           public Messagable<DefaultGlobalIdMap> {
  public:
   DefaultGlobalIdMap();
   static EbbRef<DefaultGlobalIdMap>
@@ -47,9 +51,8 @@ class DefaultGlobalIdMap : public GlobalIdMap,
       return *rep;
     }
   };
-  Future<std::string> Get(EbbId id, std::string path = std::string()) override;
-  Future<void> Set(EbbId id, std::string data,
-                   std::string path = std::string()) override;
+  Future<std::string> Get(EbbId id, const OptArgs& args = OptArgs()) override;
+  Future<void> Set(EbbId id, const OptArgs& args = OptArgs()) override;
 
   void ReceiveMessage(Messenger::NetworkId nid, std::unique_ptr<IOBuf>&& buf);
 

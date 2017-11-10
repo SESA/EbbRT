@@ -14,7 +14,7 @@ Printer::Printer() : ebbrt::Messagable<Printer>(kPrinterEbbId) {}
 
 ebbrt::Future<void> Printer::Init() {
   return ebbrt::global_id_map->Set(
-      kPrinterEbbId, ebbrt::messenger->LocalNetworkId().ToBytes());
+      kPrinterEbbId, ebbrt::GlobalIdMap::OptArgs({.data=ebbrt::messenger->LocalNetworkId().ToBytes()}));
 }
 
 void Printer::Print(const char* str) {}
