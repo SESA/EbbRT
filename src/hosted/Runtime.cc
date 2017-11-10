@@ -39,7 +39,7 @@ void ebbrt::Runtime::DoInitialization() {
   LocalIdMap::Init();
   EbbAllocator::Init();
   Messenger::Init();
+  Timer::Init();
   ebbrt::InstallGlobalIdMap();
   NodeAllocator::Init();
-  Timer::Init();
 }
