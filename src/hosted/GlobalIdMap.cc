@@ -18,15 +18,14 @@ void ebbrt::InstallGlobalIdMap() {
 ebbrt::DefaultGlobalIdMap::DefaultGlobalIdMap()
     : Messagable<DefaultGlobalIdMap>(kGlobalIdMapId) {}
 
-ebbrt::Future<void> ebbrt::DefaultGlobalIdMap::Set(EbbId id, std::string data,
-                                                   std::string path) {
+ebbrt::Future<void> ebbrt::DefaultGlobalIdMap::Set(EbbId id, const OptArgs& args) {
   std::lock_guard<std::mutex> lock(m_);
-  map_[id] = std::move(data);
+  map_[id] = args.data;
   return MakeReadyFuture<void>();
 }
 
 ebbrt::Future<std::string> ebbrt::DefaultGlobalIdMap::Get(EbbId id,
-                                                          std::string path) {
+                                                          const OptArgs& args) {
   return MakeReadyFuture<std::string>(map_[id]);
 }
 

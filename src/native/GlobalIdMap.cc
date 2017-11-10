@@ -34,7 +34,7 @@ ebbrt::DefaultGlobalIdMap::DefaultGlobalIdMap()
 void ebbrt::DefaultGlobalIdMap::SetAddress(uint32_t addr) { 
   frontend_ip = addr; }
 
-ebbrt::Future<std::string> ebbrt::DefaultGlobalIdMap::Get(EbbId id, std::string path) {
+ebbrt::Future<std::string> ebbrt::DefaultGlobalIdMap::Get(EbbId id, const OptArgs& args) {
   lock_.lock();
   auto v = val_++;
   auto& p = map_[v];
@@ -51,7 +51,7 @@ ebbrt::Future<std::string> ebbrt::DefaultGlobalIdMap::Get(EbbId id, std::string 
   return p.GetFuture();
 }
 
-ebbrt::Future<void> ebbrt::DefaultGlobalIdMap::Set(EbbId id, std::string str, std::string path) {
+ebbrt::Future<void> ebbrt::DefaultGlobalIdMap::Set(EbbId id, const OptArgs& args) {
   EBBRT_UNIMPLEMENTED();
   return MakeReadyFuture<void>();
 }
