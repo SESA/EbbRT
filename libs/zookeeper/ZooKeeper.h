@@ -27,7 +27,7 @@
 namespace ebbrt {
 
 constexpr int ZkConnectionTimeoutMs = 60000;
-constexpr int ZkIoEventTimer = 1000;
+constexpr int ZkIoEventTimerMs = 500;
 
 class ZooKeeper : public ebbrt::Timer::Hook {
  public:
@@ -57,19 +57,24 @@ class ZooKeeper : public ebbrt::Timer::Hook {
     SequencedEphemeral = 0x11  // (ZOO_EPHEMERAL | ZOO_SEQUENCED)
   };
 
+#if 0
+  /* REFERENCE: 
+	 * contents of the Stat structure from zookeeper client library */
+  struct Stat {
+    int64_t czxid;
+    int64_t mzxid;
+    int64_t ctime;
+    int64_t mtime;
+    int32_t version;
+    int32_t cversion;
+    int32_t aversion;
+    int64_t ephemeralOwner;
+    int32_t dataLength;
+    int32_t numChildren;
+    int64_t pzxid;
+  };
+#endif 
   typedef struct Stat ZkStat;
-  /* Contents of the ZkStat structure:
-      int64_t czxid;
-      int64_t mzxid;
-      int64_t ctime;
-      int64_t mtime;
-      int32_t version;
-      int32_t cversion;
-      int32_t aversion;
-      int64_t ephemeralOwner;
-      int32_t dataLength;
-      int32_t numChildren;
-      int64_t pzxid; */
   struct Znode {
     int err;
     std::string value;
@@ -179,10 +184,14 @@ class ZooKeeper : public ebbrt::Timer::Hook {
     ebbrt::MovableFunction<void()> func_;
   };
 
+  ~ZooKeeper();
+  ZooKeeper(const ZooKeeper&) = delete;  // disable copies
+  ZooKeeper& operator=(const ZooKeeper&) = delete;
+  void Fire() override;
   static EbbRef<ZooKeeper> Create(EbbId id,
                                   Watcher* connection_watcher = nullptr,
                                   int timeout_ms = ZkConnectionTimeoutMs,
-                                  int timer_ms = ZkIoEventTimer,
+                                  int timer_ms = ZkIoEventTimerMs,
                                   std::string server_hosts = std::string());
   static ZooKeeper& HandleFault(EbbId id) {
     LocalIdMap::ConstAccessor accessor;
@@ -193,20 +202,16 @@ class ZooKeeper : public ebbrt::Timer::Hook {
     EbbRef<ZooKeeper>::CacheRef(id, *rep);
     return *rep;
   }
-  void Fire() override;
-  ~ZooKeeper();
-  ZooKeeper(const ZooKeeper&) = delete;  // disable copies
-  ZooKeeper& operator=(const ZooKeeper&) = delete;
   Future<Znode> New(const std::string& path,
                     const std::string& value = std::string(),
                     ZooKeeper::Flag flags = ZooKeeper::Flag::Nil);
-  Future<bool> Exists(const std::string& path, Watcher* watch = nullptr);
+  Future<bool> Exists(const std::string& path, bool force_sync = false,
+                      bool force_create = false);
   Future<Znode> Get(const std::string& path, Watcher* watch = nullptr);
   Future<ZnodeChildren> GetChildren(const std::string& path,
                                     Watcher* watch = nullptr);
-  Future<Znode> Delete(const std::string& path, int version = -1);
-  Future<Znode> Set(const std::string& path, const std::string& value,
-                    int version = -1);
+  Future<Znode> Delete(const std::string& path);
+  Future<Znode> Set(const std::string& path, const std::string& value);
   Future<Znode> Stat(const std::string& path, Watcher* watch = nullptr);
 
  private:
@@ -224,12 +229,15 @@ class ZooKeeper : public ebbrt::Timer::Hook {
   static void strings_completion(int rc, const struct String_vector* strings,
                                  const ZkStat* stat, const void* data);
   static void void_completion(int rc, const void* data);
-  static bool validate_path(const std::string& path) {
-    return (path.size() > 0 && path.back() != '/');
-  };
+  void path_cache_clear() { path_cache_.clear(); }
+  void path_cache_add(const std::string& path) { path_cache_.insert(path); }
+  bool path_cache_verify(const std::string& path) {
+    return (path_cache_.find(path) != path_cache_.end());
+  }
   SpinLock lock_;
   zhandle_t* zk_ = nullptr;
   Watcher* connection_watcher_ = nullptr;
+  std::set<std::string> path_cache_;
 };  // end ebbrt::ZooKeeper
 }  // end namespace
 #endif  // EBBRT_ZOOKEEPER_H
