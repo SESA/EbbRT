@@ -3,6 +3,7 @@
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
 //
+#include <iostream>
 #include "ZooKeeper.h"
 
 #ifndef __ebbrt__
@@ -19,7 +20,7 @@ ebbrt::ZooKeeper::Create(EbbId id, Watcher* connection_watcher, int timeout_ms,
         "jplock/zookeeper", "--expose 2888 --expose 3888 --expose 2181");
     server_hosts += std::string(":2181");
     using namespace std::chrono_literals;
-    std::this_thread::sleep_for(5s);
+    std::this_thread::sleep_for(2s);
   }
   node_allocator->AppendArgs(std::string("zookeeper=") + server_hosts);
   auto rep = new ebbrt::ZooKeeper(server_hosts, connection_watcher, timeout_ms,
@@ -59,6 +60,7 @@ ebbrt::ZooKeeper::ZooKeeper(const std::string& server_hosts,
                             int timeout_ms, int timer_ms)
     : connection_watcher_(connection_watcher) {
 
+  
   zoo_set_debug_level(ZOO_LOG_LEVEL_WARN);
   zoo_deterministic_conn_order(1);  // deterministic command->server assignment
   zk_ = zookeeper_init(server_hosts.c_str(), event_completion, timeout_ms,
@@ -84,12 +86,7 @@ void ebbrt::ZooKeeper::Fire() {
 
   if (zk_) {
     struct timeval tv;
-    int fd;
-    int interest;
-    int timeout;
-    int maxfd = 1;
-    int rc;
-
+    int fd, interest, timeout, maxfd = 1, rc;
     rc = zookeeper_interest(zk_, &fd, &interest, &tv);
     if (rc != ZOK) {
       ebbrt::kabort("zookeeper_interest error");
@@ -116,7 +113,7 @@ void ebbrt::ZooKeeper::Fire() {
     }
     if (is_unrecoverable(zk_)) {
       //  api_epilog(zk_, 0);
-      ebbrt::kabort(("zookeeper io handler  terminated"));
+      ebbrt::kabort(("zookeeper io handler terminated"));
     }
   }
 }
@@ -128,11 +125,16 @@ ebbrt::ZooKeeper::New(const std::string& path, const std::string& value,
   auto p = new ebbrt::Promise<Znode>;
   auto f = p->GetFuture();
 
-  // TODO(jmc): verify this work for empty string (i.e., c_str() = "" or
-  // nullptr)
+  if (path.size() == 0 || path.back() == '/'){
+    ebbrt::kabort("ZooKeeper: invalid path %s\n", path.c_str());
+  }
+  if (path_cache_verify(path)) {
+    ebbrt::kabort("ZooKeeper: path already created! %s\n", path.c_str());
+  }
   zoo_acreate(zk_, path.c_str(), value.c_str(), value.size(),
               &ZOO_OPEN_ACL_UNSAFE, static_cast<int>(flags), string_completion,
               p);
+  path_cache_add(path);
   return f;
 }
 
@@ -151,22 +153,42 @@ ebbrt::ZooKeeper::Stat(const std::string& path,
   return f;
 }
 
-ebbrt::Future<bool>
-ebbrt::ZooKeeper::Exists(const std::string& path,
-                         ebbrt::ZooKeeper::Watcher* watcher) {
+ebbrt::Future<bool> ebbrt::ZooKeeper::Exists(const std::string& path,
+                                             bool force_sync, 
+                                             bool force_create) {
   auto p = new ebbrt::Promise<bool>;
   auto f = p->GetFuture();
-  if (validate_path(path)) {
+  auto found = false;
+   ebbrt::kprintf("ZK::Exists: checking path %s\n", path.c_str());
+
+  if (path.size() == 0 || path.back() == '/'){
     ebbrt::kabort("ZooKeeper: invalid path %s\n", path.c_str());
   }
-  Stat(path, watcher).Then([p](ebbrt::Future<ebbrt::ZooKeeper::Znode> z) {
-    auto znode = z.Get();
+
+  if (force_sync || !path_cache_verify(path)) {
+    std::cout << "ZK[bk]: sync lookup " << path << std::endl;
+    auto znode = Stat(path).Block().Get();
+    std::cout << "ZK[ubk]: sync lookup " << path << std::endl;
     if (znode.err == ZOK) {
-      p->SetValue(true);
-    } else {
-      p->SetValue(false);
+      found = true;
+      path_cache_add(path);
     }
-  });
+  } else { /* cache hit */
+    found = true; 
+  }
+
+  if (!found && force_create) {
+    New(path).Then([p](auto fznode) {
+      auto znode = fznode.Get();
+      if (znode.err == ZOK) {
+        p->SetValue(true);
+      } else {
+        p->SetValue(false);
+      }
+    });
+  } else {
+    p->SetValue(found);
+  }
   return f;
 }
 
@@ -200,21 +222,36 @@ ebbrt::ZooKeeper::GetChildren(const std::string& path,
 }
 
 ebbrt::Future<ebbrt::ZooKeeper::Znode>
-ebbrt::ZooKeeper::Delete(const std::string& path, int version) {
+ebbrt::ZooKeeper::Delete(const std::string& path) {
   auto p = new ebbrt::Promise<Znode>;
   auto f = p->GetFuture();
 
-  zoo_adelete(zk_, path.c_str(), version, void_completion, p);
+  zoo_adelete(zk_, path.c_str(), -1, void_completion, p);
   return f;
 }
 
 ebbrt::Future<ebbrt::ZooKeeper::Znode>
-ebbrt::ZooKeeper::Set(const std::string& path, const std::string& value,
-                      int version) {
+ebbrt::ZooKeeper::Set(const std::string& path, const std::string& value) {
   auto p = new ebbrt::Promise<Znode>;
   auto f = p->GetFuture();
+  if (!path_cache_verify(path)) { /* cache miss */
+    // full path was not in the cache, lets trace from the root
+    unsigned int pos = 0;
+    while (pos != std::string::npos) {
+      pos = path.find('/', pos + 1);
+      auto ppath = path.substr(0, pos);
+      if (!path_cache_verify(ppath)) {
+        // force lookup and creation of path
+        auto err = Exists(ppath, true, true).Block();
+        if( ! err.Get() ){
+          ebbrt::kabort("ZooKeeper: error when creating path %s\n", ppath.c_str());
+        }
+      }
+    }
+  }
 
-  zoo_aset(zk_, path.c_str(), value.c_str(), value.size(), version,
+  /* Path and parent paths should already be registered with ZK */
+  zoo_aset(zk_, path.c_str(), value.c_str(), value.size(), -1,
            stat_completion, p);
   return f;
 }
@@ -271,7 +308,8 @@ void ebbrt::ZooKeeper::strings_completion(int rc,
                                           const void* data) {
   ZnodeChildren res;
   res.err = rc;
-  res.stat = *stat;
+  if (stat)
+    res.stat = *stat;
   if (strings) {
     for (int i = 0; i < strings->count; ++i) {
       res.values.emplace_back(std::string(strings->data[i]));
@@ -291,3 +329,4 @@ void ebbrt::ZooKeeper::void_completion(int rc, const void* data) {
   delete p;
   return;
 }
+

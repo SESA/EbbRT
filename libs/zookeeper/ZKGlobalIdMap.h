@@ -5,7 +5,10 @@
 #ifndef EBBRT_ZKGLOBALIDMAP_H_
 #define EBBRT_ZKGLOBALIDMAP_H_
 
+#include <iostream>
+#include <sstream>
 #include <string>
+#include <unordered_map>
 
 #include <ebbrt/CacheAligned.h>
 #include <ebbrt/Debug.h>
@@ -13,8 +16,6 @@
 #include <ebbrt/Future.h>
 #include <ebbrt/GlobalIdMapBase.h>
 #include <ebbrt/Message.h>
-#include <ebbrt/Runtime.h>
-#include <ebbrt/SharedEbb.h>
 #include <ebbrt/StaticIds.h>
 
 #include "ZooKeeper.h"
@@ -26,8 +27,8 @@ void InstallGlobalIdMap();
 class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
  public:
   struct ZKOptArgs : public GlobalIdMap::OptArgs {
-   std::string path;
-   ZooKeeper::Flag flags;
+    std::string path = std::string();
+    ZooKeeper::Flag flags = ZooKeeper::Flag::Nil;
   };
 
   static EbbRef<ZKGlobalIdMap> Create(EbbId id) {
@@ -68,18 +69,11 @@ class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
     return zkwatcher_.connected_.GetFuture();
   }
 
-  Future<std::vector<std::string>> List(EbbId id,
-                                        const ZKOptArgs& args) {
+  Future<std::vector<std::string>> List(EbbId id, const ZKOptArgs& args) {
     std::string path = args.path;
     auto p = new ebbrt::Promise<std::vector<std::string>>;
     auto ret = p->GetFuture();
-    char buff[100];
-    sprintf(buff, "/%d", id);
-    std::string fullpath(buff);
-    if (!path.empty()){
-      fullpath += "/" + path;
-    }
-      ebbrt::kprintf("ZKGlobalIdMap List %s\n", fullpath.c_str());
+    auto fullpath = get_id_path(id, path);
     zk_->GetChildren(std::string(fullpath)).Then([p](auto f) {
       auto zn_children = f.Get();
       p->SetValue(zn_children.values);
@@ -90,14 +84,9 @@ class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
   Future<std::string> Get(EbbId id, const GlobalIdMap::OptArgs& args) override {
     auto zkargs = static_cast<const ZKOptArgs&>(args);
     std::string path = zkargs.path;
-    char buff[100];
-    sprintf(buff, "/%d", id);
     auto p = new ebbrt::Promise<std::string>;
     auto f = p->GetFuture();
-    std::string fullpath(buff);
-    if (!path.empty()){
-      fullpath += "/" + path;
-    }
+    auto fullpath = get_id_path(id, path);
     zk_->Get(std::string(fullpath))
         .Then([p](ebbrt::Future<ebbrt::ZooKeeper::Znode> z) {
           auto znode = z.Get();
@@ -106,44 +95,62 @@ class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
     return f;
   }
 
+  Future<bool> Exists(EbbId id, const ZKOptArgs& args) {
+    std::string path = args.path;
+    auto fullpath = get_id_path(id, path);
+    return zk_->Exists(fullpath);
+  }
+
   Future<void> Set(EbbId id, const GlobalIdMap::OptArgs& args) override {
     auto zkargs = static_cast<const ZKOptArgs&>(args);
-    std::string val = zkargs.data;
-    std::string path = zkargs.path;
+    auto val = zkargs.data;
+    auto path = zkargs.path;
+    auto flags = zkargs.flags;
     auto p = new ebbrt::Promise<void>;
     auto ret = p->GetFuture();
-    char buff[20];
-    sprintf(buff, "/%d", id);
-    std::string fullpath(buff);
-    if (!path.empty()){
-      fullpath += "/" + path;
-    }
-    zk_->Exists(fullpath).Then([this, p, fullpath, val](auto b) {
+    std::cout << "ZKM Set Called for: " << id << std::endl;
+    auto fullpath = get_id_path(id, path);
+    std::cout << "ZKM path=" << id << " " << fullpath << std::endl;
+    zk_->Exists(fullpath).Then([this, p, fullpath, val, flags](auto b) {
       if (b.Get() == true) {
+        std::cout << "Setting Value " << fullpath << " = " << val << std::endl;
         zk_->Set(fullpath, val).Then([p](auto f) { p->SetValue(); });
       } else {
-        zk_->New(fullpath, val).Then([p](auto f) { p->SetValue(); });
+        zk_->New(fullpath, val, flags).Then([p](auto f) { p->SetValue(); });
       }
     });
     return ret;
   }
 
   void SetWatcher(EbbId id, Watcher* w, std::string path = std::string()) {
-    char buff[20];
-    sprintf(buff, "/%d", id);
-    std::string fullpath(buff);
-    if (!path.empty()){
-      fullpath += "/" + path;
-    }
-    zk_->Stat(fullpath, w);//.Block();
-    zk_->GetChildren(fullpath, w);//.Block();
+    auto fullpath = get_id_path(id, path);
+    zk_->Stat(fullpath, w);
+    zk_->GetChildren(fullpath, w);
     return;
   }
 
  private:
+  std::string get_id_path(EbbId id, std::string path = std::string()) {
+    std::string fullpath;
+    auto hit = ebbid_cache_.find(id);
+    if (hit == ebbid_cache_.end()) { /* ebbid cache miss */
+      std::ostringstream s;
+      s << '/' << id;
+      fullpath = s.str();
+      ebbid_cache_[id] = fullpath;
+      zk_->Exists(fullpath, true, true).Block();
+    } else { /* ebbid cache hit */
+      fullpath = hit->second;
+    }
+    if (!path.empty()) {
+      fullpath += "/" + path;
+    }
+    return fullpath;
+  }
+
   struct ConnectionWatcher : ebbrt::ZooKeeper::ConnectionWatcher {
     void OnConnected() override {
-      ebbrt::kprintf("GlobalIdMap: ZooKeeper session established.\n");
+      ebbrt::kprintf("ZKGlobalIdMap: ZooKeeper session established.\n");
       connected_.SetValue(true);
     }
     void OnConnecting() override {
@@ -159,6 +166,7 @@ class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
     }
     ebbrt::Promise<bool> connected_;
   };
+  std::unordered_map<ebbrt::EbbId, std::string> ebbid_cache_;
   ConnectionWatcher zkwatcher_;
   ebbrt::EbbRef<ebbrt::ZooKeeper> zk_;
 };

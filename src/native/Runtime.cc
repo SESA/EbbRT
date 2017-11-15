@@ -43,7 +43,7 @@ class Connection : public ebbrt::TcpHandler {
     ebbrt::ebb_allocator->SetIdSpace(info.getEbbIdSpace());
     ebbrt::runtime::frontend = info.getGlobalIdMapAddress();
     const auto& port = info.getMessengerPort();
-    ebbrt::kprintf("%x:%d\n", ebbrt::runtime::frontend, port);
+    ebbrt::kprintf("Runtime setup: %x:%d\n", ebbrt::runtime::frontend, port);
     ebbrt::messenger->StartListening(port);
     ebbrt::InstallGlobalIdMap();
     ebbrt::event_manager->ActivateContext(std::move(context_));
