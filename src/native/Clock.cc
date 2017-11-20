@@ -34,3 +34,9 @@ std::chrono::nanoseconds ebbrt::clock::Uptime() noexcept {
 std::chrono::nanoseconds ebbrt::clock::TscToNano(uint64_t tsc) noexcept {
   return the_clock->TscToNano(tsc);
 }
+
+void ebbrt::clock::SleepMilli(uint32_t t) {
+  auto t1 = ebbrt::clock::Wall::Now();
+  while ((ebbrt::clock::Wall::Now() - t1) < std::chrono::milliseconds(t)) {
+  }
+}
