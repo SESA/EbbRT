@@ -8,10 +8,18 @@
 
 #include "../Timer.h"
 #include "../UniqueIOBuf.h"
+#include "Multiboot.h"
 #include "Random.h"
 
 ebbrt::Future<void> ebbrt::NetworkManager::StartDhcp() {
   kbugon(Cpu::GetMine() != 0, "Dhcp not started on core 0!");
+  // Before DHCP, check if a static IP has been specified
+  auto cmdline = std::string(ebbrt::multiboot::CmdLine());
+  auto loc = cmdline.find("ipaddr=");
+  if (loc != std::string::npos) {
+    kprintf("Warning: Skipping DHCP, static IP detected\n");
+    return MakeReadyFuture<void>();
+  }
   if (interface_)
     return interface_->StartDhcp();
 
