@@ -24,6 +24,7 @@ class Wall {
 
 std::chrono::nanoseconds Uptime() noexcept;
 std::chrono::nanoseconds TscToNano(uint64_t tsc) noexcept;
+void SleepMilli(uint32_t t);
 
 class HighResTimer {
  public:
