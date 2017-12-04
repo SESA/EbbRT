@@ -97,7 +97,7 @@ MsgTst::SendMessages(Messenger::NetworkId nid, uint32_t count, size_t size) {
     auto dp = buf->GetMutDataPointer();
     dp.Get<uint32_t>() = id + 1;  // Ping messages are odd
     id += 2;
-    SendMessage(nid, std::move(buf)).Block();
+    SendMessage(nid, std::move(buf));
   }
   return ret;
 }
