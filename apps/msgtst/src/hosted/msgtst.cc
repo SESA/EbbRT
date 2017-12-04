@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
                         int signal_number) { c.io_service_.stop(); });
 
     try {
-      auto node_desc = node_allocator->AllocateNode(bindir.string(), 2, 2, 2);
+      auto node_desc = node_allocator->AllocateNode(bindir.string());
       node_desc.NetworkId().Then([msg_size, msg_count](auto f) {
         auto nid = f.Get();
         auto msgtst_ebb = MsgTst::Create();
