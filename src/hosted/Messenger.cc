@@ -8,6 +8,8 @@
 #include "GlobalIdMap.h"
 #include "NodeAllocator.h"
 
+#include <iostream>
+
 namespace bai = boost::asio::ip;
 
 ebbrt::Messenger::Messenger() {
@@ -31,24 +33,34 @@ ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to, EbbId id,
       auto endpoint = bai::tcp::endpoint(to.ip_, port_);
       auto& p = promise_map_[ip];
       connection_map_.emplace(ip, p.GetFuture().Share());
+      std::queue<message_queue_entry_t> foo;
+      message_queue_.emplace(ip, std::move(foo));
       auto socket =
           std::make_shared<bai::tcp::socket>(active_context->io_service_);
-      async_connect(*socket, &endpoint, (&endpoint) + 1,
-                    EventManager::WrapHandler(
-                        [socket, ip, this](const boost::system::error_code& ec,
+      async_connect(
+          *socket, &endpoint, (&endpoint) + 1,
+          EventManager::WrapHandler([socket, ip,
+                                     this](const boost::system::error_code& ec,
                                            bai::tcp::endpoint* /* unused */) {
-                          if (!ec) {
-                            auto session =
-                                std::make_shared<Session>(std::move(*socket));
-                            session->Start();
-                            promise_map_[ip].SetValue(
-                                std::weak_ptr<Session>(std::move(session)));
-                          }
-                        }));
+            if (!ec) {
+              auto session = std::make_shared<Session>(std::move(*socket));
+              session->Start();
+              {
+                std::lock_guard<std::mutex> lock(m_);
+                while (!message_queue_[ip].empty()) {
+                  session->Send(std::move(message_queue_[ip].front().second));
+                  message_queue_[ip].front().first.SetValue();
+                  message_queue_[ip].pop();
+                }
+                promise_map_[ip].SetValue(
+                    std::weak_ptr<Session>(std::move(session)));
+              }
+            }
+          }));
     }
   }
 
-  // construct header
+  // construct message
   auto buf = MakeUniqueIOBuf(sizeof(Header));
   auto dp = buf->GetMutDataPointer();
   auto& h = dp.Get<Header>();
@@ -56,10 +68,20 @@ ebbrt::Future<void> ebbrt::Messenger::Send(NetworkId to, EbbId id,
   h.type_code = type_code;
   h.id = id;
   buf->PrependChain(std::move(data));
-  return connection_map_[ip].Then([data = std::move(buf)](
-      SharedFuture<std::weak_ptr<Session>> f) mutable {
-    return f.Get().lock()->Send(std::move(data));
-  });
+  {
+    std::lock_guard<std::mutex> lock(m_);
+    if (!connection_map_[ip].Ready()) {
+      // add to message queue
+      Promise<void> p;
+      auto f = p.GetFuture();
+      message_queue_entry_t pair = std::make_pair(std::move(p), std::move(buf));
+      message_queue_[ip].emplace(std::move(pair));
+      return f;
+    }
+  }
+  // send message immediately
+  auto f = connection_map_[ip].Get();
+  return f.lock()->Send(std::move(buf));
 }
 
 void ebbrt::Messenger::DoAccept(
