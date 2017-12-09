@@ -34,7 +34,7 @@ ENV NOTVISIBLE "in users profile"
 RUN echo "export VISIBLE=now" >> /etc/profile
 
 COPY start.sh /root/start.sh
-COPY spawn.sh /root/spawn.sh
+COPY launch.sh /root/launch.sh
 
 EXPOSE 22
 EXPOSE 1234

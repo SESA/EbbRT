@@ -118,4 +118,4 @@ fi
 
 setup_bridge_networking
 
-./spawn.sh 
+./launch.sh 
