@@ -1,4 +1,3 @@
-#cmakedefine __EBBRT_ENABLE_FDT__
 #cmakedefine __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
 #cmakedefine __EBBRT_ENABLE_NETWORKING__
 #cmakedefine __EBBRT_ENABLE_TRACE__
