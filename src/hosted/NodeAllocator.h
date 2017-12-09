@@ -19,24 +19,33 @@
 namespace ebbrt {
 class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   struct DockerContainer {
-    DockerContainer() {}
-    DockerContainer(std::string repo,
-                    std::string container_args = std::string(),
-                    std::string run_cmd = std::string())
-        : img_{std::move(repo)}, arg_{std::move(container_args)},
-          cmd_{std::move(run_cmd)} {}
+    DockerContainer() = delete; 
+    DockerContainer(std::string img,
+                    std::string arg = std::string(),
+                    std::string cmd = std::string(), 
+                    std::string host = std::string())
+        : arg_{arg}, cmd_{cmd}, host_{host}, img_{img} {
+            base_ = "docker";
+            if(host_ != ""){
+              base_ += " -H "+host_;
+            }
+          }
     ~DockerContainer();
     DockerContainer(DockerContainer&& other) noexcept /* move constructor */
-        : img_{std::move(other.img_)},
-          arg_{std::move(other.arg_)},
+        : arg_{std::move(other.arg_)},
+          base_{std::move(other.base_)},
+          cid_{std::move(other.cid_)},
           cmd_{std::move(other.cmd_)},
-          cid_{std::move(other.cid_)} {}
+          host_{std::move(other.host_)},
+          img_{std::move(other.img_)} {}
     DockerContainer&
     operator=(DockerContainer&& other) noexcept /* move assignment */ {
-      img_ = std::move(other.img_);
       arg_ = std::move(other.arg_);
-      cmd_ = std::move(other.cmd_);
+      base_ = std::move(other.base_);
       cid_ = std::move(other.cid_);
+      cmd_ = std::move(other.cmd_);
+      host_ = std::move(other.host_);
+      img_ = std::move(other.img_);
       return *this;
     }
     DockerContainer(const DockerContainer& other) =
@@ -45,21 +54,22 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
     operator=(const DockerContainer& other) = delete; /* copy assignment */
     std::string Start();
     std::string StdOut();
+    std::string GetIp();
     void Stop() {}
 
    private:
-    std::string img_ = std::string();
     std::string arg_ = std::string();
-    std::string cmd_ = std::string();
+    std::string base_ = std::string();
     std::string cid_ = std::string();
+    std::string cmd_ = std::string();
+    std::string host_ = std::string();
+    std::string img_ = std::string();
   };
 
-  static const constexpr int kDefaultCpus = 2;
-  static const constexpr int kDefaultNumaNodes = 2;
-  static const constexpr int kDefaultRam = 2;
-  static int DefaultCpus;
-  static int DefaultNumaNodes;
-  static int DefaultRam;
+  static const constexpr uint8_t kDefaultCpus = 2;
+  static const constexpr uint8_t kDefaultRam = 2;
+  static uint8_t DefaultCpus;
+  static uint8_t DefaultRam;
   static std::string DefaultArguments;
   static std::string CustomNetworkCreate;
   static std::string CustomNetworkRemove;
@@ -73,6 +83,14 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   NodeAllocator();
   ~NodeAllocator();
 
+  struct NodeArgs {
+    uint8_t cpus = DefaultCpus;
+    uint8_t ram = DefaultRam;
+    std::string arguments = DefaultArguments;
+    std::string constraint_node = "";
+    NodeArgs() {} 
+  };
+
   class NodeDescriptor {
    public:
     NodeDescriptor(std::string node_id,
@@ -85,11 +103,7 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
     std::string node_id_;
     ebbrt::Future<ebbrt::Messenger::NetworkId> net_id_;
   };
-  NodeDescriptor AllocateNode(std::string binary_path, int cpus = DefaultCpus,
-                              int numNodes = DefaultNumaNodes,
-                              int ram = DefaultRam,
-                              std::string arguments = DefaultArguments, 
-                              std::string constraint_node = "");
+  NodeDescriptor AllocateNode(std::string binary_path, const NodeArgs& args = NodeArgs());
 
   std::string AllocateContainer(std::string repo,
                                 std::string container_args = std::string(),
