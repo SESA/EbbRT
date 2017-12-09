@@ -16,7 +16,7 @@ void ebbrt::kvprintf(const char* __restrict format, va_list va) {
 }
 
 void ebbrt::kprintf(const char* __restrict format, ...) {
-#ifndef __EBBRT_QUIET__
+#ifndef NDEBUG
   va_list ap;
   va_start(ap, format);
   kvprintf(format, ap);
@@ -24,7 +24,7 @@ void ebbrt::kprintf(const char* __restrict format, ...) {
 #endif
 }
 
-void ebbrt::force_kprintf(const char* __restrict format, ...) {
+void ebbrt::kprintf_force(const char* __restrict format, ...) {
   va_list ap;
   va_start(ap, format);
   kvprintf(format, ap);
