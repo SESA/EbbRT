@@ -191,7 +191,7 @@ void ParseSrat(const ACPI_TABLE_SRAT* srat) {
 }  // namespace
 
 void ebbrt::acpi::PowerOff() {
-  ebbrt::kprintf("Power Off.\n");
+  ebbrt::kprintf_force("Power Off.\n");
   AcpiEnterSleepState(ACPI_STATE_S5);
 }
 

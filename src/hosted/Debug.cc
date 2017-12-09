@@ -8,10 +8,17 @@
 #include "Debug.h"
 
 void ebbrt::kprintf(const char* __restrict format, ...) {
-#ifndef __EBBRT_QUIET__
+#ifndef NDEBUG
   va_list ap;
   va_start(ap, format);
   vprintf(format, ap);
   va_end(ap);
 #endif
+}
+
+void ebbrt::kprintf_force(const char* __restrict format, ...) {
+  va_list ap;
+  va_start(ap, format);
+  vprintf(format, ap);
+  va_end(ap);
 }

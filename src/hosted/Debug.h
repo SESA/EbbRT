@@ -23,6 +23,8 @@ namespace ebbrt {
 
 __attribute__((no_instrument_function)) void
 kprintf(const char* __restrict format, ...);
+__attribute__((no_instrument_function)) void
+kprintf_force(const char* __restrict format, ...);
 
 static __attribute__((noreturn)) void kabort() { abort(); }
 

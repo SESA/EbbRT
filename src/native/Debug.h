@@ -18,7 +18,7 @@ kvprintf(const char* __restrict format, va_list va);
 __attribute__((no_instrument_function)) void
 kprintf(const char* __restrict format, ...);
 __attribute__((no_instrument_function)) void
-force_kprintf(const char* __restrict format, ...);
+kprintf_force(const char* __restrict format, ...);
 
 #if __cplusplus > 199711L
 template <typename... Args>
