@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <mutex>
 #include <string>
+#include <queue>
+#include <utility>
 
 #include <boost/asio.hpp>
 
@@ -88,6 +90,8 @@ class Messenger : public StaticSharedEbb<Messenger> {
   std::unordered_map<uint32_t, SharedFuture<std::weak_ptr<Session>>>
       connection_map_;
   std::unordered_map<uint32_t, Promise<std::weak_ptr<Session>>> promise_map_;
+  typedef std::pair<Promise<void>,std::unique_ptr<IOBuf>> message_queue_entry_t;
+  std::unordered_map<uint32_t, std::queue<message_queue_entry_t>> message_queue_;
 
   friend class Session;
   friend class NodeAllocator;
