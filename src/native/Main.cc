@@ -74,7 +74,7 @@ ebbrt::Main(multiboot::Information* mbi) {
   kbugon(started_once, "EbbRT reboot detected... aborting!\n");
   started_once = true;
 
-  kprintf("EbbRT Copyright 2013-2015 Boston University SESA Developers\n");
+  kprintf_force("EbbRT Copyright 2013-2018 Boston University SESA Developers\n");
 
   idt::Init();
   cpuid::Init();
