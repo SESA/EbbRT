@@ -7,11 +7,11 @@
 #endif
 #include <iostream>
 
-#include "Debug.h"
 #include "Cpu.h"
+#include "Debug.h"
 #include "Messenger.h"
-#include "PoolAllocator.h"
 #include "NodeAllocator.h"
+#include "PoolAllocator.h"
 
 #include "../GlobalIdMap.h"
 
@@ -43,49 +43,48 @@ void ebbrt::PoolAllocator::AllocateNode(int i) {
   auto specified_nodes = nodes_.size() > 0;
   ebbrt::NodeAllocator::NodeArgs args = {};
 
-  std::string node = (specified_nodes) ? nodes_[i % nodes_.size()] 
-    : std::string();
+  std::string node =
+      (specified_nodes) ? nodes_[i % nodes_.size()] : std::string();
 
   args.constraint_node = node;
   auto nd = ebbrt::node_allocator->AllocateNode(binary_path_, args);
 
-  nd.NetworkId().Then(
-      [this, i, specified_nodes, node](ebbrt::Future<ebbrt::Messenger::NetworkId> inner) {
-    auto nid =inner.Get();
+  nd.NetworkId().Then([this, i, specified_nodes,
+                       node](ebbrt::Future<ebbrt::Messenger::NetworkId> inner) {
+    auto nid = inner.Get();
 #ifndef NDEBUG
     std::cerr << "# allocated Node: " << i;
     if (specified_nodes)
-      std:: cerr << " in: " << node;
+      std::cerr << " in: " << node;
     std::cerr << std::endl;
 #endif
     num_nodes_alloc_.fetch_add(1);
     nids_[i] = nid;
-    
+
     if (num_nodes_alloc_ == num_nodes_) {
       // Node ready to work, set future to true
-      pool_promise_.SetValue(); 
+      pool_promise_.SetValue();
     }
   });
 }
 
-void ebbrt::PoolAllocator::AllocatePool(std::string binary_path, 
-    int num_nodes, std::vector<size_t> cpus_ids) {
+void ebbrt::PoolAllocator::AllocatePool(std::string binary_path, int num_nodes,
+                                        std::vector<size_t> cpus_ids) {
 
   num_nodes_ = num_nodes;
   num_nodes_alloc_.store(0);
   binary_path_ = binary_path;
-  nids_ = new ebbrt::Messenger::NetworkId [num_nodes_];
+  nids_ = new ebbrt::Messenger::NetworkId[num_nodes_];
 
-  char * str = getenv("EBBRT_NODE_LIST_CMD");
+  char* str = getenv("EBBRT_NODE_LIST_CMD");
   std::string cmd = (str) ? std::string(str) : std::string();
   std::string node_list;
   if (!cmd.empty()) {
     node_list = RunCmd(cmd);
-    char* node  = strtok (&node_list[0],",");
-    while (node != NULL)
-    {
+    char* node = strtok(&node_list[0], ",");
+    while (node != NULL) {
       nodes_.push_back(node);
-      node = strtok( NULL, "," );
+      node = strtok(NULL, ",");
     }
   }
 
@@ -95,7 +94,7 @@ void ebbrt::PoolAllocator::AllocatePool(std::string binary_path,
   std::cerr << "|      img: " << binary_path_ << std::endl;
   std::cerr << "|    nodes: " << num_nodes << std::endl;
   if (nodes_.size() > 0) {
-    std::cerr << "| host ids: "; 
+    std::cerr << "| host ids: ";
     for (size_t i = 0; i < nodes_.size(); i++)
       std::cerr << nodes_[i] << " ";
     std::cerr << std::endl;
@@ -104,7 +103,8 @@ void ebbrt::PoolAllocator::AllocatePool(std::string binary_path,
 
   // Round robin through the available cpus
   for (int i = 0; i < num_nodes; i++) {
-    std::cerr << "spawning AllocateNode() on core #" << cpus_ids[i] << std::endl;
+    std::cerr << "spawning AllocateNode() on core #" << cpus_ids[i]
+              << std::endl;
     auto cpu_i = ebbrt::Cpu::GetByIndex(cpus_ids[i] % cpu_num);
     auto ctxt = cpu_i->get_context();
 
