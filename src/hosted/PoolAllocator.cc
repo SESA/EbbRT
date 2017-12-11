@@ -69,7 +69,7 @@ void ebbrt::PoolAllocator::AllocateNode(int i) {
 }
 
 void ebbrt::PoolAllocator::AllocatePool(std::string binary_path, 
-    int num_nodes) {
+    int num_nodes, std::vector<size_t> cpus_ids) {
 
   num_nodes_ = num_nodes;
   num_nodes_alloc_.store(0);
@@ -104,7 +104,8 @@ void ebbrt::PoolAllocator::AllocatePool(std::string binary_path,
 
   // Round robin through the available cpus
   for (int i = 0; i < num_nodes; i++) {
-    auto cpu_i = ebbrt::Cpu::GetByIndex(i % cpu_num);
+    std::cerr << "spawning AllocateNode() on core #" << cpus_ids[i] << std::endl;
+    auto cpu_i = ebbrt::Cpu::GetByIndex(cpus_ids[i] % cpu_num);
     auto ctxt = cpu_i->get_context();
 
     ebbrt::event_manager->Spawn([this, i]() { AllocateNode(i); }, ctxt, true);
