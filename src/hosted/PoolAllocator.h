@@ -28,7 +28,12 @@ namespace ebbrt {
 
     public:
       std::string RunCmd(std::string cmd);
-      void AllocatePool(std::string binary_path, int numNodes);
+      void AllocatePool(std::string binary_path, int numNodes, std::vector<size_t> cpu_ids);
+      void AllocatePool(std::string binary_path, int numNodes) {
+         std::vector<size_t> cpu_ids(numNodes);
+         std::iota (std::begin(cpu_ids), std::end(cpu_ids), 0);
+         AllocatePool(binary_path, numNodes, cpu_ids);
+      }
       void AllocateNode(int i);
       ebbrt::NodeAllocator::NodeDescriptor GetNodeDescriptor(int i);
       ebbrt::Messenger::NetworkId GetNidAt(int i) { return nids_[i];};
