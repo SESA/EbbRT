@@ -31,8 +31,7 @@ std::string ebbrt::NodeAllocator::CustomNetworkRemove;
 std::string ebbrt::NodeAllocator::CustomNetworkIp;
 std::string ebbrt::NodeAllocator::CustomNetworkNodeArguments;
 
-void
-ebbrt::NodeAllocator::ClassInit() {
+void ebbrt::NodeAllocator::ClassInit() {
   // Node create configuration
   char* str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_CPUS");
   DefaultCpus = (str) ? atoi(str) : kDefaultCpus;
@@ -75,14 +74,19 @@ std::string ebbrt::NodeAllocator::RunCmd(std::string cmd) {
 ebbrt::NodeAllocator::DockerContainer::~DockerContainer() {
   if (!cid_.empty()) {
     std::cerr << "removing container: " << cid_.substr(0, 12) << std::endl;
-    RunCmd(base_+" rm -f " + cid_);
+    try {
+      RunCmd(base_ + " rm -f " + cid_);
+    } catch (std::runtime_error& e) {
+      std::cout << e.what() << std::endl;
+    }
   }
 }
 
 std::string ebbrt::NodeAllocator::DockerContainer::GetIp() {
-  auto cip = RunCmd(base_+" inspect -f '{{range "
-                    ".NetworkSettings.Networks}}{{.IPAddress}}{{end}}' " +
-                    cid_ );
+  auto cip =
+      RunCmd(base_ + " inspect -f '{{range "
+                     ".NetworkSettings.Networks}}{{.IPAddress}}{{end}}' " +
+             cid_);
   assert(cip != "");
   return cip;
 }
@@ -95,17 +99,18 @@ std::string ebbrt::NodeAllocator::DockerContainer::Start() {
   cmd << base_ << " run -d " << arg_ << " " << img_ << " " << cmd_;
   cid_ = RunCmd(cmd.str());
   std::cerr << "Docker Container:" << std::endl;
-  if( host_ != ""){
+  if (host_ != "") {
     std::cerr << "| host:" << host_ << std::endl;
   }
   std::cerr << "|  cid: " << cid_.substr(0, 12) << std::endl;
-  std::cerr << "|  log: " << base_ << " logs " << cid_.substr(0, 12) << std::endl;
+  std::cerr << "|  log: " << base_ << " logs " << cid_.substr(0, 12)
+            << std::endl;
   return cid_;
 }
 
 std::string ebbrt::NodeAllocator::DockerContainer::StdOut() {
   ebbrt::kbugon(cid_.empty());
-  return RunCmd(base_+" logs " + cid_);
+  return RunCmd(base_ + " logs " + cid_);
 }
 
 ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket,
@@ -176,7 +181,8 @@ void ebbrt::NodeAllocator::Session::Start() {
       }));
 }
 
-ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(1) {
+ebbrt::NodeAllocator::NodeAllocator()
+    : node_index_(2), allocation_index_(0), connected_(false) {
   auto acceptor = std::make_shared<bai::tcp::acceptor>(
       active_context->io_service_, bai::tcp::endpoint(bai::tcp::v4(), 0));
   auto socket = std::make_shared<bai::tcp::socket>(active_context->io_service_);
@@ -193,6 +199,7 @@ ebbrt::NodeAllocator::NodeAllocator() : node_index_(2), allocation_index_(1) {
     network_id_ = RunCmd(CustomNetworkCreate);
     network_ip = RunCmd(CustomNetworkIp + network_id_);
   }
+  connected_ = true;
 
   uint8_t ip0, ip1, ip2, ip3;
   sscanf(network_ip.c_str(), "%hhu.%hhu.%hhu.%hhu\\%hhu", &ip0, &ip1, &ip2,
@@ -255,8 +262,8 @@ void ebbrt::NodeAllocator::AppendArgs(std::string arg) {
 }
 
 ebbrt::NodeAllocator::NodeDescriptor
-ebbrt::NodeAllocator::AllocateNode(std::string binary_path, 
-    const ebbrt::NodeAllocator::NodeArgs& args){
+ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
+                                   const ebbrt::NodeAllocator::NodeArgs& args) {
 
   assert(args.cpus != 0);
   assert(args.ram != 0);
@@ -285,9 +292,8 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
               << " --device /dev/vhost-net:/dev/vhost-net"
               << " -e VM_WAIT=true"
               << " -e VM_MEM=" << std::to_string(args.ram) << "G"
-              << " -e VM_CPU=" << std::to_string(args.cpus)
-              << " --name='" << container_name
-              << "' ";
+              << " -e VM_CPU=" << std::to_string(args.cpus) << " --name='"
+              << container_name << "' ";
 
   std::string repo = " ebbrt/kvm-qemu:latest";
 
@@ -298,7 +304,8 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
             << " -append \"" << cmdline_ << ";allocid=" << allocation_id
             << "\"";
 
-  auto c = DockerContainer(repo, docker_args.str(), qemu_args.str(), args.constraint_node);
+  auto c = DockerContainer(repo, docker_args.str(), qemu_args.str(),
+                           args.constraint_node);
   auto id = c.Start();
   auto cip = c.GetIp(); /* get IP of container */
 
@@ -308,11 +315,12 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
   /* transfer image into container */
   RunCmd("ping -c 3 -w 30 " + cip);
   RunCmd("nc -z -w 30 " + cip + " 22");
-  RunCmd("scp -q -o UserKnownHostsFile=/dev/null -o " 
+  RunCmd("scp -q -o UserKnownHostsFile=/dev/null -o "
          "StrictHostKeyChecking=no " +
          binary_path + " root@" + cip + ":/root/img.elf");
   RunCmd("ssh -q -o UserKnownHostsFile=/dev/null -o "
-         "StrictHostKeyChecking=no root@"+cip+" 'touch /tmp/signal'");
+         "StrictHostKeyChecking=no root@" +
+         cip + " 'touch /tmp/signal'");
 
   std::cerr << "Node Allocation Details: " << std::endl;
   std::cerr << "| img: " << binary_path << std::endl;
@@ -326,15 +334,29 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
 #endif
   return NodeDescriptor(id, std::move(rfut));
 }
-ebbrt::NodeAllocator::~NodeAllocator() {
-  nodes_.clear();
-  if (CustomNetworkRemove.empty()) {
-    std::cerr << "removing Network: " << network_id_.substr(0, 12) << std::endl;
-    RunCmd("docker network rm " + network_id_);
-  } else {
-    std::cerr << "Removing custom network" << std::endl;
-    RunCmd(CustomNetworkRemove + network_id_);
+
+void ebbrt::NodeAllocator::RemoveNetwork() {
+  kassert(nodes_.empty());
+  try {
+    if (CustomNetworkRemove.empty()) {
+      std::cerr << "removing Network: " << network_id_.substr(0, 12)
+                << std::endl;
+      RunCmd("docker network rm " + network_id_);
+    } else {
+      std::cerr << "Removing custom network" << std::endl;
+      RunCmd(CustomNetworkRemove + network_id_);
+    }
+  } catch (std::runtime_error& e) {
+    std::cout << e.what() << std::endl;
   }
+  connected_ = false;
+}
+
+ebbrt::NodeAllocator::~NodeAllocator() {
+  if (!nodes_.empty())
+    FreeAllNodes();
+  if (connected_)
+    RemoveNetwork();
 }
 
 void ebbrt::NodeAllocator::FreeNode(std::string node_id) {
