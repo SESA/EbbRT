@@ -41,6 +41,10 @@ class PoolAllocator : public StaticSharedEbb<PoolAllocator> {
   ebbrt::Future<void> waitPool() {
     return std::move(pool_promise_.GetFuture());
   }
+  void EmptyPool() {
+    node_allocator->FreeAllNodes();
+    node_allocator->RemoveNetwork();
+  }
 };
 const constexpr auto pool_allocator = EbbRef<PoolAllocator>(kPoolAllocatorId);
 }

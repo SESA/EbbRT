@@ -19,17 +19,16 @@
 namespace ebbrt {
 class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   struct DockerContainer {
-    DockerContainer() = delete; 
-    DockerContainer(std::string img,
-                    std::string arg = std::string(),
-                    std::string cmd = std::string(), 
+    DockerContainer() = delete;
+    DockerContainer(std::string img, std::string arg = std::string(),
+                    std::string cmd = std::string(),
                     std::string host = std::string())
         : arg_{arg}, cmd_{cmd}, host_{host}, img_{img} {
-            base_ = "docker";
-            if(host_ != ""){
-              base_ += " -H "+host_;
-            }
-          }
+      base_ = "docker";
+      if (host_ != "") {
+        base_ += " -H " + host_;
+      }
+    }
     ~DockerContainer();
     DockerContainer(DockerContainer&& other) noexcept /* move constructor */
         : arg_{std::move(other.arg_)},
@@ -88,7 +87,7 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
     uint8_t ram = DefaultRam;
     std::string arguments = DefaultArguments;
     std::string constraint_node = "";
-    NodeArgs() {} 
+    NodeArgs() {}
   };
 
   class NodeDescriptor {
@@ -103,13 +102,16 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
     std::string node_id_;
     ebbrt::Future<ebbrt::Messenger::NetworkId> net_id_;
   };
-  NodeDescriptor AllocateNode(std::string binary_path, const NodeArgs& args = NodeArgs());
+  NodeDescriptor AllocateNode(std::string binary_path,
+                              const NodeArgs& args = NodeArgs());
 
   std::string AllocateContainer(std::string repo,
                                 std::string container_args = std::string(),
                                 std::string run_cmd = std::string());
   void AppendArgs(std::string arg);
   void FreeNode(std::string node_id);
+  void FreeAllNodes() { nodes_.clear(); };
+  void RemoveNetwork();
 
  private:
   class Session : public std::enable_shared_from_this<Session> {
@@ -132,6 +134,7 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   std::unordered_map<uint16_t, Promise<Messenger::NetworkId>> promise_map_;
   std::string network_id_;
   std::string cmdline_;
+  bool connected_;
   uint32_t net_addr_;
   uint16_t port_;
   uint8_t cidr_;
