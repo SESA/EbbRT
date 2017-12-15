@@ -12,6 +12,9 @@ fi
 if [ -n "$NO_NETWORK" ]; then 
   echo "***No Networking***"
 fi
+if [ -n "$GDB" ]; then 
+  echo "***GDB Enabled @localhost:1234 ***"
+fi
 
 # configure virtual machine
 VCPU=${VM_CPU:-2}
@@ -48,6 +51,9 @@ if [ -z "$KVM_ARGS" ]; then
   # verify boot image exists 
   if [[ ! -f "$BOOTIMG" ]]; then echo "Boot image not found: $1"; exit 1; fi
   KVM_ARGS="-kernel $BOOTIMG"
+fi
+if [ -n "$GDB" ]; then 
+  KVM_ARGS="$KVM_ARGS -s "
 fi
 if [ -n "$NO_NETWORK" ]; then 
 KVM_ARGS="$KVM_ARGS -append 'nodhcp;'"
