@@ -176,7 +176,6 @@ void Cpu::Shutdown(void) {
 }
 void Cpu::Exit(int val) {
   Shutdown();
-  exit(val);
 }
 }  // namespace ebbrt
 
