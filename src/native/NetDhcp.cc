@@ -15,7 +15,7 @@ ebbrt::Future<void> ebbrt::NetworkManager::StartDhcp() {
   kbugon(Cpu::GetMine() != 0, "Dhcp not started on core 0!");
   // Before DHCP, check if a static IP has been specified
   auto cmdline = std::string(ebbrt::multiboot::CmdLine());
-  auto loc = cmdline.find("nodns");
+  auto loc = cmdline.find("nodhcp");
   if (loc != std::string::npos) {
     kprintf("Warning: Skipping DHCP, static IP detected\n");
     return MakeReadyFuture<void>();

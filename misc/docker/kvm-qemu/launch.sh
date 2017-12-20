@@ -48,7 +48,7 @@ if [ -z "$KVM_ARGS" ]; then
   KVM_ARGS="-kernel $BOOTIMG"
 fi
 if [ -n "$NO_NETWORK" ]; then 
-KVM_ARGS="$KVM_ARGS -append 'nodns;'"
+KVM_ARGS="$KVM_ARGS -append 'nodhcp;'"
 fi
 
 $LAUNCHER qemu-system-x86_64 -m $VMEM -smp cpus=$VCPU -cpu host -serial stdio -display none -enable-kvm `eval echo $KVM_NET_OPTS` $KVM_ARGS
