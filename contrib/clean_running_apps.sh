@@ -9,7 +9,7 @@ if [[ -z $1 ]]; then
 fi
 
 echo "Removing docker containers..."
-docker ps | grep ebbrt-$(id -u) | cut -d ' ' -f 1 | while read id; do docker kill $id; done
+docker ps | grep ebbrt-$(id -u) | cut -d ' ' -f 1 | while read id; do docker rm -f $id; done
 
 echo "Removing docker networks..."
 docker network ls | grep ebbrt-$(id -u) | cut -d ' ' -f 9 | while read id; do docker network rm $id; done
