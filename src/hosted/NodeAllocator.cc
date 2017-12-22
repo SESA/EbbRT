@@ -75,7 +75,6 @@ std::string ebbrt::NodeAllocator::RunCmd(std::string cmd) {
 ebbrt::NodeAllocator::DockerContainer::~DockerContainer() {
   if (!cid_.empty()) {
     std::cerr << "removing container: " << cid_.substr(0, 12) << std::endl;
-    RunCmd(base_+" stop " + cid_);
     RunCmd(base_+" rm -f " + cid_);
   }
 }
