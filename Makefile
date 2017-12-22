@@ -97,7 +97,7 @@ ebbrt-hosted-libs: hosted
 	$(CMAKE_BUILD_OPT) $(CMAKE_VERBOSE_OPT) $(EBBRT_LIBS) && \
 	$(MAKE) $(MAKE_OPT) install && $(CD) - 
 	
-ebbrt-native-libs: native 
+ebbrt-native-libs: ebbrt-only 
 	$(CD) $(NATIVE_BUILD_DIR) && $(MKDIR) -p libs && $(CD) libs && \
 	EBBRT_SYSROOT=$(NATIVE) $(CMAKE) -DCMAKE_INSTALL_PREFIX=$(NATIVE) \
 	-DCMAKE_TOOLCHAIN_FILE=$(NATIVE_TOOLCHAIN_FILE) \

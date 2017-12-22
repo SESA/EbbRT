@@ -13,6 +13,7 @@
 #include <ebbrt/CapnpMessage.h>
 #include <ebbrt/Debug.h>
 #include <ebbrt/GlobalIdMap.h>
+#include <ebbrt/GlobalIdMapBase.h>
 
 EBBRT_PUBLISH_TYPE(, FileSystem);
 
@@ -48,7 +49,7 @@ ebbrt::Future<void> FileSystem::PreCreate(ebbrt::EbbId id) {
       reinterpret_cast<const capnp::byte *>(nid.data()), nid.length()));
   StringOutputStream stream;
   capnp::writeMessage(stream, message);
-  return ebbrt::global_id_map->Set(id, GlobalIdMap::OptArgs({data = stream.String()});
+  return ebbrt::global_id_map->Set(id, ebbrt::GlobalIdMap::OptArgs({.data=stream.String()}));
 }
 
 FileSystem &FileSystem::CreateRep(ebbrt::EbbId id) {

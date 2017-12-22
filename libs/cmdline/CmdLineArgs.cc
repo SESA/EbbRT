@@ -94,7 +94,7 @@ CmdLineArgs::Create(int argc, char **argv, ebbrt::EbbId id) {
   StringOutputStream stream;
   capnp::writeMessage(stream, message);
   return ebbrt::global_id_map
-      ->Set(id, GlobalIdMap::OptArgs({data = stream.String()}))
+      ->Set(id, ebbrt::GlobalIdMap::OptArgs({.data=stream.String()}))
       .Then([id](ebbrt::Future<void> f) {
         f.Get();
         return ebbrt::EbbRef<CmdLineArgs>(id);
