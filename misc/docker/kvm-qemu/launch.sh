@@ -18,6 +18,7 @@ VCPU=${VM_CPU:-2}
 VMEM=${VM_MEM:-2G}
 WAIT=${VM_WAIT:-false}
 TAP=${TAP_IFACE:-tap0}
+MAC=$VM_MAC
 VQS=$VCPU
 NETVEC=$(($((${VCPU}*2))+ 2))
 if [ $VCPU -eq 1 ]
@@ -35,6 +36,7 @@ vectors=\$NETVEC"}
 
 # Generate random MAC address if one isn't set already
 if [ -z "$MAC" ]; then
+  echo "***No Mac Address Specified***"
   hexchars="0123456789ABCDEF"
   end=$( for i in {1..8} ; do echo -n ${hexchars:$(( $RANDOM % 16 )):1} ; done | sed -e 's/\(..\)/:\1/g' )
   MAC=`echo 06:FE$end`
