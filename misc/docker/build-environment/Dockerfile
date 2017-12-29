@@ -18,6 +18,7 @@ libtool  \
 libtool \
 pkg-config \
 software-properties-common \
+texinfo \
 wget \
 zlib1g-dev
 

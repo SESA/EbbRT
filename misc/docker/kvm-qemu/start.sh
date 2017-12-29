@@ -2,9 +2,7 @@
 if [ -n "$DEBUG" ]; then set -x; fi
 
 # Configure network for VM 
-# This script configured the container to boot a single EbbRT backend:
-#   1. Create bridge and tap interfaces, bridge with default interface 
-#   2. 2.  
+# This script configured the container to boot a single EbbRT backend
 
 # Ensure working directory is local to this script
 cd "$(dirname "$0")"
@@ -56,7 +54,7 @@ cidr2mask() {
 }
 
 setup_bridge_networking() {
-    export MAC=`ip addr show $IFACE | grep ether | sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*\$//g' | cut -f2 -d ' '`
+    MAC=`ip addr show $IFACE | grep ether | sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*\$//g' | cut -f2 -d ' '`
     IP=`ip addr show dev $IFACE | grep "inet $IP" | awk '{print $2}' | cut -f1 -d/`
     CIDR=`ip addr show dev $IFACE | grep "inet $IP" | awk '{print $2}' | cut -f2 -d/`
     NETMASK=`cidr2mask $CIDR`
@@ -67,7 +65,7 @@ setup_bridge_networking() {
     # Generate random new MAC address
     hexchars="0123456789ABCDEF"
     end=$( for i in {1..8} ; do echo -n ${hexchars:$(( $RANDOM % 16 )):1} ; done | sed -e 's/\(..\)/:\1/g' )
-    NEWMAC=`echo 06:FE$end`
+    export VM_MAC=`echo 06:FE$end`
 
     let "NEWCIDR=$CIDR"
 
@@ -77,34 +75,39 @@ setup_bridge_networking() {
     let "k=($i+$j)"
     NEWIP=`itoa k`
 
-    ip link set dev $IFACE down
-    ip link set $IFACE address $NEWMAC
-    ip addr del $IP/$CIDR dev $IFACE
-    ip tuntap add dev $TAP_IFACE mode tap multi_queue 
+    # bridge
+    ip link set dev $IFACE mtu 9000 
     ip link add name $BRIDGE_IFACE type bridge
-    ip link set $IFACE master $BRIDGE_IFACE 
-    ip link set $TAP_IFACE master $BRIDGE_IFACE 
-    ip link set dev $IFACE up
+    ip addr add $NEWIP/$CIDR dev $BRIDGE_IFACE
+    ip link set dev $BRIDGE_IFACE mtu 9000 
     ip link set dev $BRIDGE_IFACE up
+    # tap
+    ip tuntap add dev $TAP_IFACE mode tap multi_queue 
+    ip link set $TAP_IFACE master $BRIDGE_IFACE 
+    ip link set dev $TAP_IFACE mtu 9000
     ip link set dev $TAP_IFACE up
-    if [ -z $NO_DHCP ]; then
-        ip addr add $IP/$CIDR dev $BRIDGE_IFACE
-    fi
+    # iface
+    ip link set dev $IFACE down
+    ip addr flush $IFACE 
+    ip link set $IFACE master $BRIDGE_IFACE 
+    ip link set dev $IFACE up
     if [[ $? -ne 0 ]]; then
         echo "Failed to bring up network bridge"
         exit 4
     fi
-
+    if [ -z "$ETH_BRIDGE" ]; then
+      ebtables -t nat -A POSTROUTING -o eth0 -j snat --to-source $MAC -s $VM_MAC --snat-arp
+      ebtables -t nat -A PREROUTING -i eth0 -j dnat -d $MAC --to-destination $VM_MAC 
+    fi
+    if [ -z "$NO_DHCP" ]; then
 cat > /etc/dnsmasq.conf << EOF
       user=root
-      dhcp-range=$NEWIP,$NEWIP
-      dhcp-host=$MAC,$HOSTNAME,$NEWIP,infinite
+      dhcp-range=$IP,$IP
+      dhcp-host=$VM_MAC,$HOSTNAME,$IP,infinite
       dhcp-option=option:router,$GATEWAY
       dhcp-option=option:netmask,$NETMASK
       dhcp-option=option:dns-server,$NAMESERVERS
 EOF
-
-    if [ -z "$NO_DHCP" ]; then
         dnsmasq 
     fi
 }

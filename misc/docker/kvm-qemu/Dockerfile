@@ -10,10 +10,12 @@ RUN apt-get update && \
     libpixman-1-dev \
     openssh-server \
     zlib1g-dev \
-    dnsmasq 
+    iputils-ping \
+    iproute2  \
+    ebtables \
+    dnsmasq
 
-# QEMU install
-RUN git clone -b pin-threads https://github.com/SESA/qemu.git /qemu
+RUN git clone -b qemu-lite-v2.9.0 https://github.com/clearcontainers/qemu.git /qemu
 WORKDIR /qemu
 RUN ./configure --target-list=x86_64-softmmu --enable-vhost-net --enable-kvm
 RUN make -j
