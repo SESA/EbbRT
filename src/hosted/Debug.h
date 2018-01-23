@@ -30,7 +30,7 @@ static __attribute__((noreturn)) void kabort() { abort(); }
 
 template <typename... Args>
 __attribute__((noreturn)) void kabort(Args&&... args) {
-  kprintf(std::forward<Args>(args)...);  // NOLINT
+  kprintf_force(std::forward<Args>(args)...);  // NOLINT
   kabort();
 }
 
