@@ -103,7 +103,7 @@ extern "C" int ebbrt_newlib_write(int file, char* ptr, int len) {
     EBBRT_UNIMPLEMENTED();
     return 0;
   }
-  ebbrt::kprintf("%*.*s", len, len, ptr);
+  ebbrt::kprintf_force("%*.*s", len, len, ptr);
   return len;
 }
 
