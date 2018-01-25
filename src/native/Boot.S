@@ -198,7 +198,7 @@ smpboot64:
         mov %ax, %fs
         mov %ax, %gs
         fninit
-        fldcw _fpu_control_word - smpboot + SMP_START_ADDRESS
+        fldcw _fpu_control_word 
 1:
         mov smp_stack_free - smpboot + SMP_START_ADDRESS, %rax
         mov (%rax), %rbx

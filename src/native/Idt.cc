@@ -114,26 +114,28 @@ extern "C" __attribute__((noreturn)) void ebbrt::idt::EventInterrupt(int num) {
 
 namespace {
 void PrintExceptionFrame(ebbrt::idt::ExceptionFrame* ef) {
-  ebbrt::kprintf("SS: %#018" PRIx64 " RSP: %#018" PRIx64 "\n", ef->ss, ef->rsp);
-  ebbrt::kprintf("FLAGS: %#018" PRIx64 "\n",
-                 ef->rflags);  // TODO(Dschatz): print out actual meaning
-  ebbrt::kprintf("CS: %#018" PRIx64 " RIP: %#018" PRIx64 "\n", ef->cs, ef->rip);
-  ebbrt::kprintf("Error Code: %" PRIx64 "\n", ef->error_code);
-  ebbrt::kprintf("RAX: %#018" PRIx64 " RBX: %#018" PRIx64 "\n", ef->rax,
-                 ef->rbx);
-  ebbrt::kprintf("RCX: %#018" PRIx64 " RDX: %#018" PRIx64 "\n", ef->rcx,
-                 ef->rdx);
-  ebbrt::kprintf("RSI: %#018" PRIx64 " RDI: %#018" PRIx64 "\n", ef->rsi,
-                 ef->rdi);
-  ebbrt::kprintf("RBP: %#018" PRIx64 " R8:  %#018" PRIx64 "\n", ef->rbp,
-                 ef->r8);
-  ebbrt::kprintf("R9:  %#018" PRIx64 " R10: %#018" PRIx64 "\n", ef->r9,
-                 ef->r10);
-  ebbrt::kprintf("R11: %#018" PRIx64 " R12: %#018" PRIx64 "\n", ef->r11,
-                 ef->r12);
-  ebbrt::kprintf("R13: %#018" PRIx64 " R14: %#018" PRIx64 "\n", ef->r13,
-                 ef->r14);
-  ebbrt::kprintf("R15: %#018" PRIx64 "\n", ef->r15);
+  ebbrt::kprintf_force("SS: %#018" PRIx64 " RSP: %#018" PRIx64 "\n", ef->ss,
+                       ef->rsp);
+  ebbrt::kprintf_force("FLAGS: %#018" PRIx64 "\n",
+                       ef->rflags);  // TODO(Dschatz): print out actual meaning
+  ebbrt::kprintf_force("CS: %#018" PRIx64 " RIP: %#018" PRIx64 "\n", ef->cs,
+                       ef->rip);
+  ebbrt::kprintf_force("Error Code: %" PRIx64 "\n", ef->error_code);
+  ebbrt::kprintf_force("RAX: %#018" PRIx64 " RBX: %#018" PRIx64 "\n", ef->rax,
+                       ef->rbx);
+  ebbrt::kprintf_force("RCX: %#018" PRIx64 " RDX: %#018" PRIx64 "\n", ef->rcx,
+                       ef->rdx);
+  ebbrt::kprintf_force("RSI: %#018" PRIx64 " RDI: %#018" PRIx64 "\n", ef->rsi,
+                       ef->rdi);
+  ebbrt::kprintf_force("RBP: %#018" PRIx64 " R8:  %#018" PRIx64 "\n", ef->rbp,
+                       ef->r8);
+  ebbrt::kprintf_force("R9:  %#018" PRIx64 " R10: %#018" PRIx64 "\n", ef->r9,
+                       ef->r10);
+  ebbrt::kprintf_force("R11: %#018" PRIx64 " R12: %#018" PRIx64 "\n", ef->r11,
+                       ef->r12);
+  ebbrt::kprintf_force("R13: %#018" PRIx64 " R14: %#018" PRIx64 "\n", ef->r13,
+                       ef->r14);
+  ebbrt::kprintf_force("R15: %#018" PRIx64 "\n", ef->r15);
 
   // TODO(dschatz): FPU
 }
@@ -143,7 +145,7 @@ extern "C" void ebbrt::idt::NmiInterrupt(ExceptionFrame* ef) { kabort(); }
 
 #define UNHANDLED_INTERRUPT(name)                                              \
   extern "C" void ebbrt::idt::name(ExceptionFrame* ef) {                       \
-    kprintf("%s\n", __PRETTY_FUNCTION__);                                      \
+    kprintf_force("%s\n", __PRETTY_FUNCTION__);                                \
     PrintExceptionFrame(ef);                                                   \
     kabort();                                                                  \
   }
