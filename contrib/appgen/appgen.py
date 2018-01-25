@@ -2,24 +2,25 @@
 from jinja2 import Environment, FileSystemLoader
 import os
 import sys
+import argparse
  
-print "Generate files new EbbRT application in the currect working \
-directory."
-var = raw_input("Enter a name for the application \
-(one word, no spaces):\n> ").lower()
+parser = argparse.ArgumentParser(description='Generate EbbRT application', 
+	prog=sys.argv[0], usage='%(prog)s [options]')
+parser.add_argument('-n', metavar="NAME", default="app", help='new application name')
+parser.add_argument('-t', default="default", choices=['default', 'native'], help='application template')
+args = parser.parse_args()
 
-# Capture our current directory
-THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-CONTEXT = { "title" : var, "CAP_TITLE": var.upper() }
-target_path = os.path.join(os.getcwd(), var) 
-source_path = os.path.join(THIS_DIR, "template/helloworld") 
+template = args.t
+appname = args.n 
+
+# Capture the script (source) directory
+source_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "template/"+template) 
+target_path = os.getcwd()
+CONTEXT = { "title" : appname, "CAP_TITLE": appname.upper() }
 
 def apply_template(source, target):
     if not os.path.exists(target):
         os.makedirs(target)
-    else:
-        print "Error, target directory already exists: "+target
-        sys.exit()
     print "Building new application: "+target
     #print "Using template: "+source
     for path,sd,files in os.walk(source):
@@ -34,7 +35,7 @@ def apply_template(source, target):
             relative_path = os.path.join(relative_root, name)
             full_source_path = os.path.join(path, name)
             if name == "title.cc":
-                full_target_path = os.path.join(target_root, var+".cc")
+                full_target_path = os.path.join(target_root, appname+".cc")
             else:
                 full_target_path = os.path.join(target_root, name)
             print "writing "+full_target_path
@@ -49,4 +50,4 @@ def render_template(fs, filename, context):
 
 if __name__ == '__main__':
     apply_template(source_path, target_path)
-    print "Build finished."
+    print "New EbbRT application ("+appname+") generated in current working directory"
