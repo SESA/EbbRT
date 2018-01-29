@@ -127,29 +127,30 @@ void ebbrt::VMemAllocator::HandlePageFault(idt::ExceptionFrame* ef) {
   } else {
     auto it = regions_.lower_bound(Pfn::Down(fault_addr));
     if (it == regions_.end() || it->second.end() < Pfn::Up(fault_addr)) {
-      kprintf("Page fault for address %llx, no handler for it\n", fault_addr);
-      ebbrt::kprintf("SS: %#018" PRIx64 " RSP: %#018" PRIx64 "\n", ef->ss,
-                     ef->rsp);
-      ebbrt::kprintf("FLAGS: %#018" PRIx64 "\n",
-                     ef->rflags);  // TODO(Dschatz): print out actual meaning
-      ebbrt::kprintf("CS: %#018" PRIx64 " RIP: %#018" PRIx64 "\n", ef->cs,
-                     ef->rip);
-      ebbrt::kprintf("Error Code: %" PRIx64 "\n", ef->error_code);
-      ebbrt::kprintf("RAX: %#018" PRIx64 " RBX: %#018" PRIx64 "\n", ef->rax,
-                     ef->rbx);
-      ebbrt::kprintf("RCX: %#018" PRIx64 " RDX: %#018" PRIx64 "\n", ef->rcx,
-                     ef->rdx);
-      ebbrt::kprintf("RSI: %#018" PRIx64 " RDI: %#018" PRIx64 "\n", ef->rsi,
-                     ef->rdi);
-      ebbrt::kprintf("RBP: %#018" PRIx64 " R8:  %#018" PRIx64 "\n", ef->rbp,
-                     ef->r8);
-      ebbrt::kprintf("R9:  %#018" PRIx64 " R10: %#018" PRIx64 "\n", ef->r9,
-                     ef->r10);
-      ebbrt::kprintf("R11: %#018" PRIx64 " R12: %#018" PRIx64 "\n", ef->r11,
-                     ef->r12);
-      ebbrt::kprintf("R13: %#018" PRIx64 " R14: %#018" PRIx64 "\n", ef->r13,
-                     ef->r14);
-      ebbrt::kprintf("R15: %#018" PRIx64 "\n", ef->r15);
+      kprintf_force("Page fault for address %llx, no handler for it\n",
+                    fault_addr);
+      kprintf_force("SS: %#018" PRIx64 " RSP: %#018" PRIx64 "\n", ef->ss,
+                    ef->rsp);
+      kprintf_force("FLAGS: %#018" PRIx64 "\n",
+                    ef->rflags);  // TODO(Dschatz): print out actual meaning
+      kprintf_force("CS: %#018" PRIx64 " RIP: %#018" PRIx64 "\n", ef->cs,
+                    ef->rip);
+      kprintf_force("Error Code: %" PRIx64 "\n", ef->error_code);
+      kprintf_force("RAX: %#018" PRIx64 " RBX: %#018" PRIx64 "\n", ef->rax,
+                    ef->rbx);
+      kprintf_force("RCX: %#018" PRIx64 " RDX: %#018" PRIx64 "\n", ef->rcx,
+                    ef->rdx);
+      kprintf_force("RSI: %#018" PRIx64 " RDI: %#018" PRIx64 "\n", ef->rsi,
+                    ef->rdi);
+      kprintf_force("RBP: %#018" PRIx64 " R8:  %#018" PRIx64 "\n", ef->rbp,
+                    ef->r8);
+      kprintf_force("R9:  %#018" PRIx64 " R10: %#018" PRIx64 "\n", ef->r9,
+                    ef->r10);
+      kprintf_force("R11: %#018" PRIx64 " R12: %#018" PRIx64 "\n", ef->r11,
+                    ef->r12);
+      kprintf_force("R13: %#018" PRIx64 " R14: %#018" PRIx64 "\n", ef->r13,
+                    ef->r14);
+      kprintf_force("R15: %#018" PRIx64 "\n", ef->r15);
       // TODO(dschatz): FPU
       kabort();
     }
