@@ -23,8 +23,8 @@ TOUCH ?= touch
 WGET ?= wget
 PATCH ?= patch
 
-SYSROOT ?= $(abspath $(CURDIR)/sysroot)
-PREFIX ?= $(abspath $(SYSROOT)/usr)
+SYSROOT ?= $(abspath $(CURDIR)/ebbrt)
+INSTALL_PREFIX ?= $(abspath $(SYSROOT)/usr)
 EBBRT_SRCDIR ?= $(abspath $(MYDIR)/../)
 SRCDIR ?= $(abspath $(CURDIR)/src)
 BUILDDIR ?= $(abspath $(CURDIR)/build)
@@ -109,12 +109,12 @@ else
 CMAKE_VERBOSE_OPT ?= 
 endif
 
-CMAKE_DEFS ?= -DCMAKE_INSTALL_PREFIX:PATH=$(PREFIX) \
+CMAKE_DEFS ?= -DCMAKE_INSTALL_PREFIX:PATH=$(INSTALL_PREFIX) \
 	-DCMAKE_TOOLCHAIN_FILE=$(CMAKE_TOOLCHAIN_FILE) \
 	$(CMAKE_BUILD_TYPE) $(CMAKE_VERBOSE_OPT)
 
-EBBRT_BUILD_DEFS ?= -DCMAKE_C_COMPILER_FORCED=1 \
-										-DCMAKE_CXX_COMPILER_FORCED=1
+#EBBRT_BUILD_DEFS ?= -DCMAKE_C_COMPILER_FORCED=1 \
+#										-DCMAKE_CXX_COMPILER_FORCED=1
 
 ACPICA_SRC_PATH ?= $(abspath $(MYDIR)/ext/acpica)
 ACPICA_BUILD_PATH ?= $(BUILDDIR)/acpica-build
@@ -132,10 +132,10 @@ TBB_SRC_PATH ?= $(abspath $(MYDIR)/ext/tbb)
 TBB_BUILD_PATH ?= $(BUILDDIR)/tbb-build
 TBB_CONFIGURE_FLAG ?= $(TBB_BUILD_PATH)/Makefile
 
-export PATH := $(DEPS_PREFIX)/bin:$(PREFIX)/bin:$(PATH)
+export PATH := $(DEPS_PREFIX)/bin:$(INSTALL_PREFIX)/bin:$(PATH)
 export EBBRT_SYSROOT := $(SYSROOT)
 
-all: ebbrt-install
+all: ebbrt-deps
 
 print-%  : ; @echo $* = $($*)
 
@@ -151,7 +151,7 @@ $(BUILDDIR):
 $(SYSROOT):
 	$(MKDIR) $@
 
-$(PREFIX): | $(SYSROOT)
+$(INSTALL_PREFIX): | $(SYSROOT)
 	$(MKDIR) $@
 
 ### Autoconf ###
@@ -245,7 +245,7 @@ $(BINUTILS_BUILD_PATH): | $(BUILDDIR)
 
 $(BINUTILS_CONFIGURE_FLAG): | $(BINUTILS_SRC_PATH) $(BINUTILS_BUILD_PATH)
 	$(CD) $(BINUTILS_BUILD_PATH) && $(BINUTILS_SRC_PATH)/configure \
-		--target=$(TARGET) --prefix=$(PREFIX) \
+		--target=$(TARGET) --prefix=$(INSTALL_PREFIX) \
 		--with-sysroot=$(SYSROOT) --disable-werror --disable-nls \
 		--enable-plugins
 
@@ -276,12 +276,12 @@ $(GCC_BUILD_PATH): | $(BUILDDIR)
 
 $(GCC_CONFIGURE_FLAG): | binutils $(GCC_SRC_PATH) $(GCC_BUILD_PATH)
 	$(CD) $(GCC_BUILD_PATH) && \
-	$(GCC_SRC_PATH)/configure --target=$(TARGET) --prefix=$(PREFIX) \
+	$(GCC_SRC_PATH)/configure --target=$(TARGET) --prefix=$(INSTALL_PREFIX) \
 		--with-sysroot=$(SYSROOT) --enable-languages=c,c++ \
 		--disable-libssp --without-headers --disable-nls --with-newlib \
 		--enable-threads=ebbrt
 
-gcc-build: binutils ebbrt-headers $(GCC_CONFIGURE_FLAG)
+gcc-build: binutils ebbrt-headers-install $(GCC_CONFIGURE_FLAG)
 	$(MAKE) all-gcc  -C $(GCC_BUILD_PATH)
 
 gcc-install: gcc-build
@@ -317,7 +317,7 @@ $(NEWLIB_CONFIGURE_FLAG): | binutils gcc $(NEWLIB_SRC_PATH) $(NEWLIB_BUILD_PATH)
 	CFLAGS=$(NEWLIB_CFLAGS) AR_FOR_TARGET=x86_64-pc-ebbrt-gcc-ar \
 		RANLIB_FOR_TARGET=x86_64-pc-ebbrt-gcc-ranlib \
 		$(NEWLIB_SRC_PATH)/configure --target=$(TARGET) \
-		--prefix=$(PREFIX) --enable-newlib-hw-fp
+		--prefix=$(INSTALL_PREFIX) --enable-newlib-hw-fp
 
 newlib-build: binutils gcc $(NEWLIB_CONFIGURE_FLAG)
 	AR_FOR_TARGET=x86_64-pc-ebbrt-gcc-ar \
@@ -393,51 +393,30 @@ tbb-install: tbb-build
 
 ### EbbRT ###
 
-ebbrt-deps: acpica-install boost-install capnp-install tbb-install
+ebbrt-deps: acpica-install boost-install capnp-install tbb-install ebbrt-cmake-install
 
-$(EBBRT_BUILD_PATH): | $(BUILDDIR)
+$(INSTALL_PREFIX)/include: | $(INSTALL_PREFIX)
 	$(MKDIR) $@
 
-$(EBBRT_CONFIGURE_FLAG): | ebbrt-deps $(EBBRT_BM_PATH) $(EBBRT_BUILD_PATH)
-	$(CD) $(EBBRT_BUILD_PATH) && \
-	$(CMAKE) $(CMAKE_DEFS) $(EBBRT_BUILD_DEFS) $(EBBRT_SRCDIR)/src
-
-ebbrt-makefile:
-	$(CD) $(EBBRT_BUILD_PATH) && \
-	$(CMAKE) $(CMAKE_DEFS) $(EBBRT_BUILD_DEFS) $(EBBRT_SRCDIR)/src
-
-ebbrt-build: ebbrt-deps $(EBBRT_CONFIGURE_FLAG)
-	$(MAKE) -C $(EBBRT_BUILD_PATH)
-
-ebbrt-install: ebbrt-build ebbrt-cmake
-	$(MAKE) -C $(EBBRT_BUILD_PATH) install
-
-$(PREFIX)/include: | $(PREFIX)
+$(INSTALL_PREFIX)/include/ebbrt: | $(INSTALL_PREFIX)/include
 	$(MKDIR) $@
 
-$(PREFIX)/include/ebbrt: | $(PREFIX)/include
+$(INSTALL_PREFIX)/include/ebbrt/native: | $(INSTALL_PREFIX)/include/ebbrt
 	$(MKDIR) $@
 
-$(PREFIX)/include/ebbrt/native: | $(PREFIX)/include/ebbrt
+$(INSTALL_PREFIX)/misc: | $(INSTALL_PREFIX)
 	$(MKDIR) $@
 
-$(PREFIX)/misc: | $(PREFIX)
-	$(MKDIR) $@
+ebbrt-headers-install: | $(INSTALL_PREFIX)/include/ebbrt/native
+	$(CP) -rv $(EBBRT_SRCDIR)/src/*.h $(INSTALL_PREFIX)/include/ebbrt
+	$(CP) -rv $(EBBRT_SRCDIR)/src/native/*.h $(INSTALL_PREFIX)/include/ebbrt/native
 
-ebbrt-headers: | $(PREFIX)/include/ebbrt/native
-	$(CP) -rv $(EBBRT_SRCDIR)/src/*.h $(PREFIX)/include/ebbrt
-	$(CP) -rv $(EBBRT_SRCDIR)/src/native/*.h $(PREFIX)/include/ebbrt/native
-
-ebbrt-cmake: | $(PREFIX)/misc
-	$(CP) -v $(CMAKE_TOOLCHAIN_FILE) $(PREFIX)/misc
-
-ebbrt-only: | $(EBBRT_BUILD_PATH)
-	$(MAKE) -C $(EBBRT_BUILD_PATH) install
-
+ebbrt-cmake-install: | $(INSTALL_PREFIX)/misc
+	$(CP) -v $(CMAKE_TOOLCHAIN_FILE) $(INSTALL_PREFIX)/misc
 
 .PHONY: all autoconf autoconf-build autoconf-install automake automake-build \
 	automake-install binutils binutils-build binutils-install clean deps \
 	gcc gcc-build gcc-install gcc-all gcc-all-build gcc-all-install newlib \
 	newlib-build newlib-install acpica-build acpica-install boost-build \
 	boost-install capnp-build capnp-install tbb-build tbb-install \
-	ebbrt-deps ebbrt-build ebbrt-install ebbrt-cmake ebbrt-only ebbrt-makefile
+	ebbrt-deps ebbrt-headers-install ebbrt-cmake-install
