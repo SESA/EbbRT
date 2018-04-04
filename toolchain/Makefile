@@ -281,7 +281,7 @@ $(GCC_CONFIGURE_FLAG): | binutils $(GCC_SRC_PATH) $(GCC_BUILD_PATH)
 		--disable-libssp --without-headers --disable-nls --with-newlib \
 		--enable-threads=ebbrt
 
-gcc-build: binutils ebbrt-headers $(GCC_CONFIGURE_FLAG)
+gcc-build: binutils ebbrt-headers-install $(GCC_CONFIGURE_FLAG)
 	$(MAKE) all-gcc  -C $(GCC_BUILD_PATH)
 
 gcc-install: gcc-build
@@ -393,7 +393,7 @@ tbb-install: tbb-build
 
 ### EbbRT ###
 
-ebbrt-deps: acpica-install boost-install capnp-install tbb-install
+ebbrt-deps: acpica-install boost-install capnp-install tbb-install ebbrt-cmake-install
 
 $(INSTALL_PREFIX)/include: | $(INSTALL_PREFIX)
 	$(MKDIR) $@
@@ -407,11 +407,11 @@ $(INSTALL_PREFIX)/include/ebbrt/native: | $(INSTALL_PREFIX)/include/ebbrt
 $(INSTALL_PREFIX)/misc: | $(INSTALL_PREFIX)
 	$(MKDIR) $@
 
-ebbrt-headers: | $(INSTALL_PREFIX)/include/ebbrt/native
+ebbrt-headers-install: | $(INSTALL_PREFIX)/include/ebbrt/native
 	$(CP) -rv $(EBBRT_SRCDIR)/src/*.h $(INSTALL_PREFIX)/include/ebbrt
 	$(CP) -rv $(EBBRT_SRCDIR)/src/native/*.h $(INSTALL_PREFIX)/include/ebbrt/native
 
-ebbrt-cmake: | $(INSTALL_PREFIX)/misc
+ebbrt-cmake-install: | $(INSTALL_PREFIX)/misc
 	$(CP) -v $(CMAKE_TOOLCHAIN_FILE) $(INSTALL_PREFIX)/misc
 
 .PHONY: all autoconf autoconf-build autoconf-install automake automake-build \
@@ -419,4 +419,4 @@ ebbrt-cmake: | $(INSTALL_PREFIX)/misc
 	gcc gcc-build gcc-install gcc-all gcc-all-build gcc-all-install newlib \
 	newlib-build newlib-install acpica-build acpica-install boost-build \
 	boost-install capnp-build capnp-install tbb-build tbb-install \
-	ebbrt-deps ebbrt-cmake 
+	ebbrt-deps ebbrt-headers-install ebbrt-cmake-install
