@@ -54,6 +54,7 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
     std::string Start();
     std::string StdOut();
     std::string GetIp();
+    std::string CopyFile(std::string src, std::string dst);
     void Stop() {}
 
    private:

@@ -1,13 +1,15 @@
 #!/bin/bash
 if [ -n "$DEBUG" ]; then set -x; fi
 
+if [ -n "$MANUAL_LAUNCH" ]; then 
+	echo "Will wait for /tmp/launch before VM boots"
+fi
+
 # Configure network for VM 
 # This script configured the container to boot a single EbbRT backend
 
 # Ensure working directory is local to this script
 cd "$(dirname "$0")"
-
-/usr/sbin/sshd &
 
 export TAP_IFACE=tap0
 export KVM_ARGS=$@
@@ -76,15 +78,15 @@ setup_bridge_networking() {
     NEWIP=`itoa k`
 
     # bridge
-    ip link set dev $IFACE mtu 9000 
+    #ip link set dev $IFACE mtu 9000 
     ip link add name $BRIDGE_IFACE type bridge
     ip addr add $NEWIP/$CIDR dev $BRIDGE_IFACE
-    ip link set dev $BRIDGE_IFACE mtu 9000 
+    #ip link set dev $BRIDGE_IFACE mtu 9000 
     ip link set dev $BRIDGE_IFACE up
     # tap
     ip tuntap add dev $TAP_IFACE mode tap multi_queue 
     ip link set $TAP_IFACE master $BRIDGE_IFACE 
-    ip link set dev $TAP_IFACE mtu 9000
+    #ip link set dev $TAP_IFACE mtu 9000
     ip link set dev $TAP_IFACE up
     # iface
     ip link set dev $IFACE down
@@ -95,7 +97,7 @@ setup_bridge_networking() {
         echo "Failed to bring up network bridge"
         exit 4
     fi
-    if [ -z "$ETH_BRIDGE" ]; then
+    if [ -z "$NO_ETH_BRIDGE" ]; then
       ebtables -t nat -A POSTROUTING -o eth0 -j snat --to-source $MAC -s $VM_MAC --snat-arp
       ebtables -t nat -A PREROUTING -i eth0 -j dnat -d $MAC --to-destination $VM_MAC 
     fi
@@ -120,5 +122,10 @@ if [ -z "$NO_WAIT" ]; then
 fi
 
 setup_bridge_networking
+
+if [ -n "$MANUAL_LAUNCH" ]; then 
+  echo "Waiting for creation of file /tmp/launch"
+  until [ -a /tmp/launch ]; do sleep 1; done
+fi
 
 ./launch.sh 

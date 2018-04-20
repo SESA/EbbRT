@@ -113,6 +113,11 @@ std::string ebbrt::NodeAllocator::DockerContainer::StdOut() {
   return RunCmd(base_ + " logs " + cid_);
 }
 
+std::string ebbrt::NodeAllocator::DockerContainer::CopyFile(std::string src,
+                                                            std::string dst) {
+  return RunCmd(base_ + " cp " + src + " " + cid_ + ":" + dst);
+}
+
 ebbrt::NodeAllocator::Session::Session(bai::tcp::socket socket,
                                        uint32_t net_addr)
     : socket_(std::move(socket)), net_addr_(net_addr) {}
@@ -308,19 +313,12 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
                            args.constraint_node);
   auto id = c.Start();
   auto cip = c.GetIp(); /* get IP of container */
+  c.CopyFile(binary_path, "/root/img.elf");
+  c.CopyFile("/dev/null", "/tmp/signal");
 
+  /* copy node descriptor into table */
   nodes_.insert(std::make_pair(std::string(id), std::move(c)));
   auto rfut = promise_map_[allocation_id].GetFuture();
-
-  /* transfer image into container */
-  RunCmd("ping -c 3 -w 30 " + cip);
-  RunCmd("nc -z -w 30 " + cip + " 22");
-  RunCmd("scp -q -o UserKnownHostsFile=/dev/null -o "
-         "StrictHostKeyChecking=no " +
-         binary_path + " root@" + cip + ":/root/img.elf");
-  RunCmd("ssh -q -o UserKnownHostsFile=/dev/null -o "
-         "StrictHostKeyChecking=no root@" +
-         cip + " 'touch /tmp/signal'");
 
   std::cerr << "Node Allocation Details: " << std::endl;
   std::cerr << "| img: " << binary_path << std::endl;
