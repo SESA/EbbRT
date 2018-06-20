@@ -1,16 +1,13 @@
-=======
 # Build and Install the EbbRT Native/Hosted Libraries
-#
-# examples: 
-# 	$ make -f ~/EbbRT/Makefile -j=12 VERBOSE=1
-#
+
 # Options:
-# 	DEBUG=1 						# build without optimisation
-# 	CLEANUP=1     			# remove build state when finished
-# 	PREFIX=<path> 			# install directory [=/usr/local] 
-# 	BUILD_ROOT					# build directory [=$PWD]
-# 	EBBRT_SRCDIR=<path> # EbbRT source repository 
-# 	VERBOSE=1   				# verbose build 
+# 	PREFIX=<path> 					# linux install directory [=/usr/local] 
+# 	EBBRT_SYSROOT=<path>		# native install director [=/opt/ebbrt] 
+# 	BUILD_ROOT=<path>				# build directory [=$PWD]
+#
+# 	CLEANUP=1     					# remove build state when finished
+# 	DEBUG=1 								# build without optimisation
+# 	VERBOSE=1   						# verbose build 
 
 -include config.mk # Local config (optional)
 
@@ -64,15 +61,12 @@ EBBRT_LIBS ?= $(EBBRT_SRCDIR)/libs
 EBBRT_BUILD_DEFS ?= -DCMAKE_C_COMPILER_FORCED=1 \
                     -DCMAKE_CXX_COMPILER_FORCED=1
 
-all: hosted native 
+build: hosted native
 
 install: hosted-install native-install
 
 ebbrt-libs: native-libs hosted-libs
 
-build: hosted native
-
-install: hosted-install native-install
 
 clean:
 	$(MAKE) -C $(HOSTED_BUILD_DIR) clean
