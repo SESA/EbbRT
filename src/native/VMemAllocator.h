@@ -18,12 +18,8 @@
 #include "StaticIds.h"
 #include "Trans.h"
 
-
-
-
 namespace ebbrt {
 class VMemAllocator : CacheAligned {
-
 
  public:
   class PageFaultHandler {
@@ -39,8 +35,8 @@ class VMemAllocator : CacheAligned {
             std::unique_ptr<PageFaultHandler> pf_handler = nullptr);
   Pfn Alloc(size_t npages, size_t pages_align,
             std::unique_ptr<PageFaultHandler> pf_handler = nullptr);
-  Pfn Reserve(uintptr_t vmem_start, uintptr_t vmem_end = 0, size_t npages = 0, std::unique_ptr<PageFaultHandler> pf_handler = nullptr);
-
+  Pfn Reserve(uintptr_t vmem_start, uintptr_t vmem_end = 0, size_t npages = 0,
+              std::unique_ptr<PageFaultHandler> pf_handler = nullptr);
 
  private:
   class Region {
