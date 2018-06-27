@@ -44,8 +44,8 @@ ebbrt::VMemAllocator& ebbrt::VMemAllocator::HandleFault(EbbId id) {
 /* construct VMemAllocator */
 ebbrt::VMemAllocator::VMemAllocator() {
   regions_.emplace(std::piecewise_construct,
-                   std::forward_as_tuple(Pfn::Up(0xFFFF800000000000)),
-                   std::forward_as_tuple(Pfn::Down(trans::kVMemStart)));
+                   std::forward_as_tuple(Pfn::Up(kVMemRangeStart)),
+                   std::forward_as_tuple(Pfn::Down(kVMemRangeEnd)));
 }
 
 ebbrt::Pfn
@@ -89,86 +89,86 @@ ebbrt::VMemAllocator::Alloc(size_t npages,
 }
 
 ebbrt::Pfn
-ebbrt::VMemAllocator::Reserve(uintptr_t vmem_start, uintptr_t vmem_end,
-                              size_t npages,
-                              std::unique_ptr<PageFaultHandler> pf_handler) {
+ebbrt::VMemAllocator::AllocRange(size_t npages, uintptr_t vmem_start,
+                                 std::unique_ptr<PageFaultHandler> pf_handler) {
 
-  if (!vmem_end && !npages) {
-    kabort("%s:\nunable to reserve virtual pages; vmem range specification "
-           "missing\n",
-           __PRETTY_FUNCTION__);
+  if (!npages || !vmem_start || pf_handler == nullptr) {
+    kprintf("%s:\nUnable to reserve virtual pages; Incomplete range/handler.\n",
+            __PRETTY_FUNCTION__);
+    return Pfn::None();
   }
 
-  if (!vmem_end) {
-    vmem_end = vmem_start + (npages << pmem::kPageShift) - 1;
+  std::lock_guard<SpinLock> lock(lock_);
+  uintptr_t vmem_end = vmem_start + (pmem::kPageSize * npages) - 1;
+
+  /* Check requested range is valid */
+  if (vmem_start < kVMemRangeStart || vmem_end > kVMemRangeEnd ||
+      vmem_start >= vmem_end) {
+    kprintf("Unable to reserve virtual pages; Requested address is outside the "
+            "virtual range\n");
+    return Pfn::None();
   }
-  if (!npages) {
-    npages = (vmem_end - vmem_start + 1) >> pmem::kPageShift;
+  if (vmem_start & (pmem::kPageSize - 1)) {
+    kprintf("Unable to reserve virtual pages; Requested address is not page "
+            "aligned\n");
+    return Pfn::None();
   }
 
-  /* assert requested range is 4K page aligned */
-  auto mod = pmem::kPageSize - 1;
-  if (((vmem_start & mod) != 0) ||
-      (((npages << pmem::kPageShift) & mod) != 0)) {
-    kabort("%s:\nunable to reserve virtual pages; vmem range is not 4K page "
-           "aligned\n",
-           __PRETTY_FUNCTION__);
-  }
-
-  /* assert range length and endpoints match */
-  if (npages != ((vmem_end - vmem_start + 1) >> pmem::kPageShift)) {
-    kabort("%s:\nunable to reserve virtual pages; vmem range length and "
-           "endpoints do not align\n",
-           __PRETTY_FUNCTION__);
-  }
-
-  kprintf("\nVMem range reservation request:\t 0x%llx - 0x%llx\n", vmem_start,
-          vmem_end);
+  kprintf("\nVMem Range Requested:\t 0x%llx - 0x%llx\n", vmem_start, vmem_end);
 
   /* find requested range within regions_ */
   for (auto it = regions_.begin(); it != regions_.end(); ++it) {
-    const auto& start = it->first;
-    /* requested range is below this region */
-    if (start.ToAddr() > vmem_end) {
+    /* it->first: Pfn start_addr */
+    const auto& begin = it->first;
+    /* it->second: Region, it->second.end(): Pfn end_addr  */
+    auto end = it->second.end();
+    kprintf("Checking range from 0x%llx to 0x%llx\n", begin.ToAddr(),
+            end.ToAddr());
+
+    /* Requested range is outside this Region, try another Region*/
+    if (begin.ToAddr() > vmem_end) {
       continue;
     }
-    /* requested range ends in this region and starts below this region */
-    if (start.ToAddr() > vmem_start) {
-      if (!it->second.IsFree()) {
-        kabort("%s:\nunable to reserve virtual pages from 0x%llx to 0x%llx; "
-               "region not free\n",
-               __PRETTY_FUNCTION__, start.ToAddr(), vmem_end);
-      } else {
-        vmem_end = start.ToAddr() - 1;
-        continue;
-      }
-    }
-    /* requested range starts in this region */
-    if (start.ToAddr() <= vmem_start) {
-      if (!it->second.IsFree()) {
-        kabort("%s:\nunable to reserve virtual pages from 0x%llx to 0x%llx; "
-               "region not free\n",
-               __PRETTY_FUNCTION__, vmem_start, vmem_end);
-      } else {
-        /* convert range endpoints to page frame numbers */
-        auto vmem_start_vfn = Pfn(vmem_start >> pmem::kPageShift);
-        auto vmem_end_vfn = Pfn((vmem_end + 1) >> pmem::kPageShift);
 
-        it->second.set_end(vmem_start_vfn);
+    /* Check if Region is free and reserve it*/
+    if (begin.ToAddr() <= vmem_start && end.ToAddr() >= vmem_end) {
+      if (!it->second.IsFree()) {
+        kprintf("Unable to reserve virtual pages; Region not free\n");
+        return Pfn::None();
+      }
+
+      auto vmem_start_vfn = Pfn(vmem_start >> pmem::kPageShift);
+      auto vmem_end_vfn = Pfn(vmem_start_vfn + npages + 1);
+
+      if (begin.ToAddr() == vmem_start) {
+        it->second.set_end(vmem_end_vfn);
+        it->second.set_page_fault_handler(std::move(pf_handler));
+        it->second.set_allocated(true);
+      } else {
+        kassert(begin.ToAddr() < vmem_start);
+        it->second.set_end(Pfn::Down(vmem_start));  // XXX(jmcadden): off by 1?
+
+        /* Create new Region for requested range */
         auto p = regions_.emplace(std::piecewise_construct,
                                   std::forward_as_tuple(vmem_start_vfn),
                                   std::forward_as_tuple(vmem_end_vfn));
         kassert(p.second);
         p.first->second.set_page_fault_handler(std::move(pf_handler));
         p.first->second.set_allocated(true);
-
-        kprintf("Reserved:\t %llx - %llx\n\n", vmem_start_vfn.ToAddr(),
-                vmem_end_vfn.ToAddr());
-        return vmem_start_vfn;
       }
+      kprintf("VMem Range Reserved:\t %llx - %llx\n\n", vmem_start_vfn.ToAddr(),
+              vmem_end_vfn.ToAddr() - 1);
+      /* Create a Region for the extra */
+      if (vmem_end_vfn < end) {
+        regions_.emplace(std::piecewise_construct,
+                         std::forward_as_tuple(vmem_end_vfn),
+                         std::forward_as_tuple(end));
+      }
+      return vmem_start_vfn;
     }
   }
-  kabort("%s:\n unable to reserve virtual pages\n", __PRETTY_FUNCTION__);
+  kprintf("Unable to reserve virtual pages; No suitable Region found\n");
+  return Pfn::None();
 }
 
 ebbrt::Pfn
