@@ -20,6 +20,7 @@
 
 namespace ebbrt {
 class VMemAllocator : CacheAligned {
+
  public:
   class PageFaultHandler {
    public:
@@ -32,9 +33,10 @@ class VMemAllocator : CacheAligned {
 
   Pfn Alloc(size_t npages,
             std::unique_ptr<PageFaultHandler> pf_handler = nullptr);
-
   Pfn Alloc(size_t npages, size_t pages_align,
             std::unique_ptr<PageFaultHandler> pf_handler = nullptr);
+  Pfn AllocRange(size_t npages, uintptr_t vmem_start,
+                 std::unique_ptr<PageFaultHandler> pf_handler = nullptr);
 
  private:
   class Region {
@@ -59,10 +61,16 @@ class VMemAllocator : CacheAligned {
   };
 
   VMemAllocator();
+
   void HandlePageFault(idt::ExceptionFrame* ef);
 
   SpinLock lock_;
+
+  /* regions_: vmem regions sorted in descending order */
   std::map<Pfn, Region, std::greater<Pfn>> regions_;
+
+  const uintptr_t kVMemRangeStart = 0xFFFF800000000000;
+  const uintptr_t kVMemRangeEnd = trans::kVMemStart; /*0xFFFFFFFF00000000*/
 
   friend void ebbrt::idt::PageFaultException(ExceptionFrame* ef);
 };
