@@ -35,8 +35,8 @@ class VMemAllocator : CacheAligned {
             std::unique_ptr<PageFaultHandler> pf_handler = nullptr);
   Pfn Alloc(size_t npages, size_t pages_align,
             std::unique_ptr<PageFaultHandler> pf_handler = nullptr);
-  Pfn Reserve(uintptr_t vmem_start, uintptr_t vmem_end = 0, size_t npages = 0,
-              std::unique_ptr<PageFaultHandler> pf_handler = nullptr);
+  Pfn AllocRange(size_t npages, uintptr_t vmem_start,
+                 std::unique_ptr<PageFaultHandler> pf_handler = nullptr);
 
  private:
   class Region {
@@ -68,6 +68,9 @@ class VMemAllocator : CacheAligned {
 
   /* regions_: vmem regions sorted in descending order */
   std::map<Pfn, Region, std::greater<Pfn>> regions_;
+
+  const uintptr_t kVMemRangeStart = 0xFFFF800000000000;
+  const uintptr_t kVMemRangeEnd = trans::kVMemStart; /*0xFFFFFFFF00000000*/
 
   friend void ebbrt::idt::PageFaultException(ExceptionFrame* ef);
 };
