@@ -105,20 +105,13 @@ class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
     auto zkargs = static_cast<const ZKOptArgs&>(args);
     auto val = zkargs.data;
     auto path = zkargs.path;
-    auto flags = zkargs.flags;
     auto p = new ebbrt::Promise<void>;
     auto ret = p->GetFuture();
     std::cout << "ZKM Set Called for: " << id << std::endl;
     auto fullpath = get_id_path(id, path);
     std::cout << "ZKM path=" << id << " " << fullpath << std::endl;
-    zk_->Exists(fullpath).Then([this, p, fullpath, val, flags](auto b) {
-      if (b.Get() == true) {
         std::cout << "Setting Value " << fullpath << " = " << val << std::endl;
         zk_->Set(fullpath, val).Then([p](auto f) { p->SetValue(); });
-      } else {
-        zk_->New(fullpath, val, flags).Then([p](auto f) { p->SetValue(); });
-      }
-    });
     return ret;
   }
 
@@ -138,7 +131,6 @@ class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
       s << '/' << id;
       fullpath = s.str();
       ebbid_cache_[id] = fullpath;
-      zk_->Exists(fullpath, true, true).Block();
     } else { /* ebbid cache hit */
       fullpath = hit->second;
     }

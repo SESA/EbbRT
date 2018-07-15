@@ -166,9 +166,7 @@ ebbrt::Future<bool> ebbrt::ZooKeeper::Exists(const std::string& path,
   }
 
   if (force_sync || !path_cache_verify(path)) {
-    std::cout << "ZK[bk]: sync lookup " << path << std::endl;
     auto znode = Stat(path).Block().Get();
-    std::cout << "ZK[ubk]: sync lookup " << path << std::endl;
     if (znode.err == ZOK) {
       found = true;
       path_cache_add(path);
@@ -236,10 +234,13 @@ ebbrt::ZooKeeper::Set(const std::string& path, const std::string& value) {
   auto f = p->GetFuture();
   if (!path_cache_verify(path)) { /* cache miss */
     // full path was not in the cache, lets trace from the root
-    unsigned int pos = 0;
+    size_t pos = 0;
     while (pos != std::string::npos) {
       pos = path.find('/', pos + 1);
-      auto ppath = path.substr(0, pos);
+      auto ppath = path;
+      if (pos != std::string::npos) {
+        ppath = path.substr(0, pos);
+      }
       if (!path_cache_verify(ppath)) {
         // force lookup and creation of path
         auto err = Exists(ppath, true, true).Block();
