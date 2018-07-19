@@ -16,6 +16,26 @@
 
 namespace ebbrt {
 
+// handler used in Pci.cc code to handle faults on multicores when mapping
+// device
+class MulticorePciFaultHandler : public ebbrt::VMemAllocator::PageFaultHandler {
+  ebbrt::Pfn vpage_;
+  ebbrt::Pfn ppage_;
+  size_t size_;
+
+ public:
+  void SetMap(ebbrt::Pfn va, ebbrt::Pfn pa, size_t s) {
+    vpage_ = va;
+    ppage_ = pa;
+    size_ = s;
+  }
+
+  void HandleFault(ebbrt::idt::ExceptionFrame* ef,
+                   uintptr_t faulted_address) override {
+    ebbrt::vmem::MapMemory(vpage_, ppage_, size_);
+  }
+};
+
 // page fault handler for mapping in physical pages
 // to virtual pages on all cores
 class LargeRegionFaultHandler : public ebbrt::VMemAllocator::PageFaultHandler {

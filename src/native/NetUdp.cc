@@ -57,8 +57,9 @@ void ebbrt::NetworkManager::UdpPcb::Receive(
 }
 
 // Receive UDP packet on an interface
-void ebbrt::NetworkManager::Interface::ReceiveUdp(
-    Ipv4Header& ip_header, std::unique_ptr<MutIOBuf> buf) {
+void ebbrt::NetworkManager::Interface::ReceiveUdp(Ipv4Header& ip_header,
+                                                  std::unique_ptr<MutIOBuf> buf,
+                                                  uint64_t rxflag) {
   auto packet_len = buf->ComputeChainDataLength();
 
   // Ensure we have a header
@@ -75,10 +76,20 @@ void ebbrt::NetworkManager::Interface::ReceiveUdp(
   // trim any excess off the packet
   buf->TrimEnd(packet_len - ntohs(udp_header.length));
 
-  // XXX: Check if rxcsum supported
-  // if (udp_header.checksum &&
-  //     IpPseudoCsum(*buf, ip_header.proto, ip_header.src, ip_header.dst))
-  //   return;
+// XXX: Check if rxcsum supported
+// if (udp_header.checksum &&
+//     IpPseudoCsum(*buf, ip_header.proto, ip_header.src, ip_header.dst))
+//   return;
+#ifdef __EBBRT_ENABLE_BAREMETAL_NIC__
+  if (unlikely((rxflag & RXFLAG_L4CS) == 0)) {
+    ebbrt::kprintf("%s RXFLAG_L4CS failed\n");
+    return;
+  }
+  if (unlikely((rxflag & RXFLAG_L4CS_VALID) == 0)) {
+    ebbrt::kprintf("%s RXFLAG_L4CS_VALID failed\n");
+    return;
+  }
+#endif
 
   auto entry = network_manager->udp_pcbs_.find(ntohs(udp_header.dst_port));
 

@@ -36,8 +36,9 @@ bool ebbrt::NetworkManager::Interface::ItfAddress::isLocalNetwork(
 }
 
 // Receive an Ipv4 packet
-void ebbrt::NetworkManager::Interface::ReceiveIp(
-    EthernetHeader& eth_header, std::unique_ptr<MutIOBuf> buf) {
+void ebbrt::NetworkManager::Interface::ReceiveIp(EthernetHeader& eth_header,
+                                                 std::unique_ptr<MutIOBuf> buf,
+                                                 uint64_t rxflag) {
   auto packet_len = buf->ComputeChainDataLength();
 
   if (unlikely(packet_len < sizeof(Ipv4Header)))
@@ -59,8 +60,21 @@ void ebbrt::NetworkManager::Interface::ReceiveIp(
 
   buf->TrimEnd(packet_len - tot_len);
 
+#ifdef __EBBRT_ENABLE_BAREMETAL_NIC__
+  // baremetal checksum offload
+  if (unlikely((rxflag & RXFLAG_IPCS) == 0)) {
+    ebbrt::kprintf("%s RXFLAG_IPCS failed\n", __FUNCTION__);
+    return;
+  }
+
+  if (unlikely((rxflag & RXFLAG_IPCS_VALID) == 0)) {
+    ebbrt::kprintf("%s RXFLAG_IPCS_VALID failed\n", __FUNCTION__);
+    return;
+  }
+#else
   if (unlikely(ip_header.ComputeChecksum() != 0))
     return;
+#endif
 
   auto addr = Address();
   // Unless the protocol is UDP or we have an address on this interface and the
@@ -87,11 +101,11 @@ void ebbrt::NetworkManager::Interface::ReceiveIp(
     break;
   }
   case kIpProtoUDP: {
-    ReceiveUdp(ip_header, std::move(buf));
+    ReceiveUdp(ip_header, std::move(buf), rxflag);
     break;
   }
   case kIpProtoTCP: {
-    ReceiveTcp(ip_header, std::move(buf));
+    ReceiveTcp(ip_header, std::move(buf), rxflag);
     break;
   }
   }
@@ -123,9 +137,14 @@ void ebbrt::NetworkManager::Interface::SendIp(std::unique_ptr<MutIOBuf> buf,
   ih.chksum = 0;
   ih.src = src;
   ih.dst = dst;
-  ih.chksum = ih.ComputeChecksum();
 
+#ifdef __EBBRT_ENABLE_BAREMETAL_NIC__
+  // baremetal ip checksum offload
+  pinfo.flags |= PacketInfo::kNeedsIpCsum;
+#else
+  ih.chksum = ih.ComputeChecksum();
   kassert(ih.ComputeChecksum() == 0);
+#endif
 
   pinfo.csum_start += sizeof(Ipv4Header);
   pinfo.hdr_len += sizeof(Ipv4Header);

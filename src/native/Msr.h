@@ -30,6 +30,17 @@ inline uint64_t Read(uint32_t index) {
 inline void Write(uint32_t index, uint64_t data) {
   uint32_t low = data;
   uint32_t high = data >> 32;
+
+#ifdef __EBBRT_ENABLE_BAREMETAL_NIC__
+  // TODO - correct fix is here?
+  // GP fault happens when writing a 1 to bit #3 for kX2apicDcr,
+  // which is a reserved bit
+  // only happens in baremetal, VM prob virtualized this issue
+  if ((((data >> 2) & 0x1) == 1) && index == kX2apicDcr) {
+    low = (data & 0x3) | ((data & 0x4) << 1);
+    high = 0x0;
+  }
+#endif
   asm volatile("wrmsr" : : "c"(index), "a"(low), "d"(high));
 }
 }  // namespace msr

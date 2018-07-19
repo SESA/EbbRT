@@ -7,10 +7,10 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstring>
 #include <forward_list>
 #include <memory>
 #include <vector>
-#include <cstring>
 
 #include <boost/iterator/iterator_facade.hpp>
 
@@ -64,6 +64,7 @@ class IOBuf {
   }
 
   void TrimEnd(size_t amount) { length_ -= amount; }
+  void SetLength(size_t amount) { length_ = amount; }
 
   bool IsChained() const { return Next() != this; }
 

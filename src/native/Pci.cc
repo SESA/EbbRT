@@ -9,6 +9,7 @@
 #include "../Align.h"
 #include "../ExplicitlyConstructed.h"
 #include "Debug.h"
+#include "GeneralPurposeAllocator.h"
 #include "Io.h"
 #include "VMem.h"
 #include "VMemAllocator.h"
@@ -34,7 +35,11 @@ uint8_t PciRead8(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset) {
 }
 uint16_t PciRead16(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset) {
   PciSetAddr(bus, device, func, offset);
+#ifdef __EBBRT_ENABLE_BAREMETAL_NIC__
+  return ebbrt::io::In16(kPciDataPort + (offset & 2));
+#else
   return ebbrt::io::In16(kPciDataPort);
+#endif
 }
 
 uint32_t PciRead32(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset) {
@@ -45,7 +50,12 @@ uint32_t PciRead32(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset) {
 void PciWrite16(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset,
                 uint16_t val) {
   PciSetAddr(bus, device, func, offset);
+
+#ifdef __EBBRT_ENABLE_BAREMETAL_NIC__
+  ebbrt::io::Out16(kPciDataPort + (offset & 2), val);
+#else
   ebbrt::io::Out16(kPciDataPort, val);
+#endif
 }
 
 void PciWrite32(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset,
@@ -71,8 +81,12 @@ void EnumerateBus(uint8_t bus) {
       if (dev)
         continue;
 
+      dev.DumpAddress();
+      dev.DumpInfo();
+
       if (dev.IsBridge()) {
-        ebbrt::kabort("Secondary bus unsupported!\n");
+        // ebbrt::kabort("Secondary bus unsupported!\n");
+        continue;
       } else {
         devices->emplace_back(bus, device, func);
       }
@@ -101,6 +115,11 @@ void ebbrt::pci::Init() {
   devices.construct();
   driver_probes.construct();
   EnumerateAllBuses();
+#ifdef __EBBRT_ENABLE_BAREMETAL_NIC__
+  // TODO - Kludge to identify where NIC sits in device tree, should incorporate
+  // Dan's pull request for enumerating bridges
+  EnumerateBus(0x1);
+#endif
 }
 
 void ebbrt::pci::RegisterProbe(std::function<bool(pci::Device&)> probe) {
@@ -149,6 +168,18 @@ uint16_t ebbrt::pci::Function::GetCommand() const {
   return Read16(kCommandAddr);
 }
 
+uint8_t ebbrt::pci::Function::GetClassCode() const {
+  return Read8(kClassCodeAddr);
+}
+
+uint8_t ebbrt::pci::Function::GetFunc() const { return func_; }
+
+uint8_t ebbrt::pci::Function::GetSubclass() const {
+  return Read8(kSubclassAddr);
+}
+
+uint8_t ebbrt::pci::Function::GetProgIf() const { return Read8(kProgIfAddr); }
+
 uint8_t ebbrt::pci::Function::GetHeaderType() const {
   return Read8(kHeaderTypeAddr) & ~kHeaderMultifuncMask;
 }
@@ -185,6 +216,11 @@ void ebbrt::pci::Function::DisableInt() {
 
 void ebbrt::pci::Function::DumpAddress() const {
   kprintf("%u:%u:%u\n", bus_, device_, func_);
+}
+
+void ebbrt::pci::Function::DumpInfo() const {
+  kprintf("Vendor ID: 0x%x  ", GetVendorId());
+  kprintf("Device ID: 0x%x\n", GetDeviceId());
 }
 
 ebbrt::pci::Bar::Bar(pci::Device& dev, uint32_t bar_val, uint8_t idx)
@@ -226,6 +262,8 @@ ebbrt::pci::Bar::~Bar() {
   kbugon(vaddr_ != nullptr, "pci::Bar: Need to free mapped region\n");
 }
 
+void* ebbrt::pci::Bar::GetVaddr() { return vaddr_; }
+
 bool ebbrt::pci::Bar::Is64() const { return is_64_; }
 
 void ebbrt::pci::Bar::Map() {
@@ -233,10 +271,21 @@ void ebbrt::pci::Bar::Map() {
     return;
 
   auto npages = align::Up(size_, pmem::kPageSize) >> pmem::kPageShift;
+
+#ifdef __EBBRT_ENABLE_BAREMETAL_NIC__
+  auto pf = std::make_unique<MulticorePciFaultHandler>();
+  auto& ref = *pf;
+  auto page = vmem_allocator->Alloc(npages, std::move(pf));
+  vaddr_ = reinterpret_cast<void*>(page.ToAddr());
+  kbugon(page == Pfn::None(), "Failed to allocate virtual pages for mmio\n");
+  vmem::MapMemory(page, Pfn::Down(addr_), size_);
+  ref.SetMap(page, Pfn::Down(addr_), size_);
+#else
   auto page = vmem_allocator->Alloc(npages);
   vaddr_ = reinterpret_cast<void*>(page.ToAddr());
   kbugon(page == Pfn::None(), "Failed to allocate virtual pages for mmio\n");
   vmem::MapMemory(page, Pfn::Down(addr_), size_);
+#endif
 }
 
 uint8_t ebbrt::pci::Bar::Read8(size_t offset) {
@@ -415,7 +464,15 @@ void ebbrt::pci::Device::SetMsixEntry(size_t entry, uint8_t vector,
                                       uint8_t dest) {
   auto& msix_bar = GetBar(msix_bar_idx_);
   auto offset = msix_table_offset_ + entry * kMsixTableEntrySize;
+
+#ifdef __EBBRT_ENABLE_BAREMETAL_NIC__
+  // more precise
+  msix_bar.Write32(offset + kMsixTableEntryAddrLow, 0xFEE00000 | dest << 12);
+  msix_bar.Write32(offset + kMsixTableEntryAddrHigh, 0x0);
+#else
   msix_bar.Write32(offset + kMsixTableEntryAddr, 0xFEE00000 | dest << 12);
+#endif
+
   msix_bar.Write32(offset + kMsixTableEntryData, vector);
   MsixUnmaskEntry(entry);
 }

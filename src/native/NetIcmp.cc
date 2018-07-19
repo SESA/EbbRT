@@ -19,9 +19,11 @@ void ebbrt::NetworkManager::Interface::ReceiveIcmp(
   auto dp = buf->GetMutDataPointer();
   auto& icmp_header = dp.Get<IcmpHeader>();
 
-  // checksum
+#ifndef __EBBRT_ENABLE_BAREMETAL_NIC__
+  // software checksum
   if (IpCsum(*buf))
     return;
+#endif
 
   // if echo_request, send reply
   if (icmp_header.type == kIcmpEchoRequest) {
@@ -43,9 +45,19 @@ void ebbrt::NetworkManager::Interface::ReceiveIcmp(
 
     ip_header.ttl = kIpDefaultTtl;
     ip_header.chksum = 0;
+
+    PacketInfo pinfo;
+    pinfo.flags = 0;
+
+#ifdef __EBBRT_ENABLE_BAREMETAL_NIC__
+    // hardware ip checksum offload
+    pinfo.flags |= PacketInfo::kNeedsIpCsum;
+#else
     ip_header.chksum = ip_header.ComputeChecksum();
+#endif
 
     buf->Retreat(ip_header.HeaderLength());
-    EthArpSend(kEthTypeIp, ip_header, std::move(buf));
+
+    EthArpSend(kEthTypeIp, ip_header, std::move(buf), pinfo);
   }
 }

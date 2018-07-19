@@ -12,7 +12,8 @@ ebbrt::NetworkManager::NewInterface(EthernetDevice& ether_dev) {
   return *interface_;
 }
 
-void ebbrt::NetworkManager::Interface::Receive(std::unique_ptr<MutIOBuf> buf) {
+void ebbrt::NetworkManager::Interface::Receive(std::unique_ptr<MutIOBuf> buf,
+                                               uint64_t rxflag) {
   auto packet_len = buf->ComputeChainDataLength();
 
   // Drop packets that are too small
@@ -26,7 +27,7 @@ void ebbrt::NetworkManager::Interface::Receive(std::unique_ptr<MutIOBuf> buf) {
 
   switch (ntohs(eth_header.type)) {
   case kEthTypeIp: {
-    ReceiveIp(eth_header, std::move(buf));
+    ReceiveIp(eth_header, std::move(buf), rxflag);
     break;
   }
   case kEthTypeArp: {

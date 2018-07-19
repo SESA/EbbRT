@@ -194,8 +194,9 @@ ebbrt::Ipv4Address ebbrt::NetworkManager::TcpPcb::GetRemoteAddress() {
 }
 
 // Receive a TCP packet on an interface
-void ebbrt::NetworkManager::Interface::ReceiveTcp(
-    const Ipv4Header& ih, std::unique_ptr<MutIOBuf> buf) {
+void ebbrt::NetworkManager::Interface::ReceiveTcp(const Ipv4Header& ih,
+                                                  std::unique_ptr<MutIOBuf> buf,
+                                                  uint64_t rxflag) {
   auto packet_len = buf->ComputeChainDataLength();
 
   // Ensure we have a header
@@ -210,10 +211,21 @@ void ebbrt::NetworkManager::Interface::ReceiveTcp(
   if (unlikely(addr->isBroadcast(ih.dst) || ih.dst.isMulticast()))
     return;
 
-  // XXX: Check if rxcsum is supported
-  // if (unlikely(IpPseudoCsum(*buf, ih.proto, ih.src, ih.dst)))
-  //   return;
+// XXX: Check if rxcsum is supported
+// if (unlikely(IpPseudoCsum(*buf, ih.proto, ih.src, ih.dst)))
+//   return;
 
+#ifdef __EBBRT_ENABLE_BAREMETAL_NIC__
+  if (unlikely((rxflag & RXFLAG_L4CS) == 0)) {
+    ebbrt::kprintf("%s RXFLAG_L4CS failed\n");
+    return;
+  }
+
+  if (unlikely((rxflag & RXFLAG_L4CS_VALID) == 0)) {
+    ebbrt::kprintf("%s RXFLAG_L4CS_VALID failed\n");
+    return;
+  }
+#endif
   auto hdr_len = tcp_header.HdrLen();
   if (unlikely(hdr_len < sizeof(TcpHeader) || hdr_len > packet_len))
     return;

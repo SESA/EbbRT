@@ -1,6 +1,7 @@
 #cmakedefine __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
 #cmakedefine __EBBRT_ENABLE_NETWORKING__
 #cmakedefine __EBBRT_ENABLE_TRACE__
+#cmakedefine __EBBRT_ENABLE_BAREMETAL_NIC__
 #cmakedefine LARGE_WINDOW_HACK
 #cmakedefine PAGE_CHECKER
 #cmakedefine VIRTIO_ZERO_COPY

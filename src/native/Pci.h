@@ -30,6 +30,7 @@ class Function {
   uint8_t GetLatencyTimer() const;
   uint8_t GetHeaderType() const;
   uint8_t GetBist() const;
+  uint8_t GetFunc() const;
 
   operator bool() const;
   bool IsMultifunc() const;
@@ -40,6 +41,7 @@ class Function {
   void DisableInt();
 
   void DumpAddress() const;
+  void DumpInfo() const;
 
  protected:
   static const constexpr uint8_t kVendorIdAddr = 0x00;
@@ -87,6 +89,7 @@ class Bar {
   void Write8(size_t offset, uint8_t val);
   void Write16(size_t offset, uint16_t val);
   void Write32(size_t offset, uint32_t val);
+  void* GetVaddr();
 
  private:
   static const constexpr uint32_t kIoSpaceFlag = 0x1;
@@ -166,6 +169,8 @@ class Device : public Function {
   static const constexpr size_t kMsixTableEntryAddr = 0;
   static const constexpr size_t kMsixTableEntryData = 8;
   static const constexpr size_t kMsixTableEntryControl = 12;
+  static const constexpr size_t kMsixTableEntryAddrLow = 0;
+  static const constexpr size_t kMsixTableEntryAddrHigh = 4;
 
   static const constexpr uint32_t kMsixTableEntryControlMaskBit = 1;
 

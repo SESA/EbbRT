@@ -1,6 +1,7 @@
 # EbbRT native platform-specific configuration
 option(__EBBRT_ENABLE_DISTRIBUTED_RUNTIME__ "Enable Distributed Runtime Support" ON)
 option(__EBBRT_ENABLE_NETWORKING__ "Enable Networking" ON)
+option(__EBBRT_ENABLE_BAREMETAL_NIC__ "Enable Baremetal NIC" OFF)
 option(__EBBRT_ENABLE_TRACE__ "Enable Tracing Subsystem" OFF)
 option(LARGE_WINDOW_HACK "Enable Large TCP Window Hack" OFF)
 option(PAGE_CHECKER "Enable Page Checker" OFF)

@@ -47,7 +47,11 @@
 #include "Trans.h"
 #include "VMem.h"
 #include "VMemAllocator.h"
+#ifdef __EBBRT_ENABLE_BAREMETAL_NIC__
+#include "IxgbeDriver.h"
+#else
 #include "VirtioNet.h"
+#endif
 
 namespace {
 bool started_once = false;
@@ -146,17 +150,28 @@ ebbrt::Main(multiboot::Information* mbi) {
         Timer::Init();
         smp::Init();
         event_manager->ReceiveToken();
+
 #ifdef __EBBRT_ENABLE_NETWORKING__
         NetworkManager::Init();
         pci::Init();
+
+#ifdef __EBBRT_ENABLE_BAREMETAL_NIC__
+        pci::RegisterProbe(IxgbeDriver::Probe);
+#else
         pci::RegisterProbe(VirtioNetDriver::Probe);
+#endif
+
         pci::LoadDrivers();
         network_manager->StartDhcp().Then([](Future<void> fut) {
           fut.Get();
 // Dhcp completed
 #ifdef __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
+// Currently not supported in BMNIC since we don't pass arguments
+// via grub
+#ifndef __EBBRT_ENABLE_BAREMETAL_NIC__
           Messenger::Init();
           runtime::Init();
+#endif
 #endif
 #endif
           // run global ctors
