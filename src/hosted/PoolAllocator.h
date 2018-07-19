@@ -7,6 +7,7 @@
 #define HOSTED_SRC_INCLUDE_EBBRT_POOLALLOCATOR_H_
 
 #include <iostream>
+#include <numeric>
 #include <sstream>
 #include <string>
 
