@@ -36,6 +36,10 @@ void ebbrt::NetworkManager::Interface::Receive(std::unique_ptr<MutIOBuf> buf) {
   }
 }
 
+const ebbrt::EthernetAddress& ebbrt::NetworkManager::MacAddress() {
+  return interface_->MacAddress();
+}
+
 const ebbrt::EthernetAddress& ebbrt::NetworkManager::Interface::MacAddress() {
   return ether_dev_.GetMacAddress();
 }

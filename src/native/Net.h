@@ -298,6 +298,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
 
   Interface& NewInterface(EthernetDevice& ether_dev);
   Ipv4Address IpAddress();
+  const EthernetAddress& MacAddress();
 
  private:
   Future<void> StartDhcp();
