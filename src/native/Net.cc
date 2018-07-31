@@ -33,7 +33,15 @@ void ebbrt::NetworkManager::Interface::Receive(std::unique_ptr<MutIOBuf> buf) {
     ReceiveArp(eth_header, std::move(buf));
     break;
   }
+  case kEthTypeRaw: {
+    ReceiveEth(eth_header, std::move(buf));
+    break;
   }
+  }
+}
+
+const ebbrt::EthernetAddress& ebbrt::NetworkManager::MacAddress() {
+  return interface_->MacAddress();
 }
 
 const ebbrt::EthernetAddress& ebbrt::NetworkManager::Interface::MacAddress() {
