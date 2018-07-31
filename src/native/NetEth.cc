@@ -167,3 +167,9 @@ void ebbrt::NetworkManager::Interface::EthArpRequest(ArpEntry& entry) {
 
   Send(std::move(buf));
 }
+
+// Receive a raw Ethernet packet
+void ebbrt::NetworkManager::Interface::ReceiveEth(
+    EthernetHeader& eth_header, std::unique_ptr<MutIOBuf> buf) {
+  return;
+}

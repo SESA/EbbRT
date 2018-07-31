@@ -60,6 +60,16 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
 
   class Interface;
 
+  class EthPcb {
+    void
+    Receive(MovableFunction<void(EthernetHeader& eh, std::unique_ptr<MutIOBuf>)>
+                func);
+    void Send(EthernetHeader& eh, std::unique_ptr<MutIOBuf> buf);
+
+   private:
+    friend class Interface;
+  };
+
   class UdpPcb {
    public:
     UdpPcb() : entry_{new UdpEntry()} {}
@@ -267,6 +277,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     void ReceiveTcp(const Ipv4Header& ih, std::unique_ptr<MutIOBuf> buf);
     void ReceiveDhcp(Ipv4Address from_addr, uint16_t from_port,
                      std::unique_ptr<MutIOBuf> buf);
+    void ReceiveEth(EthernetHeader& eh, std::unique_ptr<MutIOBuf> buf);
     void EthArpSend(uint16_t proto, const Ipv4Header& ih,
                     std::unique_ptr<MutIOBuf> buf,
                     PacketInfo pinfo = PacketInfo());

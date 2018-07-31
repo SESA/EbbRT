@@ -26,6 +26,9 @@ struct __attribute__((packed)) EthernetHeader {
 
 const constexpr uint16_t kEthTypeIp = 0x800;
 const constexpr uint16_t kEthTypeArp = 0x806;
+/* Raw Ethernet uses the EtherType of the IPX/SPX protocol suite
+ * https://en.wikipedia.org/wiki/Internetwork_Packet_Exchange */
+const constexpr uint16_t kEthTypeRaw = 0x8137;
 
 struct __attribute__((packed)) ArpPacket {
   uint16_t htype;
