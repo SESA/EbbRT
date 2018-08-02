@@ -297,6 +297,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
   static void Init();
 
   Interface& NewInterface(EthernetDevice& ether_dev);
+  Interface& NewLoopback(EthernetDevice& ether_dev);
   Ipv4Address IpAddress();
 
  private:
@@ -309,6 +310,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
   Interface* IpRoute(Ipv4Address dest);
 
   std::unique_ptr<Interface> interface_;
+  std::unique_ptr<Interface> loopback_;
   RcuHashTable<ArpEntry, Ipv4Address, &ArpEntry::hook, &ArpEntry::paddr>
       arp_cache_{8};  // 256 buckets
   RcuHashTable<UdpEntry, uint16_t, &UdpEntry::hook, &UdpEntry::port> udp_pcbs_{

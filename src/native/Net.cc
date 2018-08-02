@@ -12,6 +12,12 @@ ebbrt::NetworkManager::NewInterface(EthernetDevice& ether_dev) {
   return *interface_;
 }
 
+ebbrt::NetworkManager::Interface&
+ebbrt::NetworkManager::NewLoopback(EthernetDevice& ether_dev) {
+  loopback_.reset(new Interface(ether_dev));
+  return *loopback_;
+}
+
 void ebbrt::NetworkManager::Interface::Receive(std::unique_ptr<MutIOBuf> buf) {
   auto packet_len = buf->ComputeChainDataLength();
 

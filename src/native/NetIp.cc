@@ -136,8 +136,14 @@ void ebbrt::NetworkManager::Interface::SendIp(std::unique_ptr<MutIOBuf> buf,
 // This finds the interface to send on, given a destination
 ebbrt::NetworkManager::Interface*
 ebbrt::NetworkManager::IpRoute(Ipv4Address dest) {
-  // Silly implementation for now, if we have an interface, then return that,
-  // otherwise nothing
+
+  if (dest.isLinkLocal()) {
+    if (!loopback_)
+      return nullptr;
+
+    return &*loopback_;
+  }
+
   if (!interface_)
     return nullptr;
 
