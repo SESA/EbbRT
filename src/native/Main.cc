@@ -49,6 +49,8 @@
 #include "VMemAllocator.h"
 #include "VirtioNet.h"
 
+#include "../Splash.h"
+
 namespace {
 bool started_once = false;
 }
@@ -75,6 +77,8 @@ ebbrt::Main(multiboot::Information* mbi) {
   started_once = true;
 
   kprintf_force("EbbRT Copyright 2013-2018 Boston University SESA Developers\n");
+
+  EbbRTSplash();
 
   idt::Init();
   cpuid::Init();

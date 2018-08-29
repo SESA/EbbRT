@@ -61,9 +61,9 @@ EBBRT_LIBS ?= $(EBBRT_SRCDIR)/libs
 EBBRT_BUILD_DEFS ?= -DCMAKE_C_COMPILER_FORCED=1 \
                     -DCMAKE_CXX_COMPILER_FORCED=1
 
-build: hosted native
-
 install: hosted-install native-install
+
+build: hosted native
 
 ebbrt-libs: native-libs hosted-libs
 
@@ -78,7 +78,7 @@ hosted: | $(EBBRT_SRC)
 	$(CMAKE_BUILD_TYPE) $(CMAKE_VERBOSE_OPT) $(EBBRT_SRC) 
 	$(MAKE) -C $(HOSTED_BUILD_DIR) $(MAKE_OPT) 
 
-hosted-install: | $(HOSTED_BUILD_DIR)
+hosted-install: hosted | $(HOSTED_BUILD_DIR)
 	$(MAKE) -C $(HOSTED_BUILD_DIR) $(MAKE_OPT) install 
 
 hosted-libs: hosted-install 
@@ -97,7 +97,7 @@ native: | $(EBBRT_SRC) $(NATIVE_TOOLCHAIN_FILE)
 	$(CMAKE_BUILD_TYPE) $(CMAKE_VERBOSE_OPT) $(EBBRT_SRC) 
 	$(MAKE) -C $(NATIVE_BUILD_DIR) $(MAKE_OPT) 
 
-native-install: | $(NATIVE_BUILD_DIR)
+native-install: native | $(NATIVE_BUILD_DIR)
 	$(MAKE) -C $(NATIVE_BUILD_DIR) $(MAKE_OPT) install 
 
 native-libs: native-install

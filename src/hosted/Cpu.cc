@@ -20,6 +20,7 @@
 #include "../Clock.h"
 #include "../GlobalIdMap.h"
 #include "../Runtime.h"
+#include "../Splash.h"
 #include "../StaticIds.h"
 #include "Context.h"
 #include "ContextActivation.h"
@@ -111,6 +112,8 @@ void* Cpu::run(void* arg) {
 }
 
 pthread_t Cpu::EarlyInit(size_t num) {
+  EbbRTSplash();
+
   // lets now get all the cpus create one per physical core
   int i;
   pthread_attr_t attr;
