@@ -80,6 +80,7 @@ uint16_t ebbrt::NetworkManager::TcpPcb::Connect(Ipv4Address address,
   }
 
   // Setup state
+  entry_->cpu = Cpu::GetMine();
   entry_->accepted = true;
   entry_->address = itf->Address()->address;
   std::get<0>(entry_->key) = address;
