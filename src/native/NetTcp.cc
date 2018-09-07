@@ -24,12 +24,20 @@ operator()(ListeningTcpEntry* e) {
 
 // Destroy a connected tcp pcb
 void ebbrt::NetworkManager::TcpPcb::TcpEntryDeleter::operator()(TcpEntry* e) {
-  // The TcpPcb doesn't delete the entry just yet, instead the entry will delete
-  // itself once it has closed the connection with the remote side.
-  e->Close();
-  auto now = ebbrt::clock::Wall::Now();
-  e->Output(now);
-  e->SetTimer(now);
+  if (e->IsConnected()) {
+    // The TcpPcb doesn't delete the entry just yet, instead the entry will
+    // delete
+    // itself once it has closed the connection with the remote side.
+    e->Close();
+    auto now = ebbrt::clock::Wall::Now();
+    e->Output(now);
+    e->SetTimer(now);
+  } else {
+    // Otherwise, clear state and delete the tcp entry 
+    e->Purge();
+    e->DisableTimers();
+    e->Destroy();  
+  }
 }
 
 // Bind a Listening PCB to a port (0 will be randomly assigned a new port).
@@ -184,6 +192,10 @@ void ebbrt::NetworkManager::TcpPcb::Send(std::unique_ptr<IOBuf> buf) {
   entry_->Send(std::move(buf));
 }
 
+void ebbrt::NetworkManager::TcpPcb::Disconnect() {
+  entry_->Disconnect(); //Disconnect
+}
+
 void ebbrt::NetworkManager::TcpPcb::Output() {
   auto now = ebbrt::clock::Wall::Now();
   entry_->Output(now);
@@ -330,14 +342,12 @@ void ebbrt::NetworkManager::TcpEntry::SetTimer(
 
 // Turn off all timers
 void ebbrt::NetworkManager::TcpEntry::DisableTimers() {
-  if (timer_set) {
-    timer->Stop(*this);
-  }
-
-  timer_set = false;
-
-  retransmit = ebbrt::clock::Wall::time_point();
-  time_wait = ebbrt::clock::Wall::time_point();
+    if (timer_set) {
+      timer->Stop(*this);
+    }
+    timer_set = false;
+    retransmit = ebbrt::clock::Wall::time_point();
+    time_wait = ebbrt::clock::Wall::time_point();
 }
 
 // Purge all outstanding segments (either pending or unacked)
@@ -346,11 +356,22 @@ void ebbrt::NetworkManager::TcpEntry::Purge() {
   pending_segments.clear();
 }
 
+void ebbrt::NetworkManager::TcpEntry::Disconnect() {
+    Purge();
+    DisableTimers();
+    state = kClosed;
+}
+
+bool ebbrt::NetworkManager::TcpEntry::IsConnected() {
+  return state == kEstablished;
+};
+
 // Remove a pcb from its list and destroy it
 void ebbrt::NetworkManager::TcpEntry::Destroy() {
-  {
+  if(!deleted){
     std::lock_guard<ebbrt::SpinLock> guard(network_manager->tcp_write_lock_);
     network_manager->tcp_pcbs_.erase(*this);
+    deleted = true;
   }
   event_manager->DoRcu([this]() { delete this; });
 }

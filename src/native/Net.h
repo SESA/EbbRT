@@ -145,6 +145,8 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     void Purge();
     void DisableTimers();
     void Destroy();
+    void Disconnect(); /* Abrupt disconnect */
+    bool IsConnected(); 
 
     RcuHListHook hook;
     size_t cpu;
@@ -182,6 +184,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     std::atomic_bool accepted{false};
     bool window_notify;
     bool timer_set{false};
+    bool deleted{false};
   };
 
   class TcpPcb {
@@ -198,6 +201,7 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     void SetWindowNotify(bool notify);
     void Send(std::unique_ptr<IOBuf> buf);
     void Output();
+    void Disconnect(); /* Force an abrupt disconnect */
     Ipv4Address GetRemoteAddress();
 
    private:
