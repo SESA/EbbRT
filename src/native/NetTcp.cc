@@ -194,6 +194,8 @@ void ebbrt::NetworkManager::TcpPcb::Send(std::unique_ptr<IOBuf> buf) {
 
 void ebbrt::NetworkManager::TcpPcb::Disconnect() {
   entry_->Disconnect(); //Disconnect
+  auto lport = std::get<2>(entry_->key);
+  network_manager->tcp_port_allocator_->Free(lport);
 }
 
 void ebbrt::NetworkManager::TcpPcb::Output() {
@@ -369,10 +371,12 @@ bool ebbrt::NetworkManager::TcpEntry::IsConnected() {
 // Remove a pcb from its list and destroy it
 void ebbrt::NetworkManager::TcpEntry::Destroy() {
   if(!deleted){
+    kprintf_force("TcpPcb(%p): removing Pcb from network manager \n", this);
     std::lock_guard<ebbrt::SpinLock> guard(network_manager->tcp_write_lock_);
     network_manager->tcp_pcbs_.erase(*this);
     deleted = true;
   }
+  kprintf_force("TcpPcb(%p): processing RCU delete\n", this);
   event_manager->DoRcu([this]() { delete this; });
 }
 
