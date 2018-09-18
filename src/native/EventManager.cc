@@ -347,6 +347,10 @@ uint32_t ebbrt::EventManager::GetEventId() {
   return active_event_context_.event_id;
 }
 
+size_t ebbrt::EventManager::QueueLength() {
+  return tasks_.size();
+}
+
 std::unordered_map<__gthread_key_t, void*>& ebbrt::EventManager::GetTlsMap() {
   if (unlikely(!active_event_context_.tls)) {
     active_event_context_.tls.reset(
