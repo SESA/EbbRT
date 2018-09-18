@@ -76,6 +76,7 @@ class EventManager : Timer::Hook {
   void ActivateContextSync(EventContext&& context);
   uint8_t AllocateVector(MovableFunction<void()> func);
   uint32_t GetEventId();
+  size_t QueueLength();
   std::unordered_map<__gthread_key_t, void*>& GetTlsMap();
   void DoRcu(MovableFunction<void()> func);
   void Fire() override;
