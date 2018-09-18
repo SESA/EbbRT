@@ -7,14 +7,14 @@
 #
 # 	CLEANUP=1     					# remove build state when finished
 # 	DEBUG=1 								# build without optimisation
-# 	VERBOSE=1   						# verbose build 
+# 	VERBOSE=1   						# verbose build
 
 -include config.mk # Local config (optional)
 
 CD ?= cd
 CMAKE ?= cmake
 MAKE ?= time make
-MKDIR ?= mkdir
+MKDIR ?= mkdir -p
 RM ?= -rm
 
 PREFIX ?= /usr/local 				# Install Linux libraries to /usr/local
@@ -52,7 +52,7 @@ MAKE_VERBOSE_OPT ?=
 CMAKE_VERBOSE_OPT ?= 
 endif
 
-# Assume this file is located in the root directory of EbbRT repo 
+#Assume this file is located in the root directory of EbbRT repo 
 ifeq "$(wildcard $(EBBRT_SRCDIR) )" ""
   $(error Unable to locate source EBBRT_SRCDIR=$(EBBRT_SRCDIR))
 endif
@@ -65,20 +65,22 @@ build: hosted native
 
 install: hosted-install native-install
 
-ebbrt-libs: native-libs hosted-libs
-
+libs: native-libs hosted-libs
 
 clean:
 	$(MAKE) -C $(HOSTED_BUILD_DIR) clean
 	$(MAKE) -C $(NATIVE_BUILD_DIR) clean
 
-hosted: | $(EBBRT_SRC)
-	$(MKDIR) -p $(HOSTED_BUILD_DIR) && $(CD) $(HOSTED_BUILD_DIR) && \
+$(HOSTED_BUILD_DIR):
+	$(MKDIR) $@
+
+hosted: | $(EBBRT_SRC) $(HOSTED_BUILD_DIR)
+	$(CD) $(HOSTED_BUILD_DIR) && \
 	$(CMAKE) -DCMAKE_INSTALL_PREFIX=$(PREFIX)  \
 	$(CMAKE_BUILD_TYPE) $(CMAKE_VERBOSE_OPT) $(EBBRT_SRC) 
 	$(MAKE) -C $(HOSTED_BUILD_DIR) $(MAKE_OPT) 
 
-hosted-install: | $(HOSTED_BUILD_DIR)
+hosted-install: | hosted $(HOSTED_BUILD_DIR)
 	$(MAKE) -C $(HOSTED_BUILD_DIR) $(MAKE_OPT) install 
 
 hosted-libs: hosted-install 
@@ -88,8 +90,11 @@ hosted-libs: hosted-install
 	$(CMAKE_BUILD_TYPE) $(CMAKE_VERBOSE_OPT) $(EBBRT_LIBS) && \
 	$(MAKE) $(MAKE_OPT) install && $(CD) - 
 
-native: | $(EBBRT_SRC) $(NATIVE_TOOLCHAIN_FILE)
-	$(MKDIR) -p $(NATIVE_BUILD_DIR) && $(CD) $(NATIVE_BUILD_DIR) && \
+$(NATIVE_BUILD_DIR):
+	$(MKDIR) $@
+
+native: | $(EBBRT_SRC) $(NATIVE_TOOLCHAIN_FILE) $(NATIVE_BUILD_DIR)
+	$(CD) $(NATIVE_BUILD_DIR) && \
 	EBBRT_SYSROOT=$(EBBRT_SYSROOT) $(CMAKE) \
 	-DCMAKE_INSTALL_PREFIX:PATH=$(SYSROOT_PREFIX) \
 	$(EBBRT_BUILD_DEFS) \
@@ -97,7 +102,7 @@ native: | $(EBBRT_SRC) $(NATIVE_TOOLCHAIN_FILE)
 	$(CMAKE_BUILD_TYPE) $(CMAKE_VERBOSE_OPT) $(EBBRT_SRC) 
 	$(MAKE) -C $(NATIVE_BUILD_DIR) $(MAKE_OPT) 
 
-native-install: | $(NATIVE_BUILD_DIR)
+native-install: | native $(NATIVE_BUILD_DIR)
 	$(MAKE) -C $(NATIVE_BUILD_DIR) $(MAKE_OPT) install 
 
 native-libs: native-install
@@ -109,5 +114,18 @@ native-libs: native-install
 	$(CMAKE_BUILD_TYPE) $(CMAKE_VERBOSE_OPT) $(EBBRT_LIBS) && \
 	$(MAKE) $(MAKE_OPT) install && $(CD) - 
 
-.PHONY: all clean build install hosted hosted-install native \
-				native-install ebbrt-hosted-libs ebbrt-native-libs
+zookeeper: native-zookeeper hosted-zookeeper
+
+native-zookeeper: $(NATIVE_BUILD_DIR)
+	$(CD) $(NATIVE_BUILD_DIR) && $(MKDIR) -p libs/zookeeper && $(CD) libs/zookeeper && \
+	EBBRT_SYSROOT=$(EBBRT_SYSROOT) $(CMAKE) \
+	-DCMAKE_INSTALL_PREFIX:PATH=$(SYSROOT_PREFIX) \
+	$(EBBRT_BUILD_DEFS) \
+	-DCMAKE_TOOLCHAIN_FILE=$(NATIVE_TOOLCHAIN_FILE) \
+	$(CMAKE_BUILD_TYPE) $(CMAKE_VERBOSE_OPT) $(EBBRT_LIBS)/zookeeper && \
+	$(MAKE) $(MAKE_OPT) install && $(CD) - 
+
+.PHONY: all clean build install \
+				hosted hosted-install hosted-libs \
+				native native-install native-libs libs \
+				hosted-zookeeper native-zookeeper zookeeper
