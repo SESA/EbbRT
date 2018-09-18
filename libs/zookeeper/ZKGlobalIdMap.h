@@ -107,11 +107,8 @@ class ZKGlobalIdMap : public GlobalIdMap, public CacheAligned {
     auto path = zkargs.path;
     auto p = new ebbrt::Promise<void>;
     auto ret = p->GetFuture();
-    std::cout << "ZKM Set Called for: " << id << std::endl;
     auto fullpath = get_id_path(id, path);
-    std::cout << "ZKM path=" << id << " " << fullpath << std::endl;
-        std::cout << "Setting Value " << fullpath << " = " << val << std::endl;
-        zk_->Set(fullpath, val).Then([p](auto f) { p->SetValue(); });
+    zk_->Set(fullpath, val).Then([p](auto f) { p->SetValue(); });
     return ret;
   }
 
