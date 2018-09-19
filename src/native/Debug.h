@@ -23,12 +23,12 @@ kprintf_force(const char* __restrict format, ...);
 #if __cplusplus > 199711L
 template <typename... Args>
 __attribute__((noreturn)) void kabort(const Args&... args) {
-  kprintf(args...);
+  kprintf_force(args...);
   kabort();
 }
 
 template <> __attribute__((noreturn)) inline void kabort() {
-  kprintf("Aborting!\n");
+  kprintf_force("Aborting!\n");
   while (true) {
     asm volatile("cli;"
                  "hlt;"
