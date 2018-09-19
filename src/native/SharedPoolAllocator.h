@@ -31,7 +31,7 @@ class SharedPoolAllocator : public SharedEbb<SharedPoolAllocator<T>>,
   }
 
   boost::optional<T> Allocate() {
-    std::lock_guard<std::mutex> guard(lock_);
+    std::lock_guard<ebbrt::SpinLock> guard(lock_);
     if (unlikely(set_.empty())) {
       return boost::optional<T>();
     }
@@ -42,7 +42,7 @@ class SharedPoolAllocator : public SharedEbb<SharedPoolAllocator<T>>,
   }
 
   bool Reserve(const T& val) {
-    std::lock_guard<std::mutex> guard(lock_);
+    std::lock_guard<ebbrt::SpinLock> guard(lock_);
     if (boost::icl::contains(set_, val)) {
       set_ -= val;
       return true;
@@ -51,12 +51,12 @@ class SharedPoolAllocator : public SharedEbb<SharedPoolAllocator<T>>,
   }
 
   void Free(T val) {
-    std::lock_guard<std::mutex> guard(lock_);
+    std::lock_guard<ebbrt::SpinLock> guard(lock_);
     set_ += val;
   }
 
  private:
-  std::mutex lock_;
+  ebbrt::SpinLock lock_;
   boost::icl::interval_set<T> set_;
 };
 }  // namespace ebbrt
