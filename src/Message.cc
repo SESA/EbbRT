@@ -20,12 +20,12 @@ ebbrt::MessagableBase& ebbrt::GetMessagableRef(EbbId id, uint64_t type_code) {
   if (local_entry.ref == nullptr){
     auto it = fault_map.find(type_code);
     if (it == fault_map.end())
-      throw std::runtime_error("GetMessagableRef missing fault for type code");
+      ebbrt::kabort("GetMessagableRef missing fault for type code");
     return it->second(id);
   } else {
     auto it = cast_map.find(type_code);
     if (it == cast_map.end())
-      throw std::runtime_error("GetMessagableRef missing cast function for type code");
+      ebbrt::kabort("GetMessagableRef missing cast function for type code");
     return it->second(local_entry.ref);
   }
 }
