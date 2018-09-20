@@ -19,6 +19,7 @@ fi
 # configure virtual machine
 VCPU=${VM_CPU:-2}
 VMEM=${VM_MEM:-2G}
+VNUMA=${VM_NUMA:-0} # numa
 WAIT=${VM_WAIT:-false}
 TAP=${TAP_IFACE:-tap0}
 MAC=$VM_MAC
@@ -59,4 +60,14 @@ if [ -n "$NO_NETWORK" ]; then
 KVM_ARGS="$KVM_ARGS -append 'nodhcp;'"
 fi
 
-$LAUNCHER qemu-system-x86_64 -m $VMEM -smp cpus=$VCPU -cpu host -serial stdio -display none -enable-kvm `eval echo $KVM_NET_OPTS` $KVM_ARGS
+# numa 
+NUMA_CMD=""
+if [ $VNUMA -ne 0 ]
+then
+  for i in $(seq 1 $VNUMA);
+  do
+    NUMA_CMD="$NUMA_CMD -numa node "
+  done
+fi
+
+$LAUNCHER qemu-system-x86_64 -m $VMEM -smp cpus=$VCPU $NUMA_CMD -cpu host -serial stdio -display none -enable-kvm `eval echo $KVM_NET_OPTS` $KVM_ARGS
