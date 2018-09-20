@@ -68,8 +68,10 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
 
   static const constexpr uint8_t kDefaultCpus = 2;
   static const constexpr uint8_t kDefaultRam = 2;
+  static const constexpr uint8_t kDefaultNuma = 1;
   static uint8_t DefaultCpus;
   static uint8_t DefaultRam;
+  static uint8_t DefaultNuma;
   static std::string DefaultArguments;
   static std::string CustomNetworkCreate;
   static std::string CustomNetworkRemove;
@@ -86,6 +88,7 @@ class NodeAllocator : public StaticSharedEbb<NodeAllocator> {
   struct NodeArgs {
     uint8_t cpus = DefaultCpus;
     uint8_t ram = DefaultRam;
+    uint8_t numa = DefaultNuma;
     std::string arguments = DefaultArguments;
     std::string constraint_node = "";
     NodeArgs() {}

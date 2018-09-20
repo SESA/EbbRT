@@ -24,6 +24,7 @@ const constexpr size_t kLineSize = 80;
 // Node Configuration
 uint8_t ebbrt::NodeAllocator::DefaultCpus;
 uint8_t ebbrt::NodeAllocator::DefaultRam;
+uint8_t ebbrt::NodeAllocator::DefaultNuma;
 std::string ebbrt::NodeAllocator::DefaultArguments;
 // Network Configuration
 std::string ebbrt::NodeAllocator::CustomNetworkCreate;
@@ -37,6 +38,8 @@ void ebbrt::NodeAllocator::ClassInit() {
   DefaultCpus = (str) ? atoi(str) : kDefaultCpus;
   str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_RAM");
   DefaultRam = (str) ? atoi(str) : kDefaultRam;
+  str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_NUMA");
+  DefaultNuma = (str) ? atoi(str) : kDefaultNuma;
   str = getenv("EBBRT_NODE_ALLOCATOR_DEFAULT_ARGUMENTS");
   DefaultArguments = (str) ? std::string(str) : std::string();
   // Network create configuration
@@ -297,8 +300,9 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
               << " --device /dev/vhost-net:/dev/vhost-net"
               << " -e VM_WAIT=true"
               << " -e VM_MEM=" << std::to_string(args.ram) << "G"
-              << " -e VM_CPU=" << std::to_string(args.cpus) << " --name='"
-              << container_name << "' ";
+              << " -e VM_CPU=" << std::to_string(args.cpus) 
+              << " -e VM_NUMA=" << std::to_string(args.numa) 
+              << " --name='" << container_name << "' ";
 
   std::string repo = " ebbrt/kvm-qemu:latest";
 
