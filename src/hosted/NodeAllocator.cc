@@ -285,9 +285,7 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
   std::stringstream docker_args;
   std::stringstream qemu_args;
 
-#ifndef NDEBUG
   docker_args << " --expose 1234 -e DEBUG=true";
-#endif
 
   if (CustomNetworkNodeArguments.empty()) {
     docker_args << " --net=" << network_id_ << " ";
@@ -302,13 +300,11 @@ ebbrt::NodeAllocator::AllocateNode(std::string binary_path,
               << " -e VM_MEM=" << std::to_string(args.ram) << "G"
               << " -e VM_CPU=" << std::to_string(args.cpus) 
               << " -e VM_NUMA=" << std::to_string(args.numa) 
+						  << " -e GDB=1 "
               << " --name='" << container_name << "' ";
 
   std::string repo = " ebbrt/kvm-qemu:latest";
 
-#ifndef NDEBUG
-  qemu_args << " --gdb tcp:0.0.0.0:1234 ";
-#endif
   qemu_args << args.arguments << " -kernel /root/img.elf"
             << " -append \"" << cmdline_ << ";allocid=" << allocation_id
             << "\"";

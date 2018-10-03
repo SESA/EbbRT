@@ -54,7 +54,7 @@ if [ -z "$KVM_ARGS" ]; then
   KVM_ARGS="-kernel $BOOTIMG"
 fi
 if [ -n "$GDB" ]; then 
-  KVM_ARGS="$KVM_ARGS -s "
+  KVM_ARGS="-s $KVM_ARGS"
 fi
 if [ -n "$NO_NETWORK" ]; then 
 KVM_ARGS="$KVM_ARGS -append 'nodhcp;'"
@@ -71,3 +71,4 @@ then
 fi
 
 $LAUNCHER qemu-system-x86_64 -m $VMEM -smp cpus=$VCPU $NUMA_CMD -cpu host -serial stdio -display none -enable-kvm `eval echo $KVM_NET_OPTS` $KVM_ARGS
+
