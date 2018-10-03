@@ -13,7 +13,7 @@ RUN apt-get update && \
     ebtables \
     dnsmasq
 
-RUN git clone -b qemu-lite-v2.9.0 https://github.com/clearcontainers/qemu.git /qemu
+RUN git clone -b pin-threads https://github.com/SESA/qemu.git /qemu
 WORKDIR /qemu
 RUN ./configure --target-list=x86_64-softmmu --enable-vhost-net --enable-kvm
 RUN make -j
@@ -24,6 +24,8 @@ RUN rm -rf /qemu
 
 COPY start.sh /root/start.sh
 COPY launch.sh /root/launch.sh
+
+RUN apt-get install -y gdb
 
 EXPOSE 22
 EXPOSE 1234

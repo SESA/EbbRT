@@ -71,3 +71,4 @@ then
 fi
 
 $LAUNCHER qemu-system-x86_64 -m $VMEM -smp cpus=$VCPU $NUMA_CMD -cpu host -serial stdio -display none -enable-kvm `eval echo $KVM_NET_OPTS` $KVM_ARGS
+
