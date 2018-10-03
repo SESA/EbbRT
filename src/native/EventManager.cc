@@ -16,6 +16,7 @@
 #include "Trace.h"
 #include "VMem.h"
 
+
 namespace {
 struct InterruptHandler {
   ebbrt::RcuHListHook hook;
@@ -135,6 +136,7 @@ void ebbrt::EventManager::Process() {
 // instruction is executed (to allow for a halt for example). The nop gives us
 // a one instruction window to process an interrupt (before the cli)
 process:
+  Inc();
   asm volatile("sti;"
                "nop;"
                "cli;");
@@ -175,7 +177,7 @@ void ebbrt::EventManager::FreeStack(Pfn stack) { free_stacks_.push(stack); }
 static_assert(ebbrt::Cpu::kMaxCpus <= 256, "adjust event id calculation");
 
 ebbrt::EventManager::EventManager(const RepMap& rm)
-    : reps_(rm), next_event_id_(Cpu::GetMine() << 24),
+  : reps_(rm), next_event_id_(Cpu::GetMine() << 24),
       active_event_context_(next_event_id_++, AllocateStack()) {}
 
 void ebbrt::EventManager::Spawn(MovableFunction<void()> func,
@@ -222,7 +224,7 @@ void ebbrt::EventManager::SpawnLocal(MovableFunction<void()> func,
     tasks_.emplace_back(std::move(func));
   } else {
     sync_spawn_fn_ = std::move(func);
-
+    
     // put current context on the stack
     sync_contexts_.emplace(std::move(active_event_context_));
 
@@ -397,6 +399,9 @@ void ebbrt::EventManager::ReceiveToken() {
 
   StartTimer();
 }
+
+
+
 
 // Check Generation
 void ebbrt::EventManager::Fire() {

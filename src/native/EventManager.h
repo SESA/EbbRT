@@ -13,9 +13,9 @@
 
 #include <boost/container/flat_map.hpp>
 #include <boost/utility.hpp>
-
 #include "../MoveLambda.h"
 #include "../Timer.h"
+
 #include "Cpu.h"
 #include "Isr.h"
 #include "Main.h"
@@ -64,9 +64,11 @@ class EventManager : Timer::Hook {
 
   explicit EventManager(const RepMap& rm);
 
+
   static void Init();
   static EventManager& HandleFault(EbbId id);
-
+  //void ReceiveMessage(ebbrt::Messenger::NetworkId nid, std::unique_ptr<ebbrt::IOBuf>&& buffer){};
+  
   void Spawn(ebbrt::MovableFunction<void()> func, bool force_async = false);
   void SpawnLocal(ebbrt::MovableFunction<void()> func,
                   bool force_async = false);
@@ -80,6 +82,19 @@ class EventManager : Timer::Hook {
   std::unordered_map<__gthread_key_t, void*>& GetTlsMap();
   void DoRcu(MovableFunction<void()> func);
   void Fire() override;
+  int Nodeval(){
+    auto sum = count;
+    for (size_t core = 0; core < Cpu::Count(); ++core){
+      auto it = reps_.find(core);
+      if(it != reps_.end()){
+	sum += it->second->Coreval();
+      } else{
+	ebbrt::kprintf("skipped core %d!", core);
+      }
+    }
+    return sum;
+  };
+  int Coreval(){ return count; };
 
  private:
   template <typename F> void InvokeFunction(F&& f);
@@ -99,6 +114,8 @@ class EventManager : Timer::Hook {
   void ReceiveToken();
   void CheckGeneration();
   void StartTimer();
+  void Inc(){ count++; };
+  int count;
 
   const RepMap& reps_;
   std::stack<Pfn> free_stacks_;
