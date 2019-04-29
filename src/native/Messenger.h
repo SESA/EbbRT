@@ -73,6 +73,7 @@ class Messenger : public StaticSharedEbb<Messenger>, public CacheAligned {
   void Receive(NetworkManager::TcpPcb& t, std::unique_ptr<IOBuf>&& b);
 
   NetworkId LocalNetworkId();
+  uint16_t GetPort();
 
   void StartListening(uint16_t port);
 
