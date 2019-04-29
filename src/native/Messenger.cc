@@ -23,9 +23,14 @@ void ebbrt::Messenger::Connection::check_preallocate() {
     capacity += buf.Capacity();
   }
   auto buffer_len = buf_->ComputeChainDataLength();
+  if (buffer_len < sizeof(Header))
+    return;
   auto dp = buf_->GetDataPointer();
   auto& header = dp.Get<Header>();
-  auto message_len = sizeof(Header) + header.length;
+  uint64_t message_len = sizeof(Header) + header.length;
+  if(message_len > 1<<30){
+    kabort("Messenger: ERROR Huge message requested \n");
+  }
   auto ratio = static_cast<double>(buffer_len) / static_cast<double>(capacity);
   if (ratio < kOccupancyRatio) {
     // allocate message buffer and coalesce chain
@@ -186,6 +191,8 @@ ebbrt::Future<ebbrt::Messenger::Connection*>
 ebbrt::Messenger::Connection::GetFuture() {
   return promise_.GetFuture();
 }
+
+uint16_t ebbrt::Messenger::GetPort() { return port_; }
 
 void ebbrt::Messenger::StartListening(uint16_t port) {
   port_ = port;
