@@ -13,6 +13,13 @@ ebbrt::NetworkManager::NewInterface(EthernetDevice& ether_dev) {
 }
 
 ebbrt::NetworkManager::Interface&
+ebbrt::NetworkManager::GetInterface() {
+  if (!interface_)
+    std::runtime_error("No interface available");
+  return *interface_;
+}
+
+ebbrt::NetworkManager::Interface&
 ebbrt::NetworkManager::NewLoopback(EthernetDevice& ether_dev) {
   loopback_.reset(new Interface(ether_dev));
   return *loopback_;
