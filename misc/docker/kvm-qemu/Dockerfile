@@ -25,7 +25,7 @@ RUN rm -rf /qemu
 COPY start.sh /root/start.sh
 COPY launch.sh /root/launch.sh
 
-RUN apt-get install -y gdb
+RUN apt-get update && apt-get install -y gdb
 
 EXPOSE 22
 EXPOSE 1234
