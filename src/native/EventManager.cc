@@ -165,6 +165,12 @@ ebbrt::Pfn ebbrt::EventManager::AllocateStack() {
     free_stacks_.pop();
     return ret;
   }
+  allocate_stack_counter_++;
+  if (allocate_stack_counter_ % 10 == 0) {
+    ebbrt::kprintf("EventManager: core %d has allocated %d stacks\n",
+                   (size_t)Cpu::GetMine(), allocate_stack_counter_);
+  }
+
   auto fault_handler = new EventStackFaultHandler;
   return vmem_allocator->Alloc(
       kStackPages, std::unique_ptr<EventStackFaultHandler>(fault_handler));
@@ -274,6 +280,20 @@ void ebbrt::EventManager::SaveContext(EventContext& context) {
     active_event_context_ = std::move(prev_context);
     sync_contexts_.pop();
     SaveContextAndActivate(context, active_event_context_);
+  }
+}
+
+void ebbrt::EventManager::PreAllocateStacks(size_t num) {
+  while(num--){
+    allocate_stack_counter_++;
+    if (allocate_stack_counter_ % 10 == 0) {
+      ebbrt::kprintf("EventManager: core %d has allocated %d stacks\n",
+                     (size_t)Cpu::GetMine(), allocate_stack_counter_);
+    }
+    auto fault_handler = new EventStackFaultHandler;
+    auto s = vmem_allocator->Alloc(
+        kStackPages, std::unique_ptr<EventStackFaultHandler>(fault_handler));
+    FreeStack(s);
   }
 }
 
