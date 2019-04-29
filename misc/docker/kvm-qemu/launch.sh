@@ -54,7 +54,7 @@ if [ -z "$KVM_ARGS" ]; then
   KVM_ARGS="-kernel $BOOTIMG"
 fi
 if [ -n "$GDB" ]; then 
-  KVM_ARGS="$KVM_ARGS -s "
+  KVM_ARGS="-s $KVM_ARGS"
 fi
 if [ -n "$NO_NETWORK" ]; then 
 KVM_ARGS="$KVM_ARGS -append 'nodhcp;'"
