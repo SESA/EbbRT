@@ -234,6 +234,9 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     explicit Interface(EthernetDevice& ether_dev)
         : address_(nullptr), ether_dev_(ether_dev) {}
 
+    void EthArpSend(uint16_t proto, const Ipv4Header& ih,
+                    std::unique_ptr<MutIOBuf> buf,
+                    PacketInfo pinfo = PacketInfo());
     void Receive(std::unique_ptr<MutIOBuf> buf);
     void Send(std::unique_ptr<IOBuf> buf, PacketInfo pinfo = PacketInfo());
     void SendUdp(UdpPcb& pcb, Ipv4Address addr, uint16_t port,
@@ -271,9 +274,6 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
     void ReceiveTcp(const Ipv4Header& ih, std::unique_ptr<MutIOBuf> buf);
     void ReceiveDhcp(Ipv4Address from_addr, uint16_t from_port,
                      std::unique_ptr<MutIOBuf> buf);
-    void EthArpSend(uint16_t proto, const Ipv4Header& ih,
-                    std::unique_ptr<MutIOBuf> buf,
-                    PacketInfo pinfo = PacketInfo());
     void EthArpRequest(ArpEntry& entry);
     void DhcpOption(DhcpMessage& message, uint8_t option_type,
                     uint8_t option_len);
@@ -303,14 +303,15 @@ class NetworkManager : public StaticSharedEbb<NetworkManager> {
   Interface& NewInterface(EthernetDevice& ether_dev);
   Interface& NewLoopback(EthernetDevice& ether_dev);
   Ipv4Address IpAddress();
+  Interface& GetInterface();
+  void TcpReset(bool ack, uint32_t seqno, uint32_t ackno,
+                const Ipv4Address& local_ip, const Ipv4Address& remote_ip,
+                uint16_t local_port, uint16_t remote_port);
 
  private:
   Future<void> StartDhcp();
   void SendIp(std::unique_ptr<MutIOBuf> buf, Ipv4Address src, Ipv4Address dst,
               uint8_t proto, PacketInfo = PacketInfo());
-  void TcpReset(bool ack, uint32_t seqno, uint32_t ackno,
-                const Ipv4Address& local_ip, const Ipv4Address& remote_ip,
-                uint16_t local_port, uint16_t remote_port);
   Interface* IpRoute(Ipv4Address dest);
 
   std::unique_ptr<Interface> interface_;
