@@ -58,6 +58,7 @@ class Messenger : public StaticSharedEbb<Messenger> {
   Future<void> Send(NetworkId to, EbbId id, uint64_t type_code,
                     std::unique_ptr<IOBuf>&& data);
   NetworkId LocalNetworkId();
+  uint16_t GetPort();
 
  private:
   struct Header {
@@ -83,7 +84,6 @@ class Messenger : public StaticSharedEbb<Messenger> {
 
   void DoAccept(std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor,
                 std::shared_ptr<boost::asio::ip::tcp::socket> socket);
-  uint16_t GetPort();
 
   uint16_t port_;
   std::mutex m_;
