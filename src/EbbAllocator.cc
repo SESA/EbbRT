@@ -21,7 +21,7 @@ ebbrt::EbbAllocator::EbbAllocator() {
 }
 
 ebbrt::EbbId ebbrt::EbbAllocator::AllocateLocal() {
-  std::lock_guard<std::mutex> lock(lock_);
+  std::lock_guard<ebbrt::SpinLock> lock(lock_);
   kbugon(free_ids_.empty());
   auto ret = boost::icl::first(free_ids_);
   free_ids_.erase(ret);
@@ -29,7 +29,7 @@ ebbrt::EbbId ebbrt::EbbAllocator::AllocateLocal() {
 }
 
 ebbrt::EbbId ebbrt::EbbAllocator::Allocate() {
-  std::lock_guard<std::mutex> lock(lock_);
+  std::lock_guard<ebbrt::SpinLock> lock(lock_);
   if (free_global_ids_.empty())
     throw std::runtime_error("Out of Global Ids!");
 
