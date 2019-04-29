@@ -25,6 +25,7 @@ class SegDesc {
     s_ = 1;
     p_ = 1;
   }
+  void Set(uint64_t raw) { raw_ = raw; }
 
   void SetCode() { Set(8, true); }
 
@@ -121,6 +122,8 @@ class Gdt {
   SegDesc nulldesc_;
   SegDesc cs_;
   SegDesc ds_;
+  SegDesc ucs_;
+  SegDesc uds_;
   TssDesc tss_;
 
   struct DescPtr {
@@ -139,6 +142,11 @@ class Gdt {
     auto gdtr = DescPtr(sizeof(Gdt) - 1, reinterpret_cast<uint64_t>(this));
     asm volatile("lgdt %[gdtr]" : : [gdtr] "m"(gdtr));
     asm volatile("ltr %w[tr]" : : [tr] "rm"(offsetof(class Gdt, tss_)));
+  }
+
+  void SetUserSegments(uint64_t cs, uint64_t ds) {
+    ucs_.Set(cs);
+    uds_.Set(ds);
   }
 
   void SetTssAddr(uint64_t tss_addr) { tss_.Set(tss_addr); }
@@ -165,6 +173,7 @@ class Cpu {
   void set_acpi_id(uint8_t id) { acpi_id_ = id; }
   void set_apic_id(uint8_t id) { apic_id_ = id; }
   void set_nid(Nid nid) { nid_ = nid; }
+  Gdt* gdt() { return &gdt_; }
 
  private:
   void SetEventStack(uintptr_t top_of_stack);
