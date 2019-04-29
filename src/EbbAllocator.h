@@ -17,6 +17,7 @@
 #include "Runtime.h"
 #include "StaticIds.h"
 #include "StaticSharedEbb.h"
+#include "SpinLock.h"
 
 namespace ebbrt {
 class EbbAllocator : public CacheAligned, public StaticSharedEbb<EbbAllocator> {
@@ -31,7 +32,7 @@ class EbbAllocator : public CacheAligned, public StaticSharedEbb<EbbAllocator> {
 #endif
 
  private:
-  std::mutex lock_;
+  ebbrt::SpinLock lock_;
   boost::icl::interval_set<EbbId> free_ids_;
   boost::icl::interval_set<EbbId> free_global_ids_;
 };
