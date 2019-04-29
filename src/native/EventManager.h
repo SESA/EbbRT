@@ -80,6 +80,7 @@ class EventManager : Timer::Hook {
   std::unordered_map<__gthread_key_t, void*>& GetTlsMap();
   void DoRcu(MovableFunction<void()> func);
   void Fire() override;
+  void PreAllocateStacks(size_t num);
 
  private:
   template <typename F> void InvokeFunction(F&& f);
@@ -113,6 +114,7 @@ class EventManager : Timer::Hook {
   size_t pending_generation_ = 0;
   std::queue<MovableFunction<void()>> prev_rcu_tasks_;
   std::queue<MovableFunction<void()>> curr_rcu_tasks_;
+  size_t allocate_stack_counter_ = 0;
 
   struct RemoteData : CacheAligned {
     ebbrt::SpinLock lock;
