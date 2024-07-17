@@ -12,20 +12,6 @@
 extern "C" {
 #endif
 
-typedef void* _LOCK_T;
-typedef void* _LOCK_RECURSIVE_T;
-
-extern void ebbrt_newlib_lock_init(_LOCK_T*);
-extern void ebbrt_newlib_lock_init_recursive(_LOCK_RECURSIVE_T*);
-extern void ebbrt_newlib_lock_close(_LOCK_T*);
-extern void ebbrt_newlib_lock_close_recursive(_LOCK_RECURSIVE_T*);
-extern void ebbrt_newlib_lock_acquire(_LOCK_T*);
-extern void ebbrt_newlib_lock_acquire_recursive(_LOCK_RECURSIVE_T*);
-extern int ebbrt_newlib_lock_try_acquire(_LOCK_T*);
-extern int ebbrt_newlib_lock_try_acquire_recursive(_LOCK_RECURSIVE_T*);
-extern void ebbrt_newlib_lock_release(_LOCK_T*);
-extern void ebbrt_newlib_lock_release_recursive(_LOCK_RECURSIVE_T*);
-
 extern int ebbrt_newlib_exit(int);
 extern int ebbrt_newlib_execve(char *, char **, char **);
 extern int ebbrt_newlib_getpid(void);
