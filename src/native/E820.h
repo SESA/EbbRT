@@ -87,11 +87,22 @@ void PrintMap();
 void Reserve(uint64_t addr, uint64_t length);
 
 template <typename F> void ForEachUsableRegion(F f) {
-  std::for_each(std::begin(*map), std::end(*map), [=](const Entry& entry) {
+  /*  JA:  I think the following is equivalent and
+      avoid lambda if there is attendant overhead 
+  const auto en = map->end();
+  for (auto ei = map->begin(); ei < en; ei++) {
+    const Entry &entry = *ei;
     if (entry.type() == Entry::kTypeRam) {
       f(entry);
     }
-  });
+  }
+  */
+  /* this version is closer to the original prior to 2024 forward port */
+  std::for_each(map->begin(), map->end(), [=](const Entry & entry) {
+      if (entry.type() == Entry::kTypeRam) {
+	f(entry);
+      }
+    });
 }
 
 }  // namespace e820

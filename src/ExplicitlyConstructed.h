@@ -35,7 +35,8 @@ template <typename T> class ExplicitlyConstructed {
   ExplicitlyConstructed& operator=(const ExplicitlyConstructed&&) = delete;
 
  private:
-  typename std::aligned_storage<sizeof(T), alignof(T)>::type storage_;
+  alignas(T) unsigned char storage_[sizeof(T)];
+  //  typename std::aligned_storage<sizeof(T), alignof(T)>::type storage_;
 } __attribute__((packed));
 }  // namespace ebbrt
 

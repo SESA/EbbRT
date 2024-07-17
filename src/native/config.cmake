@@ -9,7 +9,7 @@ option(VIRTIO_NET_POLL "Enable Poll-Only VirtioNet Driver" OFF)
 configure_file(${PLATFORM_SOURCE_DIR}/config.h.in config.h @ONLY)
 
 # Build Settings
-set(CMAKE_CXX_FLAGS                "-Wall -Werror -std=gnu++14 -include ${CMAKE_CURRENT_BINARY_DIR}/config.h")
+set(CMAKE_CXX_FLAGS                "-Wall -Werror -std=gnu++14 -faligned-new  -include ${CMAKE_CURRENT_BINARY_DIR}/config.h")
 set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g3")
 set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE        "-O4 -flto -DNDEBUG")
@@ -19,6 +19,12 @@ set(CMAKE_ASM_FLAGS "-DASSEMBLY")
 
 # This is a bit of a hack to get the host capnp import path, rather than
 # the sysroot ones which will be found by default
-find_package(CapnProto QUIET)
-get_filename_component(capnp_dir_path "${CAPNP_EXECUTABLE}" DIRECTORY)
-get_filename_component(CAPNPC_IMPORT_DIRS "${capnp_dir_path}/../include" ABSOLUTE)
+find_package(CapnProto)
+#get_filename_component(capnp_dir_path "${CAPNP_EXECUTABLE}" DIRECTORY)
+#get_filename_component(CAPNPC_IMPORT_DIRS "${capnp_dir_path}/../include" ABSOLUTE)
+set(CAPNP_EXECUTABLE capnp)
+set(CAPNPC_CXX_EXECUTABLE c++)
+
+# force the use of native cmake inlcude files
+set(CAPNP_INCLUDE_DIRECTORY "${CMAKE_SYSROOT}/usr/include")
+set(CAPNP_INCLUDE_DIRS "")

@@ -21,11 +21,21 @@ SET(CMAKE_RANLIB ${CMAKE_SYSROOT}/usr/bin/x86_64-pc-ebbrt-gcc-ranlib CACHE FILEP
 
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=gnu++14" )
 
+# avoid testing the compiler as we are effectively cross compiling and cannot
+# run executable produced by the ebbrt toolchain natively
+SET(CMAKE_CXX_COMPILER_FORCED TRUE)
+
 SET(CMAKE_STAGING_PREFIX ${CMAKE_SYSROOT}/usr)
 SET(CMAKE_SYSTEM_PREFIX_PATH ${CMAKE_SYSROOT}/usr)
+
 
 # search for programs in the build host directories
 SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 # for libraries and headers in the target directories
 SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+
+
+
+
+

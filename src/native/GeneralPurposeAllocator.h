@@ -6,6 +6,7 @@
 #define BAREMETAL_SRC_INCLUDE_EBBRT_GENERALPURPOSEALLOCATOR_H_
 
 #include <array>
+#include <vector>
 
 #include "../CacheAligned.h"
 #include "CpuAsm.h"

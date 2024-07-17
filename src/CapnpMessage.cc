@@ -2,6 +2,11 @@
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
+#ifdef __ebbrt__
+#include "native/Gthread.h"
+typedef __gthread_mutex_t pthread_rwlock_t;
+#endif
+
 #include "CapnpMessage.h"
 
 struct Header {

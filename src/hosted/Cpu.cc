@@ -51,7 +51,9 @@ size_t Cpu::DefaultPhysCpus_;
 ebbrt::Cpu* Cpu::Create(size_t index) {
   cpus[index].construct(index);
   numCpus_++;
-  return (ebbrt::Cpu*)&cpus[index];
+  return (ebbrt::Cpu*)0;
+    //  reinterpret_cast<ebbrt::Cpu *>(&cpus[index]);
+  // return &cpus[index];
 }
 
 void Cpu::Init() {

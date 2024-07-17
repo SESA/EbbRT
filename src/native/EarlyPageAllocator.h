@@ -68,7 +68,7 @@ template <typename F> void ReleaseFreePages(F f) {
     auto nid = it->nid();
     // CAREFUL: advance the iterator before passing the free page, otherwise the
     // function may manipulate the page and trash our iterator
-    auto next_it = boost::next(it);
+    auto next_it = std::next(it);
     free_pages->erase(it);
     it = next_it;
     f(start, end, nid);

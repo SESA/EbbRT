@@ -4,12 +4,14 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include "Numa.h"
 
+#include <algorithm>
 #include <boost/utility.hpp>
 
 #include "../ExplicitlyConstructed.h"
 #include "Cpu.h"
 #include "Debug.h"
 #include "EarlyPageAllocator.h"
+#include <array>
 
 ebbrt::ExplicitlyConstructed<
     boost::container::static_vector<ebbrt::numa::Node, ebbrt::numa::kMaxNodes>>
@@ -36,7 +38,7 @@ void ebbrt::numa::Init() {
       numa_node.pfn_end = Pfn::None();
     } else {
       numa_node.pfn_start = numa_node.memblocks.begin()->start;
-      numa_node.pfn_end = boost::prior(numa_node.memblocks.end())->end;
+      numa_node.pfn_end = std::next(numa_node.memblocks.end(),-1)->end;
     }
   }
 }

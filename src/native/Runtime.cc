@@ -3,7 +3,8 @@
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include "Runtime.h"
-
+#include "Gthread.h"
+typedef __gthread_mutex_t pthread_rwlock_t;
 #include "../CapnpMessage.h"
 #include "../EbbAllocator.h"
 #include "../UniqueIOBuf.h"

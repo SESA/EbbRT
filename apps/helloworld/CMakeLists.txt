@@ -1,4 +1,8 @@
-cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.6 FATAL_ERROR)
+# This skips compiler verification which will fail because we haven't finished
+# installing the necessary libraries
+set(CMAKE_CXX_COMPILER_FORCED TRUE)
+set(CMAKE_C_COMPILER_FORCED TRUE)
 project("helloworld-ebbrt" C CXX)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
@@ -33,12 +37,17 @@ elseif( ${CMAKE_SYSTEM_NAME} STREQUAL "Linux" )
       "$ENV{EBBRT_SRCDIR}/hosted/cmake/Modules")
   endif()
 
+
+
   find_package(EbbRT REQUIRED)
-  find_package(Boost 1.53.0 REQUIRED COMPONENTS
+  find_package(Boost 1.85.0 REQUIRED COMPONENTS 
     filesystem system coroutine context )
-  find_package(Capnp REQUIRED)
+  find_package(CapnProto REQUIRED)
   find_package(TBB REQUIRED)
   find_package(Threads REQUIRED)
+  include_directories(${Boost_INCLUDE_DIRS})
+  include_directories(${CAPNP_INCLUDE_DIRS})
+  include_directories(${TBB_INCLUDE_DIRS})
 
   include_directories(${EBBRT_INCLUDE_DIRS})
   add_executable(helloworld ${HOSTED_SOURCES})

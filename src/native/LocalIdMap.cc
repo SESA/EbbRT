@@ -5,6 +5,7 @@
 #include "LocalIdMap.h"
 
 #include "../ExplicitlyConstructed.h"
+#include "Debug.h"
 
 namespace {
 ebbrt::ExplicitlyConstructed<ebbrt::LocalIdMap> the_map;

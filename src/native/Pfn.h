@@ -6,6 +6,7 @@
 #define BAREMETAL_SRC_INCLUDE_EBBRT_PFN_H_
 
 #include "PMem.h"
+#include <cstdint>
 
 namespace ebbrt {
 class Pfn {
@@ -105,8 +106,9 @@ Pfn operator-(Pfn lhs, T npages) {
 }
 }  // namespace ebbrt
 
+#include <bitset>
 namespace std {
-template <> struct hash<ebbrt::Pfn> {
+  template <> struct hash<ebbrt::Pfn> {
   size_t operator()(const ebbrt::Pfn& x) const {
     return hash<uintptr_t>()(x.val());
   }

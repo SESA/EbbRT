@@ -5,6 +5,7 @@
 #include "Pci.h"
 
 #include <cinttypes>
+#include <vector>
 
 #include "../Align.h"
 #include "../ExplicitlyConstructed.h"

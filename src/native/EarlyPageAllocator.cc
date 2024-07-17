@@ -49,10 +49,10 @@ void FreePageRange(ebbrt::Pfn start, ebbrt::Pfn end, ebbrt::Nid nid) {
 
   auto it = ebbrt::early_page_allocator::free_pages->insert(*range).first;
   if (it != ebbrt::early_page_allocator::free_pages->begin()) {
-    it = coalesce(boost::prior(it), it);
+    it = coalesce(std::next(it,-1), it);
   }
-  if (boost::next(it) != ebbrt::early_page_allocator::free_pages->end()) {
-    coalesce(it, boost::next(it));
+  if (std::next(it) != ebbrt::early_page_allocator::free_pages->end()) {
+    coalesce(it, std::next(it));
   }
 }
 }  // namespace

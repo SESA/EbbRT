@@ -20,6 +20,8 @@
 #include "EventManager.h"
 #include "GeneralPurposeAllocator.h"
 #ifdef __EBBRT_ENABLE_DISTRIBUTED_RUNTIME__
+#include "Gthread.h"
+typedef __gthread_mutex_t pthread_rwlock_t;
 #include "GlobalIdMap.h"
 #endif
 #include "LocalIdMap.h"

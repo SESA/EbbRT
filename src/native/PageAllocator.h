@@ -11,6 +11,7 @@
 #include <boost/container/static_vector.hpp>
 #endif
 #include <boost/intrusive/list.hpp>
+#include <array>
 
 #include "../CacheAligned.h"
 #include "../SpinLock.h"

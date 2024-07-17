@@ -4,6 +4,8 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #include "Printer.h"
 
+typedef __gthread_mutex_t pthread_rwlock_t;
+
 #include <ebbrt/LocalIdMap.h>
 #include <ebbrt/GlobalIdMap.h>
 #include <ebbrt/UniqueIOBuf.h>

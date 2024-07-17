@@ -22,12 +22,12 @@ void ebbrt::e820::Init(multiboot::Information* mbi) {
                           mmregion.type_);
       });
 
-  std::sort(std::begin(*map), std::end(*map));
+  std::sort(map->begin(), map->end());
 }
 
 void ebbrt::e820::PrintMap() {
   kprintf("e820::map:\n");
-  std::for_each(std::begin(*map), std::end(*map), [](const Entry& entry) {
+  std::for_each(map->begin(), map->end(), [](const Entry& entry) {
     kprintf("%#018" PRIx64 "-%#018" PRIx64 " ", entry.addr(),
             entry.addr() + entry.length() - 1);
     switch (entry.type()) {
