@@ -1,0 +1,185 @@
+diff -Naur binutils-2.42/bfd/config.bfd ebbrt-binutils-2.42/bfd/config.bfd
+--- binutils-2.42/bfd/config.bfd	2024-01-28 19:00:00.000000000 -0500
++++ ebbrt-binutils-2.42/bfd/config.bfd	2024-07-03 12:08:26.093351397 -0400
+@@ -681,6 +681,11 @@
+     targ_selvecs="i386_elf32_vec iamcu_elf32_vec"
+     want64=true
+     ;;
++  x86_64-*-ebbrt*)
++    targ_defvec=x86_64_elf64_vec
++    targ_selvecs=i386_elf32_vec
++    want64=true
++    ;;    
+   x86_64-*-elf* | x86_64-*-rtems* | x86_64-*-fuchsia | x86_64-*-genode*)
+     targ_defvec=x86_64_elf64_vec
+     targ_selvecs="i386_elf32_vec iamcu_elf32_vec x86_64_elf32_vec"
+diff -Naur binutils-2.42/config.sub ebbrt-binutils-2.42/config.sub
+--- binutils-2.42/config.sub	2024-01-28 19:00:00.000000000 -0500
++++ ebbrt-binutils-2.42/config.sub	2024-07-03 12:08:26.093351397 -0400
+@@ -1743,7 +1743,7 @@
+ 	     | os9* | macos* | osx* | ios* | tvos* | watchos* \
+ 	     | mpw* | magic* | mmixware* | mon960* | lnews* \
+ 	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
+-	     | aos* | aros* | cloudabi* | sortix* | twizzler* \
++	     | aos* | aros* | cloudabi* | sortix* | twizzler* | ebbrt* \
+ 	     | nindy* | vxsim* | vxworks* | ebmon* | hms* | mvs* \
+ 	     | clix* | riscos* | uniplus* | iris* | isc* | rtu* | xenix* \
+ 	     | mirbsd* | netbsd* | dicos* | openedition* | ose* \
+diff -Naur binutils-2.42/gas/configure.tgt ebbrt-binutils-2.42/gas/configure.tgt
+--- binutils-2.42/gas/configure.tgt	2024-01-28 19:00:00.000000000 -0500
++++ ebbrt-binutils-2.42/gas/configure.tgt	2024-07-03 12:08:26.093351397 -0400
+@@ -227,6 +227,7 @@
+ 
+   i386-*-beospe*)			fmt=coff em=pe ;;
+   i386-*-beos*)				fmt=elf ;;
++  i386-*-ebbrt*)                        fmt=elf ;;
+   i386-*-elfiamcu)			fmt=elf arch=iamcu ;;
+   i386-*-elf*)				fmt=elf ;;
+   i386-*-fuchsia*)			fmt=elf ;;
+diff -Naur binutils-2.42/ld/configure.tgt ebbrt-binutils-2.42/ld/configure.tgt
+--- binutils-2.42/ld/configure.tgt	2024-01-28 19:00:00.000000000 -0500
++++ ebbrt-binutils-2.42/ld/configure.tgt	2024-07-03 12:08:26.094351389 -0400
+@@ -1009,6 +1009,9 @@
+ x86_64-*-haiku*)	targ_emul=elf_x86_64_haiku
+ 			targ_extra_emuls="elf_x86_64 elf_i386_haiku"
+ 			;;
++x86_64-*-ebbrt*)        targ_emul=elf_x86_64_ebbrt
++			targ_extra_emuls="elf_x86_64 elf_i386"
++			;;			
+ x86_64-*-linux-gnux32)	targ_emul=elf32_x86_64
+ 			targ_extra_emuls="elf_x86_64 elf_i386 elf_iamcu"
+ 			targ_extra_libpath="elf_i386 elf_iamcu elf_x86_64"
+diff -Naur binutils-2.42/ld/emulparams/elf_x86_64_ebbrt.sh ebbrt-binutils-2.42/ld/emulparams/elf_x86_64_ebbrt.sh
+--- binutils-2.42/ld/emulparams/elf_x86_64_ebbrt.sh	1969-12-31 19:00:00.000000000 -0500
++++ ebbrt-binutils-2.42/ld/emulparams/elf_x86_64_ebbrt.sh	2024-07-03 12:08:26.094351389 -0400
+@@ -0,0 +1,4 @@
++. ${srcdir}/emulparams/elf_x86_64.sh
++GENERATE_SHLIB_SCRIPT=no
++GENERATE_PIE_SCRIPT=no
++SCRIPT_NAME=ebbrt
+diff -Naur binutils-2.42/ld/Makefile.am ebbrt-binutils-2.42/ld/Makefile.am
+--- binutils-2.42/ld/Makefile.am	2024-01-28 19:00:00.000000000 -0500
++++ ebbrt-binutils-2.42/ld/Makefile.am	2024-07-03 12:08:26.094351389 -0400
+@@ -461,6 +461,7 @@
+ 	eelf64tilegx_be.c \
+ 	eelf_mipsel_haiku.c \
+ 	eelf_x86_64.c \
++	eelf_x86_64_ebbrt.c \
+ 	eelf_x86_64_cloudabi.c \
+ 	eelf_x86_64_fbsd.c \
+ 	eelf_x86_64_haiku.c \
+diff -Naur binutils-2.42/ld/scripttempl/ebbrt.sc ebbrt-binutils-2.42/ld/scripttempl/ebbrt.sc
+--- binutils-2.42/ld/scripttempl/ebbrt.sc	1969-12-31 19:00:00.000000000 -0500
++++ ebbrt-binutils-2.42/ld/scripttempl/ebbrt.sc	2024-07-03 14:36:29.893531595 -0400
+@@ -0,0 +1,111 @@
++# Copyright (C) 2014-2015 Free Software Foundation, Inc.
++# 
++# Copying and distribution of this file, with or without modification,
++# are permitted in any medium without royalty provided the copyright
++# notice and this notice are preserved.
++#
++cat <<EOF
++ENTRY(start32)
++
++mb_magic = 0x1badb002;
++mb_flags = 0x3;
++mb_checksum = -(mb_magic + mb_flags);
++
++SECTIONS
++{
++	. = 0x100000;
++	kbegin = .;
++	.text BLOCK(4K) : ALIGN(4K)
++	{
++		LONG(mb_magic)
++		LONG(mb_flags)
++		LONG(mb_checksum)
++		*(.text.*)
++	}
++
++	.rodata BLOCK(4K) : ALIGN(4K)
++	{
++		*(.rodata.*)
++	}
++
++        .eh_frame_hdr ALIGN(4K) : {
++                *(.eh_frame_hdr)
++        }
++
++        .eh_frame ALIGN(4) : ONLY_IF_RO {
++                  __eh_frame_start = .;
++                  *(.eh_frame)
++                  QUAD(0);
++        }
++
++        .gcc_except_table BLOCK(4K) : ALIGN(4K) ONLY_IF_RO {
++                          *(.gcc_except_table .gcc_except_table.*)
++        }
++
++        .note : ALIGN(16) {
++                *(.note*)
++        }
++
++        .ctors BLOCK(4K) : ALIGN(4K) {
++               start_ctors = .;
++               /* KEEP(*(SORT_BY_INIT_PRIORITY(.ctors.*))) */
++               KEEP(*(SORT(.ctors.*)))
++               KEEP(*(.ctors))
++               end_ctors = .;
++        }
++
++        .dtors BLOCK(4K) : ALIGN(4K) {
++               start_dtors = .;
++               KEEP(*(SORT(.dtors.*)))
++               KEEP(*(.dtors))
++               end_dtors = .;
++        }
++
++        .eh_frame ALIGN(4) : ONLY_IF_RW {
++                  __eh_frame_start = .;
++                  *(.eh_frame)
++                  QUAD(0);
++        }
++
++	.data BLOCK(4K) : ALIGN(4K)
++	{
++		*(.data.*)
++	}
++
++        . = ALIGN(64);
++        .tdata  :
++        {
++                tls_start = ABSOLUTE(.);
++                *(.tdata)
++                *(.tdata.*)
++                *(.gnu.linkonce.td.*)
++        }
++
++        .tbss :
++        {
++                *(.tbss)
++                *(.tbss.*)
++                *(.gnu.linkonce.tb.*)
++                . = ALIGN(64);
++                tls_end = ABSOLUTE(.);
++        }
++
++	.bss BLOCK(4K) : ALIGN(4K)
++	{
++                tcb0 = ABSOLUTE(.);
++                . += (tls_end - tls_start) + 8;
++		*(COMMON)
++                *(.bss)
++		*(.bss.*)
++                *(.gnu.linkonce.b*)
++	}
++
++	/DISCARD/ :
++	{
++		*(.note.*);
++	}
++
++	. = ALIGN(4K);
++	kend = .;
++}
++EOF

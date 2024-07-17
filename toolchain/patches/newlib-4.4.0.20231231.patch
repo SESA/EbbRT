@@ -1,0 +1,258 @@
+diff -Naur newlib-4.4.0.20231231/config.sub ebbrt-newlib-4.4.0.20231231/config.sub
+--- newlib-4.4.0.20231231/config.sub	2023-12-31 12:00:18.000000000 -0500
++++ ebbrt-newlib-4.4.0.20231231/config.sub	2024-07-16 18:18:48.388978714 -0400
+@@ -1703,7 +1703,7 @@
+ 	     | os9* | macos* | osx* | ios* \
+ 	     | mpw* | magic* | mmixware* | mon960* | lnews* \
+ 	     | amigaos* | amigados* | msdos* | newsos* | unicos* | aof* \
+-	     | aos* | aros* | cloudabi* | sortix* | twizzler* \
++	     | aos* | aros* | ebbrt* | cloudabi* | sortix* | twizzler* \
+ 	     | nindy* | vxsim* | vxworks* | ebmon* | hms* | mvs* \
+ 	     | clix* | riscos* | uniplus* | iris* | isc* | rtu* | xenix* \
+ 	     | mirbsd* | netbsd* | dicos* | openedition* | ose* \
+diff -Naur newlib-4.4.0.20231231/configure.ac ebbrt-newlib-4.4.0.20231231/configure.ac
+--- newlib-4.4.0.20231231/configure.ac	2023-12-31 12:00:18.000000000 -0500
++++ ebbrt-newlib-4.4.0.20231231/configure.ac	2024-07-16 18:51:35.240623425 -0400
+@@ -1048,6 +1048,9 @@
+     noconfigdirs="$noconfigdirs ld gas gdb gprof"
+     noconfigdirs="$noconfigdirs sim target-rda"
+     ;;
++  *-*-ebbrt*)
++    noconfigdirs="$noconfigdirs target-libgloss"
++    ;;
+   *-*-dragonfly*)
+     ;;
+   *-*-freebsd*)
+diff -Naur newlib-4.4.0.20231231/newlib/configure.host ebbrt-newlib-4.4.0.20231231/newlib/configure.host
+--- newlib-4.4.0.20231231/newlib/configure.host	2023-12-31 12:00:18.000000000 -0500
++++ ebbrt-newlib-4.4.0.20231231/newlib/configure.host	2024-07-16 18:18:48.431978357 -0400
+@@ -472,6 +472,13 @@
+   d30v*)
+ 	sys_dir=
+ 	;;
++  *-*-ebbrt*)
++	newlib_cflags="${newlib_cflags} -DREENTRANT_SYSCALLS_PROVIDED"
++	newlib_cflags="${newlib_cflags} -DMISSING_SYSCALL_NAMES"
++	newlib_cflags="${newlib_cflags} -DMALLOC_PROVIDED"
++	sys_dir=ebbrt
++	have_crt0="no"
++	;;
+   epiphany-*-*)
+ 	sys_dir=epiphany
+ 	# crt0 is provided by libgloss.
+diff -Naur newlib-4.4.0.20231231/newlib/libc/acinclude.m4 ebbrt-newlib-4.4.0.20231231/newlib/libc/acinclude.m4
+--- newlib-4.4.0.20231231/newlib/libc/acinclude.m4	2023-12-31 12:00:18.000000000 -0500
++++ ebbrt-newlib-4.4.0.20231231/newlib/libc/acinclude.m4	2024-07-16 18:18:48.431978357 -0400
+@@ -19,6 +19,7 @@
+   m88kbug mmixware
+   netware
+   or1k
++  ebbrt
+   rdos rtems
+   sh sysmec sysnec810 sysnecv850 sysvi386 sysvnecv70
+   tic80 tirtos
+diff -Naur newlib-4.4.0.20231231/newlib/libc/include/sys/config.h ebbrt-newlib-4.4.0.20231231/newlib/libc/include/sys/config.h
+--- newlib-4.4.0.20231231/newlib/libc/include/sys/config.h	2023-12-31 12:00:18.000000000 -0500
++++ ebbrt-newlib-4.4.0.20231231/newlib/libc/include/sys/config.h	2024-07-16 18:18:48.431978357 -0400
+@@ -92,7 +92,7 @@
+ /* in other words, go32 */
+ #define _FLOAT_RET double
+ #endif
+-#if defined(__linux__) || defined(__RDOS__)
++#if defined(__linux__) || defined(__RDOS__) || defined(__ebbrt__)
+ /* we want the reentrancy structure to be returned by a function */
+ #define __DYNAMIC_REENT__
+ #define HAVE_GETDATE
+diff -Naur newlib-4.4.0.20231231/newlib/libc/sys/ebbrt/Makefile.inc ebbrt-newlib-4.4.0.20231231/newlib/libc/sys/ebbrt/Makefile.inc
+--- newlib-4.4.0.20231231/newlib/libc/sys/ebbrt/Makefile.inc	1969-12-31 19:00:00.000000000 -0500
++++ ebbrt-newlib-4.4.0.20231231/newlib/libc/sys/ebbrt/Makefile.inc	2024-07-16 18:18:48.432978348 -0400
+@@ -0,0 +1 @@
++libc_a_SOURCES += %D%/syscalls.c
+\ No newline at end of file
+diff -Naur newlib-4.4.0.20231231/newlib/libc/sys/ebbrt/sys/lock.h ebbrt-newlib-4.4.0.20231231/newlib/libc/sys/ebbrt/sys/lock.h
+--- newlib-4.4.0.20231231/newlib/libc/sys/ebbrt/sys/lock.h	1969-12-31 19:00:00.000000000 -0500
++++ ebbrt-newlib-4.4.0.20231231/newlib/libc/sys/ebbrt/sys/lock.h	2024-07-17 06:04:07.789816669 -0400
+@@ -0,0 +1,21 @@
++#ifndef __SYS_LOCK_H__
++#define __SYS_LOCK_H__
++
++#include <ebbrt/native/NewlibLock.h>
++
++#define __LOCK_INIT(class,lock) \
++class _LOCK_T lock;
++#define __LOCK_INIT_RECURSIVE(class,lock) \
++class _LOCK_RECURSIVE_T lock;
++#define __lock_init(lock) ebbrt_newlib_lock_init(&lock)
++#define __lock_init_recursive(lock) ebbrt_newlib_lock_init_recursive(&lock)
++#define __lock_close(lock) ebbrt_newlib_lock_close(&lock)
++#define __lock_close_recursive(lock) ebbrt_newlib_lock_close_recursive(&lock)
++#define __lock_acquire(lock) ebbrt_newlib_lock_acquire(&lock)
++#define __lock_acquire_recursive(lock) ebbrt_newlib_lock_acquire_recursive(&lock)
++#define __lock_try_acquire(lock) ebbrt_newlib_lock_try_acquire(&lock)
++#define __lock_try_acquire_recursive(lock) ebbrt_newlib_lock_try_acquire_recursive(&lock)
++#define __lock_release(lock) ebbrt_newlib_lock_release(&lock)
++#define __lock_release_recursive(lock) ebbrt_newlib_lock_release_recursive(&lock)
++
++#endif /* __SYS_LOCK_H__ */
+diff -Naur newlib-4.4.0.20231231/newlib/libc/sys/ebbrt/syscalls.c ebbrt-newlib-4.4.0.20231231/newlib/libc/sys/ebbrt/syscalls.c
+--- newlib-4.4.0.20231231/newlib/libc/sys/ebbrt/syscalls.c	1969-12-31 19:00:00.000000000 -0500
++++ ebbrt-newlib-4.4.0.20231231/newlib/libc/sys/ebbrt/syscalls.c	2024-07-17 06:04:24.074681385 -0400
+@@ -0,0 +1,145 @@
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <sys/fcntl.h>
++#include <sys/times.h>
++#include <sys/errno.h>
++#include <sys/time.h>
++#include <stdarg.h>
++#include <stdio.h>
++#include <errno.h>
++
++#include <ebbrt/native/Newlib.h> 
++
++int _exit(int val)
++{
++  return ebbrt_newlib_exit(val);
++}
++
++int execve(char *name, char **argv, char **env)
++{
++  return ebbrt_newlib_execve(name, argv, env);
++}
++
++int getpid(void)
++{
++  return ebbrt_newlib_getpid();
++}
++
++int fork(void)
++{
++  return ebbrt_newlib_fork();
++}
++
++int kill(int pid, int sig)
++{
++  return ebbrt_newlib_kill(pid, sig);
++}
++
++int wait(int *status)
++{
++  return ebbrt_newlib_wait(status);
++}
++
++int isatty(int fd)
++{
++  return ebbrt_newlib_isatty(fd);
++}
++
++int close(int file)
++{
++  return ebbrt_newlib_close(file);
++}
++
++int link(char *old, char *new)
++{
++  return ebbrt_newlib_link(old, new);
++}
++
++int lseek(int file, int ptr, int dir)
++{
++  return ebbrt_newlib_lseek(file, ptr, dir);
++}
++
++int open(const char *name, int flags, ...)
++{
++  va_list args;
++  int ret;
++  va_start(args, flags);
++  ret = ebbrt_newlib_open(name, flags, args);
++  va_end(args);
++  return ret;
++}
++
++int read(int file, char *ptr, int len)
++{
++  return ebbrt_newlib_read(file, ptr, len);
++}
++
++int fstat(int file, struct stat *st)
++{
++  return ebbrt_newlib_fstat(file, st);
++}
++
++int stat(const char *file, struct stat *st)
++{
++  return ebbrt_newlib_stat(file, st);
++}
++
++int unlink(char *name)
++{
++  return ebbrt_newlib_unlink(name);
++}
++
++int write(int file, char *ptr, int len)
++{
++  return ebbrt_newlib_write(file, ptr, len);
++}
++
++void* malloc(size_t size) {
++  return ebbrt_newlib_malloc(size);
++}
++
++void* _malloc_r(struct _reent *r, size_t size) {
++  return malloc(size);
++}
++
++void free(void* ptr) {
++  return ebbrt_newlib_free(ptr);
++}
++
++void _free_r(struct _reent *r, void *ptr) {
++  return free(ptr);
++}
++
++void* realloc(void* ptr, size_t size) {
++  return ebbrt_newlib_realloc(ptr, size);
++}
++
++void* _realloc_r(struct _reent *r, void* ptr, size_t size)
++{
++  return realloc(ptr, size);
++}
++
++void* calloc(size_t num, size_t size) {
++  return ebbrt_newlib_calloc(num, size);
++}
++
++
++void* _calloc_r(struct _reent *r, size_t num, size_t size){
++  return calloc(num, size);
++}
++
++void* memalign(size_t alignment, size_t size) {
++  return ebbrt_newlib_memalign(alignment, size);
++}
++
++void* _memalign_r(struct _reent *r, size_t alignment, size_t size) {
++  return memalign(alignment, size);
++}
++
++
++int gettimeofday(struct timeval *p, void *z)
++{
++  return ebbrt_newlib_gettimeofday(p, z);
++}
++
+diff -Naur newlib-4.4.0.20231231/newlib/libc/sys/Makefile.inc ebbrt-newlib-4.4.0.20231231/newlib/libc/sys/Makefile.inc
+--- newlib-4.4.0.20231231/newlib/libc/sys/Makefile.inc	2023-12-31 12:00:18.000000000 -0500
++++ ebbrt-newlib-4.4.0.20231231/newlib/libc/sys/Makefile.inc	2024-07-16 18:18:48.432978348 -0400
+@@ -34,6 +34,9 @@
+ if HAVE_LIBC_SYS_RDOS_DIR
+ include %D%/rdos/Makefile.inc
+ endif
++if HAVE_LIBC_SYS_EBBRT_DIR
++include %D%/ebbrt/Makefile.inc
++endif
+ if HAVE_LIBC_SYS_RTEMS_DIR
+ include %D%/rtems/Makefile.inc
+ endif
