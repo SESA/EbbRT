@@ -3,12 +3,12 @@ MYDIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 -include config.mk
 
 TARGET ?= x86_64-pc-ebbrt
-AUTOCONF_VERSION ?= 2.64
-AUTOMAKE_VERSION ?= 1.11.1
-BINUTILS_VERSION ?= 2.26
-CAPNPDEP_VERSION ?= 0.4.0
-GCC_VERSION ?= 5.3.0
-NEWLIB_VERSION ?= 2.0.0
+AUTOCONF_VERSION ?= 2.69
+AUTOMAKE_VERSION ?= 1.15.1
+BINUTILS_VERSION ?= 2.42
+CAPNPDEP_VERSION ?= 1.0.2
+GCC_VERSION ?= 11.4.0
+NEWLIB_VERSION ?= 4.4.0.20231231
 
 AUTOCONF ?= autoconf
 AUTOMAKE ?= automake
@@ -40,7 +40,7 @@ AUTOCONF_URL ?= https://ftp.gnu.org/gnu/autoconf/$(AUTOCONF_TAR)
 AUTOCONF_CONFIGURE_FLAG ?= $(AUTOCONF_BUILD_PATH)/Makefile
 
 AUTOMAKE_FULL ?= automake-$(AUTOMAKE_VERSION)
-AUTOMAKE_TAR ?= $(AUTOMAKE_FULL).tar.bz2
+AUTOMAKE_TAR ?= $(AUTOMAKE_FULL).tar.xz
 AUTOMAKE_TAR_PATH ?= $(SRCDIR)/$(AUTOMAKE_TAR)
 AUTOMAKE_SRC_PATH ?= $(SRCDIR)/$(AUTOMAKE_FULL)
 AUTOMAKE_BUILD_PATH ?= $(BUILDDIR)/automake-build
@@ -68,7 +68,7 @@ BINUTILS_URL ?= https://ftp.gnu.org/gnu/binutils/$(BINUTILS_TAR)
 BINUTILS_CONFIGURE_FLAG ?= $(BINUTILS_BUILD_PATH)/Makefile
 
 GCC ?= gcc-$(GCC_VERSION)
-GCC_TAR ?= $(GCC).tar.bz2
+GCC_TAR ?= $(GCC).tar.xz
 GCC_PATCH ?= $(GCC).patch
 GCC_TAR_PATH ?= $(SRCDIR)/$(GCC_TAR)
 GCC_SRC_PATH ?= $(SRCDIR)/$(GCC)
@@ -116,7 +116,7 @@ CMAKE_DEFS ?= -DCMAKE_INSTALL_PREFIX:PATH=$(INSTALL_PREFIX) \
 #EBBRT_BUILD_DEFS ?= -DCMAKE_C_COMPILER_FORCED=1 \
 #										-DCMAKE_CXX_COMPILER_FORCED=1
 
-ACPICA_SRC_PATH ?= $(abspath $(MYDIR)/ext/acpica)
+ACPICA_SRC_PATH ?= $(abspath $(MYDIR)/ext/acpica/source)
 ACPICA_BUILD_PATH ?= $(BUILDDIR)/acpica-build
 ACPICA_CONFIGURE_FLAG ?= $(ACPICA_BUILD_PATH)/Makefile
 
@@ -302,9 +302,9 @@ gcc-all: gcc-all-install
 $(NEWLIB_SRC_PATH): $(NEWLIB_PATCH_PATH) | deps $(NEWLIB_TAR_PATH) $(SRCDIR)
 	-$(RM) -r $(NEWLIB_SRC_PATH)
 	$(TAR) -xf $(NEWLIB_TAR_PATH) -C $(SRCDIR)
-	$(PATCH) -p1 -l -s -d $@ < $(NEWLIB_PATCH_PATH) && \
-	$(CD) $@/newlib/libc/sys && $(AUTOCONF) && \
-	$(CD) $@/newlib/libc/sys/ebbrt && $(AUTORECONF)
+	$(PATCH) -p1 -l -s -d $@ < $(NEWLIB_PATCH_PATH)	&& \
+	$(CD) $@/newlib && $(AUTORECONF) && \
+	$(CD) $@ && $(AUTORECONF)
 
 $(NEWLIB_TAR_PATH): | $(SRCDIR)
 	$(WGET) $(NEWLIB_URL) -O $@
@@ -314,17 +314,20 @@ $(NEWLIB_BUILD_PATH): | $(BUILDDIR)
 
 $(NEWLIB_CONFIGURE_FLAG): | binutils gcc $(NEWLIB_SRC_PATH) $(NEWLIB_BUILD_PATH)
 	$(CD) $(NEWLIB_BUILD_PATH) && \
+	PATH=$$PATH:$(SYSROOT)/usr/bin \
 	CFLAGS=$(NEWLIB_CFLAGS) AR_FOR_TARGET=x86_64-pc-ebbrt-gcc-ar \
 		RANLIB_FOR_TARGET=x86_64-pc-ebbrt-gcc-ranlib \
 		$(NEWLIB_SRC_PATH)/configure --target=$(TARGET) \
 		--prefix=$(INSTALL_PREFIX) --enable-newlib-hw-fp
 
 newlib-build: binutils gcc $(NEWLIB_CONFIGURE_FLAG)
+	PATH=$$PATH:$(SYSROOT)/usr/bin \
 	AR_FOR_TARGET=x86_64-pc-ebbrt-gcc-ar \
 		RANLIB_FOR_TARGET=x86_64-pc-ebbrt-gcc-ranlib \
 		$(MAKE) -C $(NEWLIB_BUILD_PATH)
 
 newlib-install: newlib-build
+	PATH=$$PATH:$(SYSROOT)/usr/bin \
 	AR_FOR_TARGET=x86_64-pc-ebbrt-gcc-ar \
 		RANLIB_FOR_TARGET=x86_64-pc-ebbrt-gcc-ranlib \
 		$(MAKE) install -C $(NEWLIB_BUILD_PATH)
