@@ -1,9 +1,6 @@
 [submodule "apps/node"]
 	path = apps/node
 	url = https://github.com/sesa/ebbrt-node-app
-[submodule "toolchain/ext/acpica"]
-	path = toolchain/ext/acpica
-	url = https://github.com/SESA/EbbRT-ACPICA.git
 [submodule "toolchain/ext/boost"]
 	path = toolchain/ext/boost
 	url = https://github.com/SESA/EbbRT-boost.git
