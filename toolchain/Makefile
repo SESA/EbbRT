@@ -7,6 +7,8 @@ AUTOCONF_VERSION ?= 2.69
 AUTOMAKE_VERSION ?= 1.15.1
 BINUTILS_VERSION ?= 2.42
 CAPNPDEP_VERSION ?= 1.0.2
+# we use the same version for the native as we do for hosted
+CAPNP_VERSION ?= $(CAPNPDEP_VERSION)
 GCC_VERSION ?= 11.4.0
 NEWLIB_VERSION ?= 4.4.0.20231231
 ACPICA_VERSION ?= unix2-20240321
@@ -132,14 +134,22 @@ BOOST_SRC_PATH ?= $(abspath $(MYDIR)/ext/boost)
 BOOST_BUILD_PATH ?= $(BUILDDIR)/boost-build
 BOOST_CONFIGURE_FLAG ?= $(BOOST_BUILD_PATH)/Makefile
 
-CAPNP_SRC_PATH ?= $(abspath $(MYDIR)/ext/capnp)
-CAPNP_BUILD_PATH ?= $(BUILDDIR)/capnp-build
-CAPNP_CONFIGURE_FLAG ?= $(CAPNP_BUILD_PATH)/Makefile
+CAPNP ?= capnproto-c++-$(CAPNP_VERSION)
+CAPNP_TAR ?= $(CAPNP).tar.gz
+CAPNP_PATCH ?= $(CAPNP)-native.patch
+CAPNP_TAR_PATH ?= $(SRCDIR)/$(CAPNP_TAR)
+CAPNP_SRC_PATH ?= $(SRCDIR)/$(CAPNP)-native
+CAPNP_BUILD_PATH ?= $(BUILDDIR)/capnp-native-build
+CAPNP_PATCH_PATH ?= $(PATCHDIR)/$(CAPNP_PATCH)
+CAPNP_URL ?= https://capnproto.org/$(CAPNP_TAR)
+CAPNP_CONFIGURE_FLAG ?=  $(CAPNP_BUILD_PATH)/Makefile
 
 TBB_SRC_PATH ?= $(abspath $(MYDIR)/ext/tbb)
 TBB_BUILD_PATH ?= $(BUILDDIR)/tbb-build
 TBB_CONFIGURE_FLAG ?= $(TBB_BUILD_PATH)/Makefile
 
+# for the record I don't think these work -- I have started
+# explicitly adding as needed
 export PATH := $(DEPS_PREFIX)/bin:$(INSTALL_PREFIX)/bin:$(PATH)
 export EBBRT_SYSROOT := $(SYSROOT)
 
@@ -208,7 +218,7 @@ automake-install: automake-build
 
 automake: automake-install
 
-### Capnp ###
+### Capnp deps (hosted as far as I can tell) ###
 
 $(CAPNPDEP_SRC_PATH): $(CAPNPDEP_PATCH_PATH) | $(CAPNPDEP_TAR_PATH) $(SRCDIR)
 	-$(RM) -r $(CAPNPDEP_SRC_PATH)
@@ -354,7 +364,7 @@ $(ACPICA_TAR_PATH): | $(SRCDIR)
 $(ACPICA_BUILD_PATH): | $(BUILDDIR)
 	$(MKDIR) $@
 
-$(ACPICA_CONFIGURE_FLAG): | gcc-all-install $(ACPICA_SRC_PATH) $(ACPICA_BUILD_PATH)
+$(ACPICA_CONFIGURE_FLAG): | $(ACPICA_SRC_PATH) $(ACPICA_BUILD_PATH)
 	$(CD) $(ACPICA_BUILD_PATH) && \
 	 $(CMAKE) $(CMAKE_DEFS) $(ACPICA_SRC_PATH)/source
 
@@ -363,6 +373,13 @@ acpica-build: gcc-all $(ACPICA_CONFIGURE_FLAG)
 
 acpica-install: acpica-build
 	$(MAKE) VERBOSE=1 V=1 -C $(ACPICA_BUILD_PATH) install
+
+acpica-build-nogcc: $(ACPICA_CONFIGURE_FLAG)
+	$(MAKE) VERBOSE=1 V=1 -C $(ACPICA_BUILD_PATH)
+
+acpica-install-nogcc: acpica-build-nogcc
+	$(MAKE) VERBOSE=1 V=1 -C $(ACPICA_BUILD_PATH) install
+
 
 ### BOOST ###
 
@@ -379,12 +396,24 @@ boost-build: gcc-all $(BOOST_CONFIGURE_FLAG)
 boost-install: boost-build
 	$(MAKE) -C $(BOOST_BUILD_PATH) install
 
-### CAPNP ###
+
+### Capnp native ###
+
+$(CAPNP_SRC_PATH): $(CAPNP_PATCH_PATH) | $(CAPNP_TAR_PATH) $(SRCDIR)
+	-$(RM) -r $(CAPNP_SRC_PATH)
+	$(MKDIR) -p $(CAPNP_SRC_PATH)
+	$(TAR) -xf $(CAPNP_TAR_PATH) --strip-components 1 -C $(CAPNP_SRC_PATH)
+	$(PATCH) -p1 -l -s -d $@ < $(CAPNP_PATCH_PATH)
+
+# commentted out to avoid warnings given that CAPNPDEP_TAR_PATH by default
+# is the same.  If they are different you will need to uncomment
+#$(CAPNP_TAR_PATH): | $(SRCDIR)
+#	$(WGET) $(CAPNP_URL) -O $@
 
 $(CAPNP_BUILD_PATH): | $(BUILDDIR)
 	$(MKDIR) $@
 
-$(CAPNP_CONFIGURE_FLAG): | gcc-all $(CAPNP_BUILD_PATH)
+$(CAPNP_CONFIGURE_FLAG): | $(CAPNP_SRC_PATH) $(CAPNP_BUILD_PATH)
 	$(CD) $(CAPNP_BUILD_PATH) && \
 	$(CMAKE) $(CMAKE_DEFS) $(CAPNP_SRC_PATH)
 
@@ -393,6 +422,13 @@ capnp-build: gcc-all $(CAPNP_CONFIGURE_FLAG)
 
 capnp-install: capnp-build
 	$(MAKE) -C $(CAPNP_BUILD_PATH) install
+
+capnp-build-nogcc: $(CAPNP_CONFIGURE_FLAG)
+	$(MAKE) -C $(CAPNP_BUILD_PATH)
+
+capnp-install-nogcc: capnp-build-nogcc
+	$(MAKE) -C $(CAPNP_BUILD_PATH) install
+
 
 ### TBB ###
 
@@ -435,6 +471,8 @@ ebbrt-cmake-install: | $(INSTALL_PREFIX)/misc
 .PHONY: all autoconf autoconf-build autoconf-install automake automake-build \
 	automake-install binutils binutils-build binutils-install clean deps \
 	gcc gcc-build gcc-install gcc-all gcc-all-build gcc-all-install newlib \
-	newlib-build newlib-install acpica-build acpica-install boost-build \
-	boost-install capnp-build capnp-install tbb-build tbb-install \
+	newlib-build newlib-install acpica-build acpica-install \
+	acpica-build-nogcc acpica-install-nogcc boost-build \
+	boost-install capnp-build capnp-install capnp-build-nogcc \
+	capnp-install-nogcc  tbb-build tbb-install \
 	ebbrt-deps ebbrt-headers-install ebbrt-cmake-install

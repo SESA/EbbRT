@@ -4,9 +4,6 @@
 [submodule "toolchain/ext/boost"]
 	path = toolchain/ext/boost
 	url = https://github.com/SESA/EbbRT-boost.git
-[submodule "toolchain/ext/capnp"]
-	path = toolchain/ext/capnp
-	url = https://github.com/SESA/EbbRT-capnp.git
 [submodule "toolchain/ext/tbb"]
 	path = toolchain/ext/tbb
 	url = https://github.com/SESA/EbbRT-tbb
