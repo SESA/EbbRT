@@ -7,6 +7,7 @@ AUTOCONF_VERSION ?= 2.69
 AUTOMAKE_VERSION ?= 1.15.1
 BINUTILS_VERSION ?= 2.42
 CAPNPDEP_VERSION ?= 1.0.2
+BOOST_VERSION ?= 1_85_0
 # we use the same version for the native as we do for hosted
 CAPNP_VERSION ?= $(CAPNPDEP_VERSION)
 GCC_VERSION ?= 11.4.0
@@ -130,8 +131,14 @@ ACPICA_PATCH_PATH ?= $(PATCHDIR)/$(ACPICA_PATCH)
 ACPICA_URL ?= https://github.com/acpica/acpica/files/14718332/$(ACPICA_TAR)
 ACPICA_CONFIGURE_FLAG ?= $(ACPICA_BUILD_PATH)/Makefile
 
-BOOST_SRC_PATH ?= $(abspath $(MYDIR)/ext/boost)
+BOOST ?= boost_$(BOOST_VERSION)
+BOOST_TAR ?= $(BOOST).tar.gz
+BOOST_PATCH ?= $(BOOST).patch
+BOOST_TAR_PATH ?= $(SRCDIR)/$(BOOST_TAR)
+BOOST_SRC_PATH ?= $(SRCDIR)/$(BOOST)
 BOOST_BUILD_PATH ?= $(BUILDDIR)/boost-build
+BOOST_PATCH_PATH ?= $(PATCHDIR)/$(BOOST_PATCH)
+BOOST_URL ?= https://archives.boost.io/release/$(subst _,.,$(BOOST_VERSION))/source/${BOOST_TAR}
 BOOST_CONFIGURE_FLAG ?= $(BOOST_BUILD_PATH)/Makefile
 
 CAPNP ?= capnproto-c++-$(CAPNP_VERSION)
@@ -353,7 +360,7 @@ newlib-install: newlib-build
 newlib: newlib-install
 
 ### ACPICA ###
-$(ACPICA_SRC_PATH): $(ACPICA_TAR_PATH) $(SRCDIR)
+$(ACPICA_SRC_PATH): $(ACPICA_PATCH_PATH) | $(ACPICA_TAR_PATH) $(SRCDIR)
 	-$(RM) -r $(ACPICA_SRC_PATH)
 	$(TAR) -xf $(ACPICA_TAR_PATH) -C $(SRCDIR)
 	$(PATCH) -p1 -l -s -d $@ < $(ACPICA_PATCH_PATH)
@@ -382,11 +389,18 @@ acpica-install-nogcc: acpica-build-nogcc
 
 
 ### BOOST ###
+$(BOOST_SRC_PATH): $(BOOST_PATCH_PATH) | $(BOOST_TAR_PATH) $(SRCDIR)
+	-$(RM) -r $(BOOST_SRC_PATH)
+	$(TAR) -xf $(BOOST_TAR_PATH) -C $(SRCDIR)
+	$(PATCH) -p1 -l -s -d $@ < $(BOOST_PATCH_PATH)
+
+$(BOOST_TAR_PATH): | $(SRCDIR)
+	$(WGET) $(BOOST_URL) -O $@
 
 $(BOOST_BUILD_PATH): | $(BUILDDIR)
 	$(MKDIR) $@
 
-$(BOOST_CONFIGURE_FLAG): | gcc-all $(BOOST_BUILD_PATH)
+$(BOOST_CONFIGURE_FLAG): | $(BOOST_SRC_PATH) $(BOOST_BUILD_PATH)
 	$(CD) $(BOOST_BUILD_PATH) && \
 	$(CMAKE) $(CMAKE_DEFS) $(BOOST_SRC_PATH)
 
@@ -394,6 +408,12 @@ boost-build: gcc-all $(BOOST_CONFIGURE_FLAG)
 	$(MAKE) -C $(BOOST_BUILD_PATH)
 
 boost-install: boost-build
+	$(MAKE) -C $(BOOST_BUILD_PATH) install
+
+boost-build-nogcc: $(BOOST_CONFIGURE_FLAG)
+	$(MAKE) -C $(BOOST_BUILD_PATH)
+
+boost-install-nogcc: boost-build-nogcc
 	$(MAKE) -C $(BOOST_BUILD_PATH) install
 
 
@@ -473,6 +493,7 @@ ebbrt-cmake-install: | $(INSTALL_PREFIX)/misc
 	gcc gcc-build gcc-install gcc-all gcc-all-build gcc-all-install newlib \
 	newlib-build newlib-install acpica-build acpica-install \
 	acpica-build-nogcc acpica-install-nogcc boost-build \
-	boost-install capnp-build capnp-install capnp-build-nogcc \
-	capnp-install-nogcc  tbb-build tbb-install \
-	ebbrt-deps ebbrt-headers-install ebbrt-cmake-install
+	boost-install boost-build-nogcc boost-install-nogcc capnp-build \
+	capnp-install capnp-build-nogcc capnp-install-nogcc  \
+	tbb-build tbb-install ebbrt-deps ebbrt-headers-install \
+	ebbrt-cmake-install

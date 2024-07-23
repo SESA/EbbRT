@@ -1,0 +1,14 @@
+diff -Naur boost_1_85_0/CMakeLists.txt ebbrt-boost_1_85_0/CMakeLists.txt
+--- boost_1_85_0/CMakeLists.txt	1969-12-31 19:00:00.000000000 -0500
++++ ebbrt-boost_1_85_0/CMakeLists.txt	2024-07-18 17:50:50.325572408 -0400
+@@ -0,0 +1,10 @@
++cmake_minimum_required(VERSION 3.6)
++
++# This must be before the project() command so cmake finds our platform
++# definition
++list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../../cmake")
++
++project(Boost NONE)
++
++install(DIRECTORY ${CMAKE_SOURCE_DIR}/boost DESTINATION include
++  FILES_MATCHING PATTERN "*.hpp")
